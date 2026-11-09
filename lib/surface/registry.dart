@@ -2,6 +2,7 @@
 // 每个页面/组件是一个 SurfaceModule，经 SurfaceRegistry 装配。
 // 模块间禁止直接 import，通信只走 riverpod provider / 桥。
 import '../bridge_logic.dart'; // 仅取 logic 能力门面（bridge_logic 属 L5/L6 共用）
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 
 abstract class SurfaceModule {
   String get id;
@@ -60,4 +61,19 @@ class SurfaceRegistry {
       return const [];
     }
   }
+
+  /// 由 modules.defaultModules 注入的 riverpod provider overrides
+  /// （PlayerController 唯一实例），boot 处传给 ProviderScope。
+  static List<Override> _providerOverrides = const <Override>[];
+
+  static void setOverrides(List<Override> overrides) {
+    try {
+      _providerOverrides = List<Override>.unmodifiable(overrides);
+      Log.d('surface', 'provider overrides set n=${overrides.length}');
+    } catch (e, st) {
+      Log.e('surface', 'setOverrides failed', e, st);
+    }
+  }
+
+  static List<Override> get providerOverrides => _providerOverrides;
 }

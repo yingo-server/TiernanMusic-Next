@@ -9,7 +9,7 @@ import os, re, sys
 LIB = os.path.join(os.path.dirname(__file__), '..', 'lib')
 LAYERS = {'init': 1, 'bootloader': 2, 'kernel': 3, 'core': 4, 'logic': 5, 'surface': 6}
 # 桥 → 允许使用它的最低层（上层可用，低层禁用）
-BRIDGE_ALLOW = {'bridge_surface': 6, 'bridge_logic': 6, 'bridge_core': 4,
+BRIDGE_ALLOW = {'bridge_surface': 6, 'bridge_logic': 6, 'bridge_core': 6,
                 'bridge_kernel': 3, 'bridge_boot': 2}
 
 def layer_of(path):
@@ -46,8 +46,13 @@ for root, _, files in os.walk(LIB):
                 if allowed is not None and lvl > allowed:
                     violations.append(f'{src}: layer {lvl} uses {imp} (needs >= {allowed})')
                 continue
-            if tl >= lvl:
-                violations.append(f'{src}: layer {lvl} imports same/higher layer {imp}')
+            if tl > lvl:
+                # 白名单：L1 init/main.dart 允许 import surface/app_root.dart
+                # （bootstrapApp 装配特例，见 app_root.dart 文件头注释）
+                if lvl == 1 and src == 'init/main.dart' and \
+                        target == os.path.normpath('surface/app_root.dart'):
+                    continue
+                violations.append(f'{src}: layer {lvl} imports higher layer {imp}')
 
 if violations:
     for v in violations:

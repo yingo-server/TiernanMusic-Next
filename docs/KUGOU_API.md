@@ -197,10 +197,20 @@ lrc / contenttype != 0 时直接 base64 解码即可，无需异或解压。
 - body：`data: [{global_collection_id: <歌单id>}]`（可批量）、`userid, token`
 - 响应：`data[]`：`global_collection_id, specialname, imgurl, playcount, count, intro, username, tags`
 
+**推荐歌单列表**（module/top_playlist.js）
+- ⚠️ **实测修正（2026-11-10）**：POST body 必须含 `appid/mid/clientver/platform/clienttime(秒字符串)/userid/module_id/page/pagesize/key(signParamsKey秒级)/special_recommend{...}/req_multi/retrun_min/return_special_falg`（多参不缺参，缺 mid 或 key → 200101/500）
+- 响应字段路径：**`data.special_list[]`**（`specialid`/`specialname`/`imgurl`/`playcount`），非 data.lists[]
+
 **歌单全部歌曲（旧版）**（module/playlist_track_all.js）
 - GET `/pubsongs/v2/get_other_list_file_nofilt`
 - 参数：`global_collection_id, page/pagesize 转 begin_idx=(page-1)*pagesize, pagesize, area_code=1, plat=1, type=1, mode=1, personal_switch=1, extend_fields=abtags,hot_cmt,popularization`
 - 响应：`data.info[]`（`hash, album_audio_id, name, singername...`）+ `data.count`
+- ⚠️ **实测修正（2026-11-10）**：
+  - 参数名必须是 `specialid`（传 `global_collection_id` 一律 20010 get other list file fail；
+    specialid 传非法值也返回 err=0 但空列表——**判空需检查 data.songs**）
+  - 歌曲列表字段是 **`data.songs[]`**（`hash`/`name`/`audio_id`/`size`/`publish_date`/`brief`…），非 data.info[]
+  - 总数在 `data.count`（list_info.count 同值）
+  - 走 gateway.kugou.com（无 x-router），pubsongs 子域直连 404
 
 **歌单全部歌曲（新版，含自建歌单）**（module/playlist_track_all_new.js）
 - POST `/v4/get_list_all_file`，`x-router: cloudlist.service.kugou.com`
@@ -260,3 +270,32 @@ lrc / contenttype != 0 时直接 base64 解码即可，无需异或解压。
 - 云盘：user_cloud.js / user_cloud_url.js（signCloudKey §1）
 - 视频：video_detail/video_url/video_privilege；长音频 longaudio_*；乐谱 sheet_*（opern）；场景电台 scene_*；青年模式 youth_*；乐库 yueku_*
 - 收藏计数 favorite_count.js；歌曲高潮片段 song_climax.js；图片 images.js
+
+---
+
+## 直连域名可用性矩阵（2026-11-10 实测，KugouClient 路由依据）
+
+| 端点 | 直连子域 | 走 gateway+x-router | 结论 |
+|---|---|---|---|
+| search v3 | complexsearch.kugou.com ✅ err=0 | ✅ | **直连优先** |
+| searchtip | searchtip.kugou.com ✅ | ✅ | 直连优先 |
+| hot_tab | msearch.kugou.com ✅ | ✅ | 直连优先 |
+| play_url v5 | 未测直连 | ✅（必须 cookie+随机dfid） | 走网关 |
+| rank list/info | ocean.kugou.com 404 | gateway 无 router ✅ err=0 | **走 gateway 无 router** |
+| playlist tracks | pubsongs.kugou.com 404 | gateway 无 router ✅ | 走 gateway 无 router |
+| special_recommend | SSL 失败 | gateway + x-router ✅ | 走网关 |
+| lyric search | lyrics.kugou.com ✅（需 accesskey 对） | - | 直连 |
+| kapi.344977.xyz | ❌ 404 | - | 弃用 |
+
+原则：官方网关 gateway.kugou.com 允许使用（酷狗自有域名，非第三方代理）；
+能用官方子域直连的优先直连，404/SSL 失败的回落网关。
+HTTP 502/500 偶发为网关风控抖动，KugouClient 对幂等 GET 做一次重试。
+
+## 端点实测修正汇总（子代理写端点封装前必读）
+
+1. 搜索：`data.lists[]`（FileHash/FileName/SingerName/MixSongID）；歌单搜索 `/v1/search/special` 返回 `specialid`。
+2. play_url v5：顶层即数据；必须 token+userid+Cookie(t1)+随机24位dfid+key；权限唯一可信源 status/priv_status。
+3. 推荐歌单：body 全参（appid/mid/clientver/platform/clienttime秒串/userid/key 等），响应 `data.special_list[].specialid`。
+4. 歌单曲目：GET 参数键用 `specialid`（global_collection_id 一律 20010）；响应 `data.songs[]`+`data.count`；err=0 也可能空列表。
+5. privilege_lite：body 必须 appid/clientver；privilege 是 int 标量，三态同值，不可用于权限判定。
+6. IsFreePart=1 仍返回全长 URL；试听判定以实际 timeLength 为准。

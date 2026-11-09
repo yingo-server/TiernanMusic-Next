@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../surface/app_root.dart' show bootstrapApp;
 import 'bootloader/bootloader.dart';
 
 void main(List<String> args) {
@@ -21,5 +22,7 @@ void main(List<String> args) {
     }
     debugPrint('⚠️ NEXT_DEBUG: integrity bypass active — build is UNVERIFIED');
   }
-  runApp(Bootstrap.bootstrap(exit));
+  // L1→L6 装配特例：bootstrapApp 内部会调用 installServices 前置的 deps
+  // 或按 StoragePaths.I 自装配（见 surface/app_root.dart 文件头注释）。
+  bootstrapApp(exit);
 }
