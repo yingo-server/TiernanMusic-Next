@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_miuix/miuix.dart';
 
+import '../bridges/bridge_core.dart' show KugouClient, SongDao;
 import '../bridges/bridge_logic.dart';
 import 'assembly.dart' as asm;
 import 'deps.dart' show SurfaceDeps;

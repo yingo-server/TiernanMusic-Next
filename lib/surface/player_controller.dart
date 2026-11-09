@@ -180,8 +180,7 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
   }
 
   /// 播放/暂停切换（idle/loading 态下无效）。
-  Future<void> toggle() async {
-    try {
+  Future<void> toggle() async {    try {
       final p = state.player;
       if (p.status == PlayerStatus.playing) {
         _dispatch(const Paused());
@@ -194,6 +193,20 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
       }
     } catch (e, st) {
       _e('toggle failed', e, st);
+    }
+  }
+
+  /// 暂停（保活编排 onBackgroundPause 用；playing 态才生效）。
+  Future<void> pause() async {
+    try {
+      if (state.player.status != PlayerStatus.playing) {
+        _d('pause noop status=${state.player.status}');
+        return;
+      }
+      _dispatch(const Paused());
+      await _engine.pause();
+    } catch (e, st) {
+      _e('pause failed', e, st);
     }
   }
 

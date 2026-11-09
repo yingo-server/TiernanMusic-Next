@@ -88,7 +88,7 @@ class AssemblyResult {
 /// 装配全部 surface 依赖。
 /// [engine]：批5-A 完成后传 JustAudioEngine；缺省 NullAudioEngine（占位可跑通）。
 /// [quality]：默认目标音质。
-AssemblyResult assembleAll(SurfaceDeps deps,
+Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     {AudioEngine? engine, String quality = '128'}) async {
   // 步骤 1：缓存实例集中创建（各域独立 LruCache，不复用同一实例）。
   final searchCache = _newCache<String, SearchResult>(128, 'search');
