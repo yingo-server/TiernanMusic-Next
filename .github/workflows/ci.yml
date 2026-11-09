@@ -1,8 +1,8 @@
-// CI 工作流 · TiernanMusic-Next
-// 标准：
-// - 支持参数发布 release / 不发布；指定 debug；透传更新日志到 release body 和 /changed/<版本>.md
-// - 报错不妥协：尽量跑完全程，一次暴露全部错误（每步 continue-on-error + 末尾汇总判定）
-// - 构建与测试全部在 CI 完成（本地 arm64 无 Flutter）
+# CI 工作流 · TiernanMusic-Next
+# 标准：
+# - 支持参数发布 release / 不发布；指定 debug；透传更新日志到 release body 和 /changed/<版本>.md
+# - 报错不妥协：尽量跑完全程，一次暴露全部错误（每步 continue-on-error + 末尾汇总判定）
+# - 构建与测试全部在 CI 完成（本地 arm64 无 Flutter）
 name: ci
 
 on:
