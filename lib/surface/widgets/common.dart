@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../bridges/bridge_logic.dart' show Log;
-import 'theme/tn_theme.dart';
+import '../theme/tn_theme.dart';
 
 /// 歌曲条目：歌名 / 歌手 / 时长 + 播放按钮回调。
 class SongTile extends StatelessWidget {

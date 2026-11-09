@@ -52,7 +52,7 @@ MiuixThemeData _miuixTheme(Brightness b) {
     final base = b == Brightness.dark
         ? MiuixThemeData.dark()
         : MiuixThemeData.light();
-    final colors = base.colors.copyWith(
+    final colors = base.colors.copy(
       primary: tnPrimary,
       onPrimary: tnOnPrimary,
       primaryContainer: b == Brightness.light

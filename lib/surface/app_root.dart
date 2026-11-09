@@ -27,6 +27,9 @@ import 'package:flutter/material.dart'
         IconData,
         Icons,
         KeyedSubtree,
+        MaterialApp,
+        ThemeData,
+        ThemeMode,
         Padding,
         StatelessWidget,
         State,
@@ -64,6 +67,7 @@ import '../bridges/bridge_core.dart'
         LyricResult;
 import '../bridges/bridge_logic.dart';
 import 'registry.dart';
+import 'widgets/common.dart' show ErrorRetryBox;
 import 'theme/tn_theme.dart';
 
 // ───────────────────────── 装配 ─────────────────────────
@@ -77,11 +81,16 @@ class SurfaceDeps {
     required this.historyDao,
     required this.downloadStore,
     required this.settings,
+    this.paths,
   });
   final KugouClient client;
   final SongDao songDao;
   final PlaylistDao playlistDao;
   final HistoryDao historyDao;
+  final StoragePaths? paths;
+
+  /// 兜底路径（未注入时取 StoragePaths.I 装配态）。
+  StoragePaths get pathsOrI => paths ?? StoragePaths.I;
   final DownloadStore downloadStore;
   final KeyValueSettings settings;
 }
@@ -127,7 +136,7 @@ final Provider<LyricsLogic> lyricsLogicProvider = Provider((ref) {
   final d = ref.watch(depsProvider);
   return LyricsLogic(
     client: d.client,
-    paths: d.paths,
+    paths: d.pathsOrI,
     cache: LruCache<String, LyricResult>(capacity: 32),
   );
 });
@@ -323,7 +332,7 @@ class _HomeShellState extends State<_HomeShell> {
                   icon: Icon(_iconOf(e.icon)), label: e.label),
           ],
         ),
-        content: Column(children: [
+        content: (_) => Column(children: [
           Container(
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.fromLTRB(tnPadL, tnPadL, tnPadL, tnPadS),
@@ -404,7 +413,7 @@ class _ScaffoldMessage extends StatelessWidget {
     debugPrint('surface.app_root: $msg');
     return MiuixScaffold(
       containerColor: const Color(0xFFF6F5FA),
-      content: Center(
+      content: (_) => Center(
           child: Padding(
               padding: const EdgeInsets.all(tnPadL),
               child: Text(msg, textAlign: TextAlign.center))),

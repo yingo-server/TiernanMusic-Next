@@ -1,9 +1,10 @@
 // L6 surface 级 · UI 模块热插拔机制
 // 每个页面/组件是一个 SurfaceModule，经 SurfaceRegistry 装配。
 // 模块间禁止直接 import，通信只走 riverpod provider / 桥。
-import '../bridges/bridge_logic.dart'; // LogicFacade + Log（kernel 转出）
-import '../bridges/bridge_logic.dart' show Log;
+import 'package:flutter/material.dart' show WidgetBuilder;
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
+
+import '../bridges/bridge_logic.dart' show LogicFacade, Log;
 
 abstract class SurfaceModule {
   String get id;
