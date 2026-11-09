@@ -6,7 +6,7 @@
 // 铁律：surface 层；try/catch + Log('surface.appbar')。
 import 'package:flutter/material.dart';
 
-import '../bridge_logic.dart' show Log;
+import '../../bridges/bridge_logic.dart' show Log;
 import '../theme/tn_theme.dart' show tnPadL, tnRadiusM, TnText;
 
 const String _tag = 'surface.appbar';
