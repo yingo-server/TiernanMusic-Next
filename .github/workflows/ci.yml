@@ -65,10 +65,6 @@ jobs:
     needs: analyze-test
     if: needs.analyze-test.outputs.verdict == 'ok'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        abi: [arm64-v8a, armeabi-v7a, x86_64]
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -78,18 +74,17 @@ jobs:
           NEXT_MANIFEST_SALT: ${{ secrets.NEXT_MANIFEST_SALT }}
           NEXT_MANIFEST_KEY: ${{ secrets.NEXT_MANIFEST_KEY }}
         run: dart run tool/gen_manifest.dart
-      - name: build apk (${{ matrix.abi }})
+      - name: build apk (split-per-abi)
         env:
           NEXT_DEBUG: ${{ github.event.inputs.debug }}
         run: |
           flutter build apk --release --split-per-abi \
-            --target-platform android-${{ matrix.abi == 'x86_64' && 'x64' || matrix.abi }} \
             ${{ github.event.inputs.debug == 'true' && '--dart-define=NEXT_DEBUG_BYPASS=true' || '' }} \
             --build-name=${GITHUB_REF_NAME#v}
           mkdir -p dist && cp build/app/outputs/flutter-apk/*.apk dist/
       - uses: actions/upload-artifact@v4
         with:
-          name: apk-${{ matrix.abi }}
+          name: apk-all-abi
           path: dist/*.apk
 
   release:
