@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bridges/bridge_logic.dart'
     show SearchLogic, PlayerState, PlayerStatus, PlayMode, Log, LogicFacade;
 import '../player_controller.dart'
-    show PlayerController, playerProvider, playerControllerProvider;
+    show playerProvider;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show CoverImage;
 
@@ -60,7 +60,7 @@ class MiniBar extends ConsumerWidget {
       if (song == null || p.status == PlayerStatus.idle) {
         return const SizedBox.shrink(); // 无当前曲不悬浮
       }
-      final ctl = ref.read(playerControllerProvider);
+      final ctl = ref.read(playerProvider.notifier);
       return Material(
         elevation: 8,
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -178,7 +178,7 @@ class _PlayerPageBody extends ConsumerWidget {
     try {
       final snap = ref.watch(playerProvider);
       final p = snap.player;
-      final ctl = ref.read(playerControllerProvider);
+      final ctl = ref.read(playerProvider.notifier);
       final song = p.current;
       return Scaffold(
         appBar: AppBar(

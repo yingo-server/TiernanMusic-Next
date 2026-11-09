@@ -175,7 +175,6 @@ class _PlaylistPageBodyState extends State<_PlaylistPageBody> {
     try {
       final count = _recommend.length + (_hasMore ? 1 : 0);
       return RefreshIndicator(
-        onDismissed: () {},
         onRefresh: () => _loadRecommend(reset: true),
         child: GridView.builder(
           padding: const EdgeInsets.all(8),

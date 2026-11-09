@@ -304,7 +304,7 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
             );
           }
           final d = _results[i];
-          return SongTile(song: d.song, onPlay: _play, index: i + 1);
+          return SongTile(song: d.song, onPlay: (s) => _play(d), index: i + 1);
         },
       );
     } catch (e, st) {
