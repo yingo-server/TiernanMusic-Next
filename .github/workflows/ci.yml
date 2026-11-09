@@ -104,6 +104,12 @@ jobs:
             sed -i 's#<manifest[^>]*>#&\n    <uses-permission android:name="android.permission.INTERNET"/>#' "$MANIFEST"
           fi
           grep -q 'android.permission.INTERNET' "$MANIFEST"
+          # isar_flutter_libs 3.1.0+1 未声明 namespace，AGP 8（Flutter 3.47 模板）拒编。
+          # 给 pub-cache 中该插件的 build.gradle 注入 namespace（不改动项目依赖版本）。
+          ISAR_GRADLE=$(find "$PUB_CACHE/hosted/pub.dev" -maxdepth 2 -path '*isar_flutter_libs-*/android/build.gradle' | head -1)
+          if [ -n "$ISAR_GRADLE" ] && ! grep -q 'namespace' "$ISAR_GRADLE"; then
+            sed -i '0,/^[[:space:]]*android[[:space:]]*{/s//android {\n    namespace "dev.isar.isar_flutter_libs"/' "$ISAR_GRADLE"
+          fi
       - name: generate integrity manifest
         env:
           NEXT_MANIFEST_SALT: ${{ secrets.NEXT_MANIFEST_SALT }}
