@@ -1,0 +1,26 @@
+name: tiernan_music_next
+description: "TiernanMusic-Next: six-layer rewrite. Offline-first Kugou client on miuix."
+publish_to: "none"
+version: 26.11.10+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  miuix: ^1.0.0
+  flutter_riverpod: ^2.5.1
+  just_audio: ^0.9.40
+  audio_service: ^0.18.15
+  isar: ^3.1.0+1
+  isar_flutter_libs: ^3.1.0+1
+  path_provider: ^2.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
