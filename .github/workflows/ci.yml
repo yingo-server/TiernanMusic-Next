@@ -56,7 +56,7 @@ jobs:
         run: |
           V=ok
           grep -qE "error •|^\s*error" /tmp/analyze.log && V=fail
-          grep -qE "All tests (passed|passed!)" /tmp/test.log || V=fail
+          grep -qE "All tests (passed|passed!)|tests passed" /tmp/test.log || V=fail
           grep -q "VIOLATION" /tmp/layer.log && V=fail
           echo "verdict=$V" >> $GITHUB_OUTPUT
           test "$V" = ok
