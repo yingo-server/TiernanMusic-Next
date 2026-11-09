@@ -20,9 +20,17 @@ final StateProvider<int> themeModeProvider = StateProvider<int>((_) => 0);
 
 /// 设置页依赖：全部经工厂注入。
 class SettingsDeps {
-  const SettingsDeps({required this.auth, required this.lyrics});
+  const SettingsDeps({
+    required this.auth,
+    required this.lyrics,
+    required this.clearLyricCache,
+    required this.lyricHashes,
+  });
 
   final AuthLogic auth;
+
+  /// 歌词域（逐曲 clearFileCache 用）。
+  final LyricsLogic lyrics;
 
   /// 缓存清理：逐曲 clearFileCache(hash) + LruCache.clear（由装配处组合）。
   final void Function() clearLyricCache;

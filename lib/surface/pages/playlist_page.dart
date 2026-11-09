@@ -9,8 +9,9 @@ import '../../bridges/bridge_logic.dart'
         PlaylistDetail,
         PlaylistMeta,
         TrackPage,
-        Log;
-import '../../bridges/bridge_core.dart' show SongBrief;
+        Log,
+        LogicFacade;
+import '../../bridges/bridge_core.dart' show SongBrief, PlaylistMeta;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show CoverImage, SongTile;

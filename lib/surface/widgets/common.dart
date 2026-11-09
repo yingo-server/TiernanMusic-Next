@@ -29,9 +29,11 @@ class SongTile extends StatelessWidget {
   Widget build(BuildContext context) {
     try {
       final t = TnText.of(context);
-      return MiuixCard(
-        margin: const EdgeInsets.symmetric(horizontal: tnPadM, vertical: tnPadS),
-        borderRadius: tnRadiusM,
+      return Padding(
+        padding:
+            const EdgeInsets.symmetric(horizontal: tnPadM, vertical: tnPadS),
+        child: MiuixCard(
+        cornerRadius: tnRadiusM,
         child: ListTile(
           contentPadding:
               const EdgeInsets.symmetric(horizontal: tnPadM, vertical: tnPadS / 2),
@@ -49,6 +51,7 @@ class SongTile extends StatelessWidget {
             onPressed: onPlay,
           ),
           onTap: onTap,
+        ),
         ),
       );
     } catch (e, st) {
@@ -104,9 +107,8 @@ class ErrorRetryBox extends StatelessWidget {
             if (onRetry != null) ...[
               const SizedBox(height: tnPadM),
               MiuixButton(
-                text: '重试',
-                borderRadius: tnRadiusS,
                 onPressed: onRetry,
+                child: const Text('重试'),
               ),
             ],
           ],

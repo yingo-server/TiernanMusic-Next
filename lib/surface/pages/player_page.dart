@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bridges/bridge_logic.dart'
-    show SearchLogic, PlayerState, PlayerStatus, PlayMode, Log;
+    show SearchLogic, PlayerState, PlayerStatus, PlayMode, Log, LogicFacade;
 import '../player_controller.dart'
     show PlayerController, playerProvider, playerControllerProvider;
 import '../registry.dart';

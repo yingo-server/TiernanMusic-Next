@@ -7,7 +7,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_logic.dart'
-    show SearchLogic, SearchSuggestItem, SearchResult, Log;
+    show SearchLogic, SearchSuggestItem, SearchResult, Log, LogicFacade;
 import '../../bridges/bridge_core.dart' show SongBrief;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
