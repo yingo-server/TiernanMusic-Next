@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bridges/bridge_logic.dart'
     show SearchLogic, PlayerState, PlayerStatus, PlayMode, Log, LogicFacade;
 import '../player_controller.dart'
-    show playerProvider;
+    show PlayerController, playerProvider;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show CoverImage;
 

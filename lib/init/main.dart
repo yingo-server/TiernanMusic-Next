@@ -5,8 +5,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../surface/app_root.dart' show bootstrapApp;
 import 'bootloader/bootloader.dart';
+import '../surface/app_root.dart' show bootstrapApp;
 
 void main(List<String> args) {
   WidgetsFlutterBinding.ensureInitialized();
