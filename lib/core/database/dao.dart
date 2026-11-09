@@ -85,13 +85,14 @@ class SongDao {
     try {
       final kw = keyword.trim();
       if (kw.isEmpty) return const [];
-      return await _isar.songRecords
+      final hits = await _isar.songRecords
           .filter()
           .fileNameContains(kw, caseSensitive: false)
           .or()
           .singerNameContains(kw, caseSensitive: false)
-          .sortByAddedAtDesc()
           .findAll();
+      hits.sort((a, b) => b.addedAt.compareTo(a.addedAt));
+      return hits;
     } catch (e, st) {
       Log.e(_tag, 'search "$keyword"', e, st);
       rethrow;
@@ -113,7 +114,7 @@ class SongDao {
   }
 
   QueryBuilder<SongRecord, SongRecord, QAfterSortBy> _sorted(
-    QueryBuilder<SongRecord, SongRecord, QAfterFilterCondition> q,
+    QueryBuilder<SongRecord, SongRecord, QFilterCondition> q,
     SortKey key,
     SortOrder order,
   ) {
@@ -179,7 +180,9 @@ class PlaylistDao {
   /// 全量列出，按 updatedAt 倒序（最近操作在前）。
   Future<List<PlaylistMeta>> list() async {
     try {
-      return await _isar.playlistMetas.filter().sortByUpdatedAtDesc().findAll();
+      final all = await _isar.playlistMetas.filter().findAll();
+      all.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      return all;
     } catch (e, st) {
       Log.e(_tag, 'list', e, st);
       rethrow;
@@ -258,11 +261,14 @@ class HistoryDao {
     required int durationPlayedMs,
   }) async {
     try {
-      final existing = await _isar.playHistoryEntrys
+      final sameHash = await _isar.playHistoryEntrys
           .filter()
           .hashEqualTo(hash)
-          .sortByPlayedAtDesc()
-          .findFirst();
+          .findAll();
+      PlayHistoryEntry? existing;
+      for (final e in sameHash) {
+        if (existing == null || e.playedAt > existing.playedAt) existing = e;
+      }
       if (existing != null) {
         // 去重：同 hash 仅保留一条，刷新时间与累计时长。
         existing.playedAt = playedAt;
@@ -289,11 +295,9 @@ class HistoryDao {
   /// 最近播放，倒序，limit 条。
   Future<List<PlayHistoryEntry>> recent({int limit = 50}) async {
     try {
-      return await _isar.playHistoryEntrys
-          .filter()
-          .sortByPlayedAtDesc()
-          .limit(limit)
-          .findAll();
+      final all = await _isar.playHistoryEntrys.filter().findAll();
+      all.sort((a, b) => b.playedAt.compareTo(a.playedAt));
+      return all.take(limit).toList();
     } catch (e, st) {
       Log.e(_tag, 'recent limit=$limit', e, st);
       rethrow;

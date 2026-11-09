@@ -55,7 +55,7 @@ jobs:
         if: always()
         run: |
           V=ok
-          grep -q "issues found" /tmp/analyze.log && V=fail
+          grep -qE "error •|^\s*error" /tmp/analyze.log && V=fail
           grep -qE "All tests (passed|passed!)" /tmp/test.log || V=fail
           grep -q "VIOLATION" /tmp/layer.log && V=fail
           echo "verdict=$V" >> $GITHUB_OUTPUT

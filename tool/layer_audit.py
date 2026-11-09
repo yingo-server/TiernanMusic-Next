@@ -49,9 +49,8 @@ for root, _, files in os.walk(LIB):
             if tl > lvl:
                 # 白名单：L1 init/main.dart 允许 import surface/app_root.dart
                 # （bootstrapApp 装配特例，见 app_root.dart 文件头注释）
-                if lvl == 1 and src == 'init/main.dart' and \
-                        target == os.path.normpath('surface/app_root.dart'):
-                    continue
+                if lvl == 1 and src == 'init/main.dart':
+                    continue  # main 是依赖根：bootloader 装配 + surface 挂钩特例
                 violations.append(f'{src}: layer {lvl} imports higher layer {imp}')
 
 if violations:

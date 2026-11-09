@@ -43,12 +43,15 @@ class SongRecord {
   String? localPath;
 
   /// 入库时间（epoch ms）。
+  @Index()
   int addedAt = 0;
 
   /// 播放次数。
+  @Index()
   int playCount = 0;
 
   /// 最近一次播放时间（epoch ms），null = 从未播放。
+  @Index()
   int? lastPlayedAt;
 }
 

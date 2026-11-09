@@ -2,6 +2,8 @@
 // Isar 3.x 实例的懒单例持有者；所有公开方法 try/catch + kernel Log 留痕。
 // 铁律：仅依赖 isar 与 kernel Log，禁止 import core/net、logic、surface、flutter。
 
+import 'dart:io';
+
 import 'package:isar/isar.dart';
 
 import '../../kernel/kernel.dart' show Log;
@@ -72,7 +74,11 @@ class DatabaseService {
   Future<void> deleteAll(String dir) async {
     try {
       await close();
-      await Isar.deleteInstance(Isar.defaultName);
+      // Isar 3.x 无静态 deleteInstance：直接删除目录下数据库文件。
+      final d = Directory(dir);
+      if (d.existsSync()) {
+        await d.delete(recursive: true);
+      }
       Log.w(_tag, 'deleted database dir=$dir');
     } catch (e, st) {
       Log.e(_tag, 'deleteAll failed dir=$dir', e, st);
