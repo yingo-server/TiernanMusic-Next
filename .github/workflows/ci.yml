@@ -91,6 +91,13 @@ jobs:
         run: flutter pub get
       - name: generate isar code
         run: dart run build_runner build --delete-conflicting-outputs
+      - name: ensure android platform scaffold
+        run: |
+          if [ ! -f android/app/build.gradle ] && [ ! -f android/app/build.gradle.kts ]; then
+            flutter create --platforms=android --project-name tiernan_music_next \
+              --org com.tiernan.music.next --no-overwrite .
+          fi
+          test -f android/app/build.gradle || test -f android/app/build.gradle.kts
       - name: generate integrity manifest
         env:
           NEXT_MANIFEST_SALT: ${{ secrets.NEXT_MANIFEST_SALT }}
