@@ -98,6 +98,12 @@ jobs:
               --org com.tiernan.music.next --no-overwrite .
           fi
           test -f android/app/build.gradle || test -f android/app/build.gradle.kts
+          # 酷狗 API 直连 + 在线音频流需要 INTERNET（release manifest 默认无）。
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
+            sed -i 's#<manifest[^>]*>#&\n    <uses-permission android:name="android.permission.INTERNET"/>#' "$MANIFEST"
+          fi
+          grep -q 'android.permission.INTERNET' "$MANIFEST"
       - name: generate integrity manifest
         env:
           NEXT_MANIFEST_SALT: ${{ secrets.NEXT_MANIFEST_SALT }}
