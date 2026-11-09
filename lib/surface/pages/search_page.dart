@@ -12,6 +12,7 @@ import '../../bridges/bridge_core.dart' show SongBrief;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show SongTile;
+import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.search';
 
@@ -199,7 +200,7 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
   Widget build(BuildContext context) {
     try {
       return Scaffold(
-        appBar: AppBar(title: const Text('搜索')),
+        appBar: const TnAppBar(title: '搜索'),
         body: Column(children: <Widget>[
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),

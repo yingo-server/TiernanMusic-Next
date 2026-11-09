@@ -15,6 +15,7 @@ import '../../bridges/bridge_core.dart' show SongBrief, PlaylistMeta;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show CoverImage, SongTile;
+import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.playlist';
 
@@ -152,8 +153,8 @@ class _PlaylistPageBodyState extends State<_PlaylistPageBody> {
       return DefaultTabController(
         length: 2,
         child: Scaffold(
-          appBar: AppBar(
-            title: const Text('歌单'),
+          appBar: TnAppBar(
+            title: '歌单',
             bottom: const TabBar(tabs: <Widget>[
               Tab(text: '推荐'),
               Tab(text: '本地'),
@@ -377,8 +378,8 @@ class _PlaylistTracksPageState extends State<_PlaylistTracksPage> {
     try {
       final count = _tracks.length + (_hasMore ? 1 : 0);
       return Scaffold(
-        appBar: AppBar(
-          title: Text(_detail.name.isEmpty ? widget.title : _detail.name),
+        appBar: TnAppBar(
+          title: _detail.name.isEmpty ? widget.title : _detail.name,
           actions: <Widget>[
             IconButton(icon: const Icon(Icons.save_alt), onPressed: _saveMirror),
             IconButton(icon: const Icon(Icons.play_arrow), onPressed: _playAll),
@@ -431,7 +432,8 @@ class _LocalMirrorPage extends StatelessWidget {
   Widget build(BuildContext context) {
     try {
       return Scaffold(
-        appBar: AppBar(title: Text(meta.name.isEmpty ? meta.playlistId : meta.name)),
+        appBar: TnAppBar(
+            title: meta.name.isEmpty ? meta.playlistId : meta.name),
         body: meta.songHashes.isEmpty
             ? const Center(child: Text('镜像歌单为空'))
             : ListView.builder(

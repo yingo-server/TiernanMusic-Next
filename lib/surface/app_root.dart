@@ -304,7 +304,7 @@ class _HomeShellState extends State<_HomeShell> {
         content: (_) => Column(children: [
           Container(
             alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.fromLTRB(tnPadL, tnPadL, tnPadL, tnPadS),
+              padding: const EdgeInsets.fromLTRB(tnPadL, tnPadL, tnPadL, tnPadS),
             child: Text(entries[_index].label, style: TnText.of(context).title),
           ),
           Expanded(child: _ModuleView(module: modules[_index])),

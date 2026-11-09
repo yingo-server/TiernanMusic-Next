@@ -11,6 +11,7 @@ import '../../bridges/bridge_core.dart';
 import '../../bridges/bridge_logic.dart';
 import '../registry.dart';
 import '../theme/tn_theme.dart';
+import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.library';
 
@@ -103,7 +104,7 @@ class _LibraryPageState extends State<LibraryPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('曲库')),
+      appBar: const TnAppBar(title: '曲库'),
       body: Column(
         children: [
           Material(

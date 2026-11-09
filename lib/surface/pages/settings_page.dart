@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bridges/bridge_logic.dart';
 import '../registry.dart';
 import '../theme/tn_theme.dart';
+import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.settings';
 const String kAppVersion = '26.11.10.1';
@@ -149,7 +150,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final t = TnText.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+      appBar: const TnAppBar(title: '设置'),
       body: ListView(
         children: [
           // ── 账号 ──

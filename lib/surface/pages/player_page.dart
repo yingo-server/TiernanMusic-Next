@@ -10,6 +10,7 @@ import '../player_controller.dart'
     show PlayerController, playerProvider;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show CoverImage;
+import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.player_page';
 
@@ -181,8 +182,8 @@ class _PlayerPageBody extends ConsumerWidget {
       final ctl = ref.read(playerProvider.notifier);
       final song = p.current;
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('正在播放'),
+        appBar: TnAppBar(
+          title: '正在播放',
           actions: <Widget>[
             IconButton(
               icon: Icon(_modeIcon(snap.queue.mode)),
