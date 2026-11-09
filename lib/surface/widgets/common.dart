@@ -1,8 +1,9 @@
 // L6 surface 级 · 通用小组件（歌曲条目 / 加载 / 错误重试 / 空态 / 区块头）
 // 只依赖 flutter + miuix 主题常量；不 import logic/core（数据经构造参数注入）。
 import 'package:flutter/material.dart';
+import 'package:flutter_miuix/miuix.dart';
 
-import '../bridges/bridge_logic.dart' show Log;
+import '../../bridges/bridge_logic.dart' show Log;
 import '../theme/tn_theme.dart';
 
 /// 歌曲条目：歌名 / 歌手 / 时长 + 播放按钮回调。

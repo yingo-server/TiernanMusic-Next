@@ -6,8 +6,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../bridges/bridge_core.dart';
-import '../bridges/bridge_logic.dart';
+import '../../bridges/bridge_core.dart';
+import '../../bridges/bridge_logic.dart';
 import '../registry.dart';
 import '../theme/tn_theme.dart';
 

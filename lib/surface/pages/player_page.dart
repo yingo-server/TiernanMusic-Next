@@ -29,10 +29,10 @@ class PlayerPageModule implements SurfaceModule {
   NavEntry? get navEntry => null; // 播放页不是 tab
 
   @override
-  bool enabled(SearchLogic logic) => true;
+  bool enabled(LogicFacade logic) => true;
 
   @override
-  WidgetBuilder builder(SearchLogic logic) => (ctx) => const _PlayerPageBody();
+  WidgetBuilder builder(LogicFacade logic) => (ctx) => const _PlayerPageBody();
 }
 
 // ── MiniBar：全局悬浮迷你播放条（宿主把本组件叠在底部导航上方） ──

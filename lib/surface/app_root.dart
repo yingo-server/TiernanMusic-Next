@@ -306,7 +306,7 @@ class _HomeShellState extends State<_HomeShell> {
   @override
   Widget build(BuildContext context) {
     try {
-      final logic = UncontrolledProviderScope.containerOf(context).read(logicFacadeProvider);
+      final logic = ProviderScope.containerOf(context).read(logicFacadeProvider);
       final modules = SurfaceRegistry.active(logic)
           .where((m) => m.navEntry != null)
           .toList();
@@ -387,7 +387,7 @@ class _ModuleViewState extends State<_ModuleView> {
   @override
   Widget build(BuildContext context) {
     try {
-      final logic = UncontrolledProviderScope.containerOf(context).read(logicFacadeProvider);
+      final logic = ProviderScope.containerOf(context).read(logicFacadeProvider);
       return KeyedSubtree(
         key: ValueKey(widget.module.id),
         child: widget.module.builder(logic)(context),
@@ -427,8 +427,8 @@ class _FallbackApp extends StatelessWidget {
   Widget build(BuildContext context) {
     try {
       return MiuixScaffold(
-        backgroundColor: const Color(0xFFF6F5FA),
-        child: const Center(child: Text('TiernanMusic 启动异常')),
+        containerColor: const Color(0xFFF6F5FA),
+        content: (_) => const Center(child: Text('TiernanMusic 启动异常')),
       );
     } catch (e) {
       debugPrint('surface.app_root: fallback build failed: $e');

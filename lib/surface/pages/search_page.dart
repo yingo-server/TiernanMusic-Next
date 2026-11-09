@@ -34,10 +34,10 @@ class SearchPageModule implements SurfaceModule {
   NavEntry? get navEntry => const NavEntry('搜索', 'search');
 
   @override
-  bool enabled(SearchLogic logic) => true;
+  bool enabled(LogicFacade logic) => true;
 
   @override
-  WidgetBuilder builder(SearchLogic logic) => (ctx) => _SearchPageBody(
+  WidgetBuilder builder(LogicFacade logic) => (ctx) => _SearchPageBody(
         search: _search,
         player: _player,
       );

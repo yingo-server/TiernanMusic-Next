@@ -7,7 +7,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../bridges/bridge_logic.dart';
+import '../../bridges/bridge_logic.dart';
 import '../registry.dart';
 import '../theme/tn_theme.dart';
 

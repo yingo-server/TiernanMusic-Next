@@ -36,10 +36,10 @@ class PlaylistPageModule implements SurfaceModule {
   NavEntry? get navEntry => const NavEntry('歌单', 'queue_music');
 
   @override
-  bool enabled(SearchLogic logic) => true;
+  bool enabled(LogicFacade logic) => true;
 
   @override
-  WidgetBuilder builder(SearchLogic logic) => (ctx) => _PlaylistPageBody(
+  WidgetBuilder builder(LogicFacade logic) => (ctx) => _PlaylistPageBody(
         playlist: _playlist,
         player: _player,
       );
