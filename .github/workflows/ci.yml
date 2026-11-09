@@ -108,7 +108,7 @@ jobs:
           # 给 pub-cache 中该插件的 build.gradle 注入 namespace（不改动项目依赖版本）。
           ISAR_GRADLE=$(find "$PUB_CACHE/hosted/pub.dev" -maxdepth 2 -path '*isar_flutter_libs-*/android/build.gradle' | head -1)
           if [ -n "$ISAR_GRADLE" ] && ! grep -q 'namespace' "$ISAR_GRADLE"; then
-            sed -i '0,/^[[:space:]]*android[[:space:]]*{/s//android {\n    namespace "dev.isar.isar_flutter_libs"/' "$ISAR_GRADLE"
+            sed -i 's#^[[:space:]]*android[[:space:]]*{#android {\n    namespace "dev.isar.isar_flutter_libs"#' "$ISAR_GRADLE"
           fi
       - name: generate integrity manifest
         env:
