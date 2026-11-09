@@ -71,9 +71,8 @@ class SongDao {
     SortOrder order = SortOrder.desc,
   }) async {
     try {
-      var q = _isar.songRecords.filter();
-      final sorter = _sorted(q, sort, order);
-      return await sorter.findAll();
+      final all = await _isar.songRecords.where().findAll();
+      return _sorted(all, sort, order);
     } catch (e, st) {
       Log.e(_tag, 'list', e, st);
       rethrow;
@@ -113,19 +112,30 @@ class SongDao {
     }
   }
 
-  /// Isar 3 通用排序：sortBy 接收属性名字符串（无逐字段扩展方法）。
-  QueryBuilder<SongRecord, SongRecord, QAfterSortBy> _sorted(
-    QueryBuilder<SongRecord, SongRecord, QFilterCondition> q,
-    SortKey key,
-    SortOrder order,
-  ) {
-    final field = switch (key) {
-      SortKey.addedAt => 'addedAt',
-      SortKey.playCount => 'playCount',
-      SortKey.lastPlayedAt => 'lastPlayedAt',
-      SortKey.fileName => 'fileName',
-    };
-    return q.sortBy('${order == SortOrder.asc ? '' : '-'}$field');
+  /// 内存排序（本地曲库量级 ≤万条，避免依赖 codegen 阶段扩展方法）。
+  List<SongRecord> _sorted(List<SongRecord> list, SortKey key, SortOrder order) {
+    final asc = order == SortOrder.asc;
+    int cmp(SongRecord a, SongRecord b) {
+      final av = switch (key) {
+        SortKey.addedAt => a.addedAt,
+        SortKey.playCount => a.playCount,
+        SortKey.lastPlayedAt => a.lastPlayedAt ?? 0,
+        SortKey.fileName => 0,
+      };
+      final bv = switch (key) {
+        SortKey.addedAt => b.addedAt,
+        SortKey.playCount => b.playCount,
+        SortKey.lastPlayedAt => b.lastPlayedAt ?? 0,
+        SortKey.fileName => 0,
+      };
+      if (key == SortKey.fileName) {
+        return asc ? a.fileName.compareTo(b.fileName) : b.fileName.compareTo(a.fileName);
+      }
+      return asc ? av.compareTo(bv) : bv.compareTo(av);
+    }
+
+    list.sort(cmp);
+    return list;
   }
 }
 
@@ -268,11 +278,12 @@ class HistoryDao {
       }
       if (existing != null) {
         // 去重：同 hash 仅保留一条，刷新时间与累计时长。
-        existing.playedAt = playedAt;
-        existing.durationPlayedMs += durationPlayedMs;
-        existing.fileName = fileName;
-        existing.singerName = singerName;
-        await _isar.writeTxn(() => _isar.playHistoryEntrys.put(existing));
+        final cur = existing;
+        cur.playedAt = playedAt;
+        cur.durationPlayedMs += durationPlayedMs;
+        cur.fileName = fileName;
+        cur.singerName = singerName;
+        await _isar.writeTxn(() => _isar.playHistoryEntrys.put(cur));
       } else {
         final entry = PlayHistoryEntry()
           ..hash = hash
