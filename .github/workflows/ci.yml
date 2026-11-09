@@ -1,5 +1,6 @@
 # CI 工作流 · TiernanMusic-Next
 # 标准：
+# - 版本号由 CI 按东八区时间生成：YY.MM.DD.NN（日期.两位序号，按当日已有 tag 递增）
 # - 支持参数发布 release / 不发布；指定 debug；透传更新日志到 release body 和 /changed/<版本>.md
 # - 报错不妥协：尽量跑完全程，一次暴露全部错误（每步 continue-on-error + 末尾汇总判定）
 # - 构建与测试全部在 CI 完成（本地 arm64 无 Flutter）
@@ -8,7 +9,6 @@ name: ci
 on:
   push:
     branches: [main]
-    tags: ['v*']
   workflow_dispatch:
     inputs:
       release:
@@ -28,10 +28,22 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       verdict: ${{ steps.verdict.outputs.verdict }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: subosito/flutter-action@v2
         with: { channel: stable }
+      - name: compute version (Asia/Shanghai)
+        id: version
+        run: |
+          DATE=$(TZ=Asia/Shanghai date +%y.%m.%d)
+          # 当日已有 tag 的最大序号 +1（两位，01 起）；无则 01
+          LAST=$(git tag -l "v${DATE}.*" | sed "s/^v${DATE}\.//" | sort -n | tail -1)
+          if [ -z "$LAST" ]; then SEQ=1; else SEQ=$((10#$LAST + 1)); fi
+          VER="${DATE}.$(printf '%02d' $SEQ)"
+          echo "version=$VER" >> $GITHUB_OUTPUT
+          echo "computed version: $VER (tz=Asia/Shanghai)"
       - name: pub get
         run: flutter pub get
       - name: smoke check (static compliance)
@@ -75,6 +87,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with: { channel: stable }
+      - name: pub get
+        run: flutter pub get
+      - name: generate isar code
+        run: dart run build_runner build --delete-conflicting-outputs
       - name: generate integrity manifest
         env:
           NEXT_MANIFEST_SALT: ${{ secrets.NEXT_MANIFEST_SALT }}
@@ -83,10 +99,11 @@ jobs:
       - name: build apk (split-per-abi)
         env:
           NEXT_DEBUG: ${{ github.event.inputs.debug }}
+          VER: ${{ needs.analyze-test.outputs.version }}
         run: |
           flutter build apk --release --split-per-abi -t lib/init/main.dart \
             ${{ github.event.inputs.debug == 'true' && '--dart-define=NEXT_DEBUG_BYPASS=true' || '' }} \
-            --build-name=${GITHUB_REF_NAME#v}
+            --build-name="$VER" --build-number="$(echo "$VER" | tr -d '.')"
           mkdir -p dist && cp build/app/outputs/flutter-apk/*.apk dist/
       - uses: actions/upload-artifact@v4
         with:
@@ -94,26 +111,30 @@ jobs:
           path: dist/*.apk
 
   release:
-    needs: build
+    needs: [analyze-test, build]
     if: >-
-      startsWith(github.ref, 'refs/tags/v') ||
-      github.event.inputs.release == 'true'
+      github.event.inputs.release == 'true' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: actions/download-artifact@v4
         with: { path: dist, merge-multiple: true }
-      - name: prepare changelog
+      - name: prepare changelog + tag
+        env:
+          VER: ${{ needs.analyze-test.outputs.version }}
         run: |
-          VER=${GITHUB_REF_NAME#v}
           mkdir -p changed
           if [ -f "changed/$VER.md" ]; then BODY="changed/$VER.md"; else
             git log --oneline -20 > "changed/$VER.md"; BODY="changed/$VER.md"; fi
           echo "body=$BODY" >> $GITHUB_ENV
+          echo "ver=$VER" >> $GITHUB_ENV
+          git tag "v$VER" || true
+          git push origin "v$VER" || true
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.ver }}
           files: dist/*.apk
           body_path: ${{ env.body }}
-          prerelease: ${{ github.event.inputs.debug == 'true' }}
-ody_path: ${{ env.body }}
           prerelease: ${{ github.event.inputs.debug == 'true' }}
