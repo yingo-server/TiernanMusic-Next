@@ -113,22 +113,19 @@ class SongDao {
     }
   }
 
+  /// Isar 3 通用排序：sortBy 接收属性名字符串（无逐字段扩展方法）。
   QueryBuilder<SongRecord, SongRecord, QAfterSortBy> _sorted(
     QueryBuilder<SongRecord, SongRecord, QFilterCondition> q,
     SortKey key,
     SortOrder order,
   ) {
-    final asc = order == SortOrder.asc;
-    switch (key) {
-      case SortKey.addedAt:
-        return asc ? q.sortByAddedAt() : q.sortByAddedAtDesc();
-      case SortKey.playCount:
-        return asc ? q.sortByPlayCount() : q.sortByPlayCountDesc();
-      case SortKey.lastPlayedAt:
-        return asc ? q.sortByLastPlayedAt() : q.sortByLastPlayedAtDesc();
-      case SortKey.fileName:
-        return asc ? q.sortByFileName() : q.sortByFileNameDesc();
-    }
+    final field = switch (key) {
+      SortKey.addedAt => 'addedAt',
+      SortKey.playCount => 'playCount',
+      SortKey.lastPlayedAt => 'lastPlayedAt',
+      SortKey.fileName => 'fileName',
+    };
+    return q.sortBy('${order == SortOrder.asc ? '' : '-'}$field');
   }
 }
 
@@ -180,7 +177,7 @@ class PlaylistDao {
   /// 全量列出，按 updatedAt 倒序（最近操作在前）。
   Future<List<PlaylistMeta>> list() async {
     try {
-      final all = await _isar.playlistMetas.filter().findAll();
+      final all = await _isar.playlistMetas.where().findAll();
       all.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       return all;
     } catch (e, st) {
@@ -262,7 +259,7 @@ class HistoryDao {
   }) async {
     try {
       final sameHash = await _isar.playHistoryEntrys
-          .filter()
+          .where()
           .hashEqualTo(hash)
           .findAll();
       PlayHistoryEntry? existing;
@@ -295,7 +292,7 @@ class HistoryDao {
   /// 最近播放，倒序，limit 条。
   Future<List<PlayHistoryEntry>> recent({int limit = 50}) async {
     try {
-      final all = await _isar.playHistoryEntrys.filter().findAll();
+      final all = await _isar.playHistoryEntrys.where().findAll();
       all.sort((a, b) => b.playedAt.compareTo(a.playedAt));
       return all.take(limit).toList();
     } catch (e, st) {
