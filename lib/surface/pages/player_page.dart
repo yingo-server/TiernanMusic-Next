@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bridges/bridge_logic.dart'
-    show SearchLogic, PlayerState, PlayerStatus, PlayMode;
+    show SearchLogic, PlayerState, PlayerStatus, PlayMode, Log;
 import '../player_controller.dart'
-    show playerProvider, playerControllerProvider;
+    show PlayerController, playerProvider, playerControllerProvider;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show CoverImage;
 

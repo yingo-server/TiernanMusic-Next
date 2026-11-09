@@ -6,7 +6,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../bridges/bridge_logic.dart' show SearchLogic, SearchSuggestItem, SearchResult;
+import '../../bridges/bridge_logic.dart'
+    show SearchLogic, SearchSuggestItem, SearchResult, Log;
 import '../../bridges/bridge_core.dart' show SongBrief;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';

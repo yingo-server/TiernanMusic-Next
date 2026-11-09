@@ -274,7 +274,7 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
     try {
       final player = playbackReducer(state.player, action);
       state = state.copyWith(player: player);
-      _d('dispatch ${action.runtimeType} → ${next.$2}');
+      _d('dispatch ${action.runtimeType}');
     } catch (e, st) {
       _e('dispatch ${action.runtimeType} failed', e, st);
     }
@@ -296,7 +296,8 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
 
 // ── 全局 provider（boot 处可 overrideWithValue 注入已装配的控制器） ──
 
-final PlayerProvider =
+/// 全局 provider（boot 处可 overrideWithValue 注入已装配的控制器）。
+final playerProvider =
     StateNotifierProvider<PlayerController, PlayerSnapshot>((ref) {
   throw UnimplementedError(
       'playerProvider must be overridden with the assembled PlayerController '

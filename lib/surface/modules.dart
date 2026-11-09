@@ -14,6 +14,9 @@ import 'player_controller.dart'
         playerControllerProvider;
 import 'registry.dart' show SurfaceModule, SurfaceRegistry;
 
+export 'pages/player_page.dart' show MiniBar;
+export '../bridges/bridge_logic.dart' show PlaybackService;
+
 /// Surface 层装配依赖（由 bootloader 注入，surface 不 import logic 内部/装配代码）。
 class SurfaceDeps {
   SurfaceDeps({
@@ -68,6 +71,4 @@ List<SurfaceModule> defaultModules(SurfaceDeps deps) {
 }
 
 /// MiniBar 从这里 re-export，宿主（主页 Scaffold bottomNavigationBar 上方）直接引用。
-export 'pages/player_page.dart' show MiniBar;
 // PlaybackService 类型 re-export，供 boot 处书写 resolver tear-off 类型。
-export '../bridges/bridge_logic.dart' show PlaybackService;

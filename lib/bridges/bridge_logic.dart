@@ -36,6 +36,9 @@ export '../logic/catalog/search_logic.dart'
 export '../logic/catalog/playlist_logic.dart'
     show PlaylistLogic, kPlaylistCacheSchemaVer;
 export '../logic/catalog/rank_logic.dart' show RankLogic, kRankCacheSchemaVer;
+// catalog 模型类型经 bridge_core 转出（models.dart 在 core/net/endpoints）
+export '../core/net/endpoints/models.dart'
+    show SongBrief, SearchResult, SearchSuggestItem, PlaylistBrief, PlaylistDetail, TrackPage, RankBrief, LyricResult;
 
 // ── auth logic 门面（账号登录域，批3-B） ──
 export '../logic/auth/auth_logic.dart'

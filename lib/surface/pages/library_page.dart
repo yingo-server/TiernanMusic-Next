@@ -106,7 +106,7 @@ class _LibraryPageState extends State<LibraryPage>
       body: Column(
         children: [
           Material(
-            color: MiuixTheme.colorScheme.of(context).surface,
+            color: MiuixTheme.of(context).colors.background,
             child: TabBar(
               controller: _tabs,
               tabs: const [

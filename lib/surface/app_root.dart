@@ -47,7 +47,7 @@ import 'package:flutter/material.dart'
         UncontrolledProviderScope,
         runApp,
         debugPrint;import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_miuix/flutter_miuix.dart';
+import 'package:flutter_miuix/miuix.dart';
 
 import '../bridges/bridge_core.dart'
     show
@@ -255,12 +255,18 @@ class _AppRootState extends State<AppRoot> {
     try {
       return Consumer(builder: (context, ref, _) {
         final mode = ref.watch(themeModeProvider);
-        return MiuixApp(
+        // flutter_miuix 1.3.0 无 MiuixApp 宿主——MaterialApp + MiuixTheme 包裹。
+        return MaterialApp(
           title: 'TiernanMusic',
-          theme: tnLightTheme(),
-          darkTheme: tnDarkTheme(),
-          themeMode: switch (mode) { 1 => Brightness.light, 2 => Brightness.dark, _ => null },
-          home: const _HomeShell(),
+          theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
+          darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
+          themeMode: switch (mode) { 1 => ThemeMode.light, 2 => ThemeMode.dark, _ => ThemeMode.system },
+          home: MiuixTheme(
+            data: mode == 2
+                ? tnDarkThemeData()
+                : (mode == 1 ? tnLightThemeData() : tnLightThemeData()),
+            child: const _HomeShell(),
+          ),
         );
       });
     } catch (e, st) {
@@ -301,7 +307,7 @@ class _HomeShellState extends State<_HomeShell> {
       if (_index >= modules.length) _index = 0;
       final entries = modules.map((m) => m.navEntry!).toList();
       return MiuixScaffold(
-        bottomNavigationBar: BottomNavigationBar(
+        bottomBar: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           currentIndex: _index,
           onTap: (i) {
@@ -317,7 +323,7 @@ class _HomeShellState extends State<_HomeShell> {
                   icon: Icon(_iconOf(e.icon)), label: e.label),
           ],
         ),
-        child: Column(children: [
+        content: Column(children: [
           Container(
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.fromLTRB(tnPadL, tnPadL, tnPadL, tnPadS),
@@ -397,8 +403,8 @@ class _ScaffoldMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     debugPrint('surface.app_root: $msg');
     return MiuixScaffold(
-      backgroundColor: const Color(0xFFF6F5FA),
-      child: Center(
+      containerColor: const Color(0xFFF6F5FA),
+      content: Center(
           child: Padding(
               padding: const EdgeInsets.all(tnPadL),
               child: Text(msg, textAlign: TextAlign.center))),
