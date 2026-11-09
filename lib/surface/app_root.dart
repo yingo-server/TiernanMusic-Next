@@ -10,46 +10,8 @@
 // tool/layer_audit.py 对 init/main.dart → surface/app_root.dart 加了白名单。
 // surface 层内部文件仍铁律不变：只能 import bridge_logic / bridge_core /
 // flutter / miuix / riverpod，禁触 core/logic 内部。
-import 'package:flutter/material.dart'
-    show
-        Alignment,
-        BottomNavigationBar,
-        BottomNavigationBarItem,
-        BottomNavigationBarType,
-        Brightness,
-        BuildContext,
-        Center,
-        Color,
-        Column,
-        EdgeInsets,
-        Expanded,
-        Icon,
-        IconData,
-        Icons,
-        KeyedSubtree,
-        MaterialApp,
-        ThemeData,
-        ThemeMode,
-        Padding,
-        StatelessWidget,
-        State,
-        StatefulElement,
-        StatefulWidget,
-        Text,
-        TextAlign,
-        TextStyle,
-        ValueKey,
-        Widget,
-        WidgetBuilder,
-        Key,
-        Container,
-        SizedBox,
-        Scaffold,
-        ScaffoldMessenger,
-        SnackBar,
-        UncontrolledProviderScope,
-        runApp,
-        debugPrint;import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_miuix/miuix.dart';
 
 import '../bridges/bridge_core.dart'
@@ -61,11 +23,13 @@ import '../bridges/bridge_core.dart'
         HistoryDao,
         DownloadStore,
         StoragePaths,
-        KeyValueSettings,
-        LruCache,
-        SearchResult,
-        LyricResult;
+        KeyValueSettings;
 import '../bridges/bridge_logic.dart';
+import 'assembly.dart' as asm;
+import 'player_controller.dart' show AudioEngine;
+import 'audio/keep_alive.dart';
+import 'player_controller.dart'
+    show playerProvider, playerControllerProvider, PlayerSnapshot;
 import 'registry.dart';
 import 'widgets/common.dart' show ErrorRetryBox;
 import 'theme/tn_theme.dart';
@@ -105,64 +69,34 @@ final Provider<KugouClient> kugouClientProvider =
 final Provider<SongDao> songDaoProvider =
     Provider((ref) => ref.watch(depsProvider).songDao);
 
-final Provider<SearchLogic> searchLogicProvider = Provider((ref) {
-  final d = ref.watch(depsProvider);
-  return SearchLogic(
-    client: d.client,
-    cache: LruCache<String, SearchResult>(capacity: 128),
-  );
-});
+// 批5-B：logic 单例不再在此 new，统一由 assembly.assembleAll 装配（见下）。
+final Provider<asm.AssemblyResult?> assemblyProvider =
+    Provider<asm.AssemblyResult?>((ref) => null);
 
-final Provider<PlaylistLogic> playlistLogicProvider = Provider((ref) {
-  final d = ref.watch(depsProvider);
-  return PlaylistLogic(
-    client: d.client,
-    playlistDao: d.playlistDao,
-    cache: LruCache<String, dynamic>(capacity: 64),
-  );
-});
+/// 批5-B：logic 单例统一读装配结果（未装配时抛错暴露装配顺序问题）。
+final Provider<SearchLogic> searchLogicProvider =
+    Provider((ref) => ref.watch(assemblyProvider)!.search);
 
-final Provider<RankLogic> rankLogicProvider = Provider((ref) {
-  final d = ref.watch(depsProvider);
-  return RankLogic(client: d.client, cache: LruCache<String, dynamic>(capacity: 64));
-});
+final Provider<PlaylistLogic> playlistLogicProvider =
+    Provider((ref) => ref.watch(assemblyProvider)!.playlist);
 
-final Provider<AuthLogic> authLogicProvider = Provider((ref) {
-  final d = ref.watch(depsProvider);
-  return AuthLogic(client: d.client, settings: d.settings);
-});
+final Provider<RankLogic> rankLogicProvider =
+    Provider((ref) => ref.watch(assemblyProvider)!.rank);
 
-final Provider<LyricsLogic> lyricsLogicProvider = Provider((ref) {
-  final d = ref.watch(depsProvider);
-  return LyricsLogic(
-    client: d.client,
-    paths: d.pathsOrI,
-    cache: LruCache<String, LyricResult>(capacity: 32),
-  );
-});
+final Provider<AuthLogic> authLogicProvider =
+    Provider((ref) => ref.watch(assemblyProvider)!.auth);
 
-final Provider<PlaybackService> playbackServiceProvider = Provider((ref) {
-  final d = ref.watch(depsProvider);
-  return PlaybackService(
-    client: d.client,
-    songDao: d.songDao,
-    downloadStore: d.downloadStore,
-  );
-});
+final Provider<LyricsLogic> lyricsLogicProvider =
+    Provider((ref) => ref.watch(assemblyProvider)!.lyrics);
 
-final Provider<HistoryRecorder> historyRecorderProvider = Provider((ref) {
-  final d = ref.watch(depsProvider);
-  return HistoryRecorder(historyDao: d.historyDao, songDao: d.songDao);
-});
+final Provider<PlaybackService> playbackServiceProvider =
+    Provider((ref) => ref.watch(assemblyProvider)!.playback);
 
-final Provider<DownloadManager> downloadManagerProvider = Provider((ref) {
-  final d = ref.watch(depsProvider);
-  return DownloadManager(
-    playbackService: ref.watch(playbackServiceProvider),
-    songDao: d.songDao,
-    downloadStore: d.downloadStore,
-  );
-});
+final Provider<HistoryRecorder> historyRecorderProvider =
+    Provider((ref) => ref.watch(assemblyProvider)!.history);
+
+final Provider<DownloadManager> downloadManagerProvider =
+    Provider((ref) => ref.watch(assemblyProvider)!.downloads);
 
 /// logic 能力门面（registry.SurfaceModule.enabled/builder 拿这个）
 final Provider<LogicFacade> logicFacadeProvider = Provider((_) => const LogicFacade());
@@ -184,18 +118,22 @@ class ThemeModeNotifier extends StateNotifier<int> {
 }
 
 /// 组装函数：bootloader 装配后由 bootstrapApp 调用，注入 core 依赖。
-void installServices({required SurfaceDeps deps}) {
+/// 批5-B：不再自装配兜底——强制走 assembly.assembleAll（失败即暴露，不静默降级）。
+void installServices({required SurfaceDeps deps, AudioEngine? engine}) {
   try {
-    // ProviderContainer 由 ProviderScope 在 runApp 时建立；这里用全局覆盖：
-    // 简单做法——deps 经 ProviderScope.overrides 注入（见 bootstrapApp）。
-    Log.d('surface.app_root', 'services installed');
+    final result = asm.assembleAll(deps, engine: engine);
     _pendingDeps = deps;
+    _pendingAssembly = result;
+    Log.d('surface.app_root',
+        'services installed modules=${result.moduleIds}');
   } catch (e, st) {
     Log.e('surface.app_root', 'installServices failed', e, st);
+    rethrow;
   }
 }
 
 SurfaceDeps? _pendingDeps;
+asm.AssemblyResult? _pendingAssembly;
 
 // ───────────────────────── 启动入口（L1 特例调用点） ─────────────────────────
 
@@ -205,17 +143,21 @@ void bootstrapApp(dynamic result) {
   try {
     final rejected = (result is Map) ? (result['rejected'] == true) : false;
     Log.d('surface.app_root', 'bootstrapApp rejected=$rejected');
-    final deps = _pendingDeps ??
-        SurfaceDeps(
-          client: KugouClient(KugouSession()),
-          songDao: SongDao(),
-          playlistDao: PlaylistDao(),
-          historyDao: HistoryDao(),
-          downloadStore: DownloadStore(StoragePaths.I),
-          settings: KeyValueSettings(StoragePaths.I),
-        );
+    // 批5-B：兜底自装配路径已删除——installServices 必须先被调用
+    // （bootloader 成功路径内装配 deps 并调 installServices）。
+    final deps = _pendingDeps;
+    final assembly = _pendingAssembly;
+    if (deps == null || assembly == null) {
+      throw StateError(
+          'installServices(deps) was not called before bootstrapApp — '
+          'assembly must run in bootloader success path (批5-B)');
+    }
     runApp(ProviderScope(
-      overrides: [depsProvider.overrideWithValue(deps)],
+      overrides: [
+        depsProvider.overrideWithValue(deps),
+        assemblyProvider.overrideWithValue(assembly),
+        ...SurfaceRegistry.providerOverrides,
+      ],
       child: const AppRoot(),
     ));
   } catch (e, st) {
@@ -241,19 +183,46 @@ class AppRoot extends StatefulWidget {
 }
 
 class _AppRootState extends State<AppRoot> {
+  KeepAliveCoordinator? _keepAlive;
+
   @override
   void initState() {
     super.initState();
     try {
       Log.d('surface.app_root', 'init');
+      // 保活编排：播放态感知 + 生命周期监听（后台自动暂停默认关闭）。
+      _keepAlive = KeepAliveCoordinator(
+        playerStateProvider: () {
+          // 经 riverpod 容器读当前 PlayerSnapshot.player（PlayerController.state）。
+          final el = WidgetsBinding.instance.rootElement;
+          if (el == null) return const PlayerState();
+          final c = ProviderScope.containerOf(el, listen: false);
+          final snap = c.read(playerProvider);
+          return snap.player;
+        },
+        pauseOnBackground: false,
+      )..onBackgroundPause = _pausePlayback;
+      _keepAlive!.start();
     } catch (e, st) {
       Log.e('surface.app_root', 'initState failed', e, st);
+    }
+  }
+
+  void _pausePlayback() {
+    try {
+      final el = WidgetsBinding.instance.rootElement;
+      if (el == null) return;
+      final c = ProviderScope.containerOf(el, listen: false);
+      c.read(playerControllerProvider).pause();
+    } catch (e, st) {
+      Log.e('surface.app_root', 'onBackgroundPause failed', e, st);
     }
   }
 
   @override
   void dispose() {
     try {
+      _keepAlive?.stop();
       Log.d('surface.app_root', 'dispose');
     } catch (_) {}
     super.dispose();

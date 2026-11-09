@@ -108,6 +108,27 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
   final String _quality;
   Timer? _ticker;
 
+  // ── 引擎事件入口（批5-A：JustAudioEngine onAction 回调落点） ──
+
+  /// 引擎动作统一入口：JustAudioEngine 经 onAction 上报
+  /// Playing/Paused/Progress/Completed/ErrorAction，此处分发 reducer。
+  /// Completed 时由真实引擎驱动自动下一曲（非 loopOne）。
+  void handleEngineAction(PlaybackAction action) {
+    try {
+      _dispatch(action);
+      if (action is Completed) {
+        _ticker?.cancel();
+        if (state.queue.mode == PlayMode.loopOne) {
+          _startCurrent();
+        } else {
+          next();
+        }
+      }
+    } catch (e, st) {
+      _e('handleEngineAction ${action.runtimeType} failed', e, st);
+    }
+  }
+
   // ── 对外播放入口 ──
 
   /// 单曲起播：replaceQueue 单曲列表 + resolve + engine.play。
@@ -224,14 +245,18 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
       }
       final urlOrPath = src.localPath ?? src.urls.first;
       await _engine.play(urlOrPath);
-      final durMs = (src.timeLengthSec > 0
-          ? src.timeLengthSec
-          : song.durationSec > 0
-              ? song.durationSec
-              : 0) *
-      1000;
-      _dispatch(Playing(durationMs: durMs));
-      _startTicker();
+      if (_engine is NullAudioEngine) {
+        // NullEngine 无真实回调，用 1s ticker 模拟推进；真实引擎走
+        // handleEngineAction（positionStream → Progress）。
+        final durMs = (src.timeLengthSec > 0
+            ? src.timeLengthSec
+            : song.durationSec > 0
+                ? song.durationSec
+                : 0) *
+            1000;
+        _dispatch(Playing(durationMs: durMs));
+        _startTicker();
+      }
     } catch (e, st) {
       _e('startCurrent failed ${song.hash}', e, st);
       _dispatch(ErrorAction('$e'));

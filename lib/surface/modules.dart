@@ -3,12 +3,15 @@
 // bootloader / surface 桥逐个 SurfaceRegistry.install，即热插拔接入。
 // 模块间零直接 import：共享依赖只经本工厂参数与 riverpod provider。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// Override 类型随 flutter_riverpod 导出；显式声明依赖以便分析器识别。
 
 import '../bridges/bridge_logic.dart'
     show SearchLogic, PlaylistLogic, Log;
 import 'pages/player_page.dart' show PlayerPageModule, MiniBar;
 import 'pages/playlist_page.dart' show PlaylistPageModule;
 import 'pages/search_page.dart' show SearchPageModule;
+import 'audio/audio_service_bridge.dart' show initAudioService;
+import 'audio/just_audio_engine.dart' show JustAudioEngine;
 import 'player_controller.dart'
     show PlayerController, PlaySourceResolver, playerProvider,
         playerControllerProvider;
@@ -39,20 +42,34 @@ class SurfaceDeps {
   final String quality;
 }
 
-/// 构建默认模块集 + 装配全局 PlayerController provider override。
+/// 构建默认模块集 + 装配全局 PlayerController provider override（异步：
+/// audio_service 初始化为可选能力，await 失败不阻断）。
 /// 用法（boot 处）：
 /// ```dart
 /// final deps = SurfaceDeps(search: s, playlist: p, resolver: playback.resolvePlaySource);
 /// for (final m in defaultModules(deps)) SurfaceRegistry.install(m);
 /// ```
-List<SurfaceModule> defaultModules(SurfaceDeps deps) {
+Future<List<SurfaceModule>> defaultModules(SurfaceDeps deps) async {
   try {
     // 播放控制器：唯一实例，经两个 provider 暴露（boot 处 override）。
+    // 引擎回调需引用尚未构造完的 controller，用可空引用间接接通。
+    PlayerController? controllerRef;
+    final engine = JustAudioEngine(
+        onAction: (a) => controllerRef?.handleEngineAction(a));
     final controller = PlayerController(
       resolver: deps.resolver,
+      engine: engine,
       quality: deps.quality,
     );
-    final overrides = <Override>[
+    controllerRef = controller;
+
+    // 通知栏桥（可选能力）：失败不阻断模块装配。
+    try {
+      await initAudioService(engine.rawPlayer);
+    } catch (e, st) {
+      Log.w('surface.modules', 'audioService init skipped: $e $st');
+    }
+    final overrides = <dynamic>[
       playerProvider.overrideWith((ref) => controller),
       playerControllerProvider.overrideWith((ref) => controller),
     ];

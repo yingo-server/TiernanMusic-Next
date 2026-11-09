@@ -34,7 +34,12 @@ jobs:
         with: { channel: stable }
       - name: pub get
         run: flutter pub get
+      - name: smoke check (static compliance)
+        if: always()
+        run: dart run tool/smoke_check.dart 2>&1 | tee /tmp/smoke.log
+        continue-on-error: true
       - name: generate isar code
+        if: always()
         run: dart run build_runner build --delete-conflicting-outputs
       - name: analyze
         id: analyze
@@ -58,6 +63,7 @@ jobs:
           grep -qE "error •|^\s*error" /tmp/analyze.log && V=fail
           grep -qE "All tests (passed|passed!)|tests passed" /tmp/test.log || V=fail
           grep -q "VIOLATION" /tmp/layer.log && V=fail
+          grep -q "^VIOLATION\|^FAIL" /tmp/smoke.log && V=fail
           echo "verdict=$V" >> $GITHUB_OUTPUT
           test "$V" = ok
 
@@ -108,4 +114,6 @@ jobs:
         with:
           files: dist/*.apk
           body_path: ${{ env.body }}
+          prerelease: ${{ github.event.inputs.debug == 'true' }}
+ody_path: ${{ env.body }}
           prerelease: ${{ github.event.inputs.debug == 'true' }}

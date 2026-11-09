@@ -14,4 +14,5 @@ export '../core/memory/cache_keys.dart'
 // L6 surface 装配所需（app_root 组装 logic 单例时的构造参数类型）
 export '../core/net/kugou_client.dart' show KugouClient, KugouSession;
 export '../core/storage/settings_store.dart' show KeyValueSettings;
+export '../core/net/database_bridge.dart' show openDatabase;
 export '../core/net/endpoints/models.dart' show SearchResult, LyricResult;
