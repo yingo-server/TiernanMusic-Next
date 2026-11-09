@@ -14,18 +14,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_miuix/miuix.dart';
 
-import '../bridges/bridge_core.dart'
-    show
-        KugouClient,
-        KugouSession,
-        SongDao,
-        PlaylistDao,
-        HistoryDao,
-        DownloadStore,
-        StoragePaths,
-        KeyValueSettings;
 import '../bridges/bridge_logic.dart';
 import 'assembly.dart' as asm;
+import 'deps.dart' show SurfaceDeps;
 import 'player_controller.dart' show AudioEngine;
 import 'audio/keep_alive.dart';
 import 'player_controller.dart'
@@ -34,30 +25,11 @@ import 'registry.dart';
 import 'widgets/common.dart' show ErrorRetryBox;
 import 'theme/tn_theme.dart';
 
+export 'deps.dart' show SurfaceDeps;
+
 // ───────────────────────── 装配 ─────────────────────────
 
-/// 由 bootloader 装配后的 core 依赖集合（L4 门面对象，禁止携带实现细节给 UI）。
-class SurfaceDeps {
-  const SurfaceDeps({
-    required this.client,
-    required this.songDao,
-    required this.playlistDao,
-    required this.historyDao,
-    required this.downloadStore,
-    required this.settings,
-    this.paths,
-  });
-  final KugouClient client;
-  final SongDao songDao;
-  final PlaylistDao playlistDao;
-  final HistoryDao historyDao;
-  final StoragePaths? paths;
-
-  /// 兜底路径（未注入时取 StoragePaths.I 装配态）。
-  StoragePaths get pathsOrI => paths ?? StoragePaths.I;
-  final DownloadStore downloadStore;
-  final KeyValueSettings settings;
-}
+// SurfaceDeps 抽至 deps.dart（避免与 assembly.dart 循环 import）。
 
 final Provider<SurfaceDeps> depsProvider =
     Provider<SurfaceDeps>((ref) => throw UnimplementedError(
@@ -119,9 +91,10 @@ class ThemeModeNotifier extends StateNotifier<int> {
 
 /// 组装函数：bootloader 装配后由 bootstrapApp 调用，注入 core 依赖。
 /// 批5-B：不再自装配兜底——强制走 assembly.assembleAll（失败即暴露，不静默降级）。
-void installServices({required SurfaceDeps deps, AudioEngine? engine}) {
+Future<void> installServices(
+    {required SurfaceDeps deps, AudioEngine? engine}) async {
   try {
-    final result = asm.assembleAll(deps, engine: engine);
+    final result = await asm.assembleAll(deps, engine: engine);
     _pendingDeps = deps;
     _pendingAssembly = result;
     Log.d('surface.app_root',
@@ -213,7 +186,7 @@ class _AppRootState extends State<AppRoot> {
       final el = WidgetsBinding.instance.rootElement;
       if (el == null) return;
       final c = ProviderScope.containerOf(el, listen: false);
-      c.read(playerControllerProvider).pause();
+      c.read(playerControllerProvider.notifier).pause();
     } catch (e, st) {
       Log.e('surface.app_root', 'onBackgroundPause failed', e, st);
     }

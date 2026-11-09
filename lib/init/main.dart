@@ -44,7 +44,7 @@ void main(List<String> args) async {
   // TODO(批5-A)：JustAudioEngine 完成后经 installServices(engine: ...) 传入；
   // 当前缺省 NullAudioEngine（PlayerController 可跑通但无声）。
   if (exit.client != null && exit.songDao != null) {
-    installServices(
+    await installServices(
       deps: SurfaceDeps(
         client: exit.client!,
         songDao: exit.songDao!,

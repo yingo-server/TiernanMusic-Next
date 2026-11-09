@@ -7,6 +7,7 @@
 // 铁律：每个装配步骤 try/catch + Log('surface.assembly')。
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 
+import 'deps.dart' show SurfaceDeps;
 import '../bridges/bridge_core.dart'
     show
         KugouClient,
@@ -88,11 +89,11 @@ class AssemblyResult {
 /// [engine]：批5-A 完成后传 JustAudioEngine；缺省 NullAudioEngine（占位可跑通）。
 /// [quality]：默认目标音质。
 AssemblyResult assembleAll(SurfaceDeps deps,
-    {AudioEngine? engine, String quality = '128'}) {
+    {AudioEngine? engine, String quality = '128'}) async {
   // 步骤 1：缓存实例集中创建（各域独立 LruCache，不复用同一实例）。
   final searchCache = _newCache<String, SearchResult>(128, 'search');
-  final playlistCache = _newCache<dynamic, dynamic>(64, 'playlist');
-  final rankCache = _newCache<dynamic, dynamic>(64, 'rank');
+  final playlistCache = _newCache<String, dynamic>(64, 'playlist');
+  final rankCache = _newCache<String, dynamic>(64, 'rank');
   final lyricCache = _newCache<String, LyricResult>(32, 'lyrics');
 
   // 步骤 2：logic 单例（每步独立 try/catch，失败留痕后 rethrow 由外层兜底）。
@@ -144,7 +145,7 @@ AssemblyResult assembleAll(SurfaceDeps deps,
           quality: quality,
         ),
       ))!;
-  modules.addAll(built);
+  modules.addAll(await built);
 
   _step('LibraryDeps', () {
     modules.add(LibraryPageModule(

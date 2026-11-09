@@ -69,7 +69,7 @@ Future<List<SurfaceModule>> defaultModules(SurfaceDeps deps) async {
     } catch (e, st) {
       Log.w('surface.modules', 'audioService init skipped: $e $st');
     }
-    final overrides = <dynamic>[
+    final overrides = <Override>[
       playerProvider.overrideWith((ref) => controller),
       playerControllerProvider.overrideWith((ref) => controller),
     ];
