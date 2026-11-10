@@ -1,9 +1,9 @@
 // L5 logic/player · 播放 reducer（纯函数，零 IO，零 flutter import，禁 dart:io/网络层）
 // 输入 (PlayerState, PlaybackAction) → 输出新 PlayerState。
 // 铁律：reducer 不产生副作用；失败动作返回新状态并写 lastError（tag: logic.reducer）。
-import '../../core/net/endpoints/models.dart' show SongBrief;
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
 import 'player_state.dart';
+import '../../bridges/bridge_core.dart' show SongBrief;
 
 const String _tag = 'logic.reducer';
 

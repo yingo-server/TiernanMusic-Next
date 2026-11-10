@@ -2,11 +2,9 @@
 // mvDetail/videoDetail/videoUrl 端点 + LruCache(ns:'mv')。schemaVer v1（顶部常量）。
 // 风格照 rank_logic.dart：缓存优先、每方法 try/catch + Log('logic.mv')。
 // 清晰度降级策略见 playUrl 文档注释。
-import '../../kernel/kernel.dart' show Log;
-import '../../core/memory/cache_keys.dart';
-import '../../core/memory/lru_cache.dart';
-import '../../core/net/kugou_client.dart';
-import '../../core/net/endpoints/mv_endpoints.dart' as mv;
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' as mv show MvBrief, MvPlayResult, MvQuality, getMvBySong, getVideoQualities, getVideoUrl;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, MvBrief, MvQuality, MvPlayResult;
 
 /// MV 域缓存 schema 版本。
 const int kMvCacheSchemaVer = 1;

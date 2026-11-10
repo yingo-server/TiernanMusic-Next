@@ -1,6 +1,6 @@
 // L4 core/net/endpoints · 端点强类型结果模型（集中定义，字段缺失给默认值不崩）
 // 禁 import logic/surface/flutter；仅 SDK + 同级 kugou_client。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 
 const String _tag = 'endpoints.models';
 

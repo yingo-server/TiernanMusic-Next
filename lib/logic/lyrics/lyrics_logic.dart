@@ -5,13 +5,10 @@
 import 'dart:convert';
 import 'dart:io' show File;
 
-import '../../core/memory/lru_cache.dart';
-import '../../core/net/endpoints/misc_endpoints.dart' as misc;
-import '../../core/net/endpoints/models.dart';
-import '../../core/net/kugou_client.dart';
-import '../../core/storage/paths.dart';
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
 import 'lyrics_parser.dart';
+import '../../bridges/bridge_core.dart' as misc show lyricDownload, lyricSearch;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, LyricResult, SongBrief, StoragePaths;
 
 const String _tag = 'logic.lyrics';
 const String _ns = 'lyrics';

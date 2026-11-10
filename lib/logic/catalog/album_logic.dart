@@ -1,11 +1,8 @@
 // L5 logic/catalog · 专辑域门面（功能对齐批4-B，主会话实现）
 // 契约：缓存优先（ns 'album' / 'similar'，schemaVer 1）；每方法 try/catch+Log。
-import '../../core/memory/cache_keys.dart' show buildKey, prefixOf;
-import '../../core/memory/lru_cache.dart' show LruCache;
-import '../../core/net/kugou_client.dart';
-import '../../core/net/endpoints/album_endpoints.dart' as ep;
-import '../../core/net/endpoints/models.dart' show PlaylistBrief, TrackPage;
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' as ep show AlbumDetail, LruCache, PlaylistBrief, TrackPage, buildKey, getAlbumDetail, getAlbumSongs, getSimilarPlaylists, prefixOf;
+import '../../bridges/bridge_core.dart' show KugouClient, SongBrief, TrackPage, PlaylistBrief, AlbumDetail, LruCache;
 
 const String _tag = 'logic.album';
 const int kAlbumCacheSchemaVer = 1;

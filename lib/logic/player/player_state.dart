@@ -1,7 +1,7 @@
 // L5 logic/player · 播放器不可变状态（纯 Dart，零 IO，零 flutter import）
 // 每个方法 try/catch + Log（tag: logic.state）。
-import '../../core/net/endpoints/models.dart' show SongBrief;
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' show SongBrief;
 
 const String _tag = 'logic.state';
 

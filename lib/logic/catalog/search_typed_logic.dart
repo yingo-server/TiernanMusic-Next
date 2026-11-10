@@ -5,12 +5,9 @@
 // 装配方式：由主会话 assembly 注入（client + cache），经 bridge_logic
 // export SearchTypedLogic 暴露给 surface；surface 不直接 import 本文件。
 // 铁律：禁 surface/flutter、禁 IO 直连；每方法 try/catch + Log('logic.search.typed')。
-import '../../kernel/kernel.dart' show Log;
-import '../../core/memory/cache_keys.dart';
-import '../../core/memory/lru_cache.dart';
-import '../../core/net/kugou_client.dart';
-import '../../core/net/endpoints/models.dart';
-import '../../core/net/endpoints/search_typed_endpoints.dart' as ep;
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' as ep show searchComplexV6, searchTypePath, searchTyped;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SearchResult;
 
 /// 搜索分类域缓存 schema 版本（模型变更升版自动失效老键）。
 const int kSearchTypedCacheSchemaVer = 1;

@@ -3,7 +3,7 @@
 // 所有公开函数 try/catch + kernel Log；全部段做组件编码，避免 ':' / '/' 撞段。
 import 'dart:convert';
 
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
 
 const String _tag = 'memory.keys';
 const String _scheme = 'json';

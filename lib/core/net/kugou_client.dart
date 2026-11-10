@@ -310,6 +310,8 @@ class EndpointRegistry {
     commentMusic, commentFloor, commentCount,
     // 收藏域三声明（批2-C）：count / collect / cancel_collect。
     favoriteCount, collectSong, cancelCollect,
+    // 用户域/上报五声明（批6-A）：全部 needs probe，未实测不发请求。
+    userDetail, playHistoryUpload, songClimax, userCloud, listenReport,
   ];
 }
 

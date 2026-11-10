@@ -5,7 +5,7 @@
 //   （PARITY_NOTES §1 / FEATURE_PARITY「特殊签名要求」）；详见 getArtistAudios 注释。
 // 铁律：dfid/mid/uuid 恒显式携带并参与签名；只连官方 gateway；字段全容错；
 //   每函数 try/catch + Log('ep.artist')，失败留痕不静默吞。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart' show SongBrief, dataOf, listOf, safeInt, safeStr;
 const String _tag = 'ep.artist';

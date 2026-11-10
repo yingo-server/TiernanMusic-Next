@@ -1,7 +1,7 @@
 // L4 core/net/endpoints · 逐行翻译数据层（对齐 / 原文抽取 / 预留端点封装）
 // 契约：lineIndex 为列表 0 起下标；原文与译文按同下标配对，不臆造、不补齐。
 // 端点未实测：fetchTranslation 暂不发起请求、不声明新端点，待探针确认后再补。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart' show LyricResult, safeInt, safeStr, listOf, dataOf;
 import 'translation_models.dart' show TranslatedLine, TranslationResult;

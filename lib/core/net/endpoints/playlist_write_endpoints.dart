@@ -2,7 +2,7 @@
 // 范围：建歌单 / 删歌单 / 歌单删歌 / 歌单分类 tags / 用户歌单。
 // 质量原则：写操作禁止回退/重试（防重复提交，PARITY_NOTES.md）。
 // 全部端点「待三态实测」；字段容错 + try/catch + Log('ep.playlist.write')。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart';
 

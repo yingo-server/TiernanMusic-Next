@@ -5,12 +5,9 @@
 //   收敛批次统一改桥），不新增跨更高层 import。
 // 缓存优先：ns:'artist' schemaVer 1，buildKey/prefixOf；空结果也落缓存；
 //   每方法 try/catch + Log('logic.artist')，失败留痕不静默吞。
-import '../../kernel/kernel.dart' show Log;
-import '../../core/memory/cache_keys.dart';
-import '../../core/memory/lru_cache.dart';
-import '../../core/net/kugou_client.dart';
-import '../../core/net/endpoints/models.dart' show SongBrief;
-import '../../core/net/endpoints/artist_endpoints.dart' as ep;
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' as ep show AlbumBrief, ArtistBrief, ArtistDetail, SongBrief, getArtistAlbums, getArtistAudios, getArtistDetail, getArtistList, kArtistAlbumsPath, kArtistAudiosPath, kArtistDetailPath, kArtistListPath;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief, AlbumBrief, ArtistBrief, ArtistDetail;
 
 /// 歌手域缓存 schema 版本（模型变更升版自动失效老键）。
 const int kArtistCacheSchemaVer = 1;

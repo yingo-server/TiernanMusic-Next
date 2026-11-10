@@ -5,7 +5,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import '../signing.dart' show KugouSign;
 import 'models.dart';

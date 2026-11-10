@@ -7,7 +7,7 @@
 //   dfid/uuid，mid 仅在 header，故此处三参在 params 中显式补齐全）。
 // 响应 data.songs[] / data.list[] 双容错 → SongBrief.fromTrackInfo。
 // 铁律：try/catch + Log('ep.recommend')，失败返回空列表不静默吞。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart' show SongBrief, dataOf, listOf, safeInt, safeStr;
 

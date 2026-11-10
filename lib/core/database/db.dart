@@ -6,7 +6,7 @@ import 'dart:io';
 
 import 'package:isar/isar.dart';
 
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
 import 'entities.dart';
 
 /// 数据库服务：open(dir) 注册四 schema，close 释放；懒单例持有 Isar。

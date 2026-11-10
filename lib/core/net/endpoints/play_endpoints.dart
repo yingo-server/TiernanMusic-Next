@@ -4,7 +4,7 @@
 //   无 data 包层；err 时顶层 status/error/errcode（20028=需验证）。
 // - key 签名已由 KugouClient.encryptKey 处理（endpoint encryptKey:true）。
 // - 权限判定以 play_url 的 priv_status/status 为准；privilege_lite 的 privilege 是 int 标量。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import '../signing.dart' show KugouSign;
 import 'models.dart';

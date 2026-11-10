@@ -1,12 +1,9 @@
 // L5 logic/catalog · 排行榜门面（缓存接入）
 // rankList/rankInfo + LruCache(ns:'rank')。schemaVer v1（顶部常量）。
 // 铁律：禁 surface/flutter；每方法 try/catch + Log('logic.rank')。
-import '../../kernel/kernel.dart' show Log;
-import '../../core/memory/cache_keys.dart';
-import '../../core/memory/lru_cache.dart';
-import '../../core/net/kugou_client.dart';
-import '../../core/net/endpoints/models.dart';
-import '../../core/net/endpoints/misc_endpoints.dart' as misc;
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' as misc show rankInfo, rankList;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief, RankBrief;
 
 /// 排行榜域缓存 schema 版本。
 const int kRankCacheSchemaVer = 1;

@@ -3,7 +3,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
 import 'paths.dart';
 
 /// KV 设置门面。

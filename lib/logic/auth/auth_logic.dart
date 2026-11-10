@@ -12,13 +12,8 @@
 //   token 等敏感值不进日志（只打存在性与长度）。
 import 'dart:convert';
 
-import '../../kernel/kernel.dart' show Log;
-import '../../core/net/kugou_client.dart';
-import '../../core/net/signing.dart' show KugouSign;
-import '../../core/net/crypto_extra.dart';
-import '../../core/net/signing.dart' show KugouSign, Md5;
-import '../../core/storage/settings_store.dart';
-
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' show EndpointRegistry, KeyValueSettings, KugouApiException, KugouClient, KugouSession, KugouSign, Md5;
 const String _tag = 'logic.auth';
 
 /// 二维码轮询状态语义枚举（docs/KUGOU_API.md §3.8）。

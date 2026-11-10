@@ -7,23 +7,27 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_logic.dart'
-    show SearchLogic, SearchSuggestItem, SearchResult, Log, LogicFacade;
-import '../../bridges/bridge_core.dart' show SongBrief;
+    show SearchLogic, SearchSuggestItem, SearchResult, Log, LogicFacade, SearchTypedLogic;
+import '../../bridges/bridge_core.dart' show SongBrief, SearchType;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show SongTile;
-import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.search';
 
 /// 搜索页模块。deps 注入 SearchLogic 与 PlayerController 工厂。
 class SearchPageModule implements SurfaceModule {
-  SearchPageModule({required SearchLogic search, required PlayerController player})
+  SearchPageModule({required SearchLogic search, required PlayerController player,
+      SearchTypedLogic? typed})
       : _search = search,
-        _player = player;
+        _player = player,
+        _typed = typed;
 
   final SearchLogic _search;
   final PlayerController _player;
+
+  /// 可选六类分类搜索门面（批6-B）；为空时保持原单类型搜索（向后兼容）。
+  final SearchTypedLogic? _typed;
 
   @override
   String get id => 'search';
@@ -41,14 +45,19 @@ class SearchPageModule implements SurfaceModule {
   WidgetBuilder builder(LogicFacade logic) => (ctx) => _SearchPageBody(
         search: _search,
         player: _player,
+        typed: _typed,
       );
 }
 
 class _SearchPageBody extends StatefulWidget {
-  const _SearchPageBody({required this.search, required this.player});
+  const _SearchPageBody(
+      {required this.search, required this.player, this.typed});
 
   final SearchLogic search;
   final PlayerController player;
+
+  /// 可选六类分类搜索；为空时 Tab 栏不渲染，行为与旧版一致。
+  final SearchTypedLogic? typed;
 
   @override
   State<_SearchPageBody> createState() => _SearchPageBodyState();
@@ -67,6 +76,18 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
   bool _searching = false;
   bool _loadingMore = false;
   String _committedKw = '';
+
+  /// 批6-B 六类 Tab：null=未启用（typed 未注入或 song Tab 退回旧链路）。
+  /// 语义：歌曲→SearchType.song（v3），歌单→special，专辑→album，
+  /// 歌手→author，MV→mv，歌词→lyric（v1，KUGOU_API.md §3.1）。
+  static const List<SearchType> _kTypes = <SearchType>[
+    SearchType.song, SearchType.special, SearchType.album,
+    SearchType.author, SearchType.mv, SearchType.lyric,
+  ];
+  static const List<String> _kTypeLabels = <String>[
+    '歌曲', '歌单', '专辑', '歌手', 'MV', '歌词',
+  ];
+  int? _typeIndex;
 
   @override
   void initState() {
@@ -125,7 +146,7 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
     }
   }
 
-  /// 提交搜索：重置到第 1 页。
+  /// 提交搜索：重置到第 1 页（批6-B：typed 注入时按当前 Tab 分类搜）。
   Future<void> _submit(String kw) async {
     try {
       final k = kw.trim();
@@ -138,7 +159,10 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
         _total = 0;
         _suggests = const <SearchSuggestItem>[];
       });
-      final res = await widget.search.search(k, 1);
+      final typed = widget.typed;
+      final res = (typed != null && _typeIndex != null)
+          ? await typed.typed(_kTypes[_typeIndex!], k, 1)
+          : await widget.search.search(k, 1);
       if (!mounted) return;
       setState(() {
         _results = _toTiles(res);
@@ -170,7 +194,10 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
       if (k.isEmpty || _loadingMore || _searching) return;
       if (_total > 0 && _results.length >= _total) return;
       setState(() => _loadingMore = true);
-      final res = await widget.search.search(k, _page + 1);
+      final typed = widget.typed;
+      final res = (typed != null && _typeIndex != null)
+          ? await typed.typed(_kTypes[_typeIndex!], k, _page + 1)
+          : await widget.search.search(k, _page + 1);
       if (!mounted) return;
       setState(() {
         _page += 1;
@@ -200,7 +227,31 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
   Widget build(BuildContext context) {
     try {
       return Scaffold(
-        appBar: const TnAppBar(title: '搜索'),
+        appBar: AppBar(
+          title: const Text('搜索'),
+          bottom: widget.typed == null
+              ? null
+              : TabBar(
+                  isScrollable: true,
+                  tabs: <Widget>[
+                    for (final label in _kTypeLabels) Tab(text: label),
+                  ],
+                  onTap: (i) {
+                    try {
+                      setState(() {
+                        _typeIndex = i;
+                        _results = const <SongTileData>[];
+                        _total = 0;
+                        _page = 1;
+                      });
+                      if (_committedKw.isNotEmpty) _submit(_committedKw);
+                      Log.d(_tag, 'tab switch type=${_kTypes[i].name}');
+                    } catch (e, st) {
+                      Log.e(_tag, 'tab switch failed', e, st);
+                    }
+                  },
+                ),
+        ),
         body: Column(children: <Widget>[
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),

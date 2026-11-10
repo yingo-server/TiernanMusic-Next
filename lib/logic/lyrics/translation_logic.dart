@@ -2,14 +2,8 @@
 // 契约：译文端点未实测（fetchTranslation 恒返回空），displayFor 只按本地
 // 对齐契约渲染原文/双语/译文三模式；条数不等绝不臆造译文（alignTranslation
 // 已保证）。零 UI、零网络直连；每方法 try/catch+Log('logic.translation')。
-import '../../core/net/endpoints/translation_endpoints.dart'
-    show extractOriginalLines, alignTranslation;
-import '../../core/net/endpoints/translation_models.dart'
-    show TranslatedLine, LyricsDisplayMode;
-import '../../core/net/endpoints/models.dart' show LyricResult;
-import '../../core/memory/cache_keys.dart' show buildKey;
-import '../../core/memory/lru_cache.dart' show LruCache;
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' show LruCache, LyricResult, LyricsDisplayMode, TranslatedLine, alignTranslation, buildKey, extractOriginalLines;
 
 const String _tag = 'logic.translation';
 

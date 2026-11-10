@@ -10,7 +10,7 @@
 // 铁律：字段容错；每函数 try/catch + Log('ep.auth')；
 //   dfid/mid/uuid 恒显式携带并参与签名；只连酷狗官方域名（loginserviceretry.kugou.com
 //   为酷狗官方子域，出处 module/login_cellphone.js baseURL）。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import 'dart:convert';
 import '../kugou_client.dart';
 import '../crypto_extra.dart';

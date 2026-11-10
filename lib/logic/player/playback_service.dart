@@ -8,13 +8,8 @@
 
 import 'dart:io';
 
-import '../../core/database/dao.dart';
-import '../../core/net/endpoints/models.dart';
-import '../../core/net/endpoints/play_endpoints.dart';
-import '../../core/net/kugou_client.dart';
-import '../../core/storage/download_store.dart';
-import '../../kernel/kernel.dart' show Log;
-
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' show DownloadRecord, DownloadStore, KugouClient, PlayResult, PlaylistDao, PlaylistDetail, PrivilegeItem, SongBrief, SongDao, TrackPage, getPlayUrlV5, getPrivilegeLite;
 const String _tag = 'logic.playback';
 
 /// 播放失败语义枚举。

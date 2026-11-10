@@ -4,7 +4,7 @@
 
 import 'package:isar/isar.dart';
 
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
 import 'db.dart';
 import 'entities.dart';
 

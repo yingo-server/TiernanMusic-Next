@@ -64,7 +64,9 @@
 - 同层 import、SDK import（`dart:*`）、`package:flutter*` 仅 L6 → 合法
 - 桥函数无 try/catch → CI lint 报错（收敛阶段加）
 
-## §4 历史偏差与收敛说明
+## §4 历史偏差与收敛完成记录
+
+> **收敛完成（2026-11-11）**：批7 已补齐 bridge_kernel/bridge_surface，全仓跨层 import 改走相邻桥，layer_audit 升级强约束，CI 全绿后本节封存。
 
 批1-5 及功能对齐批1-2 的任务书曾写「L5 可用 L4 全部，直接 import 合法」，属**过渡口径**，产出的代码存在：
 - `core/*` 直接 `import kernel.dart show Log`（应经 bridge_kernel）

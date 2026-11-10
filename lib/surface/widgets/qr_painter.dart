@@ -42,7 +42,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_logic.dart' show Log;
 
 const String _tag = 'surface.qr';
 

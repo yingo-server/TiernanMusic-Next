@@ -3,12 +3,8 @@
 // comments/floor 走缓存（ns:'comment'，schemaVer v1，buildKey/prefixOf）；
 // count 直通不缓存（轻量、需实时）。热词由 CommentPage.hotWords 携带。
 // 铁律：禁 surface/flutter；每方法 try/catch + Log('logic.comment')。
-import '../../kernel/kernel.dart' show Log;
-import '../../core/memory/cache_keys.dart';
-import '../../core/memory/lru_cache.dart';
-import '../../core/net/kugou_client.dart';
-import '../../core/net/endpoints/models.dart';
-import '../../core/net/endpoints/comment_endpoints.dart';
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief, CommentItem, CommentPage;
 
 /// 评论域缓存 schema 版本：模型变更升版自动失效老键。
 const int kCommentCacheSchemaVer = 1;

@@ -3,9 +3,8 @@
 // 铁律：禁 import surface/flutter/core/net；仅被 download_manager 与桥引用。
 // 每方法 try/catch + Log('logic.download')。
 
-import '../../core/net/endpoints/models.dart';
-import '../../kernel/kernel.dart' show Log;
-
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' show DownloadStore, SongBrief;
 const String kDownloadModelsTag = 'logic.download';
 
 /// 下载任务状态。

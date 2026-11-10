@@ -1,7 +1,7 @@
 // L4 core/net/endpoints · 专辑与相似歌单端点封装（功能对齐批4-B，主会话实现）
 // 端点声明已在 kugou_client.dart：albumSongs / playlistSimilar / albumDetail。
 // 契约：字段缺失一律给默认值不崩；每函数 try/catch + Log('ep.album')。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import '../signing.dart' show KugouSign;
 import 'models.dart'

@@ -2,7 +2,7 @@
 // 失败（数据过长/编码异常）显示错误占位；try/catch + Log('surface.qr')。
 import 'package:flutter/material.dart';
 
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_logic.dart' show Log;
 import 'qr_painter.dart';
 
 const String _tag = 'surface.qr';

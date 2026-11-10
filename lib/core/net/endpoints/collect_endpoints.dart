@@ -6,7 +6,7 @@
 // 登录守卫只由 logic 层做，端点层不判（needsLogin 恒 false）。
 // 铁律：字段容错；每函数 try/catch + Log('ep.collect')；
 //   dfid/mid/uuid 恒显式携带并参与签名；只连酷狗官方 gateway 域名。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart' show safeInt, safeStr, dataOf, listOf;
 

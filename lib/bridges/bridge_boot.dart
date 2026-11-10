@@ -34,3 +34,41 @@ class BootResult {
   final bool rejected;
   final k.KernelContext? kernel;
 }
+
+/// init 层唯一启动入口包装：转调 bootloader.Bootstrap.run（L1 禁直连 L2）。
+/// try/catch + Log 留痕；失败返回 rejected=true 的 BootResult 形状
+/// （dynamic 返回，避免 init 与 BootResult 类型耦合）。
+dynamic runBoot({bool bypassIntegrity = false, String? rootDir}) {
+  try {
+    // 延迟 import 由 bootloader 侧 Bootstrap 提供实现；此处经 kernel 出口取。
+    return runBootImpl(bypassIntegrity: bypassIntegrity, rootDir: rootDir);
+  } catch (e, st) {
+    k.Log.e('bridge_boot', 'runBoot failed', e, st);
+    return const BootResult(rejected: true, kernel: null);
+  }
+}
+
+/// 由 bootloader 在装配时经桥注册的实现（避免桥反向 import L2）。
+dynamic Function({bool bypassIntegrity, String? rootDir})? _runBootImpl;
+void setRunBootImpl(
+    dynamic Function({bool bypassIntegrity, String? rootDir}) impl) {
+  try {
+    _runBootImpl = impl;
+    k.Log.d('bridge_boot', 'runBoot impl installed');
+  } catch (e, st) {
+    k.Log.e('bridge_boot', 'setRunBootImpl failed', e, st);
+  }
+}
+
+dynamic runBootImpl({bool bypassIntegrity = false, String? rootDir}) {
+  try {
+    final impl = _runBootImpl;
+    if (impl == null) {
+      throw StateError('runBoot impl not installed (bootloader must register)');
+    }
+    return impl(bypassIntegrity: bypassIntegrity, rootDir: rootDir);
+  } catch (e, st) {
+    k.Log.e('bridge_boot', 'runBootImpl failed', e, st);
+    return const BootResult(rejected: true, kernel: null);
+  }
+}

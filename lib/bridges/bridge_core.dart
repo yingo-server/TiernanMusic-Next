@@ -15,7 +15,7 @@ export '../core/memory/lru_cache.dart' show LruCache, CacheStats, LruEvictCallba
 export '../core/memory/cache_keys.dart'
     show buildKey, prefixOf, namespacePrefixOf, parseKey, CacheKeyInfo, sortedQuery;
 // L6 surface 装配所需（app_root 组装 logic 单例时的构造参数类型）
-export '../core/net/kugou_client.dart' show KugouClient, KugouSession;
+export '../core/net/kugou_client.dart' show KugouClient, KugouSession, KugouApiException, EndpointRegistry;
 export '../core/storage/settings_store.dart' show KeyValueSettings;
 export '../core/net/database_bridge.dart' show openDatabase;
 export '../core/net/endpoints/models.dart' show SearchResult, LyricResult;
@@ -55,6 +55,8 @@ export '../core/net/endpoints/artist_endpoints.dart'
 export '../core/net/endpoints/auth_endpoints.dart' show SmsLoginResult;
 // ── 六类分类搜索类型枚举（功能对齐批5-C）：SearchType 经 core 桥转出 ──
 export '../core/net/endpoints/search_typed_endpoints.dart' show SearchType;
+// ── 用户域（批6-A）：UserProfile 强类型模型经 core 桥转出 ──
+export '../core/net/endpoints/user_endpoints.dart' show UserProfile;
 // ── 歌单写操作端点封装（功能对齐批5-B）：无新模型，仅函数集，经此转出 ──
 export '../core/net/endpoints/playlist_write_endpoints.dart'
     show
@@ -63,3 +65,44 @@ export '../core/net/endpoints/playlist_write_endpoints.dart'
         removeSongsFromPlaylist,
         getPlaylistTags,
         getUserPlaylists;
+// ── 批7-B 跨层收敛补充 export（logic 所需符号补齐，仅追加不覆盖） ──
+export '../core/net/endpoints/models.dart'
+    show PlayResult, PrivilegeItem, RankBrief, SearchSuggestItem;
+export '../core/net/endpoints/misc_endpoints.dart'
+    show rankList, rankInfo, lyricSearch, lyricDownload, krcDecode, kKrcXorKey;
+export '../core/net/endpoints/play_endpoints.dart'
+    show getPlayUrlV5, getPrivilegeLite;
+export '../core/net/endpoints/search_endpoints.dart'
+    show searchSongs, searchSuggest, searchHot;
+export '../core/net/endpoints/playlist_endpoints.dart'
+    show recommendPlaylists, playlistDetail, playlistTracks, addSongsToPlaylist;
+export '../core/net/signing.dart' show KugouSign, Md5, md5Hex;
+export '../core/net/crypto_extra.dart'
+    show AesCbc, RsaRaw, CryptoException, BigIntL;
+export '../core/net/endpoints/album_endpoints.dart'
+    show getAlbumDetail, getAlbumSongs, getSimilarPlaylists;
+export '../core/net/endpoints/artist_endpoints.dart'
+    show
+        getArtistAlbums,
+        getArtistAudios,
+        getArtistDetail,
+        getArtistList,
+        kArtistAlbumsPath,
+        kArtistAudiosPath,
+        kArtistDetailPath,
+        kArtistListPath;
+export '../core/net/endpoints/collect_endpoints.dart'
+    show cancelCollectByHash, collectSongByHash, getFavoriteCount;
+export '../core/net/endpoints/fm_endpoints.dart'
+    show getFmPlay, getFmSongs;
+export '../core/net/endpoints/mv_endpoints.dart'
+    show getMvBySong, getVideoQualities, getVideoUrl;
+export '../core/net/endpoints/search_typed_endpoints.dart'
+    show searchComplexV6, searchTypePath, searchTyped;
+export '../core/net/endpoints/user_endpoints.dart'
+    show
+        getSongClimax,
+        getUserCloud,
+        getUserDetail,
+        reportListen,
+        uploadPlayHistory;

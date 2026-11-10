@@ -3,7 +3,7 @@
 // - comment/music：参数走 QUERY 不是 body；顶层即 list（无 data 包层容错）
 // - comment/floor：mcomment/v1/hot_replylist（楼层/热评回复）
 // - comment/count：web 签名（WEB_SALT）+ sum.comment.service x-router
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart';
 

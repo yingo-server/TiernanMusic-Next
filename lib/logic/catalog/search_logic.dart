@@ -3,12 +3,8 @@
 // search 走缓存（ns:'search'），suggestions/hotSearch 直通不缓存。
 // 缓存键经 core/memory/cache_keys.buildKey，schemaVer v1（顶部常量）。
 // 铁律：禁 surface/flutter；每方法 try/catch + Log('logic.search')。
-import '../../kernel/kernel.dart' show Log;
-import '../../core/memory/cache_keys.dart';
-import '../../core/memory/lru_cache.dart';
-import '../../core/net/kugou_client.dart';
-import '../../core/net/endpoints/models.dart';
-import '../../core/net/endpoints/search_endpoints.dart';
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SearchResult, SearchSuggestItem, searchSongs, searchSuggest, searchHot;
 
 /// 搜索域缓存 schema 版本：模型变更升版自动失效老键。
 const int kSearchCacheSchemaVer = 1;

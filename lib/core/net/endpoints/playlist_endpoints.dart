@@ -1,6 +1,6 @@
 // L4 core/net/endpoints · 歌单端点封装（recommend / detail / tracks / addSongs）
 // playlistTracks 分页换算：page/pagesize → begin_idx=(page-1)*pagesize（docs §3.3）。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import '../signing.dart' show KugouSign;
 import 'models.dart';

@@ -2,12 +2,8 @@
 // 契约：AccountDao 为本地档案事实源；switchTo 直接写 KugouSession（不依赖
 // AuthLogic.restoreSession，避免启动时序覆盖）；切换触发 onAccountChanged 让各
 // 域缓存失效。零 UI、零网络直连；每方法 try/catch+Log('logic.account')。
-import '../../core/database/dao.dart';
-import '../../core/database/entities.dart';
-import '../../core/net/kugou_client.dart';
-import '../../core/storage/settings_store.dart';
-import '../../kernel/kernel.dart' show Log;
-
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' show AccountDao, AccountRecord, KeyValueSettings, KugouClient, KugouSession;
 const String _tag = 'logic.account';
 
 /// 多账号管理门面。

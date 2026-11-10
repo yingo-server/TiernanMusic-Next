@@ -46,7 +46,7 @@ import '../bridges/bridge_logic.dart'
         VerificationLogic,
         SearchTypedLogic,
         PlaylistWriteLogic,
-        // TODO(批6-A 落盘后接入)：UserLogic（user_logic.dart 尚不存在于 bridge_logic show 列表）。
+        UserLogic,
         SongBrief;
 import 'modules.dart' as mod;
 import 'pages/library_page.dart' show LibraryPageModule, LibraryDeps;
@@ -83,6 +83,7 @@ class AssemblyResult {
     required this.searchTyped,
     required this.playlistWrite,
     required this.verification,
+    required this.user,
     required this.controller,
     required this.providerOverrides,
     required this.moduleIds,
@@ -109,7 +110,7 @@ class AssemblyResult {
   final PlaylistWriteLogic playlistWrite;
   /// 批6：20028 验证门面。
   final VerificationLogic verification;
-  // TODO(批6-A 落盘后接入)：final UserLogic user;（user_logic.dart 尚不存在，勿提前声明）
+  final UserLogic user;
 
   /// 批4-B 播放控制器（engine 可替换，批5-A 传 JustAudioEngine）。
   final PlayerController controller;
@@ -222,6 +223,11 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         client: deps.client,
         cache: _newCache<String, dynamic>(32, 'fm'),
       ))!;
+  // 批6-A 用户域（端点未实测，装配留痕供后续 UI 消费）。
+  final userLogic = _step('UserLogic', () => UserLogic(
+        client: deps.client,
+        cache: _newCache<String, dynamic>(32, 'user'),
+      ))!;
 
   // 步骤 3：PlayerController（批4-B）。
   // engine 参数类型为批4-B AudioEngine 抽象：批5-A 未完成时传 NullAudioEngine，
@@ -241,6 +247,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
           resolver: playback.resolvePlaySource,
           quality: quality,
           collect: collectLogic,
+          searchTyped: searchTypedLogic,
           onQualitySelected: (q) {
             try {
               // 音质偏好持久化；播放器 quality 由装配参数注入，切歌后生效。
@@ -379,6 +386,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     recommend: recommendLogic,
     artist: artistLogic,
     fm: fmLogic,
+    user: userLogic,
     searchTyped: searchTypedLogic,
     playlistWrite: playlistWriteLogic,
     verification: verificationLogic,
@@ -396,30 +404,6 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
 }
 
 // ───────────────────────── 内部工具 ─────────────────────────
-
-LruCache<K, V> _newCache<K, V>(int capacity, String domain) {
-  try {
-    final c = LruCache<K, V>(capacity: capacity);
-    Log.d(_tag, 'cache[$domain] capacity=$capacity');
-    return c;
-  } catch (e, st) {
-    Log.e(_tag, 'cache[$domain] create failed', e, st);
-    rethrow;
-  }
-}
-
-/// 单步装配包装：每步 try/catch + Log，失败 rethrow（装配失败必须显式暴露）。
-T? _step<T>(String name, T Function() build) {
-  try {
-    final r = build();
-    Log.d(_tag, 'assembled $name');
-    return r;
-  } catch (e, st) {
-    Log.e(_tag, 'assemble $name failed', e, st);
-    rethrow;
-  }
-}
-�─
 
 LruCache<K, V> _newCache<K, V>(int capacity, String domain) {
   try {

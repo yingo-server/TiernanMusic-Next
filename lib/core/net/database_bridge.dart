@@ -2,7 +2,7 @@
 // 职责：把 DatabaseService.open 收敛为单入口异步函数，L2 经 bridge_core 调用。
 // 铁律：try/catch + Log('core.dbbridge')；失败 rethrow 由 boot 兜底。
 import '../database/db.dart';
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
 
 const String _tag = 'core.dbbridge';
 

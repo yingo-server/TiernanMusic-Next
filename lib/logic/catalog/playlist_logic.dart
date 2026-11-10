@@ -3,14 +3,8 @@
 // recommend/detail/tracks 走 core 端点封装（specialid/data.songs 实测修正已封在 L4）。
 // 本地镜像：saveLocalMirror(PlaylistDetail + tracks) 写 PlaylistDao；listLocal() 读。
 // schemaVer v1（顶部常量）；每方法 try/catch + Log('logic.playlist')。
-import '../../kernel/kernel.dart' show Log;
-import '../../core/memory/cache_keys.dart';
-import '../../core/memory/lru_cache.dart';
-import '../../core/net/kugou_client.dart';
-import '../../core/net/endpoints/models.dart';
-import '../../core/net/endpoints/playlist_endpoints.dart';
-import '../../core/database/dao.dart';
-import '../../core/database/entities.dart';
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, PlaylistDao, PlaylistMeta, PlaylistBrief, PlaylistDetail, SongBrief, TrackPage, recommendPlaylists, playlistDetail, playlistTracks, addSongsToPlaylist;
 
 /// 歌单域缓存 schema 版本。
 const int kPlaylistCacheSchemaVer = 1;

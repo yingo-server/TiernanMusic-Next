@@ -5,10 +5,9 @@
 //   每个 async 分支显式 return（避免 body_might_complete_normally）。
 import 'dart:convert';
 
-import '../../kernel/kernel.dart' show Log;
-import '../../core/net/kugou_client.dart';
-import '../../core/net/endpoints/collect_endpoints.dart' as ep;
-import '../../core/storage/settings_store.dart';
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' as ep show CollectResult, cancelCollectByHash, collectSongByHash, getFavoriteCount;
+import '../../bridges/bridge_core.dart' show KugouClient, KeyValueSettings;
 
 const String _tag = 'logic.collect';
 const String _kFavoritesKey = 'favorites';

@@ -1,12 +1,17 @@
 // L2 bootloader 级 · 启动序列与完整性校验触发点
 // 职责：按序装配 L3 kernel 模块 → 校验模块清单（加盐 SHA-512 + Ed25519 签名）
-// → 输出 BootResult。init 层是唯一调用方（经 bridge_boot）。
+// → 输出 BootResult。init 层是唯一调用方（经 bridge_boot 的 runBoot）。
+// 批7-A：L2 只经桥取 kernel/core/logic 能力（kernel 能力后续经 bridge_kernel）。
+//   _registerRunBoot：文件加载即把 Bootstrap.run 注册进 bridge_boot，
+//   init/main.dart 调 runBoot(...) → 转回 Bootstrap.run（桥不反向 import L2）。
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import '../bridges/bridge_boot.dart' as bb;
 import '../bridges/bridge_boot.dart' show KernelContext, Log;
+import '../bridges/bridge_core.dart' as core;
+import '../bridges/bridge_logic.dart' as lg;
 import '../bridges/bridge_core.dart' as core;
 import '../bridges/bridge_logic.dart' as lg;
 
@@ -134,6 +139,15 @@ class Bootstrap {
 }
 
 /// 由 surface 桥注入根组件构建器；L2 不得直接 import L6。
+/// （批7-A 注：此 hook 已无赋值方，保留仅为向后兼容，下批可删。）
 typedef WidgetBuilderHook = Object Function(BootResult result);
 WidgetBuilderHook bootstrapWidgetHook = (r) =>
     throw UnimplementedError('surface bridge not installed');
+
+// 批7-A：启动序列注册到 bridge_boot（L1 init 只经 runBoot 调本方法）。
+final _registerRunBoot = () {
+  bb.setRunBootImpl(
+      ({bool bypassIntegrity = false, String? rootDir}) =>
+          Bootstrap.run(bypassIntegrity: bypassIntegrity, rootDir: rootDir));
+  return true;
+}();

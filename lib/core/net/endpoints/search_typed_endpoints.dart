@@ -13,7 +13,7 @@
 //   （FINDINGS.md 实测 lists[]；info[] 为旧版/其他类型响应兜底）。
 // 只连酷狗官方域名（complexsearch.kugou.com / gateway.kugou.com）。
 // dfid/mid/uuid 由 KugouClient 默认参数恒显式携带并参与签名（android 签名）。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart';
 

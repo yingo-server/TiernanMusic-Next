@@ -2,7 +2,7 @@
 // 依赖纪律：仅 SDK + kernel Log；所有公开方法 try/catch 留痕，失败不静默吞。
 import 'dart:collection';
 
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
 
 const String _tag = 'memory.lru';
 

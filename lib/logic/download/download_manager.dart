@@ -13,13 +13,10 @@
 import 'dart:async';
 import 'dart:io';
 
-import '../../core/database/dao.dart';
-import '../../core/database/entities.dart';
-import '../../core/net/endpoints/models.dart';
-import '../../core/storage/download_store.dart';
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
 import '../player/playback_service.dart';
 import 'download_models.dart';
+import '../../bridges/bridge_core.dart' show DownloadRecord, DownloadStore, PlaylistDao, SongDao, SongBrief, SongRecord;
 
 const String _tag = 'logic.download';
 

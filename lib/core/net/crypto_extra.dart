@@ -10,7 +10,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
 
 const String _tag = 'net.crypto';
 

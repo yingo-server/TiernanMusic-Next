@@ -5,11 +5,8 @@
 // - 幂等：重复 delete 不报错（第二次返回 true 并 Log.d 留痕）。
 // - 写成功后失效本地镜像缓存（触发注入的 onChanged 回调）+ Log 留痕。
 // 每方法 try/catch + Log('logic.playlist.write')。
-import '../../kernel/kernel.dart' show Log;
-import '../../core/net/kugou_client.dart';
-import '../../core/net/endpoints/models.dart';
-import '../../core/net/endpoints/playlist_write_endpoints.dart';
-import '../../core/database/dao.dart';
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' show KugouClient, PlaylistDao, PlaylistBrief, createPlaylist, deletePlaylist, removeSongsFromPlaylist, getPlaylistTags, getUserPlaylists;
 
 const String _tag = 'logic.playlist.write';
 

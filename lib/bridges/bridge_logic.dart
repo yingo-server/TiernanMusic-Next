@@ -103,6 +103,8 @@ export '../logic/catalog/search_typed_logic.dart'
     show SearchTypedLogic, kSearchTypedCacheSchemaVer;
 // ── 歌单写操作 logic 门面（功能对齐批5-B）──
 export '../logic/catalog/playlist_write_logic.dart' show PlaylistWriteLogic;
+// ── 用户域 logic 门面（批6-A）──
+export '../logic/catalog/user_logic.dart' show UserLogic, kUserCacheSchemaVer;
 
 /// logic 能力门面：surface 只拿这个，不 import logic 内部模块。
 /// 具体能力类经上方 export 直接可用；此类仅承载跨域摘要与装配状态。

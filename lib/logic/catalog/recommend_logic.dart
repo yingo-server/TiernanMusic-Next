@@ -2,12 +2,9 @@
 // 消费已声明端点 EndpointRegistry.recommendSongs（/everyday_song_recommend）
 // 的封装 getDailyRecommend；缓存优先（ns:'recommend'，schemaVer 1，buildKey/prefixOf）。
 // 铁律：禁 surface/flutter、禁 IO 直连；每方法 try/catch + Log('logic.recommend')。
-import '../../kernel/kernel.dart' show Log;
-import '../../core/memory/cache_keys.dart';
-import '../../core/memory/lru_cache.dart';
-import '../../core/net/kugou_client.dart';
-import '../../core/net/endpoints/models.dart' show SongBrief;
-import '../../core/net/endpoints/recommend_endpoints.dart' as ep;
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' as ep show SongBrief, getDailyRecommend, kDailyRecommendPath;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief;
 
 /// 每日推荐域缓存 schema 版本（模型变更升版自动失效老键）。
 const int kRecommendCacheSchemaVer = 1;

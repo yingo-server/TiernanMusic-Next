@@ -10,12 +10,9 @@
 //   留痕、不上报（不引 KeyValueSettings），dislike 同时移出当前批次。
 // 铁律：禁 surface/flutter、禁 IO 直连；每方法 try/catch + Log('logic.fm')；
 //   缓存 ns:'fm' schemaVer 1；失败返空/原值不静默吞。
-import '../../kernel/kernel.dart' show Log;
-import '../../core/memory/cache_keys.dart';
-import '../../core/memory/lru_cache.dart';
-import '../../core/net/kugou_client.dart';
-import '../../core/net/endpoints/models.dart' show SongBrief;
-import '../../core/net/endpoints/fm_endpoints.dart' as ep;
+import '../../bridges/bridge_kernel.dart' show Log;
+import '../../bridges/bridge_core.dart' as ep show SongBrief, getFmPlay, getFmSongs;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief;
 /// FM 域缓存 schema 版本。
 const int kFmCacheSchemaVer = 1;
 const String _tag = 'logic.fm', _ns = 'fm';

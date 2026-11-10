@@ -7,7 +7,7 @@
 // - videoUrl: GET /v2/interface/index，x-router trackermv.kugou.com，
 //   参数 hash/quality；返回 downurl（多 CDN 数组）。
 // 铁律：全部字段容错（safe*/dataOf/listOf），每函数 try/catch + Log('ep.mv')。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart' show safeInt, safeStr, dataOf, listOf;
 

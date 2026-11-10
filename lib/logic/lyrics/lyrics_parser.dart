@@ -1,7 +1,7 @@
 // L5 logic/lyrics · 歌词解析器（纯函数零 IO）
 // 支持：LRC（[mm:ss.xx] 多时间标签）、KRC 逐字时间轴、[offset:ms] 偏移、容错跳过。
 // 铁律：禁 surface/flutter/IO；每公开函数 try/catch + Log('lyrics.parser')。
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
 
 const String _tag = 'lyrics.parser';
 

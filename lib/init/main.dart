@@ -1,20 +1,20 @@
 // L1 init 级 · 启动入口
 // TiernanMusic-Next: 六层五桥架构。init 层职责：
-// 1. 运行 Bootstrap.run()（L2 bootloader 编排模块签名校验与依赖装配）
+// 1. 经 bridge_boot.runBoot() 触发 L2 bootloader（完整性校验 + 依赖装配）
 // 2. 校验失败且非 debug 构建时拒绝启动
 // 3. 批5-B：成功路径拿 BootResult 的 core 单例 → 构造 SurfaceDeps →
-//    surface.installServices（assembly.assembleAll 真正装配点）→ bootstrapApp。
-//    main 是依赖图根（唯一允许 import bootloader+surface 的特例，审计白名单）。
+//    经 bridge_surface.installServices（assembly.assembleAll 真正装配点）→
+//    bridge_surface.bootstrapApp。批7-A：init 不再直连 L2/L6，只经桥。
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 // L1 特例（架构放行）：仅 main 允许 path_provider——L2 bootloader 禁 flutter，
-// 存储根目录必须由依赖图根（main）拿好后注入 Bootstrap.run(rootDir:)。
-// 时序：path_provider 目录 → Bootstrap.run(rootDir:) → installServices → runApp。
+// 存储根目录必须由依赖图根（main）拿好后注入 runBoot(rootDir:)。
+// 时序：path_provider 目录 → runBoot(rootDir:) → installServices → runApp。
 import 'package:path_provider/path_provider.dart';
 
-import '../bootloader/bootloader.dart';
-import '../surface/app_root.dart'
-    show SurfaceDeps, installServices, bootstrapApp;
+import '../bridges/bridge_boot.dart' show runBoot;
+import '../bridges/bridge_surface.dart'
+    show SurfaceDeps, bootstrapApp, installServices;
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +29,8 @@ void main(List<String> args) async {
     debugPrint('main: path_provider failed, fallback relative root: $e/$st');
   }
 
-  final exit = Bootstrap.run(bypassIntegrity: debugBypass, rootDir: rootDir);
+  // runBoot 返回 dynamic（BootResult 形状），动态取值 rejected/client 等。
+  final exit = runBoot(bypassIntegrity: debugBypass, rootDir: rootDir);
   if (exit.rejected) {
     // 完整性校验失败：debug 下打显著标记继续，release 直接拒绝
     if (!debugBypass) {

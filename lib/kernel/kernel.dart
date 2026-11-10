@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'dart:io' show File, Platform;
 
 import 'sha512.dart' show Sha512;
-
-export '../bridges/bridge_logic.dart' show LogicFacade;
 export 'sha512.dart' show Sha512;
 
 // ─── 日志（桥接层唯一日志出口，所有桥函数经此留痕） ───

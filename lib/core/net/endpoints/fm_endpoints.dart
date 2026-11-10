@@ -12,7 +12,7 @@
 //    flag 并在 _fetch 调用点补实测参数契约（dfid/mid/uuid 恒显式参与签名，铁律 6），
 //    不改 KugouClient.request、不改装配页。
 // 铁律：只连酷狗官方 gateway 域名；每函数 try/catch + Log('ep.fm')；字段容错不崩。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart' show Endpoint, EndpointRegistry, KugouClient;
 import 'models.dart' show SongBrief, dataOf, listOf, safeInt, safeStr;
 

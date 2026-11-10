@@ -5,7 +5,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../bridges/bridge_core.dart' show AudioQuality;
 import '../bridges/bridge_logic.dart'
-    show SearchLogic, PlaylistLogic, Log, CollectLogic;
+    show SearchLogic, PlaylistLogic, Log, CollectLogic, SearchTypedLogic;
 import 'pages/player_page.dart' show PlayerPageModule, MiniBar;
 import 'pages/playlist_page.dart' show PlaylistPageModule;
 import 'pages/search_page.dart' show SearchPageModule;
@@ -29,6 +29,7 @@ class SurfaceDeps {
     this.collect,
     this.onQualitySelected,
     this.onOpenComments,
+    this.searchTyped,
   });
 
   /// 批2-C 装配好的搜索 logic。
@@ -51,6 +52,9 @@ class SurfaceDeps {
 
   /// 评论入口（可选）。
   final void Function()? onOpenComments;
+
+  /// 六类分类搜索门面（可选；批6-B 的 Tab 依赖此注入）。
+  final SearchTypedLogic? searchTyped;
 }
 
 /// 构建默认模块集 + 装配全局 PlayerController provider override（异步：
@@ -87,7 +91,10 @@ Future<List<SurfaceModule>> defaultModules(SurfaceDeps deps) async {
     SurfaceRegistry.setOverrides(overrides);
 
     return <SurfaceModule>[
-      SearchPageModule(search: deps.search, player: controller),
+      SearchPageModule(
+          search: deps.search,
+          player: controller,
+          typed: deps.searchTyped),
       PlaylistPageModule(playlist: deps.playlist, player: controller),
       PlayerPageModule(
         controller: controller,

@@ -2,7 +2,7 @@
 // 铁律：纯 dart:io，不依赖 flutter/path_provider；rootDir 由外部（L5 logic 装配时）注入。
 import 'dart:io';
 
-import '../../kernel/kernel.dart' show Log;
+import '../../bridges/bridge_kernel.dart' show Log;
 
 /// 存储路径门面。
 ///

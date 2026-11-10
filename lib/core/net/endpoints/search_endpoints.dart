@@ -2,7 +2,7 @@
 // 输入 KugouClient + 参数，返回强类型结果；字段路径以 .test_creds/FINDINGS.md 为准：
 // 搜索列表在 data.lists[]（FileHash/FileName/SingerName/MixSongID/AlbumAudioId/...），
 // total 在 data.total。EndpointRegistry 声明保留在 kugou_client.dart，不在此重复。
-import '../../../kernel/kernel.dart' show Log;
+import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart';
 
