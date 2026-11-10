@@ -13,7 +13,7 @@
 import 'dart:convert';
 
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show EndpointRegistry, KeyValueSettings, KugouApiException, KugouClient, KugouSession, KugouSign, Md5;
+import '../../bridges/bridge_core.dart' show AesCbc, EndpointRegistry, KeyValueSettings, KugouApiException, KugouClient, KugouSession, KugouSign, Md5, RsaRaw;
 const String _tag = 'logic.auth';
 
 /// 二维码轮询状态语义枚举（docs/KUGOU_API.md §3.8）。

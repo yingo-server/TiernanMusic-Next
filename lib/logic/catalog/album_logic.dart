@@ -2,7 +2,7 @@
 // 契约：缓存优先（ns 'album' / 'similar'，schemaVer 1）；每方法 try/catch+Log。
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' as ep show AlbumDetail, LruCache, PlaylistBrief, TrackPage, buildKey, getAlbumDetail, getAlbumSongs, getSimilarPlaylists, prefixOf;
-import '../../bridges/bridge_core.dart' show KugouClient, SongBrief, TrackPage, PlaylistBrief, AlbumDetail, LruCache;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, PlaylistBrief, TrackPage, buildKey, prefixOf;
 
 const String _tag = 'logic.album';
 const int kAlbumCacheSchemaVer = 1;

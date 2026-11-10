@@ -179,6 +179,7 @@ String? _resolveTarget(String rel, String imp) {
 
 void _checkForbiddenImports(String rel, String src) {
   if (rel == 'bridges' || rel.startsWith('bridges/')) return; // 五桥本尊，合法
+  if (rel.startsWith('l10n/')) return; // flutter gen-l10n 生成物，豁免
   final re = RegExp(r'''(?:import|export)\s+['"]([^'"]+)['"]''');
   final top = rel.contains('/') ? rel.split('/')[0] : rel;
   final lvl = _layers[top];

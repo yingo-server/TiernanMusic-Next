@@ -6,7 +6,7 @@
 // - 写成功后失效本地镜像缓存（触发注入的 onChanged 回调）+ Log 留痕。
 // 每方法 try/catch + Log('logic.playlist.write')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show KugouClient, PlaylistDao, PlaylistBrief, createPlaylist, deletePlaylist, removeSongsFromPlaylist, getPlaylistTags, getUserPlaylists;
+import '../../bridges/bridge_core.dart' show KugouClient, PlaylistBrief, PlaylistDao, createPlaylist, deletePlaylist, getPlaylistTags, getUserPlaylists, removeSongsFromPlaylist;
 
 const String _tag = 'logic.playlist.write';
 

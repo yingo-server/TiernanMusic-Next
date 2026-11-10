@@ -4,7 +4,7 @@
 // count 直通不缓存（轻量、需实时）。热词由 CommentPage.hotWords 携带。
 // 铁律：禁 surface/flutter；每方法 try/catch + Log('logic.comment')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief, CommentItem, CommentPage;
+import '../../bridges/bridge_core.dart' show CommentItem, CommentPage, KugouClient, LruCache, buildKey, getCommentCount, getCommentFloor, getMusicComments, prefixOf;
 
 /// 评论域缓存 schema 版本：模型变更升版自动失效老键。
 const int kCommentCacheSchemaVer = 1;

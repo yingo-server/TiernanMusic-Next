@@ -4,7 +4,7 @@
 // 铁律：禁 surface/flutter、禁 IO 直连；每方法 try/catch + Log('logic.recommend')。
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' as ep show SongBrief, getDailyRecommend, kDailyRecommendPath;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief, buildKey, prefixOf;
 
 /// 每日推荐域缓存 schema 版本（模型变更升版自动失效老键）。
 const int kRecommendCacheSchemaVer = 1;

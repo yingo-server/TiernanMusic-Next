@@ -3,7 +3,7 @@
 // 铁律：禁 surface/flutter；每方法 try/catch + Log('logic.rank')。
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' as misc show rankInfo, rankList;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief, RankBrief;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, RankBrief, SongBrief, buildKey, prefixOf, rankInfo, rankList;
 
 /// 排行榜域缓存 schema 版本。
 const int kRankCacheSchemaVer = 1;

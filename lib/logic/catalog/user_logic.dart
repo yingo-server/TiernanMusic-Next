@@ -4,7 +4,7 @@
 // 铁律：禁 surface/flutter；每方法 try/catch + Log('logic.user')。
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' as user show UserProfile, getSongClimax, getUserCloud, getUserDetail, reportListen, uploadPlayHistory;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief, buildKey, prefixOf, reportListen;
 
 /// 用户域缓存 schema 版本。
 const int kUserCacheSchemaVer = 1;

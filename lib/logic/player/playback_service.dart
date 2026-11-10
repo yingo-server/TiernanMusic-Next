@@ -9,7 +9,7 @@
 import 'dart:io';
 
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show DownloadRecord, DownloadStore, KugouClient, PlayResult, PlaylistDao, PlaylistDetail, PrivilegeItem, SongBrief, SongDao, TrackPage, getPlayUrlV5, getPrivilegeLite;
+import '../../bridges/bridge_core.dart' show DownloadRecord, DownloadStore, KugouClient, PlayResult, SongBrief, SongDao, getPlayUrlV5;
 const String _tag = 'logic.playback';
 
 /// 播放失败语义枚举。

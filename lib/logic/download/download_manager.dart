@@ -16,7 +16,7 @@ import 'dart:io';
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../player/playback_service.dart';
 import 'download_models.dart';
-import '../../bridges/bridge_core.dart' show DownloadRecord, DownloadStore, PlaylistDao, SongDao, SongBrief, SongRecord;
+import '../../bridges/bridge_core.dart' show DownloadRecord, DownloadStore, SongBrief, SongDao, SongRecord;
 
 const String _tag = 'logic.download';
 

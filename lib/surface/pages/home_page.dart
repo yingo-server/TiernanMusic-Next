@@ -196,15 +196,22 @@ class _HomePageBody extends StatelessWidget {
                   return SizedBox(width: 110, child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Expanded(child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: p.cover.isNotEmpty
-                            ? Image.network(p.cover, width: 110,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(
-                                    Icons.music_note)),
-                            : const ColoredBox(color: Colors.grey,
-                                child: Icon(Icons.music_note)))),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: p.cover.isNotEmpty
+                              ? Image.network(
+                                  p.cover,
+                                  width: 110,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(Icons.music_note),
+                                )
+                              : const ColoredBox(
+                                  color: Colors.grey,
+                                  child: Icon(Icons.music_note),
+                                ),
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(p.name, maxLines: 1,
                           overflow: TextOverflow.ellipsis)]));

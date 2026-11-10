@@ -4,7 +4,7 @@
 // 每方法 try/catch + Log('logic.download')。
 
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show DownloadStore, SongBrief;
+import '../../bridges/bridge_core.dart' show SongBrief;
 const String kDownloadModelsTag = 'logic.download';
 
 /// 下载任务状态。

@@ -12,7 +12,7 @@
 //   缓存 ns:'fm' schemaVer 1；失败返空/原值不静默吞。
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' as ep show SongBrief, getFmPlay, getFmSongs;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief, buildKey, prefixOf;
 /// FM 域缓存 schema 版本。
 const int kFmCacheSchemaVer = 1;
 const String _tag = 'logic.fm', _ns = 'fm';

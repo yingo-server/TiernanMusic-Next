@@ -4,7 +4,7 @@
 // 缓存键经 core/memory/cache_keys.buildKey，schemaVer v1（顶部常量）。
 // 铁律：禁 surface/flutter；每方法 try/catch + Log('logic.search')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SearchResult, SearchSuggestItem, searchSongs, searchSuggest, searchHot;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SearchResult, SearchSuggestItem, buildKey, prefixOf, searchHot, searchSongs, searchSuggest;
 
 /// 搜索域缓存 schema 版本：模型变更升版自动失效老键。
 const int kSearchCacheSchemaVer = 1;

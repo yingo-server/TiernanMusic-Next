@@ -199,6 +199,9 @@ def main():
                     elif imp.startswith('package:') and not imp.startswith('package:%s/' % PKG):
                         fail(rel, '桥文件不允许第三方包 import：`%s`' % imp)
                 continue
+            # flutter gen-l10n 生成物：不属于六层手写代码，豁免
+            if rel.startswith('l10n/'):
+                continue
             lvl = layer_of(rel)
             if lvl is None:
                 fail(rel, 'lib/ 下存在六层目录之外的 dart 文件')

@@ -8,7 +8,7 @@
 // 铁律：禁 surface/flutter 直连；每方法 try/catch + Log('logic.verification')；
 //   ssaCode 等验证留痕不进日志明文（只打长度/存在性）。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show KugouClient, KeyValueSettings;
+import '../../bridges/bridge_core.dart' show KeyValueSettings, KugouClient;
 
 const String _tag = 'logic.verification';
 

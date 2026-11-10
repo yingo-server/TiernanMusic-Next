@@ -3,7 +3,7 @@
 // AuthLogic.restoreSession，避免启动时序覆盖）；切换触发 onAccountChanged 让各
 // 域缓存失效。零 UI、零网络直连；每方法 try/catch+Log('logic.account')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show AccountDao, AccountRecord, KeyValueSettings, KugouClient, KugouSession;
+import '../../bridges/bridge_core.dart' show AccountDao, AccountRecord, KeyValueSettings, KugouClient;
 const String _tag = 'logic.account';
 
 /// 多账号管理门面。

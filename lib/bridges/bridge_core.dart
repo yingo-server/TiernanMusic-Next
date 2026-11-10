@@ -106,3 +106,6 @@ export '../core/net/endpoints/user_endpoints.dart'
         getUserDetail,
         reportListen,
         uploadPlayHistory;
+// 评论端点函数（logic 层经 core 桥取用，批7 收敛补齐）
+export '../core/net/endpoints/comment_endpoints.dart'
+    show getMusicComments, getCommentFloor, getCommentCount;

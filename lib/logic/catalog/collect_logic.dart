@@ -7,7 +7,7 @@ import 'dart:convert';
 
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' as ep show CollectResult, cancelCollectByHash, collectSongByHash, getFavoriteCount;
-import '../../bridges/bridge_core.dart' show KugouClient, KeyValueSettings;
+import '../../bridges/bridge_core.dart' show KeyValueSettings, KugouClient;
 
 const String _tag = 'logic.collect';
 const String _kFavoritesKey = 'favorites';

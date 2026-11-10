@@ -7,7 +7,7 @@
 //   每方法 try/catch + Log('logic.artist')，失败留痕不静默吞。
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' as ep show AlbumBrief, ArtistBrief, ArtistDetail, SongBrief, getArtistAlbums, getArtistAudios, getArtistDetail, getArtistList, kArtistAlbumsPath, kArtistAudiosPath, kArtistDetailPath, kArtistListPath;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief, AlbumBrief, ArtistBrief, ArtistDetail;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief, buildKey, prefixOf;
 
 /// 歌手域缓存 schema 版本（模型变更升版自动失效老键）。
 const int kArtistCacheSchemaVer = 1;

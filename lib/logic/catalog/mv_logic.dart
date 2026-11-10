@@ -4,7 +4,7 @@
 // 清晰度降级策略见 playUrl 文档注释。
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' as mv show MvBrief, MvPlayResult, MvQuality, getMvBySong, getVideoQualities, getVideoUrl;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, MvBrief, MvQuality, MvPlayResult;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, buildKey, prefixOf;
 
 /// MV 域缓存 schema 版本。
 const int kMvCacheSchemaVer = 1;

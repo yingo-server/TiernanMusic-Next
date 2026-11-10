@@ -4,7 +4,7 @@
 // 本地镜像：saveLocalMirror(PlaylistDetail + tracks) 写 PlaylistDao；listLocal() 读。
 // schemaVer v1（顶部常量）；每方法 try/catch + Log('logic.playlist')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, PlaylistDao, PlaylistMeta, PlaylistBrief, PlaylistDetail, SongBrief, TrackPage, recommendPlaylists, playlistDetail, playlistTracks, addSongsToPlaylist;
+import '../../bridges/bridge_core.dart' show KugouClient, LruCache, PlaylistBrief, PlaylistDao, PlaylistDetail, PlaylistMeta, SongBrief, TrackPage, addSongsToPlaylist, buildKey, parseKey, playlistDetail, playlistTracks, prefixOf, recommendPlaylists;
 
 /// 歌单域缓存 schema 版本。
 const int kPlaylistCacheSchemaVer = 1;
