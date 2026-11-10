@@ -8,7 +8,7 @@
 //   ));
 //   go_router 注册 route '/artist'（模块无 navEntry，非 tab）。
 // 依赖纪律：只经 bridge_logic/bridge_core 取 L5/L4 门面与模型；模块间零直接
-//   import；同层公共件 CoverImage/SongTile/TnAppBar 合法；try/catch + Log 留痕。
+//   import；同层公共件合法；try/catch + Log('surface.artist_page') 留痕。
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart' show ArtistDetail, AlbumBrief;
@@ -26,11 +26,11 @@ SurfaceModule buildArtistModule({
   required ArtistLogic logic,
   required String? Function() currentArtistId,
   required void Function(SongBrief) onPlay,
-}) => _ArtistPageModule(
+}) => ArtistPageModule(
       logic: logic, currentArtistId: currentArtistId, onPlay: onPlay);
 
-class _ArtistPageModule implements SurfaceModule {
-  _ArtistPageModule({
+class ArtistPageModule implements SurfaceModule {
+  ArtistPageModule({
     required this.logic,
     required this.currentArtistId,
     required this.onPlay,
@@ -101,15 +101,11 @@ class _ArtistPageBodyState extends State<_ArtistPageBody> {
         return;
       }
       setState(() => _loading = true);
-      final results = await Future.wait(<Future<Object>>[
-        widget.logic.detail(id),
-        widget.logic.audios(id, 1, pageSize: _pageSize),
-        widget.logic.albums(id, 1, pageSize: _pageSize),
-      ]);
+      // 分开 await（不用泛型擦除 + as 强转），三路各自已在 logic 层降级容错。
+      final detail = await widget.logic.detail(id);
+      final audios = await widget.logic.audios(id, 1, pageSize: _pageSize);
+      final albums = await widget.logic.albums(id, 1, pageSize: _pageSize);
       if (!mounted) return;
-      final detail = results[0] as ArtistDetail;
-      final audios = results[1] as List<SongBrief>;
-      final albums = results[2] as List<AlbumBrief>;
       setState(() {
         _detail = detail;
         _audios = audios;
@@ -289,15 +285,17 @@ class _ArtistPageBodyState extends State<_ArtistPageBody> {
         child: Scaffold(
           appBar: TnAppBar(
             title: _detail.name.isEmpty ? '歌手' : _detail.name,
+            actions: <Widget>[
+              IconButton(icon: const Icon(Icons.refresh), tooltip: '刷新',
+                  onPressed: _initialLoading ? null : () => _loadFirst()),
+            ],
             bottom: const TabBar(tabs: <Widget>[
               Tab(text: '热门歌曲'), Tab(text: '专辑'),
             ]),
           ),
           body: widget.artistId.isEmpty
               ? const Center(child: Text('未指定歌手'))
-              : RefreshIndicator(
-                  onRefresh: _loadFirst,
-                  child: Column(children: <Widget>[
+              : Column(children: <Widget>[
                     _header(),
                     if (_initialLoading)
                       const LinearProgressIndicator(minHeight: 2),
@@ -307,7 +305,6 @@ class _ArtistPageBodyState extends State<_ArtistPageBody> {
                       ]),
                     ),
                   ]),
-                ),
         ),
       );
     } catch (e, st) {

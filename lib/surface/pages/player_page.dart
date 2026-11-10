@@ -8,17 +8,35 @@ import '../../bridges/bridge_logic.dart'
     show SearchLogic, PlayerState, PlayerStatus, PlayMode, Log, LogicFacade;
 import '../player_controller.dart'
     show PlayerController, playerProvider;
+import '../../bridges/bridge_core.dart'
+    show AudioQuality, toPref, fromPref;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show CoverImage;
+import '../widgets/favorite_button.dart' show FavoriteButton;
+import '../widgets/quality_sheet.dart' show QualitySheet;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.player_page';
 
 /// 播放页模块。deps 注入 PlayerController（或经 provider 覆盖取回）。
 class PlayerPageModule implements SurfaceModule {
-  PlayerPageModule({required this.controller});
+  PlayerPageModule({
+    required this.controller,
+    this.collect,
+    this.onQualitySelected,
+    this.onOpenComments,
+  });
 
   final PlayerController controller;
+
+  /// 收藏门面（可选；为空时不显示收藏按钮）。
+  final CollectLogic? collect;
+
+  /// 音质选择回调（可选；为空时不显示音质按钮）。
+  final void Function(AudioQuality quality)? onQualitySelected;
+
+  /// 评论入口（可选）。
+  final VoidCallback? onOpenComments;
 
   @override
   String get id => 'player';
@@ -33,7 +51,11 @@ class PlayerPageModule implements SurfaceModule {
   bool enabled(LogicFacade logic) => true;
 
   @override
-  WidgetBuilder builder(LogicFacade logic) => (ctx) => const _PlayerPageBody();
+  WidgetBuilder builder(LogicFacade logic) => (ctx) => _PlayerPageBody(
+        collect: collect,
+        onQualitySelected: onQualitySelected,
+        onOpenComments: onOpenComments,
+      );
 }
 
 // ── MiniBar：全局悬浮迷你播放条（宿主把本组件叠在底部导航上方） ──
@@ -135,7 +157,15 @@ class MiniBar extends ConsumerWidget {
 // ── 全屏播放页 ──
 
 class _PlayerPageBody extends ConsumerWidget {
-  const _PlayerPageBody();
+  const _PlayerPageBody({
+    this.collect,
+    this.onQualitySelected,
+    this.onOpenComments,
+  });
+
+  final CollectLogic? collect;
+  final void Function(AudioQuality quality)? onQualitySelected;
+  final VoidCallback? onOpenComments;
 
   String _fmt(int ms) {
     try {
@@ -147,8 +177,32 @@ class _PlayerPageBody extends ConsumerWidget {
     }
   }
 
-  IconData _modeIcon(PlayMode m) {
+  /// 弹出音质选择（15 档，批3-C QualitySheet）。
+  void _showQualitySheet(BuildContext context) {
     try {
+      final cb = widget.onQualitySelected;
+      if (cb == null) return;
+      showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (ctx) => QualitySheet(
+          selected: AudioQuality.q128,
+          onSelected: (q) {
+            try {
+              cb(q);
+            } catch (e, st) {
+              Log.e(_tag, 'quality select failed', e, st);
+            }
+            Navigator.of(ctx).pop();
+          },
+        ),
+      );
+    } catch (e, st) {
+      Log.e(_tag, 'showQualitySheet failed', e, st);
+    }
+  }
+
+  IconData _modeIcon(PlayMode m) {    try {
       switch (m) {
         case PlayMode.sequence:
           return Icons.repeat;
@@ -185,6 +239,31 @@ class _PlayerPageBody extends ConsumerWidget {
         appBar: TnAppBar(
           title: '正在播放',
           actions: <Widget>[
+            if (widget.onOpenComments != null)
+              IconButton(
+                icon: const Icon(Icons.comment_outlined),
+                tooltip: '评论',
+                onPressed: widget.onOpenComments,
+              ),
+            if (widget.onQualitySelected != null)
+              IconButton(
+                icon: const Icon(Icons.high_quality_outlined),
+                tooltip: '音质',
+                onPressed: () => _showQualitySheet(context),
+              ),
+            if (widget.collect != null)
+              FavoriteButton(
+                isCollected: widget.collect!.isCollected(song?.hash ?? ''),
+                onToggle: () async {
+                  final h = song?.hash ?? '';
+                  if (h.isEmpty) return;
+                  final r = await widget.collect!.toggle(h, song?.mixSongId ?? 0);
+                  if (r.needsLogin && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('请先登录后再收藏')));
+                  }
+                },
+              ),
             IconButton(
               icon: Icon(_modeIcon(snap.queue.mode)),
               tooltip: '播放模式：${snap.queue.mode.name}',

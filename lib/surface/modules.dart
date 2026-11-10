@@ -3,10 +3,9 @@
 // bootloader / surface 桥逐个 SurfaceRegistry.install，即热插拔接入。
 // 模块间零直接 import：共享依赖只经本工厂参数与 riverpod provider。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// Override 类型随 flutter_riverpod 导出；显式声明依赖以便分析器识别。
-
+import '../bridges/bridge_core.dart' show AudioQuality;
 import '../bridges/bridge_logic.dart'
-    show SearchLogic, PlaylistLogic, Log;
+    show SearchLogic, PlaylistLogic, Log, CollectLogic;
 import 'pages/player_page.dart' show PlayerPageModule, MiniBar;
 import 'pages/playlist_page.dart' show PlaylistPageModule;
 import 'pages/search_page.dart' show SearchPageModule;
@@ -27,6 +26,9 @@ class SurfaceDeps {
     required this.playlist,
     required this.resolver,
     this.quality = '128',
+    this.collect,
+    this.onQualitySelected,
+    this.onOpenComments,
   });
 
   /// 批2-C 装配好的搜索 logic。
@@ -40,6 +42,15 @@ class SurfaceDeps {
 
   /// 目标音质（128/320/flac …），传给 resolver。
   final String quality;
+
+  /// 收藏门面（可选）。
+  final CollectLogic? collect;
+
+  /// 音质选择回调（可选）。
+  final void Function(AudioQuality quality)? onQualitySelected;
+
+  /// 评论入口（可选）。
+  final void Function()? onOpenComments;
 }
 
 /// 构建默认模块集 + 装配全局 PlayerController provider override（异步：
@@ -78,7 +89,12 @@ Future<List<SurfaceModule>> defaultModules(SurfaceDeps deps) async {
     return <SurfaceModule>[
       SearchPageModule(search: deps.search, player: controller),
       PlaylistPageModule(playlist: deps.playlist, player: controller),
-      PlayerPageModule(controller: controller),
+      PlayerPageModule(
+        controller: controller,
+        collect: deps.collect,
+        onQualitySelected: deps.onQualitySelected,
+        onOpenComments: deps.onOpenComments,
+      ),
     ];
   } catch (e, st) {
     // 不 import kernel（层纪律），异常信息由桥层 Log 兜底留痕。

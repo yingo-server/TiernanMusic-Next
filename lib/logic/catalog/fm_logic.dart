@@ -1,9 +1,9 @@
-// L5 logic/catalog · 个人 FM 门面（功能对齐批4-C · GAP #21，风格照 rank_logic.dart）
-// 装配方式：boot 处 FmLogic(client:kugouClient, cache:lruCache) 单例，经 bridge_logic
+// L5 logic/catalog · 个人 FM 门面（批4-C · GAP #21，风格照 rank_logic.dart）
+// 装配：boot 处 FmLogic(client:kugouClient, cache:lruCache) 单例，经 bridge_logic
 //   `export FmLogic` 供 L6；FmModeButton.onStart 接 fmLogic.start() +
 //   controller.playAll(batch, 0)（空批次降级不切队列）；跳过接 next()，
 //   喜欢/不喜欢接 like/dislike。surface 不 import core 端点、不持有 client。
-// 端点状态：personalFm/fmSongs 均 needs probe（PARITY_NOTES.md §3），恒空批次；
+// 端点状态：personalFm/fmSongs 均 needs probe（PARITY_NOTES.md §3）→ 恒空批次，
 //   空批次不写缓存，探针实测翻转 ep flag 后无需清缓存。
 // 跳过语义：next() 丢弃批次头曲（本地跳过，不调未实测服务端接口），耗尽才按
 //   offset 取下一批并过滤 disliked；喜欢语义：like/dislike 只写内存 Set + Log
@@ -16,34 +16,29 @@ import '../../core/memory/lru_cache.dart';
 import '../../core/net/kugou_client.dart';
 import '../../core/net/endpoints/models.dart' show SongBrief;
 import '../../core/net/endpoints/fm_endpoints.dart' as ep;
-
 /// FM 域缓存 schema 版本。
 const int kFmCacheSchemaVer = 1;
 const String _tag = 'logic.fm', _ns = 'fm';
 const String _playPath = '/v1/fm/play', _songsPath = '/v1/fm/songs';
 const int _batchSize = 20;
-
 class FmLogic {
   FmLogic({required KugouClient client,
       required LruCache<String, dynamic> cache})
       : _client = client, _cache = cache {
     Log.d(_tag, 'init capacity=${cache.capacity}');
   }
-
   final KugouClient _client;
   final LruCache<String, dynamic> _cache;
   List<SongBrief> _batch = const <SongBrief>[];
   int _batchNo = 0;
   final Set<String> _liked = <String>{}, _disliked = <String>{};
-
   /// 首批 FM 歌曲：重置批次号 → getFmPlay（needs probe 时返回空）。供「随便听听」入口。
   Future<List<SongBrief>> start() async {
     try {
       _batchNo = 0;
       _batch = const <SongBrief>[];
       final key = _key(_playPath, const <String, Object?>{
-        'mode': 'normal', 'action': 'play', 'batch': 0,
-      });
+        'mode': 'normal', 'action': 'play', 'batch': 0});
       final hit = _cache.get(key);
       if (hit is List<SongBrief>) {
         _batch = _filter(hit);
@@ -58,8 +53,7 @@ class FmLogic {
       return const <SongBrief>[];
     }
   }
-
-  /// 下一批/跳过：批次 >1 首则丢头曲（本地跳过不打网）；余 0/1 首按 offset 取下一批。
+  /// 下一批/跳过：批次 >1 首则丢头曲（不打网）；余 0/1 首按 offset 取下一批。
   Future<List<SongBrief>> next() async {
     try {
       if (_batch.length > 1) {
@@ -70,8 +64,7 @@ class FmLogic {
       _batchNo++;
       final offset = _batchNo * _batchSize;
       final key = _key(_songsPath, <String, Object?>{
-        'offset': offset, 'size': _batchSize, 'batch': _batchNo,
-      });
+        'offset': offset, 'size': _batchSize, 'batch': _batchNo});
       final hit = _cache.get(key);
       if (hit is List<SongBrief>) {
         _batch = _filter(hit);
@@ -89,10 +82,8 @@ class FmLogic {
       return currentBatch();
     }
   }
-
   /// 喜欢：只记本地 Set + Log；保留当前曲（无服务端上报端点）。
   bool like(String hash) => _record(hash, liked: true);
-
   /// 不喜欢：记本地 Set + Log，并从当前批次移除该曲（等价于本地跳过）。
   bool dislike(String hash) {
     final ok = _record(hash, liked: false);
@@ -118,7 +109,6 @@ class FmLogic {
       return const <SongBrief>[];
     }
   }
-
   Set<String> get likedHashes => Set<String>.unmodifiable(_liked);
   Set<String> get dislikedHashes => Set<String>.unmodifiable(_disliked);
 
@@ -134,7 +124,6 @@ class FmLogic {
       return 0;
     }
   }
-
   String _key(String path, Map<String, Object?> params) => buildKey(
       ns: _ns, userid: _client.session.userid, path: path,
       params: params, schemaVer: kFmCacheSchemaVer);
@@ -156,7 +145,6 @@ class FmLogic {
       return const <SongBrief>[];
     }
   }
-
   bool _record(String hash, {required bool liked}) {
     try {
       final h = hash.trim().toLowerCase();
@@ -179,7 +167,6 @@ class FmLogic {
       return false;
     }
   }
-
   List<SongBrief> _filter(List<SongBrief> items) {
     try {
       return List<SongBrief>.unmodifiable(items.where((s) =>

@@ -20,7 +20,8 @@ import '../bridges/bridge_core.dart'
         SearchResult,
         LyricResult,
         CommentPage,
-        AccountDao;
+        AccountDao,
+        toPref;
 import '../bridges/bridge_logic.dart'
     show
         Log,
@@ -36,13 +37,17 @@ import '../bridges/bridge_logic.dart'
         MvLogic,
         CollectLogic,
         AccountLogic,
-        TranslationLogic;
+        TranslationLogic,
+        RecommendLogic,
+        ArtistLogic,
+        FmLogic;
 import 'modules.dart' as mod;
 import 'pages/library_page.dart' show LibraryPageModule, LibraryDeps;
 import 'pages/lyrics_page.dart' show LyricsPageModule, LyricsDeps;
 import 'pages/settings_page.dart' show SettingsPageModule, SettingsDeps;
 import 'pages/comment_page.dart' show buildCommentModule;
 import 'pages/mv_page.dart' show buildMvModule;
+import 'pages/artist_page.dart' show buildArtistModule;
 import 'player_controller.dart'
     show PlayerController, AudioEngine, NullAudioEngine;
 import 'registry.dart' show SurfaceRegistry;
@@ -63,6 +68,9 @@ class AssemblyResult {
     required this.playback,
     required this.history,
     required this.downloads,
+    required this.recommend,
+    required this.artist,
+    required this.fm,
     required this.controller,
     required this.providerOverrides,
     required this.moduleIds,
@@ -78,6 +86,9 @@ class AssemblyResult {
   final PlaybackService playback;
   final HistoryRecorder history;
   final DownloadManager downloads;
+  final RecommendLogic recommend;
+  final ArtistLogic artist;
+  final FmLogic fm;
 
   /// 批4-B 播放控制器（engine 可替换，批5-A 传 JustAudioEngine）。
   final PlayerController controller;
@@ -173,6 +184,19 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
           }
         },
       ))!;
+  // 批3/批4 内容发现 logic 单例。
+  final recommendLogic = _step('RecommendLogic', () => RecommendLogic(
+        client: deps.client,
+        cache: _newCache<String, dynamic>(64, 'recommend'),
+      ))!;
+  final artistLogic = _step('ArtistLogic', () => ArtistLogic(
+        client: deps.client,
+        cache: _newCache<String, dynamic>(64, 'artist'),
+      ))!;
+  final fmLogic = _step('FmLogic', () => FmLogic(
+        client: deps.client,
+        cache: _newCache<String, dynamic>(32, 'fm'),
+      ))!;
 
   // 步骤 3：PlayerController（批4-B）。
   // engine 参数类型为批4-B AudioEngine 抽象：批5-A 未完成时传 NullAudioEngine，
@@ -191,6 +215,19 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
           playlist: playlist,
           resolver: playback.resolvePlaySource,
           quality: quality,
+          collect: collectLogic,
+          onQualitySelected: (q) {
+            try {
+              // 音质偏好持久化；播放器 quality 由装配参数注入，切歌后生效。
+              deps.settings.setString('preferred_quality', toPref(q));
+              Log.d(_tag, 'quality pref saved=${toPref(q)}');
+            } catch (e, st) {
+              Log.e(_tag, 'save quality pref failed', e, st);
+            }
+          },
+          onOpenComments: () {
+            Log.d(_tag, 'open comments requested (route /comment)');
+          },
         ),
       ))!;
   modules.addAll(await built);
@@ -262,6 +299,15 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     return true;
   });
 
+  _step('ArtistModule', () {
+    modules.add(buildArtistModule(
+      logic: artistLogic,
+      currentArtistId: () => null, // 由搜索页歌手点击回填（待接线）
+      onPlay: controller.playSong,
+    ));
+    return true;
+  });
+
   // 步骤 5：SurfaceRegistry.install 全部模块（重复 id 热替换语义）。
   final ids = <String>[];
   for (final m in modules) {
@@ -282,6 +328,9 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     playback: playback,
     history: history,
     downloads: downloads,
+    recommend: recommendLogic,
+    artist: artistLogic,
+    fm: fmLogic,
     controller: controller,
     providerOverrides: SurfaceRegistry.providerOverrides,
     moduleIds: ids,
