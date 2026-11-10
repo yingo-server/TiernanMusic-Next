@@ -85,6 +85,28 @@ class EndpointRegistry {
       path: '/pubsongs/v2/get_other_list_file_nofilt');
   static const playlistAddSongs = Endpoint(
       id: 'playlist_add_songs', path: '/v2/add_songs_by_hash', method: 'POST');
+  // ── 歌单写操作（功能对齐批5-B · GAP：歌单导入/建删缺）──
+  // 建歌单：POST /v2/add_playlist（docs/KUGOU_API.md §3.3「建/删歌单：
+  // playlist_add.js / playlist_del.js」，module 名留档、具体路径待三态实测）。
+  static const playlistCreate = Endpoint(
+      id: 'playlist_create', path: '/v2/add_playlist', method: 'POST');
+  // 删歌单：POST /v2/del_playlist（同上，待三态实测）。
+  static const playlistDelete = Endpoint(
+      id: 'playlist_delete', path: '/v2/del_playlist', method: 'POST');
+  // 歌单删歌：POST /v2/del_songs_by_hash（与 add_songs_by_hash 对称，待三态实测）。
+  static const playlistDelSongs = Endpoint(
+      id: 'playlist_del_songs', path: '/v2/del_songs_by_hash', method: 'POST');
+  // 歌单分类 tags：POST /pubsongs/v1/get_tags_by_type（docs §3.3）。
+  // 走 gateway（无 x-router；pubsongs 子域直连 404，见可用性矩阵）。
+  static const playlistTags = Endpoint(
+      id: 'playlist_tags',
+      path: '/pubsongs/v1/get_tags_by_type', method: 'POST');
+  // 用户歌单：POST /v7/get_all_list，x-router cloudlist.service.kugou.com，
+  // docs §3.3（query plat=1&userid&token；body userid/token/total_ver/type=2/page/pagesize）。
+  // ⚠️ 全部写端点路径/参数/响应形态均「待三态实测」，实测后只改本声明，不动 request。
+  static const userPlaylists = Endpoint(
+      id: 'user_playlists', path: '/v7/get_all_list', method: 'POST',
+      router: 'cloudlist.service.kugou.com');
 
   // ── 排行榜 ──
   static const rankList = Endpoint(
@@ -195,6 +217,25 @@ class EndpointRegistry {
       id: 'login_token',
       base: 'http://login.user.kugou.com', path: '/v5/login_by_token',
       method: 'POST');
+  // smsLogin：POST https://loginserviceretry.kugou.com/v7/login_by_verifycode
+  // （出处 docs/KUGOU_API.md §3.8 login_cellphone.js：body params=AES 加密 hex
+  // + pk=RSA hex，UA Android16-1070-11440-130-0-LOGIN-wifi —— UA 由端点封装
+  // /探针阶段处理，KugouClient 默认 UA 不改）。⚠️ 未三态实测，探针确认前
+  // auth_endpoints.smsLogin 只构造不外发。crypto：signType none（加密载荷
+  // 由端点层构造，注册表不做 android 签名注入，docs 未留样签名要求）。
+  static const smsLogin = Endpoint(
+      id: 'sms_login',
+      base: 'https://loginserviceretry.kugou.com',
+      path: '/v7/login_by_verifycode', method: 'POST',
+      signType: SignType.none, clearDefaultParams: true);
+  // sendSmsCode：发送短信验证码端点。⚠️ docs 零留样（任务口径 POST
+  // /v1/send_verifycode，需三态实测），路径/路由/签名/参数全部待探针；
+  // 先按任务口径占位声明，实测后只改本声明。
+  static const sendSmsCode = Endpoint(
+      id: 'send_sms_code',
+      base: 'https://loginserviceretry.kugou.com',
+      path: '/v1/send_verifycode', method: 'POST',
+      signType: SignType.none, clearDefaultParams: true);
 
   // ── 评论（docs/PARITY_NOTES.md：comment/music 参数走 query 非 body；count 走 web 签名） ──
   static const commentMusic = Endpoint(
@@ -236,11 +277,15 @@ class EndpointRegistry {
     searchSong, searchComplex, searchSuggest, searchHot,
     playUrlV5, playUrlV6, privilegeLite,
     playlistRecommend, playlistDetail, playlistTracks, playlistAddSongs,
+    playlistCreate, playlistDelete, playlistDelSongs, playlistTags,
+    userPlaylists,
     rankList, rankInfo, lyricSearch, lyricDownload,
     artistList, artistDetail, artistAudios, artistAlbums, albumDetail,
     albumSongs, playlistSimilar, recommendSongs, personalFm, fmSongs,
     mvDetail, videoDetail, videoDetailKmrV2, videoUrl,
     loginQrKey, loginQrCheck, loginToken,
+    // 认证域两声明（功能对齐批5-A · GAP #31）：短信登录 + 发送验证码（needs probe）。
+    smsLogin, sendSmsCode,
     commentMusic, commentFloor, commentCount,
     // 收藏域三声明（批2-C）：count / collect / cancel_collect。
     favoriteCount, collectSong, cancelCollect,

@@ -51,3 +51,15 @@ export '../core/net/endpoints/recommend_endpoints.dart'
 export '../core/net/endpoints/album_endpoints.dart' show AlbumDetail;
 export '../core/net/endpoints/artist_endpoints.dart'
     show ArtistBrief, ArtistDetail, AlbumBrief;
+// ── 认证域（功能对齐批5-A · GAP #31）：短信登录结果模型经 core 桥转出 ──
+export '../core/net/endpoints/auth_endpoints.dart' show SmsLoginResult;
+// ── 六类分类搜索类型枚举（功能对齐批5-C）：SearchType 经 core 桥转出 ──
+export '../core/net/endpoints/search_typed_endpoints.dart' show SearchType;
+// ── 歌单写操作端点封装（功能对齐批5-B）：无新模型，仅函数集，经此转出 ──
+export '../core/net/endpoints/playlist_write_endpoints.dart'
+    show
+        createPlaylist,
+        deletePlaylist,
+        removeSongsFromPlaylist,
+        getPlaylistTags,
+        getUserPlaylists;

@@ -91,6 +91,18 @@ export '../logic/catalog/album_logic.dart'
     show AlbumLogic, kAlbumCacheSchemaVer;
 export '../logic/catalog/artist_logic.dart'
     show ArtistLogic, kArtistCacheSchemaVer;
+// ── 20028 验证收敛 + 短信登录（功能对齐批5-A · GAP #31）：
+//    VerificationLogic 是唯一可信验证门面（收敛旧项目三套平行实现，
+//    禁止 auth_repository / playback_service 再各写一套）；
+//    SmsLoginResult 经 bridge_core 转出，此处补 SmsLogin 供 surface 用。 ──
+export '../logic/auth/verification_logic.dart'
+    show VerificationLogic, VerificationState;
+export '../core/net/endpoints/auth_endpoints.dart' show SmsLoginResult;
+// ── 六类分类搜索 + 综合搜索 v6 logic 门面（功能对齐批5-C）──
+export '../logic/catalog/search_typed_logic.dart'
+    show SearchTypedLogic, kSearchTypedCacheSchemaVer;
+// ── 歌单写操作 logic 门面（功能对齐批5-B）──
+export '../logic/catalog/playlist_write_logic.dart' show PlaylistWriteLogic;
 
 /// logic 能力门面：surface 只拿这个，不 import logic 内部模块。
 /// 具体能力类经上方 export 直接可用；此类仅承载跨域摘要与装配状态。
