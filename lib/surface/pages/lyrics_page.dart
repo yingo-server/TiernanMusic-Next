@@ -7,7 +7,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../bridges/bridge_logic.dart';
+import '../../bridges/bridge_logic.dart' show LyricsLogic, parseLyrics, applyOffset, findLineIndex, LyricParseResult, LrcLine, KrcWord, Log, TranslationLogic, DisplayLine;
+import '../../bridges/bridge_core.dart' show SongBrief, LyricsDisplayMode;
 import '../registry.dart';
 import '../theme/tn_theme.dart';
 
@@ -19,10 +20,14 @@ class LyricsDeps {
     required this.lyrics,
     required this.currentSong,
     required this.positionMsProvider,
+    this.translation,
   });
 
   /// 歌词域逻辑（三级缓存加载 + 解析）。
   final LyricsLogic lyrics;
+
+  /// 翻译显示门面（可选；为空时只显示原文，不臆造译文）。
+  final TranslationLogic? translation;
 
   /// 当前歌曲提供者（null = 无播放）。返回 SongBrief 供 lyricsFor 拉歌词。
   final SongBrief? Function() currentSong;
@@ -61,6 +66,8 @@ class LyricsPage extends StatefulWidget {
 
 class _LyricsPageState extends State<LyricsPage> {
   LyricParseResult _parsed = const LyricParseResult();
+  LyricsDisplayMode _displayMode = LyricsDisplayMode.original;
+  List<DisplayLine> _displayLines = const <DisplayLine>[];
   bool _loading = false;
   String _loadedHash = '';
   int _lastLine = -2;
@@ -103,6 +110,9 @@ class _LyricsPageState extends State<LyricsPage> {
       if (!mounted) return;
       setState(() {
         _parsed = widget.deps.lyrics.parsedFor(r);
+        _displayLines = widget.deps.translation
+                ?.displayFor(r, _displayMode) ??
+            const <DisplayLine>[];
         _loadedHash = hash;
         _lastLine = -2;
       });
@@ -159,12 +169,41 @@ class _LyricsPageState extends State<LyricsPage> {
     }
     final pos = _currentPos();
     final cur = findLineIndex(_parsed, pos);
-    return ListView.builder(
+    final chips = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (final m in LyricsDisplayMode.values)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: ChoiceChip(
+                label: Text(switch (m) {
+                  LyricsDisplayMode.original => '原文',
+                  LyricsDisplayMode.bilingual => '双语',
+                  LyricsDisplayMode.translation => '译文',
+                }),
+                selected: _displayMode == m,
+                onSelected: (_) => _setMode(m),
+              ),
+            ),
+        ],
+      ),
+    );
+    return Column(children: [
+      chips,
+      Expanded(
+        child: ListView.builder(
       controller: _scroll,
       padding: const EdgeInsets.symmetric(vertical: 100, horizontal: 24),
       itemCount: _parsed.lines.length,
       itemBuilder: (context, i) {
         final line = _parsed.lines[i];
+        final display = i < _displayLines.length
+            ? _displayLines[i]
+            : const DisplayLine(main: '');
+        final main = display.main.isNotEmpty ? display.main : line.text;
+        final sub = display.sub;
         final active = i == cur;
         final words = _parsed.wordsByLine[i];
         return SizedBox(
@@ -183,13 +222,46 @@ class _LyricsPageState extends State<LyricsPage> {
                   ),
               child: (active && words != null && words.isNotEmpty)
                   ? _KrcLine(words: words, positionMs: pos)
-                  : Text(line.text,
-                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(main,
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        if (sub.isNotEmpty)
+                          Text(sub,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TnText.of(context).aux),
+                      ],
+                    ),
             ),
           ),
         );
       },
-    );
+        ),
+      ),
+    ]);
+  }
+
+  void _setMode(LyricsDisplayMode m) {
+    try {
+      if (_displayMode == m) return;
+      setState(() => _displayMode = m);
+      // 用缓存的 LyricResult 重算显示行（无需重新拉网络）。
+      final song = widget.deps.currentSong();
+      if (song != null) {
+        widget.deps.lyrics.lyricsFor(song).then((r) {
+          if (!mounted) return;
+          setState(() => _displayLines =
+              widget.deps.translation?.displayFor(r, m) ??
+                  const <DisplayLine>[]);
+        }).catchError((Object e) {
+          Log.w(_tag, 'displayFor failed: $e');
+        });
+      }
+    } catch (e, st) {
+      Log.e(_tag, 'setMode failed', e, st);
+    }
   }
 
   int _currentPos() {

@@ -46,3 +46,6 @@ export '../core/net/endpoints/quality_endpoints.dart'
 // recommend_endpoints：无模型函数（结果模型 SongBrief 已由 models.dart 转出）。
 export '../core/net/endpoints/recommend_endpoints.dart'
     show getDailyRecommend, kDailyRecommendPath;
+// ── 歌手域数据层（功能对齐批4-A · GAP #22）：三个结果模型经 core 桥转出 ──
+export '../core/net/endpoints/artist_endpoints.dart'
+    show ArtistBrief, ArtistDetail, AlbumBrief;

@@ -79,6 +79,15 @@ export '../logic/lyrics/lyrics_parser.dart'
 
 // ── kernel 门面（L6 surface 需要统一 Log；registry.dart 已依赖此导出） ──
 export '../kernel/kernel.dart' show Log;
+// ── 功能对齐批2 收尾：多账号 / 翻译显示门面 ──
+export '../logic/auth/account_logic.dart' show AccountLogic;
+export '../logic/lyrics/translation_logic.dart'
+    show TranslationLogic, DisplayLine;
+// ── 个人 FM logic 门面（功能对齐批4-C · GAP #21；端点 needs probe） ──
+export '../logic/catalog/fm_logic.dart' show FmLogic, kFmCacheSchemaVer;
+// ── 歌手域 logic 门面（功能对齐批4-A · GAP #22）──
+export '../logic/catalog/artist_logic.dart'
+    show ArtistLogic, kArtistCacheSchemaVer;
 
 /// logic 能力门面：surface 只拿这个，不 import logic 内部模块。
 /// 具体能力类经上方 export 直接可用；此类仅承载跨域摘要与装配状态。

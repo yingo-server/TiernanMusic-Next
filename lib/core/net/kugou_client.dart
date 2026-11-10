@@ -105,9 +105,44 @@ class EndpointRegistry {
   // ── 歌手/专辑 ──
   static const artistList = Endpoint(
       id: 'artist_list', path: '/ocean/v6/singer/list');
+  // 歌手详情（功能对齐批4-A · GAP_ANALYSIS #22）：POST /kmr/v3/author，
+  // x-router openapi.kugou.com，kg-tid: 36，body {author_id}
+  // （出处 docs/KUGOU_API.md §3.6、docs/PARITY_NOTES.md §1）。
+  static const artistDetail = Endpoint(
+      id: 'artist_detail', path: '/kmr/v3/author', method: 'POST',
+      router: 'openapi.kugou.com', tid: '36');
+  // 歌手热门歌曲：POST /kmr/v1/author/audios（任务口径；docs 仅留
+  // module/artist_audios.js 名称，未留路径样，见 KUGOU_API.md §3.6）。
+  // ⚠️ 签名须 defaultParams + body 合并：clearDefaultParams=true 会返回 20006
+  //    （docs/PARITY_NOTES.md §1 / FEATURE_PARITY.md「特殊签名要求」）。
+  //    故保持默认参数注入（clearDefaultParams=false），端点封装把业务参数放
+  //    POST body —— KugouClient.request 对 POST 将 jsonEncode(body) 拼进
+  //    android 签名串，即 defaultParams+params+body 同时参与签名。
+  //    kg-tid 未留样暂不设；x-router 按 §3.6 与 albumDetail 同域类比。
+  static const artistAudios = Endpoint(
+      id: 'artist_audios', path: '/kmr/v1/author/audios', method: 'POST',
+      router: 'openapi.kugou.com');
+  // 歌手专辑：GET /v1/author/albums（任务口径）。
+  // ⚠️ 口径差异留痕：PARITY_NOTES.md §1 / FEATURE_PARITY.md 记
+  //    「kmr/v1/author/albums」；本声明按任务口径，三态实测后只改这里。
+  //    x-router 同 §3.6 kmr 系 openapi 类比；kg-tid 未留样不设置。
+  static const artistAlbums = Endpoint(
+      id: 'artist_albums', path: '/v1/author/albums',
+      router: 'openapi.kugou.com');
   static const albumDetail = Endpoint(
       id: 'album_detail', path: '/kmr/v2/albums', method: 'POST',
       router: 'openapi.kugou.com');
+  // 功能对齐批4-B · GAP #23：专辑歌曲（docs/KUGOU_API.md §3.6），
+  // x-router openapi.kugou.com，kg-tid 255，body {album_id,page,pagesize,is_buy}。
+  static const albumSongs = Endpoint(
+      id: 'album_songs', path: '/v1/album_audio/lite', method: 'POST',
+      router: 'openapi.kugou.com', tid: '255');
+  // 功能对齐批4-B · GAP #24：相似歌单（docs/KUGOU_API.md §3.3），
+  // POST /pubsongs/v1/kmr_get_similar_lists；gateway 无 x-router
+  //（pubsongs 子域直连 404，见「直连域名可用性矩阵」）。
+  static const playlistSimilar = Endpoint(
+      id: 'playlist_similar',
+      path: '/pubsongs/v1/kmr_get_similar_lists', method: 'POST');
 
   // ── 推荐/FM ──
   static const recommendSongs = Endpoint(
@@ -115,6 +150,13 @@ class EndpointRegistry {
       router: 'everydayrec.service.kugou.com');
   static const personalFm = Endpoint(
       id: 'personal_fm', path: '/v1/fm/play', method: 'POST');
+  // fmSongs：GET /v1/fm/songs（docs/KUGOU_API.md §3.7「电台歌曲：
+  // fm_songs.js（fmid/fmtype/offset/size 批量，key 同 §1.6）」）。
+  // ⚠️ 需先实测：路径/路由/完整参数契约/响应字段均未三态留样（PARITY_NOTES.md
+  //    §3「个人 FM / 电台全缺」）；探针确认后只改本声明或 fm_endpoints.dart，
+  //    不动 KugouClient.request。只连酷狗官方 gateway 域名。
+  static const fmSongs = Endpoint(
+      id: 'fm_songs', path: '/v1/fm/songs');
 
   // ── MV/视频（批1-B · GAP #16）──
   // mvDetail：POST /kmr/audio/mv，x-router: openapi.kugou.com，kg-tid: 38，
@@ -195,7 +237,8 @@ class EndpointRegistry {
     playUrlV5, playUrlV6, privilegeLite,
     playlistRecommend, playlistDetail, playlistTracks, playlistAddSongs,
     rankList, rankInfo, lyricSearch, lyricDownload,
-    artistList, albumDetail, recommendSongs, personalFm,
+    artistList, artistDetail, artistAudios, artistAlbums, albumDetail,
+    albumSongs, playlistSimilar, recommendSongs, personalFm, fmSongs,
     mvDetail, videoDetail, videoDetailKmrV2, videoUrl,
     loginQrKey, loginQrCheck, loginToken,
     commentMusic, commentFloor, commentCount,

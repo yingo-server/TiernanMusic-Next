@@ -19,7 +19,8 @@ import '../bridges/bridge_core.dart'
         LruCache,
         SearchResult,
         LyricResult,
-        CommentPage;
+        CommentPage,
+        AccountDao;
 import '../bridges/bridge_logic.dart'
     show
         Log,
@@ -33,7 +34,9 @@ import '../bridges/bridge_logic.dart'
         DownloadManager,
         CommentLogic,
         MvLogic,
-        CollectLogic;
+        CollectLogic,
+        AccountLogic,
+        TranslationLogic;
 import 'modules.dart' as mod;
 import 'pages/library_page.dart' show LibraryPageModule, LibraryDeps;
 import 'pages/lyrics_page.dart' show LyricsPageModule, LyricsDeps;
@@ -146,6 +149,30 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         settings: deps.settings,
         isLoggedIn: () => auth.session.userid.isNotEmpty,
       ))!;
+  final translationLogic = _step('TranslationLogic',
+      () => TranslationLogic())!;
+  final accountLogic = _step('AccountLogic', () => AccountLogic(
+        dao: AccountDao(),
+        client: deps.client,
+        settings: deps.settings,
+        onAccountChanged: () {
+          // 账号切换：各域缓存按用户隔离失效（无跨层直连，仅调用已装配单例）。
+          try {
+            for (final invalidate in <void Function()>[
+              () => search.invalidatePrefix(userid: deps.client.session.userid),
+              () => playlist.invalidatePrefix(userid: deps.client.session.userid),
+              () => rank.invalidatePrefix(userid: deps.client.session.userid),
+              () => commentLogic.invalidatePrefix(userid: deps.client.session.userid),
+              () => mvLogic.invalidatePrefix(userid: deps.client.session.userid),
+            ]) {
+              invalidate();
+            }
+            Log.d(_tag, 'account caches invalidated');
+          } catch (e, st) {
+            Log.e(_tag, 'account cache invalidation failed', e, st);
+          }
+        },
+      ))!;
 
   // 步骤 3：PlayerController（批4-B）。
   // engine 参数类型为批4-B AudioEngine 抽象：批5-A 未完成时传 NullAudioEngine，
@@ -185,6 +212,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         lyrics: lyrics,
         currentSong: () => controller.state.queue.current,
         positionMsProvider: () => controller.state.player.positionMs,
+        translation: translationLogic,
       ),
     ));
     return true;
@@ -205,7 +233,9 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         },
         // TODO(批5-A)：songDao.list 是异步接口，settings 页要求同步清单；
         // 这里退化给空实现（settings 页允许空退化），批5-A 接 Isar 同步查询后替换。
-        lyricHashes: () => const <String>[],
+        lyricHashes: () => collectLogic.listFavorites(),
+        accounts: accountLogic,
+        collect: collectLogic,
       ),
     ));
     return true;

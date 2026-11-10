@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bridges/bridge_logic.dart';
+import '../../bridges/bridge_core.dart' show AccountRecord;
 import '../registry.dart';
 import '../theme/tn_theme.dart';
 import '../widgets/tn_app_bar.dart' show TnAppBar;
@@ -28,9 +29,17 @@ class SettingsDeps {
     required this.clearLyricCache,
     required this.lyricHashes,
     this.onLocaleChanged,
+    this.accounts,
+    this.collect,
   });
 
   final AuthLogic auth;
+
+  /// 多账号门面（可选；为空时设置页不显示账号管理卡片）。
+  final AccountLogic? accounts;
+
+  /// 收藏门面（可选；为空时收藏计数不显示）。
+  final CollectLogic? collect;
 
   /// 歌词域（逐曲 clearFileCache 用）。
   final LyricsLogic lyrics;
@@ -179,8 +188,17 @@ class _SettingsPageState extends State<SettingsPage> {
                     onPressed: _showQrLoginDialog,
                     child: const Text('二维码登录')),
           ),
+          // ── 多账号管理（批2 收尾接线）──
+          if (widget.deps.accounts != null)
+            _AccountSection(accounts: widget.deps.accounts!),
+          if (widget.deps.collect != null)
+            ListTile(
+              leading: const Icon(Icons.favorite_border),
+              title: Text('已收藏 ${widget.deps.collect!.count} 首'),
+              subtitle: Text('收藏列表：${widget.deps.collect!.listFavorites().length} 条',
+                  style: t.aux),
+            ),
           const Divider(height: 1),
-          // ── 主题 ──
           Consumer(builder: (context, ref, _) {
             final mode = ref.watch(themeModeProvider);
             return ListTile(
@@ -337,6 +355,114 @@ class _QrLoginDialogState extends State<_QrLoginDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('取消'),
         ),
+      ],
+    );
+  }
+}
+
+/// 多账号管理：列出档案、切换、删除；保存当前会话为档案。
+class _AccountSection extends StatefulWidget {
+  const _AccountSection({required this.accounts});
+  final AccountLogic accounts;
+
+  @override
+  State<_AccountSection> createState() => _AccountSectionState();
+}
+
+class _AccountSectionState extends State<_AccountSection> {
+  List<AccountRecord> _items = const <AccountRecord>[];
+  String? _activeId;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final list = await widget.accounts.listAccounts();
+      final active = await widget.accounts.activeAccount();
+      if (!mounted) return;
+      setState(() {
+        _items = list;
+        _activeId = active?.accountId;
+      });
+    } catch (e, st) {
+      Log.e(_tag, 'account list failed', e, st);
+    }
+  }
+
+  Future<void> _switch(AccountRecord r) async {
+    try {
+      await widget.accounts.switchTo(r.accountId);
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('已切换到 ${r.displayName}')));
+      }
+    } catch (e, st) {
+      Log.e(_tag, 'account switch failed', e, st);
+    }
+  }
+
+  Future<void> _save() async {
+    try {
+      final rec = await widget.accounts.saveCurrent();
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(rec == null ? '未登录，无法保存账号' : '已保存当前账号')));
+      }
+    } catch (e, st) {
+      Log.e(_tag, 'account save failed', e, st);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Row(
+            children: [
+              const Text('账号管理',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: _save,
+                icon: const Icon(Icons.person_add_alt, size: 18),
+                label: const Text('保存当前'),
+              ),
+            ],
+          ),
+        ),
+        if (_items.isEmpty)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text('暂无账号档案', style: TextStyle(fontSize: 12)),
+          )
+        else
+          for (final r in _items)
+            ListTile(
+              dense: true,
+              leading: Icon(r.accountId == _activeId
+                  ? Icons.check_circle
+                  : Icons.account_circle_outlined),
+              title:
+                  Text(r.displayName.isEmpty ? r.accountId : r.displayName),
+              subtitle: Text(r.accountId),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete_outline, size: 20),
+                onPressed: () async {
+                  await widget.accounts.removeAccount(r.accountId);
+                  await _load();
+                },
+              ),
+              onTap: () => _switch(r),
+            ),
       ],
     );
   }
