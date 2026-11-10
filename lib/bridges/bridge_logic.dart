@@ -86,6 +86,9 @@ export '../logic/lyrics/translation_logic.dart'
 // ── 个人 FM logic 门面（功能对齐批4-C · GAP #21；端点 needs probe） ──
 export '../logic/catalog/fm_logic.dart' show FmLogic, kFmCacheSchemaVer;
 // ── 歌手域 logic 门面（功能对齐批4-A · GAP #22）──
+// ── 专辑 + 相似推荐 logic 门面（功能对齐批4-B，主会话实现）──
+export '../logic/catalog/album_logic.dart'
+    show AlbumLogic, kAlbumCacheSchemaVer;
 export '../logic/catalog/artist_logic.dart'
     show ArtistLogic, kArtistCacheSchemaVer;
 

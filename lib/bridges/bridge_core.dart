@@ -47,5 +47,7 @@ export '../core/net/endpoints/quality_endpoints.dart'
 export '../core/net/endpoints/recommend_endpoints.dart'
     show getDailyRecommend, kDailyRecommendPath;
 // ── 歌手域数据层（功能对齐批4-A · GAP #22）：三个结果模型经 core 桥转出 ──
+// ── 专辑 + 相似推荐（功能对齐批4-B，主会话实现）──
+export '../core/net/endpoints/album_endpoints.dart' show AlbumDetail;
 export '../core/net/endpoints/artist_endpoints.dart'
     show ArtistBrief, ArtistDetail, AlbumBrief;

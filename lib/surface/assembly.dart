@@ -40,6 +40,7 @@ import '../bridges/bridge_logic.dart'
         TranslationLogic,
         RecommendLogic,
         ArtistLogic,
+        AlbumLogic,
         FmLogic;
 import 'modules.dart' as mod;
 import 'pages/library_page.dart' show LibraryPageModule, LibraryDeps;
@@ -48,6 +49,7 @@ import 'pages/settings_page.dart' show SettingsPageModule, SettingsDeps;
 import 'pages/comment_page.dart' show buildCommentModule;
 import 'pages/mv_page.dart' show buildMvModule;
 import 'pages/artist_page.dart' show buildArtistModule;
+import 'pages/album_page.dart' show buildAlbumModule;
 import 'player_controller.dart'
     show PlayerController, AudioEngine, NullAudioEngine;
 import 'registry.dart' show SurfaceRegistry;
@@ -193,6 +195,10 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         client: deps.client,
         cache: _newCache<String, dynamic>(64, 'artist'),
       ))!;
+  final albumLogic = _step('AlbumLogic', () => AlbumLogic(
+        client: deps.client,
+        cache: _newCache<String, dynamic>(64, 'album'),
+      ))!;
   final fmLogic = _step('FmLogic', () => FmLogic(
         client: deps.client,
         cache: _newCache<String, dynamic>(32, 'fm'),
@@ -302,7 +308,15 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
   _step('ArtistModule', () {
     modules.add(buildArtistModule(
       logic: artistLogic,
-      currentArtistId: () => null, // 由搜索页歌手点击回填（待接线）
+      currentArtistId: () => null,
+      onPlay: controller.playSong,
+    ));
+    return true;
+  });
+  _step('AlbumModule', () {
+    modules.add(buildAlbumModule(
+      logic: albumLogic,
+      currentAlbumId: () => null,
       onPlay: controller.playSong,
     ));
     return true;
