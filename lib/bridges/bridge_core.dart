@@ -22,3 +22,13 @@ export '../core/net/endpoints/models.dart' show SearchResult, LyricResult;
 // ── 评论域端点模型（批1-A：logic/surface 经此引用 CommentItem/CommentPage） ──
 export '../core/net/endpoints/comment_endpoints.dart'
     show CommentItem, CommentPage;
+// ── 多账号（批2-A）：AccountRecord 实体与 AccountDao 经 core 桥转出 ──
+export '../core/database/entities.dart' show AccountRecord;
+export '../core/database/dao.dart' show AccountDao;
+// ── 翻译歌词数据层（批2-B）：模型与对齐/抽取/预留端点经 core 桥转出 ──
+export '../core/net/endpoints/translation_models.dart'
+    show TranslatedLine, TranslationResult, LyricsDisplayMode;
+export '../core/net/endpoints/translation_endpoints.dart'
+    show alignTranslation, extractOriginalLines, fetchTranslation;
+// ── 收藏域数据层（批2-C）：写操作结果模型经 core 桥转出 ──
+export '../core/net/endpoints/collect_endpoints.dart' show CollectResult;

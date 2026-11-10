@@ -106,3 +106,41 @@ class PlayHistoryEntry {
   /// 本次实际播放时长（毫秒）。
   int durationPlayedMs = 0;
 }
+
+/// 账号档案（多账号 · 批2-A）：凭据与激活态的本地持久化。
+/// accountId 为业务唯一键；id 由 Isar 自动自增。
+@collection
+class AccountRecord {
+  Id id = Isar.autoIncrement;
+
+  /// 账号业务 id，唯一。
+  @Index(unique: true, replace: true)
+  String accountId = '';
+
+  /// 展示名（昵称）。
+  String displayName = '';
+
+  /// 登录态 token。
+  String token = '';
+
+  /// 酷狗 mid。
+  String mid = '';
+
+  /// 酷狗 dfid。
+  String dfid = '';
+
+  /// Cookie 序列化快照（可空语义用空串表示）。
+  String cookieBlob = '';
+
+  /// VIP 类型标签。
+  String vipType = '';
+
+  /// 是否为当前激活账号；全库至多一条为 true（AccountDao.setActive 保证）。
+  bool isActive = false;
+
+  /// 创建时间（epoch ms）。
+  int createdAt = 0;
+
+  /// 最近使用时间（epoch ms）。
+  int lastUsedAt = 0;
+}

@@ -9,7 +9,7 @@ import 'package:isar/isar.dart';
 import '../../kernel/kernel.dart' show Log;
 import 'entities.dart';
 
-/// 数据库服务：open(dir) 注册三 schema，close 释放；懒单例持有 Isar。
+/// 数据库服务：open(dir) 注册四 schema，close 释放；懒单例持有 Isar。
 class DatabaseService {
   DatabaseService._();
 
@@ -34,7 +34,7 @@ class DatabaseService {
   /// 是否已打开。
   static bool get isOpen => _isar != null && _isar!.isOpen;
 
-  /// 打开数据库并注册三 schema。幂等：已打开则直接返回。
+  /// 打开数据库并注册四 schema。幂等：已打开则直接返回。
   Future<void> open(String dir) async {
     try {
       if (isOpen) {
@@ -42,7 +42,13 @@ class DatabaseService {
         return;
       }
       _isar = await Isar.open(
-        [SongRecordSchema, PlaylistMetaSchema, PlayHistoryEntrySchema],
+        // 四 schema：歌曲 / 歌单 / 播放历史 / 多账号档案（批2-A）。
+        [
+          SongRecordSchema,
+          PlaylistMetaSchema,
+          PlayHistoryEntrySchema,
+          AccountRecordSchema,
+        ],
         directory: dir,
         name: 'tiernan_music_next',
       );

@@ -166,6 +166,26 @@ class EndpointRegistry {
       id: 'comment_count', path: '/v1/comment/count',
       signType: SignType.web, router: 'sum.comment.service.kugou.com');
 
+  // ── 收藏（批2-C · 数据层，只加声明，不动 KugouClient.request）──
+  // favoriteCount：GET /v1/favorite/count（docs/KUGOU_API.md §3.9 favorite_count.js）。
+  // x-router 按 docs：KUGOU_API.md §3 的网关转发约定，路由名类比
+  // PARITY_NOTES.md §2 唯一留痕的 count 端点（comment/count → sum.comment.service）。
+  // 签名用默认 android（docs §2 的 WEB_SALT 清单不含 favorite_count）。
+  // ⚠️ 待三态实测（anon/nonvip/vip）：favorite_count 的路径/路由/签名/响应字段
+  //    均未留样；实测后只改本声明（或端点封装），不改 request 实现。
+  static const favoriteCount = Endpoint(
+      id: 'favorite_count', path: '/v1/favorite/count',
+      router: 'sum.comment.service.kugou.com');
+  // collectSong：POST /v2/collect（收藏歌曲写端点；登录守卫在 logic 层）。
+  static const collectSong = Endpoint(
+      id: 'collect_song', path: '/v2/collect', method: 'POST');
+  // cancelCollect：POST /v2/cancel_collect（取消收藏写端点）。
+  // ⚠️ docs/PARITY_NOTES.md / FEATURE_PARITY.md 记录：归档项目 cancel 走**二进制 body**；
+  //    二进制载荷形态待三态实测，当前用 query 参数退化（端点层参数放 query、
+  //    body 留空），实测后只改声明/封装，不改 request 实现。
+  static const cancelCollect = Endpoint(
+      id: 'cancel_collect', path: '/v2/cancel_collect', method: 'POST');
+
   /// 按 id 查端点。
   static Endpoint byId(String id) => _all.firstWhere((e) => e.id == id,
       orElse: () => throw StateError('unknown endpoint: $id'));
@@ -179,6 +199,8 @@ class EndpointRegistry {
     mvDetail, videoDetail, videoDetailKmrV2, videoUrl,
     loginQrKey, loginQrCheck, loginToken,
     commentMusic, commentFloor, commentCount,
+    // 收藏域三声明（批2-C）：count / collect / cancel_collect。
+    favoriteCount, collectSong, cancelCollect,
   ];
 }
 

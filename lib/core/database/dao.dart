@@ -323,3 +323,100 @@ class HistoryDao {
     }
   }
 }
+
+// ─── 多账号（批2-A） ───
+
+/// 账号档案 DAO：封装 Isar 查询与写事务；每方法 try/catch 留痕，失败 rethrow。
+class AccountDao {
+  static const String _tag = 'db.account';
+  Isar get _isar => DatabaseService.isar;
+
+  /// 全量列出，按 lastUsedAt 倒序（最近使用在前）。
+  Future<List<AccountRecord>> listAll() async {
+    try {
+      final all = await _isar.accountRecords.where().findAll();
+      all.sort((a, b) => b.lastUsedAt.compareTo(a.lastUsedAt));
+      return all;
+    } catch (e, st) {
+      Log.e(_tag, 'listAll', e, st);
+      rethrow;
+    }
+  }
+
+  /// 取当前激活账号；无激活账号返回 null。
+  Future<AccountRecord?> getActive() async {
+    try {
+      return await _isar.accountRecords
+          .filter()
+          .isActiveEqualTo(true)
+          .findFirst();
+    } catch (e, st) {
+      Log.e(_tag, 'getActive', e, st);
+      rethrow;
+    }
+  }
+
+  /// 按业务 accountId 取账号；不存在返回 null。
+  Future<AccountRecord?> getByAccountId(String accountId) async {
+    try {
+      return await _isar.accountRecords
+          .filter()
+          .accountIdEqualTo(accountId)
+          .findFirst();
+    } catch (e, st) {
+      Log.e(_tag, 'getByAccountId $accountId', e, st);
+      rethrow;
+    }
+  }
+
+  /// 写入（accountId 唯一索引 replace，同业务 id 覆盖更新）。
+  Future<void> put(AccountRecord account) async {
+    try {
+      await _isar.writeTxn(() => _isar.accountRecords.put(account));
+      Log.d(_tag, 'put ${account.accountId}');
+    } catch (e, st) {
+      Log.e(_tag, 'put ${account.accountId}', e, st);
+      rethrow;
+    }
+  }
+
+  /// 切换激活账号：单个 writeTxn 内先清全部 isActive 为 false，再置目标为 true。
+  /// 幂等：重复调用状态一致；目标不存在时全库保持无激活账号。
+  Future<void> setActive(Id id) async {
+    try {
+      await _isar.writeTxn(() async {
+        // ① 清全部 isActive（无条件置 false 并写回，保证幂等与排他）。
+        final all = await _isar.accountRecords.where().findAll();
+        for (final a in all) {
+          a.isActive = false;
+          await _isar.accountRecords.put(a);
+        }
+        // ② 置目标为 true；目标不存在则全库保持无激活账号。
+        final target = await _isar.accountRecords.get(id);
+        if (target != null) {
+          target.isActive = true;
+          await _isar.accountRecords.put(target);
+        } else {
+          Log.w(_tag, 'setActive: account id=$id not found');
+        }
+      });
+      Log.d(_tag, 'setActive id=$id');
+    } catch (e, st) {
+      Log.e(_tag, 'setActive $id', e, st);
+      rethrow;
+    }
+  }
+
+  /// 按 Isar id 删除账号；返回是否删除了记录。
+  Future<bool> remove(Id id) async {
+    try {
+      final removed =
+          await _isar.writeTxn(() => _isar.accountRecords.delete(id));
+      Log.d(_tag, 'remove id=$id removed=$removed');
+      return removed;
+    } catch (e, st) {
+      Log.e(_tag, 'remove $id', e, st);
+      rethrow;
+    }
+  }
+}

@@ -48,6 +48,9 @@ export '../logic/catalog/comment_logic.dart'
 export '../core/net/endpoints/comment_endpoints.dart'
     show CommentItem, CommentPage, getMusicComments, getCommentFloor, getCommentCount;
 
+// ── 收藏体系 logic 门面（功能对齐批2-C：登录守卫 + 本地镜像 + 防重锁） ──
+export '../logic/catalog/collect_logic.dart' show CollectLogic;
+
 // ── auth logic 门面（账号登录域，批3-B） ──
 export '../logic/auth/auth_logic.dart'
     show
