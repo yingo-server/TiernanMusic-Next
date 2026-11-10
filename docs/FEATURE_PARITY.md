@@ -118,3 +118,188 @@
 - docs/archive/reviews-v53/v53_r1_a/b/c（队列状态机、解析链、布局三态）
 - docs/archive/tasks/PLAN_v52.md（权限网关五级回退）、PLAN_v53_player_refactor.md（播放器重构规划）
 - docs/archive/probe-samples/（like_playlist 5x10、reversed、three_playlists、v4_paging 三态样本）
+
+## 原项目功能面（文档提取，零代码引用）
+
+> 本章为补写，与前文端点/原则章节互补。全部内容仅来自归档描述性文档（README.md、docs/REFACTOR_PLAN_V5.md、docs/QUALITY_STANDARD.md、docs/archive/PLAN_v2_final.md、PLAN_v2_lts.md、PLAN_architecture.md、docs/archive/tasks/PLAN_v52.md、docs/archive/reviews-v37/v37_feature_gap.md、v37_cripple_report.md），未读任何 lib/ 源码。每条只写「是什么」+ 出处。
+
+### 域 1：认证登录（7 条）
+1. 手机号/密码双 Tab 登录（README 特性、PLAN_v2_final S2.1 L）。
+2. 酷狗二维码登录：轮询扫码状态，切 Tab 停轮询（PLAN_v2_final S2.1 L）。
+3. 多账号管理：账号选择弹层、切换账号（README、PLAN_v2_final S2.1 L）。
+4. 20028 人机验证：flutter_inappwebview 桥接腾讯 TCaptcha，捕获 ssaCode 后自动重试，登录/评论/播放三链路（README、PLAN_v2_lts §2.2）。
+5. 登录守卫：收藏/评论/下载等需登录操作的前置拦截（PLAN_v2_final S2.1 D/H）。
+6. 登出彻底清理：SecureStorage/CookieJar/AccountManager 四处收敛；dfid 属设备登出保留（PLAN_v2_lts §2.2、v37_feature_gap）。
+7. 凭证安全存储 flutter_secure_storage（五键+多账号，REFACTOR_PLAN_V5 §六）。
+
+### 域 2：首页聚合（7 条）
+1. 轮播图 Banner（含点击跳转目标设计，PLAN_v2_final S2.1 A）。
+2. 每日推荐卡：点击播放整组，长按下载菜单（同上）。
+3. 推荐歌单卡：点击进歌单详情（同上）。
+4. 排行榜卡：点击进榜单页（同上）。
+5. 新歌行：点击播放 + 尾列「更多」菜单（同上）。
+6. 下拉刷新：清缓存 + refresh（同上）。
+7. Banner Timer 行为：非当前 Tab 停翻页、App 退后台停（WidgetsBindingObserver，同上）。
+
+### 域 3：搜索（6 条）
+1. 六类分 Tab 搜索：歌曲/歌单/专辑/歌手/MV/歌词（v37_cripple_report C-11、PLAN_v2_final S1.1）。
+2. 搜索联想 suggest（searchtip 分类型联想；原实现走 kapi，属已知债务，v37_cripple_report C-10）。
+3. 热搜词展示与点击填入（PLAN_v2_final S2.1 B）。
+4. 搜索历史：点击搜索、单删、清空（同上）。
+5. 结果分页 + 失败重试按钮（同上）。
+6. 空态 EmptyState 与无结果引导（同上）。
+
+### 域 4：播放（12 条）
+1. 播放/暂停、上一首/下一首（队列循环模式行为，PLAN_v2_final S2.1 C）。
+2. 循环三态（off/all/one）+ 随机 shuffle，图标回显（同上、v37_cripple_report C-9）。
+3. 进度条拖动 seek、缓冲色、时长显示；seek 任意点完整（同上）。
+4. 播放队列底部弹层、点击切歌（同上）。
+5. 迷你播放器：点击进全屏、长按队列、进度条（同上）。
+6. 音质五档选择：128/320/flac/high/super（v37_cripple_report C-1）。
+7. 60s 试听：IsFreePart=1 试听墙 + 「试听」角标（v37_paid_song_channel、PLAN_v2_final S2.1 C）。
+8. 实际播放音质标签显示（actualQuality，PLAN_v2_final S2.1 C）。
+9. 后台播放：audio_service 通知栏 + 耳机蓝牙控制，androidStopForegroundOnPause=false（README、v37_perm_playback）。
+10. 耳机拔插（BecomingNoisy）自动暂停（v51_cross_B4_b）。
+11. MV 入口：有 MV 才显示按钮，点击进 MV 页（PLAN_v2_final S2.1 C）。
+12. 评论入口：播放页直达歌曲评论区（同上）。
+
+### 域 5：歌词（7 条）
+1. KRC 客户端解密（不上传 krc 到任何服务，README 特性）。
+2. KRC 逐字时间轴渲染（words，README、v37_feature_gap）。
+3. 逐行翻译：原文/双语/译文三态（README）。
+4. 歌词点击行 seek（PLAN_v2_final S2.1 C）。
+5. 自动滚动跟随 + 手动滚动 5s 暂停（同上）。
+6. 翻译兜底 TranslateApi（v37_cripple_report C-8）。
+7. 歌词持久缓存（Hive，键 id:lang@model，REFACTOR_PLAN_V5 §1.2）。
+
+### 域 6：歌单（7 条）
+1. 歌单详情页：封面/简介展开收起/歌曲列表（PLAN_v2_final S2.1 D）。
+2. 播放全部（同上）。
+3. 收藏歌单：登录守卫 + collectPlaylist，单向收藏（上游无取消接口，D7 决策）（同上）。
+4. 歌单增删歌曲（AES+RSA 加密体写端点，PLAN_v2_final S1.1 #9）。
+5. 用户歌单详情模式：`?user=listid` 走 fetchUserTracks（PLAN_v2_final S2.1 D）。
+6. 歌单分页排序：倒序取页+反序拼接，整体从新到旧（PLAN_v2_lts §2.2）。
+7. 歌单评论入口（PLAN_v2_final S2.1 D）。
+
+### 域 7：收藏（3 条）
+1. 收藏 MV / 取消收藏（setCollected/cancel 二进制 body，v37_feature_gap S-4）。
+2. 收藏 MV 列表页（音乐库内，同上）。
+3. 收藏歌曲心形按钮（默认收藏歌单，PLAN_v2_lts 阶段 3 P2）。
+
+### 域 8：评论（8 条）
+1. 音乐评论列表（comment/music，参数必须走 query，PLAN_v2_final S1.1 #2）。
+2. 歌单评论（floor 双端点 song/playlist/album）（同上 #4）。
+3. 楼中楼：replyCount>0 进 floor 页（PLAN_v2_final S2.1 H）。
+4. 发送评论：登录守卫 + 20028→CaptchaPage（同上）。
+5. 回复评论（comment/send/reply，clearDefaultParams+notSignature 签名，S1.1 #5）。
+6. 删除自己的评论（PLAN_v2_final S2.1 H）。
+7. 分类标签/热词 chips 渲染（PLAN_v2_lts 阶段 3 P1、PLAN_v2_final S2.1 H）。
+8. 评论分页 + 世代防串（同上 H）。
+
+### 域 9：MV/视频（6 条）
+1. MV 搜索与播放（kmr/audio/mv KG-TID:38，README、api_verified）。
+2. MV 详情与清晰度 hash（video/detail，api_verified）。
+3. MV 直连 Range 流播放：改直连 + 11 域名 cleartext 放行，修「只能播开头」（PLAN_v2_lts §2.2）。
+4. MV 收藏/取消 + 收藏列表闭环（v37_feature_gap S-4）。
+5. MV 下载（四类型下载之一，PLAN_v2_final S2.1 I）。
+6. MV 视频持久缓存（README「智能缓存」）。
+
+### 域 10：歌手/专辑/榜单/推荐（5 条）
+1. 歌手页：头像/粉丝数/歌曲-专辑-简介三 Tab，歌曲分页、播放全部（PLAN_v2_final S2.1 E）。
+2. 专辑页：封面/发行日期/歌曲嵌套解析/播放全部（S2.1 F）。
+3. 榜单页：rank/list+rank/audio，榜单歌曲列表+播放全部（S2.1 G）。
+4. 每日推荐 everyday/recommend（匿名响应不进缓存，PLAN_v2_lts P1-1）。
+5. 听歌日历/历史推荐回看（everyday_history，规划项 P1-2 未实现，v37_feature_gap）。
+
+### 域 11：下载与缓存（7 条）
+1. 四类型下载：音频/封面/歌词/MV（PLAN_v2_final S2.1 I）。
+2. 下载音质取用户默认设置（播放与下载同一事实源，PLAN_v2_lts P1-4）。
+3. 下载任务管理：暂停/继续/重试/删除（PLAN_v2_final S2.1 I）。
+4. 断点续传：CDN 原生支持 HTTP Range，续传键覆盖 hash+quality（v37_feature_gap S-1）。
+5. 存储权限网关：四重检测矩阵 + 五级回退链（L1 根目录→L5 内部私有），设置页显示生效级别与探测历史（PLAN_v52 A）。
+6. 三级缓存（L0 内存 LRU/L1 磁盘 JSON/L2 永久文件）+ 清缓存保护 downloads_tmp + 设置页体积统计与一键清（REFACTOR_PLAN_V5 §4、PLAN_v2_lts P1-6）。
+7. 离线播放：localPath 兼容 file:// 与 content:// 双协议，队列切回不丢（PLAN_v2_lts §2.2、P1-5）。
+
+### 域 12：设置（8 条）
+1. 账号区：登录/退出/切换（PLAN_v2_final S2.1 K）。
+2. 外观：主题切换（同上）。
+3. 语言选择：10 语言任意切换（同上、README）。
+4. 播放：默认音质设置（hires→high+super 协议修复，PLAN_v2_lts P0-2）。
+5. 下载管理入口（S2.1 K）。
+6. 缓存：统计口径修正 + 一键清理（同上）。
+7. 诊断：日志位置/权限状态/最近错误（同上）。
+8. 关于：检查更新（同上）。
+
+### 域 13：国际化（3 条）
+1. 10 种语言：简中/繁中/英/日/韩/西/法/德/葡/俄，ARB 305 词条 × locale（README、PLAN_v2_lts §2.1）。
+2. l10n 完整性静态校验：使用 key vs ARB 定义比对（PLAN_v2_final S0.1）。
+3. Ubuntu Mono 全局字体 + CJK 回退链不变形（PLAN_v52 C）。
+
+### 域 14：主题（3 条）
+1. Material 3 Expressive，深色为默认（README）。
+2. 封面动态取色（同上）。
+3. 纯黑模式（同上）。
+
+### 域 15：体验/工程原则（4 条）
+1. 启动页动态 SVG 逐笔绘制（PLAN_v2_lts 阶段 3 P0）。
+2. 加载必须可见：>500ms 阶段可感知，错误态含「发生了什么+重试」（QUALITY_STANDARD 第 34 条）。
+3. 工程分层：五层+两桥（foundation/domain/policy/net+storage/cache/features/app），core 禁 import features 有 CI 断言（REFACTOR_PLAN_V5 §二/§九）。
+4. 发布纪律：pubspec 版本与 tag 同名校验、Release 资产核对（3 ABI APK+mapping.txt）（REFACTOR_PLAN_V5 §九、PLAN_v2_final S4）。
+
+### 已知问题/阉割项汇总（出处：reviews-v37/v37_feature_gap.md + v37_cripple_report.md）
+
+**音质域**
+1. C-1 蝰蛇音效三档（viper_tape/clear/atmos）VIP 态实测可得但枚举/UI 未暴露（P1）。
+2. C-2 魔法音效六档（magic_piano 等）三态全通、匿名可用，参数已备但无入口（P1）。
+3. C-3 multitrack 多轨 VIP 可得未暴露（P3）。
+4. super 无 DSD 母带时静默降级 flac，无提示（v53_r1_b）。
+
+**播放/队列域**
+5. C-6 倍速播放无用户入口（纯客户端能力未接线，P2）。
+6. C-7 无「队列播完自动接相似歌」（audio_related 未实测，P2）。
+7. 队列只有整表替换，无「下一首播放/追加/移除/跳到指定项」（v53_r1_a）。
+8. 解析链最坏 11+ 次串行请求无总时限（v53_r1_b）。
+
+**搜索域**
+9. C-10 suggest 走 kapi 中转、仅字符串联想，分类型联想丢失（P1 债务）。
+10. C-11 综合搜索 complexsearch 未实现，无聚合「全部」页（P2）。
+11. 歌曲搜索无筛选参数（sorttype/category 未透传，P3）。
+
+**歌单域**
+12. 歌单排序/标签/相似歌单缺（P2-1）。
+13. 歌单重命名缺（C-16）。
+14. 歌单导入/封面改/官方分享缺（feature_gap 表）。
+15. 歌单广场只有 special_recommend 一路且直连恒 200101，保留 kapi 回退债务（feature_gap）。
+
+**用户/收藏域**
+16. C-15 用户详情仅回填 userid，等级/勋章/听歌排行全缺（P2）。
+17. C-17 收藏列表仅 MV 一类，收藏专辑/歌手列表缺（P3）。
+18. 云盘 user_cloud、已购、听歌排行全缺（feature_gap）。
+
+**歌手/专辑/推荐域**
+19. 歌手视频/荣誉/关注缺（P2-3）；相似歌手、歌手粉丝列表上游无端点（C-13 如实记录）。
+20. 数字专辑商店 album_shop 缺（P3）。
+21. 听歌日历/好友在听/风格推荐缺（feature_gap）。
+
+**MV/内容域**
+22. MV 弹幕、相关视频缺（feature_gap）。
+23. 专辑/MV 评论缺（feature_gap）。
+24. 专辑简介/发行字段 UI 未展示（C-14，P3）。
+
+**整域缺失**
+25. 个人 FM/电台 fm_* 全缺（P1-3 规划项，需先实测）。
+26. 听书 longaudio 全缺（v3.8 专项评估）。
+27. 一起听 listen_together 明确不做（架构 L，价值存疑）。
+28. 场景/主题歌单 scene_* 全缺（P2-4）。
+29. 播放/听歌行为上报缺（不上报则个性化退化，P2-2，需三态实测）。
+
+**其他**
+30. 死开关 wifiAutoHighQuality/cellularLowerQuality（「即将推出」徽标处置，D6）。
+31. C-8 音译/罗马音歌词轨未单列（P3）。
+32. C-4 下载确认时无音质改选 UI（P2）。
+33. 滑块验证 slider_solver 死代码待接线或删除（S-3）；v_type=38 提交/回填端点未实测。
+34. 试听分段拼接不做（上游无分段续传接口，D4 决策）；Android 13+ 通知权限运行时请求缺口（v37_perm_playback）。
+
+---
+### 补写说明
+本章 15 域共 94 条功能点 + 34 条已知问题/阉割项；与前文「端点与逻辑功能面」（接口视角）互补，本章为用户可见功能面视角。全部条目可回溯至上述归档文档，未引用任何 lib/ 源码。
