@@ -1,0 +1,6 @@
+# Flutter gen-l10n 配置（功能对齐批3-A · 国际化骨架）
+# arb 资源仅作后续 gen-l10n / CI 键校验来源；运行时取词走
+# lib/surface/l10n/l10n_helper.dart 的硬编码 const Map（不引 flutter_gen/intl 生成链）。
+arb-dir: lib/l10n
+template-arb-file: app_zh.arb
+output-localization-file: app_localizations.dart

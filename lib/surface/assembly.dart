@@ -18,7 +18,8 @@ import '../bridges/bridge_core.dart'
         KeyValueSettings,
         LruCache,
         SearchResult,
-        LyricResult;
+        LyricResult,
+        CommentPage;
 import '../bridges/bridge_logic.dart'
     show
         Log,
@@ -29,11 +30,16 @@ import '../bridges/bridge_logic.dart'
         LyricsLogic,
         PlaybackService,
         HistoryRecorder,
-        DownloadManager;
+        DownloadManager,
+        CommentLogic,
+        MvLogic,
+        CollectLogic;
 import 'modules.dart' as mod;
 import 'pages/library_page.dart' show LibraryPageModule, LibraryDeps;
 import 'pages/lyrics_page.dart' show LyricsPageModule, LyricsDeps;
 import 'pages/settings_page.dart' show SettingsPageModule, SettingsDeps;
+import 'pages/comment_page.dart' show buildCommentModule;
+import 'pages/mv_page.dart' show buildMvModule;
 import 'player_controller.dart'
     show PlayerController, AudioEngine, NullAudioEngine;
 import 'registry.dart' show SurfaceRegistry;
@@ -126,6 +132,21 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         downloadStore: deps.downloadStore,
       ))!;
 
+  // 批1/批2 新增 logic 单例（评论 / MV / 收藏）。
+  final commentCache = _newCache<String, CommentPage>(64, 'comment');
+  final commentLogic = _step('CommentLogic', () => CommentLogic(
+        client: deps.client, cache: commentCache,
+      ))!;
+  final mvCache = _newCache<String, dynamic>(64, 'mv');
+  final mvLogic = _step('MvLogic', () => MvLogic(
+        client: deps.client, cache: mvCache,
+      ))!;
+  final collectLogic = _step('CollectLogic', () => CollectLogic(
+        client: deps.client,
+        settings: deps.settings,
+        isLoggedIn: () => auth.session.userid.isNotEmpty,
+      ))!;
+
   // 步骤 3：PlayerController（批4-B）。
   // engine 参数类型为批4-B AudioEngine 抽象：批5-A 未完成时传 NullAudioEngine，
   // 完成后 app_root/installServices 调用处替换为 JustAudioEngine 即可（可替换点）。
@@ -186,6 +207,27 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         // 这里退化给空实现（settings 页允许空退化），批5-A 接 Isar 同步查询后替换。
         lyricHashes: () => const <String>[],
       ),
+    ));
+    return true;
+  });
+
+  _step('CommentModule', () {
+    modules.add(buildCommentModule(
+      logic: commentLogic,
+      mixSongIdProvider: () =>
+          controller.state.queue.current?.mixSongId ?? 0,
+    ));
+    return true;
+  });
+  _step('MvModule', () {
+    modules.add(buildMvModule(
+      logic: mvLogic,
+      currentMvHash: () => null, // 封面/MV hash 由播放页解析后回填（待接线）
+      isFavorite: (hash) => collectLogic.isCollected(hash),
+      onToggleFavorite: (hash) async {
+        final r = await collectLogic.toggle(hash, 0);
+        return collectLogic.isCollected(hash) && !r.needsLogin;
+      },
     ));
     return true;
   });

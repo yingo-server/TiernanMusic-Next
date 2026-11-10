@@ -27,6 +27,7 @@ class SettingsDeps {
     required this.lyrics,
     required this.clearLyricCache,
     required this.lyricHashes,
+    this.onLocaleChanged,
   });
 
   final AuthLogic auth;
@@ -39,6 +40,9 @@ class SettingsDeps {
 
   /// 曲库 hash 列表（用于逐曲清缓存；可直接给空实现退化）。
   final List<String> Function() lyricHashes;
+
+  /// 语言切换回调（State 持有选中码；''=跟随系统，zh / zh_Hant / en）。
+  final void Function(String code)? onLocaleChanged;
 }
 
 /// 设置页模块：id='settings'，底部导航入口「设置」。
@@ -75,6 +79,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _loggedIn = false;
   String _userid = '';
+  String _localeCode = '';
 
   @override
   void initState() {
@@ -90,6 +95,15 @@ class _SettingsPageState extends State<SettingsPage> {
       Log.e(_tag, 'refreshLoginState failed', e, st);
       _loggedIn = false;
       _userid = '';
+    }
+  }
+
+  void _pickLocale(String code) {
+    try {
+      setState(() => _localeCode = code);
+      widget.deps.onLocaleChanged?.call(code);
+    } catch (e, st) {
+      Log.e(_tag, 'set locale failed', e, st);
     }
   }
 
@@ -190,6 +204,21 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             );
           }),
+          const Divider(height: 1),
+          // ── 语言（State 持有 + 回调注入；''=跟随系统，禁引入新依赖）──
+          ListTile(
+            leading: const Icon(Icons.language),
+            title: const Text('语言'),
+            trailing: DropdownButton<String>(
+              value: _localeCode, onChanged: (v) => _pickLocale(v ?? ''),
+              items: const [
+                DropdownMenuItem(value: '', child: Text('跟随系统')),
+                DropdownMenuItem(value: 'zh', child: Text('简体')),
+                DropdownMenuItem(value: 'zh_Hant', child: Text('繁中')),
+                DropdownMenuItem(value: 'en', child: Text('English')),
+              ],
+            ),
+          ),
           const Divider(height: 1),
           // ── 缓存 ──
           ListTile(

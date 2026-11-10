@@ -36,6 +36,9 @@ export '../logic/catalog/search_logic.dart'
 export '../logic/catalog/playlist_logic.dart'
     show PlaylistLogic, kPlaylistCacheSchemaVer;
 export '../logic/catalog/rank_logic.dart' show RankLogic, kRankCacheSchemaVer;
+// ── 每日推荐 logic 门面（功能对齐批3-C · GAP #20）──
+export '../logic/catalog/recommend_logic.dart'
+    show RecommendLogic, kRecommendCacheSchemaVer;
 // MV logic 门面（批1-B · GAP #16）
 export '../logic/catalog/mv_logic.dart' show MvLogic, kMvCacheSchemaVer;
 // MV 模型经 bridge_core 转出（mv_endpoints.dart 在 core/net/endpoints）

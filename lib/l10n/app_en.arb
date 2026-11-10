@@ -1,0 +1,23 @@
+{
+  "@@locale": "en",
+  "appTitle": "TiernanMusic",
+  "search": "Search",
+  "playlist": "Playlists",
+  "library": "Library",
+  "settings": "Settings",
+  "player": "Player",
+  "play": "Play",
+  "pause": "Pause",
+  "next": "Next",
+  "prev": "Previous",
+  "login": "Sign in",
+  "logout": "Sign out",
+  "theme": "Theme",
+  "cache": "Cache",
+  "about": "About",
+  "comments": "Comments",
+  "mv": "MV",
+  "lyrics": "Lyrics",
+  "download": "Download",
+  "favorite": "Favorite"
+}
