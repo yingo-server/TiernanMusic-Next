@@ -12,8 +12,10 @@
 //   或按 ARCHITECTURE.md 自实现 ≤500 行播放壳），保持包体不引新依赖。
 import 'package:flutter/material.dart';
 
+import '../../bridges/bridge_core.dart'
+    show MvBrief, MvQuality, MvPlayResult;
 import '../../bridges/bridge_logic.dart'
-    show MvLogic, MvBrief, MvQuality, MvPlayResult, Log, LogicFacade;
+    show MvLogic, Log, LogicFacade;
 import '../registry.dart';
 import '../widgets/tn_app_bar.dart' show TnAppBar, TnPagePadding;
 import '../widgets/common_widgets.dart' show CoverImage;

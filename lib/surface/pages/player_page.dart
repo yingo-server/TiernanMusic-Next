@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bridges/bridge_logic.dart'
-    show SearchLogic, PlayerState, PlayerStatus, PlayMode, Log, LogicFacade;
+    show SearchLogic, PlayerState, PlayerStatus, PlayMode, Log, LogicFacade,
+        CollectLogic;
 import '../player_controller.dart'
     show PlayerController, playerProvider;
 import '../../bridges/bridge_core.dart'
@@ -180,7 +181,7 @@ class _PlayerPageBody extends ConsumerWidget {
   /// 弹出音质选择（15 档，批3-C QualitySheet）。
   void _showQualitySheet(BuildContext context) {
     try {
-      final cb = widget.onQualitySelected;
+      final cb = onQualitySelected;
       if (cb == null) return;
       showModalBottomSheet<void>(
         context: context,
@@ -239,25 +240,25 @@ class _PlayerPageBody extends ConsumerWidget {
         appBar: TnAppBar(
           title: '正在播放',
           actions: <Widget>[
-            if (widget.onOpenComments != null)
+            if (onOpenComments != null)
               IconButton(
                 icon: const Icon(Icons.comment_outlined),
                 tooltip: '评论',
-                onPressed: widget.onOpenComments,
+                onPressed: onOpenComments,
               ),
-            if (widget.onQualitySelected != null)
+            if (onQualitySelected != null)
               IconButton(
                 icon: const Icon(Icons.high_quality_outlined),
                 tooltip: '音质',
                 onPressed: () => _showQualitySheet(context),
               ),
-            if (widget.collect != null)
+            if (collect != null)
               FavoriteButton(
-                isCollected: widget.collect!.isCollected(song?.hash ?? ''),
+                isCollected: collect!.isCollected(song?.hash ?? ''),
                 onToggle: () async {
                   final h = song?.hash ?? '';
                   if (h.isEmpty) return;
-                  final r = await widget.collect!.toggle(h, song?.mixSongId ?? 0);
+                  final r = await collect!.toggle(h, song?.mixSongId ?? 0);
                   if (r.needsLogin && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('请先登录后再收藏')));

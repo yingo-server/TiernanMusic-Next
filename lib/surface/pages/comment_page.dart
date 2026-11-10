@@ -40,6 +40,9 @@ class _CommentPageModule implements SurfaceModule {
   String get route => '/comment';
 
   @override
+  NavEntry? get navEntry => null;
+
+  @override
   bool enabled(LogicFacade facade) => true;
 
   @override

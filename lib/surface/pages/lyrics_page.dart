@@ -7,7 +7,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../bridges/bridge_logic.dart' show LyricsLogic, parseLyrics, applyOffset, findLineIndex, LyricParseResult, LrcLine, KrcWord, Log, TranslationLogic, DisplayLine;
+import '../../bridges/bridge_logic.dart' show LyricsLogic, parseLyrics, applyOffset, findLineIndex, LyricParseResult, LrcLine, KrcWord, Log, TranslationLogic, DisplayLine, LogicFacade;
 import '../../bridges/bridge_core.dart' show SongBrief, LyricsDisplayMode;
 import '../registry.dart';
 import '../theme/tn_theme.dart';

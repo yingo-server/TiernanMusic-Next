@@ -101,7 +101,7 @@ class MvLogic {
       final quals = await qualities(h);
       if (quals.isEmpty) {
         Log.w(_tag, 'playUrl no qualities hash=$h');
-        return const mv.MvPlayResult(title: title);
+        return mv.MvPlayResult(title: title);
       }
       // size 降序 = 画质从高到低；requestedId 未命中或未指定 → 取最高档。
       final sorted = quals.toList()
@@ -124,10 +124,10 @@ class MvLogic {
         Log.w(_tag, 'playUrl quality=${q.id} empty urls, degrade next');
       }
       Log.w(_tag, 'playUrl all qualities unavailable hash=$h');
-      return const mv.MvPlayResult(title: title);
+      return mv.MvPlayResult(title: title);
     } catch (e, st) {
       Log.e(_tag, 'playUrl failed hash=$mvHash', e, st);
-      return const mv.MvPlayResult(title: title);
+      return mv.MvPlayResult(title: title);
     }
   }
 

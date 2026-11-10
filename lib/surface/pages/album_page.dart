@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart'
     show SongBrief, AlbumDetail, PlaylistBrief;
-import '../../bridges/bridge_logic.dart' show AlbumLogic, Log;
+import '../../bridges/bridge_logic.dart' show AlbumLogic, Log, LogicFacade;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
