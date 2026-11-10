@@ -36,9 +36,17 @@ export '../logic/catalog/search_logic.dart'
 export '../logic/catalog/playlist_logic.dart'
     show PlaylistLogic, kPlaylistCacheSchemaVer;
 export '../logic/catalog/rank_logic.dart' show RankLogic, kRankCacheSchemaVer;
+// MV logic 门面（批1-B · GAP #16）
+export '../logic/catalog/mv_logic.dart' show MvLogic, kMvCacheSchemaVer;
+// MV 模型经 bridge_core 转出（mv_endpoints.dart 在 core/net/endpoints）
 // catalog 模型类型经 bridge_core 转出（models.dart 在 core/net/endpoints）
 export '../core/net/endpoints/models.dart'
     show SongBrief, SearchResult, SearchSuggestItem, PlaylistBrief, PlaylistDetail, TrackPage, RankBrief, LyricResult;
+// ── comment logic 门面（评论域，批1-A） ──
+export '../logic/catalog/comment_logic.dart'
+    show CommentLogic, kCommentCacheSchemaVer;
+export '../core/net/endpoints/comment_endpoints.dart'
+    show CommentItem, CommentPage, getMusicComments, getCommentFloor, getCommentCount;
 
 // ── auth logic 门面（账号登录域，批3-B） ──
 export '../logic/auth/auth_logic.dart'

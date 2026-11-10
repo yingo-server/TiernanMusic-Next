@@ -11,6 +11,7 @@ import '../../bridges/bridge_logic.dart';
 import '../registry.dart';
 import '../theme/tn_theme.dart';
 import '../widgets/tn_app_bar.dart' show TnAppBar;
+import '../widgets/qr_view.dart';
 
 const String _tag = 'surface.settings';
 const String kAppVersion = '26.11.10.1';
@@ -294,10 +295,11 @@ class _QrLoginDialogState extends State<_QrLoginDialog> {
             alignment: Alignment.center,
             child: _state.qrcode.isEmpty
                 ? const Text('生成中…')
-                : const Icon(Icons.qr_code_2, size: 160, color: Colors.black),
-            // 批4-B QR 渲染器就绪后替换为 QrImageView(data: _state.qrcode)。
+                : QrView(data: _state.qrcode),
+            // QR 真渲染（批1-C）：QrView 纯 Dart 编码 + CustomPainter，无第三方包。
           ),
           const SizedBox(height: 12),
+          const Text('请使用酷狗 App 扫码'),
           Text(_hint),
         ],
       ),

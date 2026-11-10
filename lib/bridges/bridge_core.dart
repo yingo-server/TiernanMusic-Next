@@ -8,6 +8,9 @@ export '../core/database/entities.dart'
     show SongRecord, PlaylistMeta, PlayHistoryEntry;
 export '../core/net/endpoints/models.dart'
     show SongBrief, SearchResult, PlaylistBrief, PlaylistDetail, TrackPage, LyricResult;
+// MV 域模型（批1-B · GAP #16）：ep.mv 端点强类型结果经 core 桥转出。
+export '../core/net/endpoints/mv_endpoints.dart'
+    show MvBrief, MvQuality, MvPlayResult;
 export '../core/memory/lru_cache.dart' show LruCache, CacheStats, LruEvictCallback;
 export '../core/memory/cache_keys.dart'
     show buildKey, prefixOf, namespacePrefixOf, parseKey, CacheKeyInfo, sortedQuery;
@@ -16,3 +19,6 @@ export '../core/net/kugou_client.dart' show KugouClient, KugouSession;
 export '../core/storage/settings_store.dart' show KeyValueSettings;
 export '../core/net/database_bridge.dart' show openDatabase;
 export '../core/net/endpoints/models.dart' show SearchResult, LyricResult;
+// ── 评论域端点模型（批1-A：logic/surface 经此引用 CommentItem/CommentPage） ──
+export '../core/net/endpoints/comment_endpoints.dart'
+    show CommentItem, CommentPage;

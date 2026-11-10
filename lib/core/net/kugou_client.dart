@@ -16,6 +16,9 @@ class Endpoint {
     this.base = 'https://gateway.kugou.com',
     this.clearDefaultParams = false,
     this.encryptKey = false,
+    // kmr 系端点需要 kg-tid 头（出处 PARITY_NOTES.md：kmr/audio/mv KG-TID:38、
+    // kmr/v2/albums KG-TID:255——本端点注册表需支持透传）。
+    this.tid,
   });
   final String id;
   final String path;
@@ -25,6 +28,7 @@ class Endpoint {
   final String base;
   final bool clearDefaultParams;
   final bool encryptKey;
+  final String? tid;
 }
 
 enum SignType { android, web, register, none }
@@ -112,6 +116,30 @@ class EndpointRegistry {
   static const personalFm = Endpoint(
       id: 'personal_fm', path: '/v1/fm/play', method: 'POST');
 
+  // ── MV/视频（批1-B · GAP #16）──
+  // mvDetail：POST /kmr/audio/mv，x-router: openapi.kugou.com，kg-tid: 38，
+  // body {album_audio_id}（出处：PARITY_NOTES.md §1「kmr/audio/mv openapi + KG-TID:38,
+  // body album_audio_id」；KUGOU_API.md §3.9）。
+  static const mvDetail = Endpoint(
+      id: 'mv_detail', path: '/kmr/audio/mv', method: 'POST',
+      router: 'openapi.kugou.com', tid: '38');
+  // videoDetail：POST /v1/video/detail，x-router: kmr.service.kugou.com，
+  // 返回清晰度 hash 档位列表（出处：PARITY_NOTES.md「video/detail 清晰度 hash 齐全」；
+  // KUGOU_API.md §3.9 video_detail）。备用形态 /kmr/v2/videos 同路由（mv_endpoints
+  // 内部 404/空档时容错回退，不在此重复注册 —— 见 videoDetailKmrV2）。
+  static const videoDetail = Endpoint(
+      id: 'video_detail', path: '/v1/video/detail', method: 'POST',
+      router: 'kmr.service.kugou.com');
+  static const videoDetailKmrV2 = Endpoint(
+      id: 'video_detail_kmr_v2', path: '/kmr/v2/videos', method: 'POST',
+      router: 'kmr.service.kugou.com');
+  // videoUrl：GET /v2/interface/index，x-router: trackermv.kugou.com，
+  // 参数 hash/quality，返回 downurl 多 CDN（出处：PARITY_NOTES.md
+  // 「video/url downurl」；KUGOU_API.md §3.9 video_url）。
+  static const videoUrl = Endpoint(
+      id: 'video_url', path: '/v2/interface/index',
+      router: 'trackermv.kugou.com');
+
   // ── 账号 ──
   static const loginQrKey = Endpoint(
       id: 'login_qr_key',
@@ -126,6 +154,18 @@ class EndpointRegistry {
       base: 'http://login.user.kugou.com', path: '/v5/login_by_token',
       method: 'POST');
 
+  // ── 评论（docs/PARITY_NOTES.md：comment/music 参数走 query 非 body；count 走 web 签名） ──
+  static const commentMusic = Endpoint(
+      id: 'comment_music', path: '/mcomment/v1/cmtlist',
+      router: 'mcomment.kugou.com');
+  static const commentFloor = Endpoint(
+      id: 'comment_floor', path: '/mcomment/v1/hot_replylist',
+      router: 'mcomment.kugou.com');
+  // comment/count：web 签名（PARITY_NOTES.md §2：WEB_SALT，x-router sum.comment.service）
+  static const commentCount = Endpoint(
+      id: 'comment_count', path: '/v1/comment/count',
+      signType: SignType.web, router: 'sum.comment.service.kugou.com');
+
   /// 按 id 查端点。
   static Endpoint byId(String id) => _all.firstWhere((e) => e.id == id,
       orElse: () => throw StateError('unknown endpoint: $id'));
@@ -136,7 +176,9 @@ class EndpointRegistry {
     playlistRecommend, playlistDetail, playlistTracks, playlistAddSongs,
     rankList, rankInfo, lyricSearch, lyricDownload,
     artistList, albumDetail, recommendSongs, personalFm,
+    mvDetail, videoDetail, videoDetailKmrV2, videoUrl,
     loginQrKey, loginQrCheck, loginToken,
+    commentMusic, commentFloor, commentCount,
   ];
 }
 
@@ -198,6 +240,7 @@ class KugouClient {
     final uri = Uri.parse('${ep.base}${ep.path}?$q');
     final req = await _h.openUrl(ep.method, uri);
     if (ep.router != null) req.headers.set('x-router', ep.router!);
+    if (ep.tid != null) req.headers.set('kg-tid', ep.tid!);
     final ct = DateTime.now().millisecondsSinceEpoch;
     req.headers
       ..set('dfid', session.dfid)
