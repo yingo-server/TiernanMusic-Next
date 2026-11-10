@@ -94,7 +94,7 @@ export '../logic/catalog/artist_logic.dart'
 // ── 20028 验证收敛 + 短信登录（功能对齐批5-A · GAP #31）：
 //    VerificationLogic 是唯一可信验证门面（收敛旧项目三套平行实现，
 //    禁止 auth_repository / playback_service 再各写一套）；
-//    SmsLoginResult 经 bridge_core 转出，此处补 SmsLogin 供 surface 用。 ──
+//    SmsLoginResult 经 bridge_core 转出（本桥同步转出，surface 双入口合法）。──
 export '../logic/auth/verification_logic.dart'
     show VerificationLogic, VerificationState;
 export '../core/net/endpoints/auth_endpoints.dart' show SmsLoginResult;
