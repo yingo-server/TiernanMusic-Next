@@ -1,8 +1,8 @@
 {
   "@@locale": "zh",
-  "appTitle": "TiernanMusic",
+  "appTitle": "TiernanMusicNext",
   "@appTitle": {
-    "description": "应用名称：品牌名 TiernanMusic，各语言均不翻译，仅用于标题栏展示"
+    "description": "应用名称：品牌名 TiernanMusicNext，各语言均不翻译，仅用于标题栏展示"
   },
   "search": "搜索",
   "playlist": "歌单",

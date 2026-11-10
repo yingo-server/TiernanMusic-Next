@@ -229,7 +229,7 @@ class PlaybackService {
 
   Future<List<int>> _fetchOnce(String url) async {
     final http = HttpClient()
-      ..userAgent = 'TiernanMusic-Next'
+      ..userAgent = 'TiernanMusicNext'
       ..connectionTimeout = const Duration(seconds: 15);
     try {
       final req = await http.getUrl(Uri.parse(url));

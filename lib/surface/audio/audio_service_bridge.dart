@@ -143,7 +143,7 @@ Future<MinimalAudioHandler> initAudioService(AudioPlayer player) async {
       builder: () => MinimalAudioHandler(player: player),
       config: const AudioServiceConfig(
         androidNotificationChannelId: 'com.tiernan.music.next.audio',
-        androidNotificationChannelName: 'TiernanMusic 播放',
+        androidNotificationChannelName: 'TiernanMusicNext 播放',
         androidNotificationOngoing: true,
       ),
     );

@@ -41,7 +41,13 @@ import '../bridges/bridge_logic.dart'
         RecommendLogic,
         ArtistLogic,
         AlbumLogic,
-        FmLogic;
+        FmLogic,
+        // 批5/批6 新增：验证（20028）/ 分类搜索 / 歌单写。
+        VerificationLogic,
+        SearchTypedLogic,
+        PlaylistWriteLogic,
+        // TODO(批6-A 落盘后接入)：UserLogic（user_logic.dart 尚不存在于 bridge_logic show 列表）。
+        SongBrief;
 import 'modules.dart' as mod;
 import 'pages/library_page.dart' show LibraryPageModule, LibraryDeps;
 import 'pages/lyrics_page.dart' show LyricsPageModule, LyricsDeps;
@@ -50,6 +56,7 @@ import 'pages/comment_page.dart' show buildCommentModule;
 import 'pages/mv_page.dart' show buildMvModule;
 import 'pages/artist_page.dart' show buildArtistModule;
 import 'pages/album_page.dart' show buildAlbumModule;
+import 'pages/home_page.dart' show buildHomeModule;
 import 'player_controller.dart'
     show PlayerController, AudioEngine, NullAudioEngine;
 import 'registry.dart' show SurfaceRegistry;
@@ -73,6 +80,9 @@ class AssemblyResult {
     required this.recommend,
     required this.artist,
     required this.fm,
+    required this.searchTyped,
+    required this.playlistWrite,
+    required this.verification,
     required this.controller,
     required this.providerOverrides,
     required this.moduleIds,
@@ -91,6 +101,15 @@ class AssemblyResult {
   final RecommendLogic recommend;
   final ArtistLogic artist;
   final FmLogic fm;
+
+  /// 批5/批6 新增 logic 单例。
+  /// 批5：分类搜索（六类）。
+  final SearchTypedLogic searchTyped;
+  /// 批6：歌单写（写后失效镜像缓存）。
+  final PlaylistWriteLogic playlistWrite;
+  /// 批6：20028 验证门面。
+  final VerificationLogic verification;
+  // TODO(批6-A 落盘后接入)：final UserLogic user;（user_logic.dart 尚不存在，勿提前声明）
 
   /// 批4-B 播放控制器（engine 可替换，批5-A 传 JustAudioEngine）。
   final PlayerController controller;
@@ -322,6 +341,21 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     return true;
   });
 
+  // 批6-C 首页模块（工厂签名已核对：recommend/rank/search/playlist + onPlay(SongBrief) + onOpenSearch）。
+  _step('HomeModule', () {
+    modules.add(buildHomeModule(
+      recommend: recommendLogic,
+      rank: rank,
+      search: search,
+      playlist: playlist,
+      onPlay: controller.playSong,
+      onOpenSearch: () {
+        Log.d(_tag, 'open search requested (route /search)');
+      },
+    ));
+    return true;
+  });
+
   // 步骤 5：SurfaceRegistry.install 全部模块（重复 id 热替换语义）。
   final ids = <String>[];
   for (final m in modules) {
@@ -345,6 +379,9 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     recommend: recommendLogic,
     artist: artistLogic,
     fm: fmLogic,
+    searchTyped: searchTypedLogic,
+    playlistWrite: playlistWriteLogic,
+    verification: verificationLogic,
     controller: controller,
     providerOverrides: SurfaceRegistry.providerOverrides,
     moduleIds: ids,
@@ -359,6 +396,30 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
 }
 
 // ───────────────────────── 内部工具 ─────────────────────────
+
+LruCache<K, V> _newCache<K, V>(int capacity, String domain) {
+  try {
+    final c = LruCache<K, V>(capacity: capacity);
+    Log.d(_tag, 'cache[$domain] capacity=$capacity');
+    return c;
+  } catch (e, st) {
+    Log.e(_tag, 'cache[$domain] create failed', e, st);
+    rethrow;
+  }
+}
+
+/// 单步装配包装：每步 try/catch + Log，失败 rethrow（装配失败必须显式暴露）。
+T? _step<T>(String name, T Function() build) {
+  try {
+    final r = build();
+    Log.d(_tag, 'assembled $name');
+    return r;
+  } catch (e, st) {
+    Log.e(_tag, 'assemble $name failed', e, st);
+    rethrow;
+  }
+}
+�─
 
 LruCache<K, V> _newCache<K, V>(int capacity, String domain) {
   try {

@@ -280,7 +280,7 @@ class DownloadManager {
   Future<void> _downloadUrl(
       DownloadTask task, _RunningJob job, String url, String extName) async {
     final http = HttpClient()
-      ..userAgent = 'TiernanMusic-Next'
+      ..userAgent = 'TiernanMusicNext'
       ..connectionTimeout = const Duration(seconds: 15);
     IOSink? sink;
     File? part;

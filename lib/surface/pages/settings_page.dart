@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bridges/bridge_logic.dart';
 import '../../bridges/bridge_core.dart' show AccountRecord;
+import '../l10n/l10n_helper.dart' show TnStrings;
 import '../registry.dart';
 import '../theme/tn_theme.dart';
 import '../widgets/tn_app_bar.dart' show TnAppBar;
@@ -250,8 +251,22 @@ class _SettingsPageState extends State<SettingsPage> {
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('关于'),
-            subtitle: Text('TiernanMusic-Next v$kAppVersion'),
+            subtitle: Text('TiernanMusicNext v$kAppVersion'),
           ),
+          // 批6-B：多语言状态行（3/10 语可用，7 语待人工翻译）。
+          Builder(builder: (ctx) {
+            final s = TnStrings.of(ctx);
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                '多语言：${TnStrings.supportedCodes.length}/'
+                '${TnStrings.plannedCodes.length} 语可用'
+                '（${TnStrings.plannedCodes.length - TnStrings.supportedCodes.length}'
+                ' 语待人工翻译）',
+                style: t.aux,
+              ),
+            );
+          }),
         ],
       ),
     );

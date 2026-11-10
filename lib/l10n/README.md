@@ -31,7 +31,7 @@ login, logout, theme, cache, about, comments, mv, lyrics, download, favorite`
 
 - 模板含 `@appTitle` 描述元数据（`"@appTitle".description`）；后续新增键须同步补齐 `@` 描述；
 - 三语键集合严格一致；新增 / 改名键时三语（未来 10 语）同步修改，并由后续 CI 键校验兜底（本批不改 CI）；
-- `appTitle` 是品牌名，10 语均保留 `TiernanMusic`，不翻译。
+- `appTitle` 是品牌名，10 语均保留 `TiernanMusicNext`，不翻译。
 
 ## 生成链与运行时取词
 
@@ -47,3 +47,19 @@ login, logout, theme, cache, about, comments, mv, lyrics, download, favorite`
 
 `lib/l10n/` 是资源目录（非层代码）；`lib/surface/l10n/l10n_helper.dart` 属 L6 surface，
 仅经 `bridge_logic` 暴露的 `Log` 留痕（`surface.l10n`），不反向依赖、不跨层直连。
+
+## 7 语状态与人工翻译接入流程（批6-B 收尾记录）
+
+- **当前 3 语可用**：`zh` / `zh_Hant` / `en`（helper `_kCatalog` 与三份 arb 一一对应）；
+  `TnStrings.supportedCodes` 固定为这 3 语。
+- **7 语待人工翻译**：`ja` / `ko` / `es` / `fr` / `de` / `pt` / `ru`。
+  在译文交付前**禁止创建**对应 arb 文件，禁止机翻 / 键名回填 / 空串 / 复制中英充数；
+  helper 的 `plannedCodes` 固定为 10 语全清单，设置页据此展示「3/10 语可用（7 语待人工翻译）」。
+- **人工翻译接入步骤**（每个语种一批，逐条审校后落地）：
+  1. 复制模板 `cp lib/l10n/app_zh.arb lib/l10n/app_<code>.arb`；
+  2. 逐键人工翻译 20 键（`appTitle` 品牌名保留 `TiernanMusicNext` 不翻译），
+     同步补齐 `@` 描述元数据，译法须贴合应用内语境（按钮 / 导航 / 播放控件）；
+  3. 在 `lib/surface/l10n/l10n_helper.dart` 的 `_kCatalog` 增加对应语言 Map（20 键同集），
+     并把语言码加入 `supportedCodes`；
+  4. CI gen-l10n 键校验兜底：10 语键集合必须与模板 `app_zh.arb` 严格一致，缺键 / 多键即失败
+     （本批不改 CI，由后续 CI 批次接线）。

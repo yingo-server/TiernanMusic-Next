@@ -209,7 +209,7 @@ class _AppRootState extends State<AppRoot> {
         final mode = ref.watch(themeModeProvider);
         // flutter_miuix 1.3.0 无 MiuixApp 宿主——MaterialApp + MiuixTheme 包裹。
         return MaterialApp(
-          title: 'TiernanMusic',
+          title: 'TiernanMusicNext',
           theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
           darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
           themeMode: switch (mode) { 1 => ThemeMode.light, 2 => ThemeMode.dark, _ => ThemeMode.system },
@@ -371,7 +371,7 @@ class _FallbackApp extends StatelessWidget {
     try {
       return MiuixScaffold(
         containerColor: const Color(0xFFF6F5FA),
-        content: (_) => const Center(child: Text('TiernanMusic 启动异常')),
+        content: (_) => const Center(child: Text('TiernanMusicNext 启动异常')),
       );
     } catch (e) {
       debugPrint('surface.app_root: fallback build failed: $e');

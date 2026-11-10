@@ -116,6 +116,21 @@ jobs:
           grep -q 'namespace' "$ISAR_GRADLE" || { echo "::error::namespace injection failed"; exit 1; }
           # isar_flutter_libs 声明 compileSdk 30，但新 androidx 依赖要求 >=34；统一提到 35。
           sed -i -E 's#compileSdkVersion[[:space:]]+[0-9]+#compileSdkVersion 35#g; s#compileSdk[[:space:]]*=[[:space:]]*[0-9]+#compileSdk = 35#g; s#compileSdk[[:space:]]+[0-9]+#compileSdk 35#g' "$ISAR_GRADLE"
+          # 应用名 TiernanMusicNext（用户指定），图标取用归档项目资源。
+          sed -i 's#android:label="[^"]*"#android:label="TiernanMusicNext"#' "$MANIFEST"
+          grep -q 'android:label="TiernanMusicNext"' "$MANIFEST" || {
+            echo "::error::app label injection failed"; exit 1; }
+          RES=android/app/src/main/res
+          for d in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+            if [ -f "assets/android_icons/$d/ic_launcher.png" ]; then
+              cp "assets/android_icons/$d/ic_launcher.png" "$RES/$d/ic_launcher.png"
+            fi
+          done
+          if [ -f assets/android_icons/mipmap-anydpi-v26/ic_launcher.xml ]; then
+            cp assets/android_icons/mipmap-anydpi-v26/ic_launcher.xml \
+               "$RES/mipmap-anydpi-v26/ic_launcher.xml"
+          fi
+          echo "app label + archive icons applied"
       - name: generate integrity manifest
         env:
           NEXT_MANIFEST_SALT: ${{ secrets.NEXT_MANIFEST_SALT }}

@@ -12,7 +12,7 @@ const String _tag = 'surface.l10n';
 /// 运行时字典：语言码 -> (键 -> 文案)。与 arb 三语 20 键严格同集。
 const Map<String, Map<String, String>> _kCatalog = {
   'zh': {
-    'appTitle': 'TiernanMusic', 'search': '搜索',
+    'appTitle': 'TiernanMusicNext', 'search': '搜索',
     'playlist': '歌单', 'library': '曲库',
     'settings': '设置', 'player': '播放器',
     'play': '播放', 'pause': '暂停',
@@ -24,7 +24,7 @@ const Map<String, Map<String, String>> _kCatalog = {
     'download': '下载', 'favorite': '收藏',
   },
   'en': {
-    'appTitle': 'TiernanMusic', 'search': 'Search',
+    'appTitle': 'TiernanMusicNext', 'search': 'Search',
     'playlist': 'Playlists', 'library': 'Library',
     'settings': 'Settings', 'player': 'Player',
     'play': 'Play', 'pause': 'Pause',
@@ -36,7 +36,7 @@ const Map<String, Map<String, String>> _kCatalog = {
     'download': 'Download', 'favorite': 'Favorite',
   },
   'zh_Hant': {
-    'appTitle': 'TiernanMusic', 'search': '搜尋',
+    'appTitle': 'TiernanMusicNext', 'search': '搜尋',
     'playlist': '歌單', 'library': '曲庫',
     'settings': '設定', 'player': '播放器',
     'play': '播放', 'pause': '暫停',
@@ -59,6 +59,12 @@ class TnStrings {
 
   /// 已实装语言；其余 7 语见 lib/l10n/README.md（禁止机器臆造译文）。
   static const List<String> supportedCodes = <String>['zh', 'zh_Hant', 'en'];
+
+  /// 目标 10 语全清单（批6-B）：ja/ko/es/fr/de/pt/ru 待人工翻译后
+  /// 逐语迁入 supportedCodes；设置页据此显示「3/10 语可用」。
+  static const List<String> plannedCodes = <String>[
+    'zh', 'zh_Hant', 'en', 'ja', 'ko', 'es', 'fr', 'de', 'pt', 'ru',
+  ];
 
   /// 依 Locale 选语言；缺失 Localizations / 异常时回退 zh。
   static TnStrings of(BuildContext context) {

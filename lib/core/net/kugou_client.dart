@@ -269,6 +269,27 @@ class EndpointRegistry {
   static const cancelCollect = Endpoint(
       id: 'cancel_collect', path: '/v2/cancel_collect', method: 'POST');
 
+  // ── 用户域/上报（批6-A · 只加声明，不动 KugouClient.request）──
+  // ⚠️ 以下五端点全部「需三态实测，未实测不猜参数」：路径/参数/响应形态
+  //    均未留样（docs/PARITY_NOTES.md §4），实测后只改本声明，不动 request。
+  // userDetail：POST /v3/get_my_info（用户详情：昵称/头像/VIP/等级）。
+  static const userDetail = Endpoint(
+      id: 'user_detail', path: '/v3/get_my_info', method: 'POST'); // 需三态实测，未实测不猜参数
+  // playHistoryUpload：POST /playhistory/v1/upload_songs（听歌上报批量）。
+  static const playHistoryUpload = Endpoint(
+      id: 'play_history_upload', path: '/playhistory/v1/upload_songs',
+      method: 'POST'); // 需三态实测，未实测不猜参数
+  // songClimax：GET /v1/song_climax（高潮片段 URL/时间）。
+  static const songClimax = Endpoint(
+      id: 'song_climax', path: '/v1/song_climax'); // 需三态实测，未实测不猜参数
+  // userCloud：POST /v1/user_cloud（用户云盘歌曲列表）。
+  static const userCloud = Endpoint(
+      id: 'user_cloud', path: '/v1/user_cloud', method: 'POST'); // 需三态实测，未实测不猜参数
+  // listenReport：POST /v1/user_listen_report（单曲试听上报）。
+  static const listenReport = Endpoint(
+      id: 'user_listen_report', path: '/v1/user_listen_report',
+      method: 'POST'); // 需三态实测，未实测不猜参数
+
   /// 按 id 查端点。
   static Endpoint byId(String id) => _all.firstWhere((e) => e.id == id,
       orElse: () => throw StateError('unknown endpoint: $id'));
