@@ -265,7 +265,11 @@ class SongBrief {
           : '';
       return SongBrief(
         hash: safeStr(m['hash'], m['FileHash'] ?? '').toLowerCase(),
-        name: safeStr(m['name'], m['FileName'] ?? m['songname'] ?? ''),
+        // 批N3-C 实测（A4-2' audio_group/author）：item 顶层键为 audio_name，
+        // 无 name/songname —— 加 audio_name 兜底（放 songname 之后，
+        // 不影响既有 pubsongs/rank 口径）。
+        name: safeStr(m['name'],
+            m['FileName'] ?? m['songname'] ?? m['audio_name'] ?? ''),
         singer: safeStr(m['singername'],
             safeStr(m['author_name'], singerFallback)),
         mixSongId: safeInt(m['mixsongid'], safeInt(m['MixSongID'])),
@@ -281,7 +285,12 @@ class SongBrief {
         albumId: safeStr(m['album_id'], safeStr(m['AlbumID'])),
         albumName: safeStr(m['album_name'],
             safeStr(m['AlbumName'], albumNameFallback)),
-        isVip: safeBool(m['musicpack_advance']),
+        // 批N3-C 实测：audio_group/author 的 musicpack_advance 在 trans_param
+        // 内（顶层无 musicpack_advance）——补 trans_param 兜底。
+        isVip: safeBool(m['musicpack_advance'],
+            safeBool(m['trans_param'] is Map
+                ? (m['trans_param'] as Map)['musicpack_advance']
+                : null)),
       );
     } catch (e, st) {
       Log.e(_tag, 'SongBrief.fromTrackInfo failed', e, st);

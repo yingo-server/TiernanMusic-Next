@@ -275,6 +275,42 @@
 
 ---
 
+## 批N3-C · 歌手域接线收口（2026-11-12，探针产物 n3c_artist_raw.json）
+
+### A4-2' · /kmr/v1/audio_group/author（歌手热门歌曲，POST，openapi，kg-tid 220）
+- ⚠️ 旧口径 `/kmr/v1/author/audios`（N2-B 探针 502）确认**不存在**；
+  真实路径 `/kmr/v1/audio_group/author`（kg-tid 220，body
+  `{author_id,page,pagesize}`，defaultParams+body 合并签名）实测 **status=1**。
+- 响应顶层：`{status, errcode, errmsg, error_code, extra, total}`，
+  `data` 为**平铺数组**（非 songs[] 包裹）。
+- item 键（103 个，发如雪实测留样）：`audio_name`、`author_name`、
+  `album_name`、`album_id`(958909)、`album_audio_id`(32029513)、
+  `audio_id`(339589)、`hash`/`hash_128`/`hash_320`/`hash_flac`/`hash_high`/
+  `hash_super`、`filesize(_128/320/flac/high/super)`、
+  `timelength`(**毫秒** 299284)、`timelength_128/…`、`bitrate(_128…)`、
+  `extname(_super)`、`playcount`(0)、`publish_date`("2005-11-01")、
+  `privilege(_128/320/flac/high/super)`、`pay_type(_*)`、`price(_*)`、
+  `status(_*)`、`fail_process(_*)`、`old_hide(_*)`、`old_cpy(_*)`、
+  `rp_id/rp_publish/rp_type(_*)`、`pkg_price(_*)`、`topic_remark/topic_url(_*)`、
+  `video_hash`/`video_id`(2761)/`video_file_head`/`video_filesize`/
+  `video_timelength`/`video_track`、`trans_param`{cpy_grade,classmap,language,
+  cpy_attr0,musicpack_advance,display,flags,ogg_*_hash/filesize,union_cover,
+  qualitymap,is_original,…}、`has_obbligato`、`is_original`、`identity`、
+  `level`、`mixsong_type`、`cid`、`version`、`remarks`、`audio_file_head`、
+  `cd_url`、`tmp_privilege`。
+- ⚠️ **无 singerinfo[]/albuminfo{}/mixsongid/singername 键**（与 pubsongs
+  nofilt 口径不同族）→ 映射仍用 `SongBrief.fromTrackInfo`：
+  singer=author_name 兜底、albumName=album_name 兜底、durationSec=
+  timelength(ms) 兜底链已覆盖；mixSongId 如实 0（songid 键不映射，不猜）。
+- 代码：EndpointRegistry.artistAudios 路径/tid 已改（audio_group/author,
+  tid 220）；kArtistAudiosPath 同步；getArtistAudios 注释按实测键集更新；
+  field_truth_test.dart 追加 11 条锚点（N3-C artist audios field truth）。
+
+### A4-3' · 歌手专辑端点复测（不猜维持）
+- `/v1/author/albums`（tid 36）与 `/kmr/v1/author/albums`（tid 36，
+  author_id=3520 匿名）批N3-C 复测**仍 502**——端点不可达，声明维持任务
+  口径原样，数据源走已实证 albumDetail（/kmr/v2/albums）由调用方降级。
+
 # 批N2-C · A3 三端点收口实测（2026-11-12，探针 n2c_probe.py / n2c_playurl_final.json）
 
 ## A3-1 · play_url v5（/v5/url，x-router trackercdn.kugou.com）
@@ -459,3 +495,107 @@
 | kugou_client.dart lyricSearch/lyricDownload Endpoint | SignType.none→android；clearDefaultParams 移除（需 dfid/mid/uuid/clienttime 默认参参与签名）；新增实测注释（空 body 风险） |
 | misc_endpoints.dart lyricSearch | candidates id 用 safeStr；注释按 A3-3 实测键集更新 |
 | misc_endpoints.dart lyricDownload | 增加 status==200 判定语义注释；_source/charset 如实不映射 |
+
+## A6 · 用户域歌单写（批N3-B · 2026-11-12 三态实测，探针 `.test_creds/n3b_probe.py`）
+
+> 样例落盘：`n3b_vip.json` / `n3b_nonvip.json` / `n3b_anon.json` /
+> `n3b_addlist_item.json` / `n3b_addsong_item.json` / `n3b_delsongs_item.json` / `n3b_tags_item.json`。
+> 测试账号：VIP uid 1666835066 / 非VIP uid 2461028533（cj_vip.txt / cj_nonvip.txt）。
+> **签名关键发现**：`srcappid` 参与签名 → cloudlist 系端点（本节全部端点）恒
+> `status=0 error_code=20006`；不带 srcappid 则 status=1。已落地
+> `Endpoint.omitSrcappid` 开关（kugou_client.dart），cloudlist 系五端点全部置 true。
+
+### A6-1 · 用户歌单列表（POST /v7/get_all_list，x-router cloudlist.service.kugou.com）
+- query：`plat=1` + 默认参数（mid/dfid/uuid/appid/clientver/clienttime，**不含 srcappid**）
+  + userid/token（query 与 body 双带，登录态从 Cookie 亦带 t1）。
+- body：`{userid(int), token, total_ver:979, type:2, page, pagesize}`。
+- 三态：VIP status=1（14→17 个歌单随写操作增长）；非VIP status=1（3 个）；
+  匿名 **status=0 error_code=20010**（需登录）。
+- 成功 `data.info[]` item 键（**40 个，全键留样**）：`listid`(int)、
+  `global_collection_id`("collection_3_1666835066_1_0")、`name`、`pic`、`intro`、
+  `count`(int 曲目数)、`m_count`/`per_count`/`per_num`、`pub_new`/`pub_time`/`pub_type`、
+  `type`/`source`/`sort`、`status`、`is_def`/`is_del`/`is_drop`/`is_edit`/`is_mine`/
+  `is_per`/`is_pri`/`is_publish`/`is_featured`/`is_custom_pic`、`incr_sync`、`list_ver`、
+  `list_create_userid`/`list_create_listid`/`list_create_gid`/`list_create_username`、
+  `create_user_pic`、`create_time`/`update_time`、`tags`（**空串**，非数组）、
+  `musiclib_tags`（数组）、`trans_param`、`sound_quality`、`radio_id`、`kq_talent`。
+- ⚠️ 字段名口径：`listid`（非 specialid/id）、`pic`（非 imgurl）、`count`（非 song_count）。
+
+### A6-2 · 建歌单（POST /cloudlist.service/v5/add_list，URL 前缀式无 x-router）
+- query：`last_time`(秒) / `last_area=gztx` / `userid` / `token` + 默认参数（无 srcappid）。
+- body：`{userid, token, total_ver:0, name, type:0, source:0, is_pri:0,
+  list_create_userid:0, list_create_listid:0, list_create_gid:0, from_shupinmv:0}`。
+- 三态：VIP/非VIP status=1；匿名 error_code=20010。
+- 成功 `data` 键（8 个）：`info` / `last_area` / `last_time` / `list_count` /
+  `need_to_upfile` / `pre_total_ver` / `total_ver` / `userid`。
+- **`data.info`**（新歌单全量对象）：`listid`(int 新歌单ID) / `list_create_listid` /
+  `global_collection_id` / `list_create_gid` / `name` / `status:1` / `code:1` /
+  `source:1` / `is_pri` / `is_edit:1` / `count:0` / `list_ver:0` / `type:0` /
+  `pub_type`/`pub_new`/`per_num`/`is_per`/`is_featured`/`is_copy` / `pic:""` /
+  `intro:""` / `tags:""` / `create_time`/`update_time` / `list_create_userid` /
+  `list_create_username`。
+- ⚠️ **listid 路径 = `data.info.listid`，`data.listid`/`data.id` 不存在**（旧封装假设证伪并已修正）。
+
+### A6-3 · 歌单加歌（POST /cloudlist.service/v6/add_song，URL 前缀式无 x-router）
+- query：`last_time` / `last_area=gztx` / `userid` / `token` + 默认参数（无 srcappid）。
+- body：`{userid, token, listid(int), list_ver:0, type:0, slow_upload:1,
+  scene:"false;null", data:[{number, name("歌手 - 曲名.mp3"), hash(小写), size,
+  sort:0, timelen(秒), bitrate, album_id, mixsongid}]}`。
+  （实测用 /v3/search/song `data.lists[]` 的 FileHash/FileSize/Duration/Bitrate/
+  AlbumID/MixSongID/FileName 映射；hash 大写需转小写。）
+- 三态：VIP/非VIP status=1（逐曲回执）；匿名 20010（未测到本端点，body 缺登录态）。
+- 成功 `data` 键：`cursor`("202611|131071")、`status:1`、`pre_update_time`/`update_time`/
+  `last_time`、`listid`、`is_copy`/`is_pri`/`is_drop`/`is_edit`/`is_featured`/`pub_new`/
+  `pub_type`、`create_time`、`pre_list_ver`、`del_fileids:null`、**`info[]`（逐曲回执）**。
+- `data.info[]` item 键：`fileid`(歌单内序号 1 起)、`number`、`hash`(大写回显)、
+  `name`、`audio_id`、`cover`、`singerinfo[{name,id,type,publish,avatar}]`、
+  `tagmap{genre0}`、`language`、`task`、`fsort`、`sort`、`csong`、`bpm_type`、`ipmap{attr0,bits}`。
+
+### A6-4 · 歌单删歌（POST /v4/delete_songs，x-router cloudlist.service.kugou.com）
+- body：`{listid(int), userid, data:[{fileid}], type:0, token, list_ver:0}`。
+  **fileid = A6-3 回执的 fileid / audio_id 口径（album_audio_id），非 hash。**
+- 三态：VIP/非VIP status=1，`data.list_ver` 递增、`data.count` 为删除数；
+  匿名未测（写端点依赖登录态）。
+- 成功 `data` 键：`pre_list_ver`/`list_ver`、`count`、`cursor`、`listid`、`userid`、
+  `last_area`、`last_time`、`status:1`、`is_pri`/`is_copy`/`is_drop`/`is_featured`/
+  `pub_type`/`pub_new`、`create_time`/`update_time`、`type`。
+- ⚠️ 旧封装 body 用 `resource:[{hash,number}]`（/v2/add_songs_by_hash 口径）——
+  实测正确形态是 `data:[{fileid}]`；已修正 Endpoint 路径 + 注释，调用方接线随批N3 收口。
+
+### A6-5 · 歌单分类 tags（POST /pubsongs/v1/get_tags_by_type，gateway 无 x-router）
+- body：`{tag_type:"collection", tag_id:0, source:3}`；三态均 status=1（不校验登录）。
+- `data[]`（**数组**）item：`tag_id`("5" 字符串)、`tag_name`("场景")、`parent_id`("0")、
+  `sort`("1")、**`son[]`（子标签数组，{tag_id, tag_name, parent_id, sort}）**。
+- ⚠️ 旧封装容错路径 `data.tags[]`/别名 tagname——实测是 `data[]` 直排 +
+  `tag_name`；`getPlaylistTags` 已按 `data[]`+`tag_name`+`son[]` 修正。
+
+### A6-6 · 删歌单（POST /v2/delete_list，x-router cloudlist.service.kugou.com）
+- 真实契约：query `p = rsaEncrypt2({aes key, uid, token})` 大写 + `key=signParamsKey`
+  + AES 加密 body（明文 `{listid, total_ver:0, type:1}`）。
+- **明文兜底实测（VIP + 非VIP 双账号均复现）：status=0 error_code=20010
+  "need param p"** → 加密契约无 rsaEncrypt2/playlistAesDecrypt 实现，诚实失败不猜。
+- Dart 侧维持明文兜底 + Log.w 留痕；`playlistDelete` Registry 已改真实路径 +
+  x-router + omitSrcappid（后续接加密组件时只需补 p/key 生成）。
+
+### 批N3-B 代码修正清单（本批落地）
+| 位置 | 修正 |
+|---|---|
+| kugou_client.dart Endpoint | 新增 `omitSrcappid` 字段（srcappid 入签 → cloudlist 系 20006） |
+| EndpointRegistry.playlistCreate | /v2/add_playlist → /cloudlist.service/v5/add_list（omitSrcappid） |
+| EndpointRegistry.playlistDelete | /v2/del_playlist → /v2/delete_list + router cloudlist.service + omitSrcappid |
+| EndpointRegistry.playlistDelSongs | /v2/del_songs_by_hash → /v4/delete_songs + router + omitSrcappid |
+| EndpointRegistry.playlistAddSongs | /v2/add_songs_by_hash → /cloudlist.service/v6/add_song（omitSrcappid） |
+| EndpointRegistry.userPlaylists | 补 omitSrcappid |
+| playlist_write_endpoints.dart createPlaylist | listid 路径 data.listid → **data.info.listid** |
+| playlist_write_endpoints.dart 新增 addSongsToPlaylist | A6-3 实测契约封装（data:[{…mixsongid}]，回执 data.info[]） |
+| playlist_write_endpoints.dart removeSongsFromPlaylist | 注释修正：body data:[{fileid}]（fileid=album_audio_id 非 hash） |
+| playlist_write_endpoints.dart deletePlaylist | 实测结论落注释：明文兜底 → 20010，不猜加密 |
+| playlist_write_endpoints.dart getPlaylistTags | data.tags[] → data[]（tag_name + son[] 子标签） |
+| test/n3b_field_truth_test.dart · tool/field_truth_test.dart | 新增 A6 回归锚点 13 例（listid 路径/add_song 回执/delete_songs/20010 失败形态/user_playlist 41 键子集） |
+
+### 批N3-B 未竟（如实标注，不猜）
+- delete_list 加密契约（p=rsaEncrypt2 + AES body）：仓库无对应密钥组件，明文兜底
+  实测 20010 失败——接入官方 App 抓包样本或补 rsaEncrypt2 实现后才能打通。
+- 匿名态对写端点（add_list/add_song/delete_songs）未逐个跑：body 依赖
+  userid/token，匿名请求缺登录态本就是 20010/20006 族，实证价值有限。
+- `pl_cache.json` 收藏他人歌单（add_list type≠0）形态未测：本批仅测 type=0 自建。

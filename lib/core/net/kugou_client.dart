@@ -19,6 +19,8 @@ class Endpoint {
     // kmr 系端点需要 kg-tid 头（出处 PARITY_NOTES.md：kmr/audio/mv KG-TID:38、
     // kmr/v2/albums KG-TID:255——本端点注册表需支持透传）。
     this.tid,
+    // 批N3-B 实测：srcappid 入签 → cloudlist 系端点 20006，默认不注入。
+    this.omitSrcappid = false,
   });
   final String id;
   final String path;
@@ -29,6 +31,10 @@ class Endpoint {
   final bool clearDefaultParams;
   final bool encryptKey;
   final String? tid;
+  /// 批N3-B 实测（2026-11-12）：srcappid 参与签名时 cloudlist 系端点
+  /// （add_list/delete_list/delete_songs/get_all_list）返回 error_code 20006。
+  /// 置 true 则默认参数不注入 srcappid。
+  final bool omitSrcappid;
 }
 
 enum SignType { android, web, register, none }
@@ -83,20 +89,33 @@ class EndpointRegistry {
   static const playlistTracks = Endpoint(
       id: 'playlist_tracks',
       path: '/pubsongs/v2/get_other_list_file_nofilt');
-  static const playlistAddSongs = Endpoint(
-      id: 'playlist_add_songs', path: '/v2/add_songs_by_hash', method: 'POST');
-  // ── 歌单写操作（功能对齐批5-B · GAP：歌单导入/建删缺）──
-  // 建歌单：POST /v2/add_playlist（docs/KUGOU_API.md §3.3「建/删歌单：
-  // playlist_add.js / playlist_del.js」，module 名留档、具体路径待三态实测）。
+  static const playlistAddSongsLegacy = Endpoint(
+      id: 'playlist_add_songs_legacy',
+      path: '/v2/add_songs_by_hash', method: 'POST');
+  // ── 歌单写操作（批N3-B 三态实测 2026-11-12，docs/API_FIELDS_TRUTH.md A6）──
+  // 建歌单：POST /cloudlist.service/v5/add_list（URL 前缀式，无 x-router）。
+  // 成功 data.info.listid（⚠️ 非 data.listid）。srcappid 不得参与签名。
   static const playlistCreate = Endpoint(
-      id: 'playlist_create', path: '/v2/add_playlist', method: 'POST');
-  // 删歌单：POST /v2/del_playlist（同上，待三态实测）。
+      id: 'playlist_create', path: '/cloudlist.service/v5/add_list',
+      method: 'POST', omitSrcappid: true);
+  // 删歌单：POST /v2/delete_list + x-router cloudlist.service.kugou.com。
+  // 加密契约（p=rsaEncrypt2 + AES body）未留样，明文兜底实测 error_code 20010
+  // 「need param p」——诚实失败，不猜加密。
   static const playlistDelete = Endpoint(
-      id: 'playlist_delete', path: '/v2/del_playlist', method: 'POST');
-  // 歌单删歌：POST /v2/del_songs_by_hash（与 add_songs_by_hash 对称，待三态实测）。
+      id: 'playlist_delete', path: '/v2/delete_list', method: 'POST',
+      router: 'cloudlist.service.kugou.com', omitSrcappid: true);
+  // 歌单删歌：POST /v4/delete_songs + x-router cloudlist.service.kugou.com。
+  // body data:[{fileid}]（fileid=audio_id/album_audio_id，非 hash）。
   static const playlistDelSongs = Endpoint(
-      id: 'playlist_del_songs', path: '/v2/del_songs_by_hash', method: 'POST');
-  // 歌单分类 tags：POST /pubsongs/v1/get_tags_by_type（docs §3.3）。
+      id: 'playlist_del_songs', path: '/v4/delete_songs', method: 'POST',
+      router: 'cloudlist.service.kugou.com', omitSrcappid: true);
+  // 歌单加歌（批N3-B 实测）：POST /cloudlist.service/v6/add_song（URL 前缀式）。
+  // query last_time/last_area=gztx/userid/token；body data:[{number,name,hash
+  // (小写),size,sort,timelen,bitrate,album_id,mixsongid}]。成功 data.info[]
+  // 逐曲回执（fileid/hash/name/cover/audio_id）。
+  static const playlistAddSongs = Endpoint(
+      id: 'playlist_add_songs', path: '/cloudlist.service/v6/add_song',
+      method: 'POST', omitSrcappid: true);  // 歌单分类 tags：POST /pubsongs/v1/get_tags_by_type（docs §3.3）。
   // 走 gateway（无 x-router；pubsongs 子域直连 404，见可用性矩阵）。
   static const playlistTags = Endpoint(
       id: 'playlist_tags',
@@ -106,7 +125,7 @@ class EndpointRegistry {
   // ⚠️ 全部写端点路径/参数/响应形态均「待三态实测」，实测后只改本声明，不动 request。
   static const userPlaylists = Endpoint(
       id: 'user_playlists', path: '/v7/get_all_list', method: 'POST',
-      router: 'cloudlist.service.kugou.com');
+      router: 'cloudlist.service.kugou.com', omitSrcappid: true);
 
   // ── 排行榜 ──
   static const rankList = Endpoint(
@@ -144,21 +163,20 @@ class EndpointRegistry {
   static const artistDetail = Endpoint(
       id: 'artist_detail', path: '/kmr/v3/author', method: 'POST',
       router: 'openapi.kugou.com', tid: '36');
-  // 歌手热门歌曲：POST /kmr/v1/author/audios（任务口径；docs 仅留
-  // module/artist_audios.js 名称，未留路径样，见 KUGOU_API.md §3.6）。
+  // 歌手热门歌曲（批N3-C 实测修正 2026-11-12）：POST /kmr/v1/audio_group/author，
+  // x-router openapi.kugou.com，kg-tid 220，body {author_id,page,pagesize}
+  // ——旧口径 /kmr/v1/author/audios 实测 502（见 API_FIELDS_TRUTH.md §A4-5）。
   // ⚠️ 签名须 defaultParams + body 合并：clearDefaultParams=true 会返回 20006
   //    （docs/PARITY_NOTES.md §1 / FEATURE_PARITY.md「特殊签名要求」）。
   //    故保持默认参数注入（clearDefaultParams=false），端点封装把业务参数放
   //    POST body —— KugouClient.request 对 POST 将 jsonEncode(body) 拼进
   //    android 签名串，即 defaultParams+params+body 同时参与签名。
-  //    kg-tid 未留样暂不设；x-router 按 §3.6 与 albumDetail 同域类比。
   static const artistAudios = Endpoint(
-      id: 'artist_audios', path: '/kmr/v1/author/audios', method: 'POST',
-      router: 'openapi.kugou.com');
-  // 歌手专辑：GET /v1/author/albums（任务口径）。
-  // ⚠️ 口径差异留痕：PARITY_NOTES.md §1 / FEATURE_PARITY.md 记
-  //    「kmr/v1/author/albums」；本声明按任务口径，三态实测后只改这里。
-  //    x-router 同 §3.6 kmr 系 openapi 类比；kg-tid 未留样不设置。
+      id: 'artist_audios', path: '/kmr/v1/audio_group/author',
+      method: 'POST', router: 'openapi.kugou.com', tid: '220');
+  // 歌手专辑：/v1/author/albums 与 /kmr/v1/author/albums（tid 36）批N3-C 复测
+  //（2026-11-12，author_id=3520）仍 502 —— 端点不可达，声明维持任务口径原样、
+  // 不猜字段；数据源改走已实证的 albumDetail（/kmr/v2/albums）路径由调用方降级。
   static const artistAlbums = Endpoint(
       id: 'artist_albums', path: '/v1/author/albums',
       router: 'openapi.kugou.com');
@@ -363,11 +381,13 @@ class KugouClient {
       p..putIfAbsent('dfid', () => session.dfid)
         ..putIfAbsent('uuid', () => '-')
         ..putIfAbsent('appid', () => KugouSign.appid)
-        ..putIfAbsent('clientver', () => KugouSign.clientver)
-        ..putIfAbsent('srcappid', () => KugouSign.srcappid)
-        // 批N1-A 实测（A1）：mid 缺失/空串 → 全线 20006 err signature；
-        // 服务端只要求非空不校验格式，匿名态 session.mid 为空时给 '0'。
-        ..putIfAbsent('mid', () => session.mid.isEmpty ? '0' : session.mid)
+        ..putIfAbsent('clientver', () => KugouSign.clientver);
+      // 批N3-B 实测（A6）：srcappid 参与签名 → cloudlist 系端点全线
+      // error_code 20006；不带 srcappid 则 status=1。omitSrcappid 端点不注入。
+      if (!ep.omitSrcappid) {
+        p.putIfAbsent('srcappid', () => KugouSign.srcappid);
+      }
+      p..putIfAbsent('mid', () => session.mid.isEmpty ? '0' : session.mid)
         ..putIfAbsent('clienttime',
             () => DateTime.now().millisecondsSinceEpoch ~/ 1000);
       if (session.token.isNotEmpty) p.putIfAbsent('token', () => session.token);

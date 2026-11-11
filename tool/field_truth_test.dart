@@ -17,6 +17,19 @@ import '../lib/core/net/signing.dart' show KugouSign, Md5;
 /// 测试锚点用 MD5（复用 signing.dart 纯 Dart 实现，小写 hex）。
 String _md5(String s) => Md5.hex(s);
 
+/// 批N3-B 锚点辅助：动态 Map 规范化 + 布尔断言（失败计入 _fail）。
+Map<String, dynamic> castMap(Object? v) => v is Map
+    ? v.map((k, val) => MapEntry('$k', val))
+    : <String, dynamic>{};
+void _check(String name, bool ok) {
+  if (ok) {
+    _pass++;
+  } else {
+    _fail++;
+    print('FAIL $name');
+  }
+}
+
 int _pass = 0, _fail = 0;
 void eq(String name, Object? got, Object? want) {
   if ('$got' == '$want') {
@@ -599,6 +612,50 @@ void main() {
           '281949768489412648962353822266799178366'
           '0'));
 
+  // ── A4-5 · /kmr/v1/audio_group/author data[] 平铺（批N3-C 实测留样）──
+  group('N3-C artist audios field truth');
+  const audiosItem = <String, dynamic>{
+    'audio_name': '发如雪',
+    'author_name': '周杰伦',
+    'album_name': '十一月的萧邦',
+    'album_id': 958909,
+    'album_audio_id': 32029513,
+    'audio_id': 339589,
+    'hash': '1F7E7659B9FFF4FB6F71562A61BBC25F',
+    'hash_320': 'CE2F056CA8CDC1027942C6067C532D87',
+    'filesize': 4789176,
+    'timelength': 299284, // 实测毫秒（299s）
+    'bitrate': 128,
+    'playcount': 0,
+    'publish_date': '2005-11-01',
+    'privilege': 10,
+    'video_hash': '7AE3E2309AE6DE1871FC04261EBAC0A6',
+    'video_id': 2761,
+    'trans_param': {'musicpack_advance': 1},
+  };
+  final au = SongBrief.fromTrackInfo(audiosItem);
+  eq('artistAudios.hash(小写化)', au.hash,
+      '1f7e7659b9fff4fb6f71562a61bbc25f');
+  eq('artistAudios.name(audio_name)', au.name, '发如雪');
+  eq('artistAudios.singer(author_name 兜底)', au.singer, '周杰伦');
+  eq('artistAudios.mixSongId(实测无 mixsongid，songid 不映射如实 0)',
+      au.mixSongId, 0);
+  eq('artistAudios.albumAudioId(album_audio_id)', au.albumAudioId, 32029513);
+  eq('artistAudios.durationSec(timelength ms→s)', au.durationSec, 299);
+  eq('artistAudios.albumId(int→str)', au.albumId, '958909');
+  eq('artistAudios.albumName(album_name)', au.albumName, '十一月的萧邦');
+  eq('artistAudios.fileSize', au.fileSize, 4789176);
+  eq('artistAudios.isVip(trans_param.musicpack_advance)', au.isVip, true);
+  // 平铺数组取数锚点：data 即列表（非 songs[] 包裹），dataOf 返回空 Map、
+  // listOf(res['data']) 命中（_pickList 平铺分支语义）。
+  final flatData = {'status': 1, 'data': [audiosItem]};
+  eq('artistAudios data 平铺取数', listOf(flatData['data']).length, 1);
+  eq('artistAudios dataOf 平铺回空 Map(设计语义)',
+      dataOf(flatData).isEmpty, true);
+
+  // ══ 批N3-B · A6 用户域歌单写锚点（原 main 收尾后独立函数）══
+  n3b_playlist_write_truth();
+
   print('');
   print('pass=$_pass fail=$_fail');
   if (_fail > 0) {
@@ -607,4 +664,76 @@ void main() {
   } else {
     print('FIELD-TRUTH-OK');
   }
+}
+
+// ── 批N3-B · A6 用户域歌单写锚点（docs/API_FIELDS_TRUTH.md A6 节）──
+Map<String, dynamic> _cm(Object? v) =>
+    v is Map ? v.map((k, x) => MapEntry('$k', x)) : <String, dynamic>{};
+
+void n3b_playlist_write_truth() {
+  // A6-2 建歌单：listid 路径 = data.info.listid（data.listid 不存在，旧假设证伪）。
+  final addList = {
+    'status': 1, 'error_code': 0,
+    'data': {'info': {'listid': 41, 'list_create_listid': 41,
+      'global_collection_id': 'collection_3_1666835066_41_0',
+      'name': 'N3B实测vip40241', 'status': 1, 'code': 1, 'count': 0,
+      'list_ver': 0, 'type': 0, 'source': 1},
+      'list_count': 1, 'total_ver': 1, 'userid': 1666835066},
+  };
+  final al = dataOf(_cm(addList));
+  final info = _cm(al['info']);
+  eq('A6-2 info.listid==41', safeInt(info['listid']), 41);
+  eq('A6-2 info.list_create_listid==41', safeInt(info['list_create_listid']), 41);
+  eq('A6-2 data.listid 不存在', al['listid'], null);
+
+  // A6-3 加歌回执 data.info[] 逐曲（fileid/audio_id/hash 大写回显）。
+  final addSong = {
+    'status': 1, 'error_code': 0,
+    'data': {'listid': 41, 'cursor': '202611|131071', 'status': 1,
+      'pre_list_ver': 0, 'list_ver': 1, 'del_fileids': null,
+      'info': [{'fileid': 1, 'number': 1,
+        'hash': 'FAB30A43449D8C12528DD9D83A7693E7',
+        'name': '贝瓦儿歌 - 一只哈巴狗.mp3', 'audio_id': 1049676742,
+        'language': '国语', 'csong': 0}]},
+  };
+  final asd = dataOf(_cm(addSong));
+  final items = listOf(asd['info']);
+  eq('A6-3 回执1条', items.length, 1);
+  eq('A6-3 audio_id', safeInt(_cm(items[0])['audio_id']), 1049676742);
+  eq('A6-3 fileid', safeInt(_cm(items[0])['fileid']), 1);
+
+  // A6-4 删歌 data.list_ver 递增 + count。
+  final delSongs = {'status': 1, 'error_code': 0,
+    'data': {'listid': 41, 'pre_list_ver': 1, 'list_ver': 1, 'count': 1,
+      'status': 1, 'cursor': '202611|131071'}};
+  final ds = dataOf(_cm(delSongs));
+  eq('A6-4 count==1', safeInt(ds['count']), 1);
+  eq('A6-4 list_ver==1', safeInt(ds['list_ver']), 1);
+
+  // A6-6 删歌单明文兜底失败形态：error_code 20010（诚实失败锚点，不猜加密）。
+  final delList = {'status': 0, 'error_code': 20010, 'data': ''};
+  eq('A6-6 明文兜底 20010', safeInt(delList['error_code']), 20010);
+
+  // A6-1 user_playlist item 41 键锚点子集（无 specialname/imgurl 旧口径）。
+  final upItem = <String, dynamic>{
+    'listid': 1, 'global_collection_id': 'collection_3_1666835066_1_0',
+    'name': '我喜欢', 'pic': 'http://imge.kugou.com/x.jpg', 'count': 25,
+    'type': 0, 'status': 1, 'is_def': 1, 'is_mine': 1, 'is_pri': 0,
+    'is_publish': 1, 'incr_sync': 1, 'list_ver': 7,
+    'list_create_userid': 1666835066, 'list_create_listid': 1,
+    'list_create_username': '云淡风清', 'create_time': 1700000000,
+    'update_time': 1794440000, 'tags': '', 'musiclib_tags': <dynamic>[],
+    'trans_param': <String, dynamic>{}, 'per_num': 0, 'pub_new': 0,
+    'pub_type': 0, 'source': 0, 'sort': 0, 'sound_quality': 0,
+    'radio_id': 0, 'kq_talent': 0, 'm_count': 0, 'per_count': 0,
+    'pub_time': 0, 'is_del': 0, 'is_drop': 0, 'is_edit': 1,
+    'is_per': 0, 'is_featured': 0, 'is_custom_pic': 1, 'intro': '',
+    'create_user_pic': 'http://imge.kugou.com/y.jpg', 'list_create_gid': 0,
+  };
+  eq('A6-1 listid', safeInt(upItem['listid']), 1);
+  eq('A6-1 无 specialname 旧口径', upItem.containsKey('specialname'), false);
+  eq('A6-1 无 imgurl 旧口径（是 pic）', upItem.containsKey('imgurl'), false);
+  eq('A6-1 41键全（实测键数）', upItem.length, 41);
+  eq('A6-1 global_collection_id 前缀',
+      (upItem['global_collection_id'] as String).startsWith('collection_'), true);
 }

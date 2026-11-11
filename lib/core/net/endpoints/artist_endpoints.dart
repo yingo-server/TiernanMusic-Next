@@ -12,7 +12,7 @@ const String _tag = 'ep.artist';
 // 路径常量与 EndpointRegistry 声明一致；L5 缓存键复用，避免两处漂移。
 const String kArtistListPath = '/ocean/v6/singer/list';
 const String kArtistDetailPath = '/kmr/v3/author';
-const String kArtistAudiosPath = '/kmr/v1/author/audios';
+const String kArtistAudiosPath = '/kmr/v1/audio_group/author';
 const String kArtistAlbumsPath = '/v1/author/albums';
 
 /// 设备/会话三参恒显式入场参与 android 签名（mid 客户端只自动进 header）。
@@ -50,8 +50,13 @@ Map<String, dynamic> _detailMap(Map<String, dynamic> res) {
   }
 }
 /// 列表响应按候选键取第一个非空数组（data 内与顶层双查）。
+/// 批N3-C：audios 实测 data 为**平铺数组**（dataOf 只收 Map）——先查
+/// data 键下的数组（res['data'] 直接 listOf），再走常规 data.<key> 双查。
 List<Map<String, dynamic>> _pickList(
     Map<String, dynamic> res, List<String> keys) {  try {
+    // 平铺数组形态：data 本身是 List（非 Map 包裹）。
+    final flat = listOf(res['data']);
+    if (flat.isNotEmpty) return flat;
     final d = dataOf(res);
     for (final k in keys) {
       for (final src in <Object?>[d[k], res[k]]) {
@@ -203,10 +208,22 @@ Future<ArtistDetail> getArtistDetail(KugouClient client, String authorId) async 
     return const ArtistDetail();
   }
 }
-/// 歌手热门歌曲（POST /kmr/v1/author/audios），page 从 1 起。
-/// ⚠️【实测 2026-11-12·批N2-B】本端点三态探针 502（网关风控/端点不可达），
-/// 字段树**未固化**——键集沿用 rank/audio 同族结构假设（songs[]/audio_info/
-/// base），不视为实证。getArtistAudios 的 _pickList 六键容错维持原样。
+/// 歌手热门歌曲（POST /kmr/v1/audio_group/author，kg-tid 220），page 从 1 起。
+/// ⚠️【批N3-C 实测 2026-11-12·n3c_artist_raw.json】旧口径
+/// /kmr/v1/author/audios 502；真实路径 /kmr/v1/audio_group/author（kg-tid 220，
+/// body {author_id,page,pagesize}）实测 status=1。响应 data 为**平铺数组**
+/// （非 songs[] 包裹），item 实测 103 键：audio_name/author_name/album_name/
+/// album_id/album_audio_id/audio_id/hash/hash_128/320/flac/high/super/
+/// filesize(_128…)/timelength(**毫秒**，如 299284)/bitrate(_128…)/playcount/
+/// publish_date/privilege(_128…)/pay_type(_*)/price(_*)/status(_*)/
+/// fail_process(_*)/old_hide(_*)/old_cpy(_*)/rp_*/topic_*/pkg_price(_*)/
+/// extname(_super)/video_hash/video_id/video_filesize/video_timelength/
+/// trans_param{musicpack_advance,language,union_cover,ogg_*,hash_offset,…}/
+/// has_obbligato/is_original/identity/level/mixsong_type/cid/version/remarks。
+/// ⚠️ 无 singerinfo[]/albuminfo{} 键（与 pubsongs nofilt 口径不同族）——
+/// singer=author_name、albumName=album_name、durationSec=timelength ms→s
+///（fromTrackInfo 的 timelength 兜底链已覆盖），hash 小写化、isVip 取
+/// trans_param.musicpack_advance。顶层另有 total（data 平铺于顶层）。
 /// ⚠️【签名语义·沿用 docs】defaultParams+body 合并，clearDefaultParams=true
 /// 会 20006（PARITY_NOTES §1）。落到 KugouClient：
 ///  - 声明恒 clearDefaultParams=false → request 把 dfid/uuid/appid/clientver/
@@ -235,6 +252,9 @@ Future<List<SongBrief>> getArtistAudios(KugouClient client,
     final res = await client.request(EndpointRegistry.artistAudios, params,
         body: body);
     _logErr('getArtistAudios', res);
+    // 批N3-C 实测：data 为平铺数组（非 songs[] 包裹）；_pickList 六键容错
+    // 保留以兼容潜在灰度包裹形态。映射用 fromTrackInfo（timelength ms 兜底、
+    // author_name singer 兜底、album_name albumName 兜底均已实测覆盖）。
     final items = _pickList(res, <String>['songs', 'lists', 'list',
         'info', 'audio_list', 'audios', 'data'])
         .map(SongBrief.fromTrackInfo)
@@ -247,12 +267,15 @@ Future<List<SongBrief>> getArtistAudios(KugouClient client,
   }
 }
 /// 歌手专辑（GET /v1/author/albums），page 从 1 起。
-/// ⚠️【实测 2026-11-12·批N2-B】/v1/author/albums（tid 36/38/无）与
-/// /kmr/v1/author/albums（tid 36/无）三态均 502/403 —— 端点不可达，
-/// 字段树未固化、不猜。_pickList 五键容错维持原样；kmr/v2/albums 已实证
-/// （见 AlbumBrief.fromMap 注释），歌手专辑页数据可经 albumDetail 路径。
+/// ⚠️【批N3-C 复测 2026-11-12·n3c_artist_raw.json】/v1/author/albums 与
+/// /kmr/v1/author/albums（tid 36，author_id=3520 匿名）仍 502 —— 端点
+/// 不可达，字段树未固化、不猜。_pickList 五键容错维持原样；调用方（L5
+/// ArtistLogic.albums / artist_page 专辑 Tab）应以下述实证路径降级：
+/// albumDetail（POST /kmr/v2/albums，tid 255）已实证（见 AlbumBrief.fromMap
+/// 注释），歌手专辑列表可经 artistLogic.detail 的专辑计数 + 专辑域端点组合，
+/// 或继续以本端点为主、空表降级专辑搜索（/v1/search/album 键集已固化）。
 /// ⚠️ docs 口径差异：PARITY_NOTES.md §1 记 kmr/v1/author/albums，
-/// 任务口径取 /v1/author/albums；复测后只改 EndpointRegistry 声明。
+/// 任务口径取 /v1/author/albums；实测后只改 EndpointRegistry 声明。
 Future<List<AlbumBrief>> getArtistAlbums(KugouClient client,
     String authorId, int page, {int pageSize = 30}) async {
   try {
