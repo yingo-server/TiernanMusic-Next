@@ -86,9 +86,10 @@ class CommentLogic {
   }
 
   /// 评论总数：直通不缓存（轻量、需实时）。
-  Future<int> count(int mixSongId) async {
+  /// 批N3-A 实测：端点必须传 FileHash，hash 由页面从当前 SongBrief 注入。
+  Future<int> count(int mixSongId, {String fileHash = ''}) async {
     try {
-      final n = await getCommentCount(_client, mixSongId);
+      final n = await getCommentCount(_client, mixSongId, fileHash: fileHash);
       Log.d(_tag, 'count mix=$mixSongId got=$n');
       return n;
     } catch (e, st) {

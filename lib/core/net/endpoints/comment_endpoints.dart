@@ -37,9 +37,15 @@ class CommentItem {
       return CommentItem(
         id: safeStr(m['comment_id'] ?? m['cid'] ?? m['id'] ?? ''),
         content: safeStr(m['content'] ?? m['text'] ?? ''),
-        nickname: safeStr(m['nickname'] ?? m['uname'] ?? m['username'] ?? ''),
-        avatar: safeStr(m['avatar'] ?? m['uheadurl'] ?? m['headurl'] ?? ''),
-        likeCount: safeInt(m['like'] ?? m['praisecount'] ?? m['like_count']),
+        nickname: safeStr(m['nickname'] ?? m['uname'] ?? m['username'] ??
+            m['user_name'] ?? ''),
+        avatar: safeStr(m['avatar'] ?? m['uheadurl'] ?? m['headurl'] ??
+            m['user_pic'] ?? ''),
+        // 批N3-A 实测（A5-1）：like 是对象 {count,haslike,...}，无顶层标量。
+        likeCount: safeInt(m['like'] is Map
+            ? (m['like']['count'] ?? m['like']['likenum'])
+            : (m['like'] ?? m['praisecount'] ?? m['like_count'])),
+        // addtime 是格式化字符串（非时间戳），timeMs 保留兼容，字符串不猜解析。
         timeMs: safeInt(m['time'] ?? m['createtime'] ?? m['create_time']),
         floor: safeInt(m['floo'] ?? m['floor'] ?? m['floor_num']),
         replyTo: safeStr(m['reply_name'] ?? m['toname'] ?? ''),
@@ -103,10 +109,14 @@ List<Map<String, dynamic>> _commentListOf(Map<String, dynamic> res) {
 List<String> _hotWordsOf(Map<String, dynamic> res) {
   try {
     final data = dataOf(res);
-    final raw = data['hot_words'] ?? data['hotwords'] ??
-        data['hot_chips'] ?? res['hot_words'];
+    // 批N3-A 实测（A5-1）：热词 chips 直接内嵌于 cmtlist 顶层
+    // hot_word_list[]{content,count}；分类在 classify_list[]（不单独调端点）。
+    final raw = res['hot_word_list'] ?? data['hot_word_list'] ??
+        data['hot_words'] ?? data['hotwords'] ?? res['hot_words'];
     if (raw is List) {
-      return raw.map((w) => safeStr(w is Map ? (w['word'] ?? w['name']) : w))
+      return raw.map((w) => safeStr(w is Map
+              ? (w['content'] ?? w['word'] ?? w['name'])
+              : w))
           .where((s) => s.isNotEmpty)
           .toList(growable: false);
     }
@@ -162,7 +172,11 @@ Future<List<CommentItem>> getCommentFloor(
     }
     final res = await client.request(EndpointRegistry.commentFloor,
         <String, Object?>{
-      'commentid': commentId,
+      // 批N3-A 实测（A5-2）：键是 tid（不是 commentid）；childrenid/mixsongid
+      // 歌曲态 = mixsongid（调用方传歌曲 id），此处按最小参数集保持兼容。
+      'tid': commentId,
+      'childrenid': commentId,
+      'mixsongid': commentId,
       'p': page,
       'pagesize': pageSize,
       'code': kCommentCode,
@@ -177,18 +191,25 @@ Future<List<CommentItem>> getCommentFloor(
 }
 
 /// 评论总数（commentCount：GET，web 签名，x-router sum.comment.service）。
-Future<int> getCommentCount(KugouClient client, int mixSongId) async {
+/// 批N3-A 实测（A5-3）：必须传 FileHash 且响应按键取值；
+/// 传 mixsongid/childrenid 恒 0。mixSongId 参数保留兼容旧调用（作为 childrenid）。
+Future<int> getCommentCount(KugouClient client, int mixSongId,
+    {String fileHash = ''}) async {
   try {
-    if (mixSongId <= 0) {
-      Log.w(_tag, 'getCommentCount invalid mixSongId=$mixSongId');
+    if (mixSongId <= 0 && fileHash.isEmpty) {
+      Log.w(_tag, 'getCommentCount invalid args');
       return 0;
     }
     final res = await client.request(EndpointRegistry.commentCount,
-        <String, Object?>{'mixsongid': mixSongId, 'code': kCommentCode});
-    final data = dataOf(res);
-    final n = safeInt(
-        data['count'] ?? data['total'] ?? res['count'] ?? res['total']);
-    Log.d(_tag, 'getCommentCount mix=$mixSongId count=$n');
+        <String, Object?>{
+      'code': kCommentCode,
+      if (fileHash.isNotEmpty) 'hash': fileHash,
+      if (fileHash.isEmpty) 'mixsongid': mixSongId,
+    });
+    final n = fileHash.isNotEmpty
+        ? safeInt(res[fileHash] ?? res[fileHash.toUpperCase()] ?? 0)
+        : safeInt(dataOf(res)['count'] ?? res['count'] ?? 0);
+    Log.d(_tag, 'getCommentCount hash=${fileHash.isNotEmpty} count=$n');
     return n;
   } catch (e, st) {
     Log.e(_tag, 'getCommentCount failed mix=$mixSongId', e, st);

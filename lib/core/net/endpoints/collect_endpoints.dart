@@ -134,32 +134,32 @@ Future<CollectResult> cancelCollectByHash(
 /// favorite_count.js：query mixsongids（逗号分隔）+ 默认参数，android 签名；
 /// 响应 body.data 为 mixsongid→收藏数映射）。失败返回 0 且必 Log 留痕。
 /// 注：函数签名固定无 ids 入参，mixsongids 以空串占位并 Log.w（多参不缺参）。
-Future<int> getFavoriteCount(KugouClient client) async {
+/// 批N3-A 实测（A5-5）：GET /count/v1/audio/mget_collect 匿名可读，
+/// 响应 `data.list[]{mixsongid,count,count_text}`，不是 mixsongid→count 映射。
+Future<int> getFavoriteCount(KugouClient client,
+    {String mixSongIds = ''}) async {
   try {
-    Log.w(_tag, 'getFavoriteCount no mixsongids in signature -> '
-        'placeholder empty string');
+    if (mixSongIds.isEmpty) {
+      Log.w(_tag, 'getFavoriteCount no mixsongids -> empty query');
+    }
     final res = await client.request(
         EndpointRegistry.favoriteCount,
         <String, Object?>{
-          'mixsongids': '',
+          'mixsongids': mixSongIds,
           ..._baseParams(client),
           if (client.session.userid.isNotEmpty) 'userid': client.session.userid,
         });
-    // 数值容错：data 为映射时求和；退化 _countOf 常规键。
     final data = dataOf(res);
     var n = -1;
-    if (data.isNotEmpty && data['count'] == null && data['total'] == null) {
+    final list = data['list'];
+    if (list is List) {
       var sum = 0;
-      var numeric = false;
-      data.forEach((_, v) {
-        final x = safeInt(v, -1);
-        if (x >= 0) {
-          sum += x;
-          numeric = true;
-        }
-      });
-      if (numeric) n = sum;
+      for (final item in list) {
+        if (item is Map) sum += safeInt(item['count']);
+      }
+      n = sum;
     }
+    if (n < 0 && data['count'] != null) n = safeInt(data['count']);
     if (n < 0) n = _countOf(res);
     final ec = safeInt(res['error_code'] ?? res['errcode'] ??
         data['error_code'] ?? data['errcode'], 0);

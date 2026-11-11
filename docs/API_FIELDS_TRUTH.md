@@ -275,7 +275,7 @@
 
 ---
 
-## 批N3-C · 歌手域接线收口（2026-11-12，探针产物 n3c_artist_raw.json）
+# 批N3-C · 歌手域接线收口（2026-11-12，探针产物 .test_creds/n3c_artist_raw.json）
 
 ### A4-2' · /kmr/v1/audio_group/author（歌手热门歌曲，POST，openapi，kg-tid 220）
 - ⚠️ 旧口径 `/kmr/v1/author/audios`（N2-B 探针 502）确认**不存在**；

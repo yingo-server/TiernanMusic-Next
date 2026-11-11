@@ -58,6 +58,10 @@ jobs:
         if: always()
         run: flutter analyze --no-pub 2>&1 | tee /tmp/analyze.log
         continue-on-error: true
+      - name: field truth (pure Dart anchors)
+        if: always()
+        run: dart run tool/field_truth_test.dart 2>&1 | tee /tmp/field_truth.log
+        continue-on-error: true
       - name: test
         id: test
         if: always()
@@ -76,6 +80,8 @@ jobs:
           grep -qE "All tests (passed|passed!)|tests passed" /tmp/test.log || V=fail
           grep -q "VIOLATION" /tmp/layer.log && V=fail
           grep -q "^VIOLATION\|^FAIL" /tmp/smoke.log && V=fail
+          grep -q "FIELD-TRUTH-OK" /tmp/field_truth.log || V=fail
+          grep -q "FIELD-TRUTH-FAIL" /tmp/field_truth.log && V=fail
           echo "verdict=$V" >> $GITHUB_OUTPUT
           test "$V" = ok
 

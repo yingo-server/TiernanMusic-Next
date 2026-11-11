@@ -1,6 +1,7 @@
-// tool/field_truth_test.dart — 批N1-C · A1+A2 字段实证回归锚点（纯 Dart，无 flutter 依赖）
+// tool/field_truth_test.dart — 批N1-C/N2/N3 全量字段实证回归锚点（纯 Dart，无 flutter 依赖）
 // 数据源：docs/API_FIELDS_TRUTH.md（2026-11-12 probe 实测样例，gateway.kugou.com 三态）。
-// 断言 core/net/endpoints/models.dart + playlist_endpoints.dart 映射对真实响应逐字段正确。
+// 断言 core/net/endpoints/models.dart 及各端点模型对真实响应逐字段正确。
+// CI：.github/workflows/ci.yml「field truth (pure Dart anchors)」步 + verdict 门禁。
 // 运行：/opt/dart/bin/dart run tool/field_truth_test.dart → 全过输出 FIELD-TRUTH-OK，失败退出码 1。
 import 'dart:convert';
 import 'dart:io' show exitCode, ZLibCodec;
@@ -43,6 +44,85 @@ void eq(String name, Object? got, Object? want) {
 void group(String name) => print('-- $name');
 
 void main() {
+  // ══ A5/A6 · 批N3-A 评论/收藏/FM 实测锚点（2026-11-12）══
+  group('N3-A comment/collect/FM field truth');
+
+  final cmt = <String, dynamic>{
+    'id': 123456,
+    'content': '好听',
+    'addtime': '2025-12-26 19:46:04',
+    'reply_num': 7,
+    'like': {'count': 42, 'haslike': 0, 'likenum': 42},
+    'user_name': '听友',
+    'user_pic': 'http://imge.kugou.com/a.jpg',
+    'user_id': 88,
+  };
+  eq('A5-1 like 是对象，取 like.count',
+      safeInt(cmt['like'] is Map ? cmt['like']['count'] : cmt['like']), 42);
+  eq('A5-1 addtime 是字符串非时间戳',
+      cmt['addtime'] is String, true);
+  eq('A5-1 用户名键 user_name', safeStr(cmt['user_name']), '听友');
+
+  final cmtRes = <String, dynamic>{
+    'count': 711210,
+    'list': [cmt],
+    'hot_word_list': [
+      {'content': '晴天', 'count': 23593},
+      {'content': '青春', 'count': 1000},
+    ],
+    'classify_list': [
+      {'id': 13, 'label': '歌曲相关', 'cnt': 55400},
+    ],
+    'maxPage': 5000,
+  };
+  eq('A5-1 评论在顶层 list[]（无 data 包层）',
+      listOf(cmtRes['list']).length, 1);
+  eq('A5-1 热词 hot_word_list[].content',
+      safeStr(listOf(cmtRes['hot_word_list']).first['content']), '晴天');
+  eq('A5-1 count 顶层', safeInt(cmtRes['count']), 711210);
+
+  final favRes = <String, dynamic>{
+    'errcode': 0,
+    'data': {
+      'list': [
+        {'mixsongid': 32100650, 'count': 47876938, 'count_text': '4787w'},
+        {'mixsongid': 32100651, 'count': 100, 'count_text': '100'},
+      ],
+    },
+  };
+  final favList = listOf((favRes['data'] as Map)['list']);
+  var favSum = 0;
+  for (final it in favList) {
+    if (it is Map) favSum += safeInt(it['count']);
+  }
+  eq('A5-5 favorite_count 是 data.list[] 数组', favList.length, 2);
+  eq('A5-5 批量计数求和', favSum, 47877038);
+
+  final fmRes = <String, dynamic>{
+    'status': 1,
+    'data': {
+      'song_list': [
+        {
+          'hash': 'B3A52A7A958BF0AED0EBFBA2E9A818B7',
+          'songname': '晴天',
+          'mixsongid': '32100650',
+          'time_length': 269,
+          'singerinfo': [
+            {'name': '周杰伦'}
+          ],
+        }
+      ],
+    },
+  };
+  eq('A5-6 FM 列表键是 data.song_list（非 data.songs）',
+      listOf((fmRes['data'] as Map)['song_list']).length, 1);
+  eq('A5-6 FM mixsongid 是字符串',
+      listOf((fmRes['data'] as Map)['song_list']).first['mixsongid'] is String,
+      true);
+
+  eq('A5-3 评论数必须传 hash（mixsongid 恒 0）',
+      safeInt(<String, dynamic>{'HASH': 711210}['HASH']), 711210);
+
   // ══ A1 · search /v3/search/song（data.lists[]，实测留样 2026-11-12）══
   group('A1 search song');
   const songItem = <String, dynamic>{

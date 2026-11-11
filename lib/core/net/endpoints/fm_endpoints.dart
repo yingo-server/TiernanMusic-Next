@@ -80,12 +80,15 @@ class FmTrack {
   }
 }
 
-/// 容错解析 FM 歌曲列表（data.songs[] / data.list[] 多别名兜底；hash 空项丢弃）。
+/// 容错解析 FM 歌曲列表。
+/// 批N3-A 实测（A5-6）：personal_recommend 列表键是 data.song_list[]；
+/// app_song_list_offset 是 data[].songs[]；rcmd_list 是 data[].rcmdlist[]。
 List<SongBrief> _parseSongs(Map<String, dynamic> res) {
   try {
     final data = dataOf(res);
-    final raw = data['songs'] ?? data['list'] ?? data['info'] ??
-        data['lists'] ?? res['songs'] ?? res['list'] ?? res['data'];
+    final raw = data['song_list'] ?? data['songs'] ?? data['list'] ??
+        data['info'] ?? data['lists'] ?? res['song_list'] ?? res['songs'] ??
+        res['list'] ?? res['data'];
     final items = listOf(raw)
         .map(FmTrack.fromMap)
         .map((t) => t.toSongBrief())
@@ -142,7 +145,8 @@ Future<List<SongBrief>> getFmPlay(
     if (uid.isEmpty) Log.w(_tag, 'getFmPlay empty userid -> placeholder 0');
     final body = <String, Object?>{
       'appid': KugouSign.appid,
-      'clienttime': (int.tryParse(ms) ?? 0) ~/ 1000,
+      // 批N3-A 实测（A5-6）：FM 域 clienttime/key 用毫秒，不能除以 1000。
+      'clienttime': ms,
       'mid': client.session.mid,
       'action': action.isEmpty ? 'play' : action,
       'mode': mode.isEmpty ? 'normal' : mode,
@@ -155,10 +159,11 @@ Future<List<SongBrief>> getFmPlay(
       'remain_songcnt': 0,
       'clientver': KugouSign.clientver,
       'is_overplay': 0,
-      'fakem': 0,
+      // 实测固定串（fakem:0 会导致取批失败）；kguid 应等于 userid。
+      'fakem': 'ca981cfc583a4c37f28d2d49000013c16a0a',
       'key': KugouSign.signParamsKey(ms),
       'userid': uid,
-      'kguid': 0,
+      'kguid': uid,
       'token': client.session.token,
       'vip_type': 0,
       'hash': '',
