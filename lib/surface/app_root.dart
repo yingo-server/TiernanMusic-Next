@@ -25,6 +25,7 @@ import 'player_controller.dart'
 import 'registry.dart';
 import 'widgets/common.dart' show ErrorRetryBox;
 import 'theme/tn_theme.dart';
+import 'theme/tn_shader_warmup.dart' show TnShaderWarmup;
 
 export 'deps.dart' show SurfaceDeps;
 
@@ -177,6 +178,9 @@ class _AppRootState extends State<AppRoot> {
         pauseOnBackground: false,
       )..onBackgroundPause = _pausePlayback;
       _keepAlive!.start();
+      // 批11-B：首帧后空闲窗口离屏预编译常用材质着色器
+      // （会话内幂等 + 7 天窗口重触发，时间戳经 deps.settings 持久化）。
+      TnShaderWarmup.schedule(settings: _pendingDeps?.settings);
     } catch (e, st) {
       Log.e('surface.app_root', 'initState failed', e, st);
     }
@@ -386,3 +390,4 @@ class _FallbackApp extends StatelessWidget {
     }
   }
 }
+

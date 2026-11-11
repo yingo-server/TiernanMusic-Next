@@ -22,6 +22,10 @@
 - 每项延迟 = `index * step`，默认步长 **30ms**。
 - 封顶 **6 项**：index ≥ 6 与 index = 5 同步，长列表尾部不再等待。
 - controller 在 dispose 释放；初始化失败 Log 留痕并直接渲染子内容（不静默吞）。
+- 首帧后常用材质的 raster 端 SkSL 预编译由 `TnShaderWarmup`（批11-B，
+  `tn_shader_warmup.dart`）在 AppRoot initState 调度，与本组件库互补：
+  本组件消除「首次入场动画」编译开销，TnShaderWarmup 消除「渐变/圆角/圆形
+  材质首绘」编译开销，两者共同保证动态第一屏全程无 GPU 编译 jank。
 
 用法：
 ```dart

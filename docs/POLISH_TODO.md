@@ -1,5 +1,6 @@
 # 规范性收尾待办（批10 后）
 
+
 > 主会话独立盘点，2026-11-11。三项规范性的收口状态与剩余项。
 
 ## 已完成
@@ -20,6 +21,11 @@
    → **已完成（批11-A 动态第一屏，commit 872de34）**：home_page 四区块全部接线
    （每日推荐 index=0 起 / 榜单速览 +2 / 热搜词 +3 / 推荐歌单 +4，区块间基准错开）；
    歌词页滚动增强仍未做。
+4. **已完成（批11-B 着色器编译调度）**：`lib/surface/theme/tn_shader_warmup.dart`
+   —— AppRoot initState 首帧后空闲窗口用 PictureRecorder 离屏预编译三类常用材质
+   （品牌紫渐变 / 圆角矩形 / 圆形头像）的 SkSL，消除首次出现该材质时的 raster
+   端编译 jank。幂等（_scheduled/_done 双闸）、失败仅 Log 留痕由运行期自然编译兜底、
+   资源逐项 try 释放。非动效组件，无 AnimationController / 裸动效时长。
 
 ## 纪律
 - 本地只跑 layer_audit + smoke_check（包无关）；静态分析交 CI（包齐全、不过滤）。
