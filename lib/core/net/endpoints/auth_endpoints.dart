@@ -16,12 +16,14 @@ import 'dart:convert';
 import '../kugou_client.dart';
 import '../crypto_extra.dart';
 import '../signing.dart' show KugouSign, Md5;
+import 'models.dart' show safeInt;
 
 const String _tag = 'ep.auth';
 
 /// 探针开关：三态实测通过后置 true 才放行真实网络调用。
 /// 位置：本文件唯一开关，实测后翻转即可，不动 KugouClient.request。
-const bool kAuthEndpointsProbed = false;
+/// 三态实测开关：true 表示按 ENDPOINT_TRUTH.md §2 真实契约外发。
+const bool kAuthEndpointsProbed = true;
 
 /// 短信登录结果（经 bridge_core 转出给 logic/surface）。
 class SmsLoginResult {
@@ -57,24 +59,28 @@ class SmsLoginResult {
 const String kSmsAesKey = '90b8382a1bb4ccdcf063102053fd75b8';
 const String kSmsAesIv = 'f063102053fd75b8';
 
-/// 发送短信验证码。⚠️ 端点未实测（docs 零留样，任务口径 /v1/send_verifycode
-/// 待探针）：不猜参数结构，恒返回 false 并 Log.w 标注 needs probe。
+/// 发送短信验证码（真实契约据 ENDPOINT_TRUTH.md §2 / captcha_sent.js）。
+/// POST login.user.kugou.com/v7/send_mobile_code，body {businessid:5, mobile, plat:3}。
 Future<bool> sendSmsCode(KugouClient client, String mobile) async {
   try {
-    if (mobile.trim().isEmpty) {
+    final m = mobile.trim();
+    if (m.isEmpty) {
       Log.w(_tag, 'sendSmsCode empty mobile');
       return false;
     }
-    if (!kAuthEndpointsProbed) {
-      Log.w(_tag,
-          'sendSmsCode needs probe: send_verifycode 端点 docs 零留样'
-          '（路径/参数/签名均未知），返回语义失败，不发网络请求');
-      return false;
-    }
-    // 探针确认后在此接 EndpointRegistry.sendSmsCode 真实调用；
-    // 当前不实现猜测分支（铁律：不猜参数结构）。
-    Log.w(_tag, 'sendSmsCode probe branch not implemented');
-    return false;
+    final res = await client.request(
+      EndpointRegistry.sendSmsCode,
+      <String, Object?>{},
+      body: <String, Object?>{
+        'businessid': 5,
+        'mobile': m,
+        'plat': 3,
+      },
+    );
+    final ok = safeInt(res['status'], -1) == 1 ||
+        safeInt(res['error_code'], -1) == 0;
+    Log.d(_tag, 'sendSmsCode ok=$ok status=${res['status']}');
+    return ok;
   } catch (e, st) {
     Log.e(_tag, 'sendSmsCode failed', e, st);
     return false;
@@ -93,16 +99,7 @@ Future<SmsLoginResult> smsLogin(
       Log.w(_tag, 'smsLogin empty mobile/code mobileLen=${mobile.length}');
       return const SmsLoginResult(ok: false, error: 'empty mobile or code');
     }
-    if (!kAuthEndpointsProbed) {
-      Log.w(_tag,
-          'smsLogin needs probe: login_by_verifycode 未三态实测，'
-          '返回语义失败（参数结构已按 docs 构造但不外发）');
-      return const SmsLoginResult(
-          ok: false,
-          error: 'endpoint needs probe (login_by_verifycode)',
-          needsProbe: true);
-    }
-    // 以下为实测后分支（当前不可达）：构造 docs §3.8 载荷并外发。
+    // 按 ENDPOINT_TRUTH.md §2 真实契约外发（kAuthEndpointsProbed=true）。
     final ms = DateTime.now().millisecondsSinceEpoch;
     // 按 docs §3.8 构造载荷（构造不外发，探针后才启用网络分支）。
     final payload = <String, Object?>{

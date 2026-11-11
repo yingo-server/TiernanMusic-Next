@@ -7,6 +7,7 @@
 //    KugouClient.request 默认参数恒显式携带并参与签名。
 import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
+import '../crypto_extra.dart' show RsaRaw;
 import 'models.dart';
 
 const String _tag = 'ep.user';
@@ -60,25 +61,41 @@ class UserProfile {
   }
 }
 
-/// 用户详情（POST /v3/get_my_info）→ UserProfile。
-/// ⚠️ 据ENDPOINT_TRUTH.md 路径已修正，参数契约待三态实测，暂不发请求。
+/// 用户详情（POST /v3/get_my_info + x-router usercenter.kugou.com）。
+/// 契约据 ENDPOINT_TRUTH.md §1 / module/user_detail.js：body
+/// {visit_time(秒), usertype:1, p:RSA({token,clienttime})大写, userid}，query plat=1。
 Future<UserProfile> getUserDetail(KugouClient client) async {
   try {
-    Log.w(_tag, 'getUserDetail needs probe (user_detail)'); // needs probe
     if (client.session.token.isEmpty) {
       Log.w(_tag, 'getUserDetail no token, skip');
       return const UserProfile();
     }
-    // 探针确认参数契约前不发请求（未实测不猜参数）。
-    return const UserProfile();
+    final ct = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final pk = RsaRaw.encryptHex(
+        '{"token":"${client.session.token}","clienttime":$ct}').toUpperCase();
+    final res = await client.request(
+      EndpointRegistry.userDetail,
+      <String, Object?>{'plat': 1},
+      body: <String, Object?>{
+        'visit_time': ct,
+        'usertype': 1,
+        'p': pk,
+        'userid': client.session.userid,
+      },
+    );
+    final d = dataOf(res);
+    final p = UserProfile.fromMap(d.isEmpty ? res : d);
+    Log.d(_tag, 'getUserDetail uid=${p.userid} nick=${p.nickname}');
+    return p;
   } catch (e, st) {
     Log.e(_tag, 'getUserDetail failed', e, st);
     return const UserProfile();
   }
 }
 
-/// 听歌历史上报批量（POST /playhistory/v1/upload_songs）。
-/// ⚠️ needs probe：未实测不发请求，恒返回 false（语义空值）。
+/// 听歌历史上报（POST /playhistory/v1/upload_songs，query plat=3）。
+/// 契约据 module/playhistory_upload.js：body {songs:[{mxid,op:1,ot:秒,pc:1}],token,userid}。
+/// 写操作：一次提交、失败不重试（防重复上报）。
 Future<bool> uploadPlayHistory(
     KugouClient client, List<int> mixSongIds) async {
   try {
@@ -86,10 +103,24 @@ Future<bool> uploadPlayHistory(
       Log.w(_tag, 'uploadPlayHistory empty ids, skip');
       return false;
     }
-    Log.w(_tag,
-        'uploadPlayHistory needs probe (play_history_upload) n=${mixSongIds.length}'); // needs probe
-    // 探针确认 body 形态（songs 数组结构/时间戳字段）前不发请求。
-    return false;
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final songs = <Map<String, Object?>>[
+      for (final mxid in mixSongIds)
+        <String, Object?>{'mxid': mxid, 'op': 1, 'ot': now, 'pc': 1}
+    ];
+    final res = await client.request(
+      EndpointRegistry.playHistoryUpload,
+      <String, Object?>{'plat': 3},
+      body: <String, Object?>{
+        'songs': songs,
+        'token': client.session.token,
+        'userid': client.session.userid,
+      },
+    );
+    final ok = safeInt(res['status'], safeInt(res['error_code'], -1)) == 1 ||
+        safeInt(res['error_code']) == 0;
+    Log.d(_tag, 'uploadPlayHistory n=${mixSongIds.length} ok=$ok');
+    return ok;
   } catch (e, st) {
     Log.e(_tag, 'uploadPlayHistory failed', e, st);
     return false;
@@ -185,9 +216,28 @@ Future<bool> reportListen(KugouClient client, String hash) async {
       Log.w(_tag, 'reportListen empty hash, skip');
       return false;
     }
-    Log.w(_tag, 'reportListen needs probe (user_listen_report) hash=$h'); // needs probe
-    // 探针确认 body 参数（hash/mixsongid/时长）前不发请求。
-    return false;
+    // 真实契约（ENDPOINT_TRUTH.md §1）：listenservice /v2/get_list 是获取收听列表，
+    // body 含 RSA p({clienttime,token}) 大写；hash 仅作留痕，不臆造上报字段。
+    final ct = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final pk = RsaRaw.encryptHex(
+        '{"clienttime":$ct,"token":"${client.session.token}"}').toUpperCase();
+    final res = await client.request(
+      EndpointRegistry.listenReport,
+      <String, Object?>{'clienttime': ct, 'plat': 0},
+      body: <String, Object?>{
+        't_userid': client.session.userid,
+        'userid': client.session.userid,
+        'list_type': 0,
+        'area_code': 1,
+        'cover': 2,
+        'p': pk,
+        'hash': h,
+      },
+    );
+    final ok = safeInt(res['status'], -1) == 1 ||
+        safeInt(res['error_code'], -1) == 0;
+    Log.d(_tag, 'reportListen hash=$h ok=$ok');
+    return ok;
   } catch (e, st) {
     Log.e(_tag, 'reportListen failed hash=$hash', e, st);
     return false;

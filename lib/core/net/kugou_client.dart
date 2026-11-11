@@ -290,9 +290,13 @@ class EndpointRegistry {
   // userCloud：POST /v1/user_cloud（用户云盘歌曲列表）。
   static const userCloud = Endpoint(
       id: 'user_cloud', path: '/v1/user_cloud', method: 'POST'); // 需三态实测，未实测不猜参数
-  // listenReport：POST /v1/user_listen_report（单曲试听上报）。
+  // listenReport：真实为「获取收听列表」listenservice.kugou.com/v2/get_list
+  // （ENDPOINT_TRUTH.md §1；上游无独立「单曲上报」端点，上报由 personal_fm 的 action/playtime 承载）。
+  // 真实路径据 ENDPOINT_TRUTH.md
   static const listenReport = Endpoint(
-      id: 'user_listen_report', path: '/v1/user_listen_report',
+      id: 'user_listen_report',
+      base: 'https://listenservice.kugou.com',
+      path: '/v2/get_list',
       method: 'POST'); // 需三态实测，未实测不猜参数
 
   /// 按 id 查端点。
