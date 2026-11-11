@@ -117,7 +117,7 @@ class _BootErrorApp extends StatelessWidget {
       home: MiuixTheme(
         data: tnLightThemeData(),
         child: MiuixScaffold(
-          content: SafeArea(
+          content: (_) => SafeArea(
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
