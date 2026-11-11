@@ -130,6 +130,13 @@ jobs:
             cp assets/android_icons/mipmap-anydpi-v26/ic_launcher.xml \
                "$RES/mipmap-anydpi-v26/ic_launcher.xml" || true
           fi
+          # adaptive icon 依赖的 drawable（归档项目资源，缺一则资源链接失败）
+          for d in ic_launcher_background ic_launcher_foreground; do
+            if [ -f "assets/android_icons/drawable/$d.xml" ]; then
+              mkdir -p "$RES/drawable"
+              cp "assets/android_icons/drawable/$d.xml" "$RES/drawable/$d.xml" || true
+            fi
+          done
           echo "app label + archive icons applied (soft)"
       - name: generate integrity manifest
         env:
