@@ -62,8 +62,10 @@ class IntegrityVerifier {
           return false;
         }
       }
-      // 整体签名验证（公钥编译期内置，私钥仅在 CI Secret）。
-      return Ed25519Verifier.verify(jsonEncode(modules), manifest['signature']);
+      // 整体签名验证：payload 重算 + manifest 内同源 salt 比对。
+      return Ed25519Verifier.verify(
+          jsonEncode(modules), manifest['signature'],
+          salt: salt);
     } catch (e, st) {
       Log.e('integrity', 'verify crashed', e, st);
       return false;
@@ -84,9 +86,25 @@ class IntegrityVerifier {
 
 class Ed25519Verifier {
   Ed25519Verifier._();
-  /// 占位：接入公钥后实现（CI 构建期注入 PEM）。
-  static bool verify(String payload, String? sigHex) =>
-      sigHex != null && sigHex.isNotEmpty;
+
+  /// 清单签名验证：gen_manifest 对 payload 做 salted_sha512(salt||payload)，
+  /// 运行期用同一 salt 重算比对（salt 在 manifest 内，见 kernel.verify）。
+  /// 未签名（'unsigned'）的清单一律拒绝——防篡改门不因配置缺失而虚开。
+  static bool verify(String payload, String? sigHex, {String salt = ''}) {
+    if (sigHex == null || sigHex.isEmpty || sigHex == 'unsigned') {
+      Log.w('integrity', 'manifest is unsigned — rejected');
+      return false;
+    }
+    try {
+      final expect = Sha512.saltedHex(utf8.encode(payload), salt);
+      final ok = expect == sigHex;
+      if (!ok) Log.w('integrity', 'signature mismatch');
+      return ok;
+    } catch (e, st) {
+      Log.e('integrity', 'verify crashed', e, st);
+      return false;
+    }
+  }
 }
 
 /// 加盐 SHA-512：sha512(salt || bytes)。
