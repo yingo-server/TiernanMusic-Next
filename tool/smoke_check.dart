@@ -257,7 +257,8 @@ void _checkForbiddenImports(String rel, String src) {
 
     // 第三方包：L6 白名单 + L1 装配基础包 + L4 isar
     const l1Extra = ['package:flutter/material.dart',
-        'package:flutter/services.dart', 'package:path_provider/path_provider.dart'];
+        'package:flutter/services.dart', 'package:flutter_miuix/miuix.dart',
+        'package:path_provider/path_provider.dart'];
     const l4Extra = ['package:isar/isar.dart'];
     final allowed = (lvl == 6 && _l6Extra.any((p) => imp.startsWith(p))) ||
         (lvl == 1 && l1Extra.any((p) => imp.startsWith(p))) ||

@@ -41,6 +41,7 @@ LAYER_ALLOWED_BRIDGES = {
 }
 # L1 init 是依赖根：允许装配桥 + flutter 基础包（WidgetsFlutterBinding/SystemNavigator/debugPrint）
 L1_EXTRA = ('package:flutter/material.dart', 'package:flutter/services.dart',
+            'package:flutter_miuix/miuix.dart',
             'package:path_provider/path_provider.dart')
 L6_EXTRA = ('package:flutter', 'package:flutter_miuix', 'package:flutter_riverpod',
             'package:miuix', 'package:riverpod', 'package:just_audio',
@@ -99,6 +100,9 @@ def check_bridge_try_catch(rel, src):
         if ln.startswith((' ', '\t', '_', '}', '/', '@')) or ln.strip() == '':
             continue
         if '(' not in ln or ln.strip().startswith(('class ', 'abstract ', 'import ', 'export ', 'typedef ', 'enum ')):
+            continue
+        # 类型/字段声明行（typedef、Function 类型、变量）不是函数
+        if re.match(r'^(?:dynamic\s+)?Function\s*\(', ln) or re.match(r'^[A-Za-z_][A-Za-z0-9_<>,\s\?]*\s+[A-Za-z_][A-Za-z0-9_]*\s*;', ln):
             continue
         m = fn_re.match(ln)
         if not m:

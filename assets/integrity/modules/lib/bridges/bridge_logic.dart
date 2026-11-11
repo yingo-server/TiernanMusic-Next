@@ -1,0 +1,165 @@
+// 五桥 · bridge_logic：L5 logic 暴露给 L6 surface 的能力门面（含 Log）。
+// 铁律：本文件只 export（外加一个纯占位 LogicFacade），不写业务逻辑。
+// 每个被 export 的 logic 模块自身负责 try/catch + Log 留痕。
+library;
+
+import '../kernel/kernel.dart' show Log;
+
+// ── 播放编排器能力（批2-B） ──
+export '../logic/player/playback_service.dart'
+    show PlaybackService, PlaySource, PlaybackError, PlaybackException;
+export '../logic/player/history_recorder.dart' show HistoryRecorder;
+
+// ── 播放队列状态机 / 播放器状态 / reducer（批2-A） ──
+export '../logic/player/queue_state.dart' show PlayMode, QueueState;
+export '../logic/player/player_state.dart' show PlayerState, PlayerStatus;
+export '../logic/player/playback_reducer.dart'
+    show
+        PlaybackAction,
+        StartLoad,
+        Playing,
+        Paused,
+        Progress,
+        Completed,
+        ErrorAction,
+        SeekTo,
+        QueueJump,
+        SetVolume,
+        SetSpeed,
+        Resume,
+        Stop,
+        playbackReducer;
+
+// ── catalog logic 门面（搜索/歌单/榜单，批2-C） ──
+export '../logic/catalog/search_logic.dart'
+    show SearchLogic, kSearchCacheSchemaVer;
+export '../logic/catalog/playlist_logic.dart'
+    show PlaylistLogic, kPlaylistCacheSchemaVer;
+export '../logic/catalog/rank_logic.dart' show RankLogic, kRankCacheSchemaVer;
+// ── 每日推荐 logic 门面（功能对齐批3-C · GAP #20）──
+export '../logic/catalog/recommend_logic.dart'
+    show RecommendLogic, kRecommendCacheSchemaVer;
+// MV logic 门面（批1-B · GAP #16）
+export '../logic/catalog/mv_logic.dart' show MvLogic, kMvCacheSchemaVer;
+// MV 模型经 bridge_core 转出（mv_endpoints.dart 在 core/net/endpoints）
+// catalog 模型类型经 bridge_core 转出（models.dart 在 core/net/endpoints）
+export '../core/net/endpoints/models.dart'
+    show SongBrief, SearchResult, SearchSuggestItem, PlaylistBrief, PlaylistDetail, TrackPage, RankBrief, LyricResult;
+// ── comment logic 门面（评论域，批1-A） ──
+export '../logic/catalog/comment_logic.dart'
+    show CommentLogic, kCommentCacheSchemaVer;
+export '../core/net/endpoints/comment_endpoints.dart'
+    show CommentItem, CommentPage, getMusicComments, getCommentFloor, getCommentCount;
+
+// ── 收藏体系 logic 门面（功能对齐批2-C：登录守卫 + 本地镜像 + 防重锁） ──
+export '../logic/catalog/collect_logic.dart' show CollectLogic;
+
+// ── auth logic 门面（账号登录域，批3-B） ──
+export '../logic/auth/auth_logic.dart'
+    show
+        AuthLogic,
+        QrLoginStatus,
+        QrLoginState,
+        RefreshResult,
+        kSettingToken,
+        kSettingUserid,
+        kSettingMid,
+        kSettingDfid,
+        kSettingKugouApiMid;
+
+// ── download logic 门面（并发队列下载管理，批3-C） ──
+export '../logic/download/download_models.dart'
+    show DownloadTask, DownloadEvent, DownloadStatus;
+export '../logic/download/download_manager.dart' show DownloadManager;
+
+// ── lyrics logic 门面（歌词域，批3-A） ──
+export '../logic/lyrics/lyrics_logic.dart' show LyricsLogic;
+export '../logic/lyrics/lyrics_parser.dart'
+    show LyricParseResult, LrcLine, KrcWord, parseLyrics, applyOffset, findLineIndex;
+
+// ── kernel 门面（L6 surface 需要统一 Log；registry.dart 已依赖此导出） ──
+export '../kernel/kernel.dart' show Log;
+// ── 功能对齐批2 收尾：多账号 / 翻译显示门面 ──
+export '../logic/auth/account_logic.dart' show AccountLogic;
+export '../logic/lyrics/translation_logic.dart'
+    show TranslationLogic, DisplayLine;
+// ── 个人 FM logic 门面（功能对齐批4-C · GAP #21；端点 needs probe） ──
+export '../logic/catalog/fm_logic.dart' show FmLogic, kFmCacheSchemaVer;
+// ── 歌手域 logic 门面（功能对齐批4-A · GAP #22）──
+// ── 专辑 + 相似推荐 logic 门面（功能对齐批4-B，主会话实现）──
+export '../logic/catalog/album_logic.dart'
+    show AlbumLogic, kAlbumCacheSchemaVer;
+export '../logic/catalog/artist_logic.dart'
+    show ArtistLogic, kArtistCacheSchemaVer;
+// ── 20028 验证收敛 + 短信登录（功能对齐批5-A · GAP #31）：
+//    VerificationLogic 是唯一可信验证门面（收敛旧项目三套平行实现，
+//    禁止 auth_repository / playback_service 再各写一套）；
+//    SmsLoginResult 经 bridge_core 转出（本桥同步转出，surface 双入口合法）。──
+export '../logic/auth/verification_logic.dart'
+    show VerificationLogic, VerificationState;
+export '../core/net/endpoints/auth_endpoints.dart' show SmsLoginResult;
+// ── 六类分类搜索 + 综合搜索 v6 logic 门面（功能对齐批5-C）──
+export '../logic/catalog/search_typed_logic.dart'
+    show SearchTypedLogic, kSearchTypedCacheSchemaVer;
+// ── 歌单写操作 logic 门面（功能对齐批5-B）──
+export '../logic/catalog/playlist_write_logic.dart' show PlaylistWriteLogic;
+// ── 用户域 logic 门面（批6-A）──
+export '../logic/catalog/user_logic.dart' show UserLogic, kUserCacheSchemaVer;
+
+/// logic 能力门面：surface 只拿这个，不 import logic 内部模块。
+/// 具体能力类经上方 export 直接可用；此类仅承载跨域摘要与装配状态。
+class LogicFacade {
+  const LogicFacade();
+
+  /// 查询当前播放状态描述（占位：批3 装配后接 PlaybackService）。
+  /// 批10-A：桥门面方法统一 try/catch 捕获 + Log 留痕，失败返回降级值不静默吞。
+  String playbackSummary() {
+    try {
+      return 'idle';
+    } catch (e, st) {
+      Log.e('bridge_logic', 'playbackSummary failed', e, st);
+      return 'error';
+    }
+  }
+}
+
+// ── 通用桥能力包装（批10-A 收口）：铁律 2「桥承担日志系统任务」落地 ──
+// 上层（surface）经桥调用 logic 写操作/能力时，统一在此 try/catch 捕获
+// 并 Log 留痕，禁止静默吞错。不改变任何业务行为。
+
+/// 桥连通性探针：恒返回 true；异常（理论上不可达）时 Log.e 留痕并返回 false。
+bool logicPing() {
+  try {
+    Log.d('bridge_logic', 'ping');
+    return true;
+  } catch (e, st) {
+    Log.e('bridge_logic', 'ping failed', e, st);
+    return false;
+  }
+}
+
+/// 同步 logic 能力包装：body 内为上层请求的 logic 纯计算/查询。
+/// 成功 Log.d 留痕并返回结果；失败 Log.e 留痕并返回空串（不抛出、不静默）。
+String logicCall(String op, String Function() body) {
+  try {
+    final r = body();
+    Log.d('bridge_logic', '$op ok');
+    return r;
+  } catch (e, st) {
+    Log.e('bridge_logic', '$op failed', e, st);
+    return '';
+  }
+}
+
+/// 异步 logic 写操作包装：body 内为上层请求的 logic 写操作（下发播放/收藏/下载等）。
+/// 成功 Log.d 留痕并返回 true；失败 Log.e 留痕并返回 false（不抛出、不静默）。
+Future<bool> logicWrite(String op, Future<void> Function() body) async {
+  try {
+    await body();
+    Log.d('bridge_logic', '$op ok');
+    return true;
+  } catch (e, st) {
+    Log.e('bridge_logic', '$op failed', e, st);
+    return false;
+  }
+}

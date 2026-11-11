@@ -56,13 +56,21 @@ class Bootstrap {
   /// 无法调 path_provider。约定由 main（L1 特例，允许 import path_provider）
   /// 在 runApp 前先 `getApplicationSupportDirectory()` 拿目录，再传进本参数
   /// （见 init/main.dart）。未传时用 `.` 相对根兜底（仅 debug 可跑通）。
+  /// [manifest]/[moduleBytes]：由 L1（init）从 rootBundle 预加载传入——Android APK
+  /// 内没有 lib/ 文件系统路径，完整性校验必须比对随包携带的模块字节
+  /// （构建期由 tool/gen_manifest.dart 复制进 assets/integrity/modules/）。
+  /// 未传时退回文件系统读取（桌面/调试）。
   static BootResult run(
-      {bool bypassIntegrity = false, String? rootDir}) {
+      {bool bypassIntegrity = false,
+      String? rootDir,
+      dynamic manifest,
+      Map<String, List<int>>? moduleBytes}) {
     Log.d('boot', 'bootstrap run (bypass=$bypassIntegrity)');
-    final manifest = _loadManifest();
-    final ok = bb.BootBridge.verifyIntegrity(manifest, bypass: bypassIntegrity);
+    final mf = manifest ?? _loadManifest();
+    final ok = bb.BootBridge.verifyIntegrity(mf,
+        bypass: bypassIntegrity, moduleBytes: moduleBytes);
     if (!ok) {
-      // debug bypass 时 rejected=true 但 init 决定继续；release 直接拒绝
+      // debug bypass 时 rejected=true 但 init 决定继续；release 由 init 显示错误页
       return BootResult(rejected: true, kernel: null);
     }
     final kernel = bb.BootBridge.assemble();
@@ -147,7 +155,14 @@ WidgetBuilderHook bootstrapWidgetHook = (r) =>
 // 批7-A：启动序列注册到 bridge_boot（L1 init 只经 runBoot 调本方法）。
 final _registerRunBoot = () {
   bb.setRunBootImpl(
-      ({bool bypassIntegrity = false, String? rootDir}) =>
-          Bootstrap.run(bypassIntegrity: bypassIntegrity, rootDir: rootDir));
+      ({bool bypassIntegrity = false,
+        String? rootDir,
+        dynamic manifest,
+        Map<String, List<int>>? moduleBytes}) =>
+          Bootstrap.run(
+              bypassIntegrity: bypassIntegrity,
+              rootDir: rootDir,
+              manifest: manifest,
+              moduleBytes: moduleBytes));
   return true;
 }();
