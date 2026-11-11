@@ -22,9 +22,23 @@ BRIDGES = os.path.join(LIB, 'bridges')
 PKG = 'tiernan_music_next'
 LAYERS = {'init': 1, 'bootloader': 2, 'kernel': 3, 'core': 4, 'logic': 5, 'surface': 6}
 BRIDGE_NAMES = {'bridge_boot', 'bridge_kernel', 'bridge_core', 'bridge_logic', 'bridge_surface'}
-# 层 n 的「本层桥」：该层及上层经桥访问其下层能力时 import 的桥
-LAYER_BRIDGE = {2: 'bridge_boot', 3: 'bridge_kernel', 4: 'bridge_core',
-                5: 'bridge_logic', 6: 'bridge_surface'}
+# 层-桥显式白名单（批10-A 收口）：这是显式枚举的每层允许桥集合，不是自动放宽。
+# 新增越级 import 必须显式修改此处并注明理由，禁止恢复「下层桥自动累积」逻辑。
+#   L1 init      → bridge_boot + bridge_surface（装配入口，SIX_FIVE_RULE §0 已注明保留）
+#   L2 bootloader → boot/kernel/core/logic 四桥（bootloader 是依赖装配层，
+#                    需经各桥组装 kernel/core/logic，属合理特例）
+#   L3 kernel    → bridge_kernel（仅本层桥）
+#   L4 core      → bridge_kernel + bridge_core（core 直接 import bridge_kernel 取 Log，现状保留）
+#   L5 logic     → bridge_logic + bridge_core（logic 经 core 桥取模型，现状保留）
+#   L6 surface   → bridge_surface + bridge_logic + bridge_core（surface 取 core 模型，现状保留）
+LAYER_ALLOWED_BRIDGES = {
+    1: {'bridge_boot', 'bridge_surface'},
+    2: {'bridge_boot', 'bridge_kernel', 'bridge_core', 'bridge_logic'},
+    3: {'bridge_kernel'},
+    4: {'bridge_kernel', 'bridge_core'},
+    5: {'bridge_logic', 'bridge_core', 'bridge_kernel'},  # bridge_kernel 为 Log 载体（现状）
+    6: {'bridge_surface', 'bridge_logic', 'bridge_core'},
+}
 # L1 init 是依赖根：允许装配桥 + flutter 基础包（WidgetsFlutterBinding/SystemNavigator/debugPrint）
 L1_EXTRA = ('package:flutter/material.dart', 'package:flutter/services.dart',
             'package:path_provider/path_provider.dart')
@@ -130,17 +144,12 @@ def check_imports(rel, src, lvl):
             if base not in BRIDGE_NAMES:
                 fail(rel, '非法桥文件名 `lib/%s`' % target)
                 continue
-            # L1 允许装配桥 boot/surface；其余层允许「本层桥」与其上所有桥（上层经桥取下层）
-            if lvl == 1:
-                if base not in ('bridge_boot', 'bridge_surface'):
-                    fail(rel, 'init 层不应 import 业务桥 `%s`（仅 bridge_boot/bridge_surface 装配入口）' % imp)
-                continue
-            allowed = {LAYER_BRIDGE.get(k) for k in range(2, lvl + 1)}
-            if lvl == 2:
-                allowed = set(BRIDGE_NAMES)  # bootloader 是依赖装配层，经各桥组装 core/logic/kernel
+            # 批10-A：显式层-桥白名单（不是自动放宽）。每层只允许白名单内列出的桥；
+            # 新增越级 import 必须显式修改 LAYER_ALLOWED_BRIDGES 并注明理由。
+            allowed = LAYER_ALLOWED_BRIDGES.get(lvl, set())
             if base not in allowed:
-                fail(rel, '层 %d import 非相邻桥 `%s`（允许：%s）'
-                     % (lvl, imp, sorted(a for a in allowed if a)))
+                fail(rel, '层 %d import 非白名单桥 `%s`（允许：%s）'
+                     % (lvl, imp, sorted(allowed)))
             continue
         tlayer = layer_of(target)
         if tlayer is None:

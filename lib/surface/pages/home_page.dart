@@ -10,6 +10,8 @@ import '../../bridges/bridge_logic.dart'
     show LogicFacade, Log, RankLogic, RankBrief, PlaylistLogic, PlaylistBrief,
         RecommendLogic, SearchLogic, SongBrief;
 import '../registry.dart';
+import '../theme/tn_motion.dart' show TnMotionStaggered;
+import '../theme/tn_theme.dart' show TnDims, TnColors, tnPadS, tnPadM, tnPadL;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.home';
@@ -91,7 +93,7 @@ class _HomePageBody extends StatelessWidget {
           actions: <Widget>[IconButton(icon: const Icon(Icons.search),
               tooltip: '搜索',
               onPressed: () => _safe(onOpenSearch, 'onOpenSearch'))]),
-        body: ListView(padding: const EdgeInsets.only(bottom: 24),
+        body: ListView(padding: const EdgeInsets.only(bottom: TnDims.padXL),
             children: <Widget>[
           _SearchEntry(onTap: () => _safe(onOpenSearch, 'searchEntry')),
           _SectionTitle('每日推荐'),
@@ -105,8 +107,12 @@ class _HomePageBody extends StatelessWidget {
             },
             empty: '今日暂无推荐',
             builder: (items) => Column(children: <Widget>[
+              // 列表项交错入场（TnMotionStaggered，30ms/项，封顶 6）；
+              // 其余区块（榜单速览/热搜词/推荐歌单）同法可套。
               for (var i = 0; i < items.length; i++)
-                ListTile(dense: true,
+                TnMotionStaggered(
+                  index: i,
+                  child: ListTile(dense: true,
                   leading: Text('${i + 1}',
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                   title: Text(items[i].name, maxLines: 1,
@@ -115,7 +121,7 @@ class _HomePageBody extends StatelessWidget {
                       overflow: TextOverflow.ellipsis),
                   trailing: const Icon(Icons.play_arrow),
                   onTap: () => _safe(() => onPlay(items[i]), 'daily play'),
-                )]),
+                ))]),
           ),
           _SectionTitle('榜单速览'),
           _FutureBlock<List<RankBrief>>(
@@ -130,19 +136,19 @@ class _HomePageBody extends StatelessWidget {
             },
             empty: '暂无榜单',
             builder: (items) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: tnPadL),
               child: GridView.count(crossAxisCount: 3, shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 8, crossAxisSpacing: 8,
+                mainAxisSpacing: tnPadS, crossAxisSpacing: tnPadS,
                 childAspectRatio: 1.4,
                 children: <Widget>[
                   for (final r in items)
                     Container(alignment: Alignment.center,
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(TnDims.padXS),
                       decoration: BoxDecoration(
                         color: Theme.of(context)
                             .colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(tnRadiusS)),
                       child: Text(r.name, maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center)),
@@ -162,9 +168,9 @@ class _HomePageBody extends StatelessWidget {
             },
             empty: '暂无热搜',
             builder: (words) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: tnPadL),
               child: Wrap(
-                spacing: 8, runSpacing: 8,
+                spacing: tnPadS, runSpacing: tnPadS,
                 children: <Widget>[
                   for (final w in words)
                     ActionChip(
@@ -188,26 +194,26 @@ class _HomePageBody extends StatelessWidget {
             empty: '暂无推荐歌单',
             builder: (items) => SizedBox(height: 160,
               child: ListView.separated(scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: tnPadL),
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 10),
                 itemBuilder: (ctx, i) {
                   final p = items[i];
-                  return SizedBox(width: 110, child: Column(
+                  return SizedBox(width: TnDims.coverS, child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Expanded(
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(tnRadiusS),
                           child: p.cover.isNotEmpty
                               ? Image.network(
                                   p.cover,
-                                  width: 110,
+                                  width: TnDims.coverS,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => const Icon(Icons.music_note),
                                 )
                               : const ColoredBox(
-                                  color: Colors.grey,
+                                  color: TnColors.placeholder,
                                   child: Icon(Icons.music_note),
                                 ),
                         ),
@@ -233,16 +239,16 @@ class _SearchEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     try {
-      return Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        child: InkWell(borderRadius: BorderRadius.circular(24), onTap: onTap,
+      return Padding(padding: const EdgeInsets.fromLTRB(tnPadL, tnPadM, tnPadL, TnDims.padXS),
+        child: InkWell(borderRadius: BorderRadius.circular(TnDims.padXL), onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: tnPadL, vertical: tnPadM),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(24)),
+              borderRadius: BorderRadius.circular(TnDims.padXL)),
             child: const Row(children: <Widget>[
               Icon(Icons.search, size: 20),
-              SizedBox(width: 8),
+              SizedBox(width: tnPadS),
               Expanded(child: Text('搜索歌曲 / 歌手 / 专辑 / MV')),
             ]))));
     } catch (e, st) {
@@ -256,7 +262,7 @@ class _SectionTitle extends StatelessWidget {
   final String title;
   @override
   Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.fromLTRB(tnPadL, tnPadL, tnPadL, TnDims.padXS),
       child: Text(title,
           style: Theme.of(context).textTheme.titleMedium
               ?.copyWith(fontWeight: FontWeight.bold)));
@@ -276,7 +282,7 @@ class _FutureBlock<T> extends StatelessWidget {
         builder: (ctx, snap) {
           try {
             if (snap.connectionState != ConnectionState.done) {
-              return const Padding(padding: EdgeInsets.all(16),
+              return const Padding(padding: EdgeInsets.all(tnPadL),
                   child: Center(
                       child: CircularProgressIndicator(strokeWidth: 2)));
             }
@@ -302,6 +308,6 @@ class _FutureBlock<T> extends StatelessWidget {
   }
 }
 Widget _placeholder(String msg) => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(msg, style: const TextStyle(color: Colors.grey)),
+      padding: const EdgeInsets.symmetric(horizontal: tnPadL, vertical: tnPadS),
+      child: Text(msg, style: const TextStyle(color: TnColors.placeholder)),
     );

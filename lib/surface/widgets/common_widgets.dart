@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart' show SongBrief;
 import '../../bridges/bridge_logic.dart' show Log;
+import '../theme/tn_theme.dart' show TnDims;
 
 const String _tag = 'surface.widgets';
 
@@ -69,7 +70,7 @@ class SongTile extends StatelessWidget {
       );
     } catch (e, st) {
       Log.e(_tag, 'SongTile.build crashed', e, st);
-      return const SizedBox(height: 56);
+      return const SizedBox(height: TnDims.barH);
     }
   }
 }
@@ -87,7 +88,7 @@ class CoverImage extends StatelessWidget {
       final u = (url ?? '').trim();
       if (u.isEmpty) return _placeholder(context);
       return ClipRRect(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(TnDims.rS),
         child: Image.network(
           u,
           width: size.width,
@@ -109,7 +110,7 @@ class CoverImage extends StatelessWidget {
         height: size.height,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(TnDims.rS),
         ),
         child: Icon(Icons.album, size: size.shortestSide * 0.6,
             color: Theme.of(context).hintColor),

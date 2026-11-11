@@ -109,3 +109,45 @@ export '../core/net/endpoints/user_endpoints.dart'
 // 评论端点函数（logic 层经 core 桥取用，批7 收敛补齐）
 export '../core/net/endpoints/comment_endpoints.dart'
     show getMusicComments, getCommentFloor, getCommentCount;
+
+// ── 通用桥能力包装（批10-A 收口）：铁律 2「桥承担日志系统任务」落地 ──
+// 上层（logic/surface）经桥调用 core 写操作/能力时，统一在此 try/catch 捕获
+// 并 Log 留痕，禁止静默吞错。不改变任何业务行为。
+import '../kernel/kernel.dart' show Log;
+
+/// 桥连通性探针：恒返回 true；异常（理论上不可达）时 Log.e 留痕并返回 false。
+bool corePing() {
+  try {
+    Log.d('bridge_core', 'ping');
+    return true;
+  } catch (e, st) {
+    Log.e('bridge_core', 'ping failed', e, st);
+    return false;
+  }
+}
+
+/// 同步 core 能力包装：body 内为上层请求的 core 读操作。
+/// 成功 Log.d 留痕并返回结果；失败 Log.e 留痕并返回空串（不抛出、不静默）。
+String coreCall(String op, String Function() body) {
+  try {
+    final r = body();
+    Log.d('bridge_core', '$op ok');
+    return r;
+  } catch (e, st) {
+    Log.e('bridge_core', '$op failed', e, st);
+    return '';
+  }
+}
+
+/// 异步 core 写操作包装：body 内为上层请求的 core 写操作（存储/数据库/网络）。
+/// 成功 Log.d 留痕并返回 true；失败 Log.e 留痕并返回 false（不抛出、不静默）。
+Future<bool> coreWrite(String op, Future<void> Function() body) async {
+  try {
+    await body();
+    Log.d('bridge_core', '$op ok');
+    return true;
+  } catch (e, st) {
+    Log.e('bridge_core', '$op failed', e, st);
+    return false;
+  }
+}

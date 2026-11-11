@@ -112,5 +112,54 @@ class LogicFacade {
   const LogicFacade();
 
   /// 查询当前播放状态描述（占位：批3 装配后接 PlaybackService）。
-  String playbackSummary() => 'idle';
+  /// 批10-A：桥门面方法统一 try/catch 捕获 + Log 留痕，失败返回降级值不静默吞。
+  String playbackSummary() {
+    try {
+      return 'idle';
+    } catch (e, st) {
+      Log.e('bridge_logic', 'playbackSummary failed', e, st);
+      return 'error';
+    }
+  }
+}
+
+// ── 通用桥能力包装（批10-A 收口）：铁律 2「桥承担日志系统任务」落地 ──
+// 上层（surface）经桥调用 logic 写操作/能力时，统一在此 try/catch 捕获
+// 并 Log 留痕，禁止静默吞错。不改变任何业务行为。
+
+/// 桥连通性探针：恒返回 true；异常（理论上不可达）时 Log.e 留痕并返回 false。
+bool logicPing() {
+  try {
+    Log.d('bridge_logic', 'ping');
+    return true;
+  } catch (e, st) {
+    Log.e('bridge_logic', 'ping failed', e, st);
+    return false;
+  }
+}
+
+/// 同步 logic 能力包装：body 内为上层请求的 logic 纯计算/查询。
+/// 成功 Log.d 留痕并返回结果；失败 Log.e 留痕并返回空串（不抛出、不静默）。
+String logicCall(String op, String Function() body) {
+  try {
+    final r = body();
+    Log.d('bridge_logic', '$op ok');
+    return r;
+  } catch (e, st) {
+    Log.e('bridge_logic', '$op failed', e, st);
+    return '';
+  }
+}
+
+/// 异步 logic 写操作包装：body 内为上层请求的 logic 写操作（下发播放/收藏/下载等）。
+/// 成功 Log.d 留痕并返回 true；失败 Log.e 留痕并返回 false（不抛出、不静默）。
+Future<bool> logicWrite(String op, Future<void> Function() body) async {
+  try {
+    await body();
+    Log.d('bridge_logic', '$op ok');
+    return true;
+  } catch (e, st) {
+    Log.e('bridge_logic', '$op failed', e, st);
+    return false;
+  }
 }

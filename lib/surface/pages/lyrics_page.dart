@@ -79,6 +79,7 @@ class _LyricsPageState extends State<LyricsPage> {
     super.initState();
     _loadLyrics();
     // 200ms 轮询 positionMs：够顺滑且不重负载；PlayerController 流可用后可换订阅。
+    // 自定义时长说明：轮询频率非动效时长，不属 TnMotion 三档，保留裸值。
     _ticker = Timer.periodic(const Duration(milliseconds: 200), (_) {
       if (!mounted) return;
       try {

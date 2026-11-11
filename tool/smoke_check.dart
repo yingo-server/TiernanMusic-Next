@@ -145,10 +145,21 @@ void _checkBrackets(String rel, String src) {
 const _pkg = 'tiernan_music_next';
 const _layers = {'init': 1, 'bootloader': 2, 'kernel': 3, 'core': 4, 'logic': 5, 'surface': 6};
 const _bridgeNames = {'bridge_boot', 'bridge_kernel', 'bridge_core', 'bridge_logic', 'bridge_surface'};
-// 层 → 本层与相邻下层之间的桥（唯一可用桥；L1 额外允许 bridge_surface 装配入口）
-const _layerBridge = <int, String>{
-  2: 'bridge_boot', 3: 'bridge_kernel', 4: 'bridge_core',
-  5: 'bridge_logic', 6: 'bridge_surface',
+// 层-桥显式白名单（批10-A 收口，与 tool/layer_audit.py LAYER_ALLOWED_BRIDGES 同口径）：
+// 这是显式枚举的每层允许桥集合，不是自动放宽；新增越级 import 必须显式修改此处并注明理由。
+//   L1 init      → bridge_boot + bridge_surface（装配入口，文档已注明保留）
+//   L2 bootloader → boot/kernel/core/logic 四桥（依赖装配层，组装 kernel/core/logic 的合理特例）
+//   L3 kernel    → bridge_kernel
+//   L4 core      → bridge_kernel + bridge_core（core 取 Log，现状）
+//   L5 logic     → bridge_logic + bridge_core（logic 经 core 桥取模型，现状）
+//   L6 surface   → bridge_surface + bridge_logic + bridge_core（surface 取 core 模型，现状）
+const _layerAllowedBridges = <int, Set<String>>{
+  1: {'bridge_boot', 'bridge_surface'},
+  2: {'bridge_boot', 'bridge_kernel', 'bridge_core', 'bridge_logic'},
+  3: {'bridge_kernel'},
+  4: {'bridge_kernel', 'bridge_core'},
+  5: {'bridge_logic', 'bridge_core', 'bridge_kernel'},
+  6: {'bridge_surface', 'bridge_logic', 'bridge_core'},
 };
 const _l6Extra = [
   'package:flutter', 'package:miuix', 'package:riverpod',
@@ -203,17 +214,10 @@ void _checkForbiddenImports(String rel, String src) {
         if (!_bridgeNames.contains(base)) {
           _fail(rel, '非法桥文件名 $imp（五桥固定名）');
         } else if (lvl != null) {
-          final allowed = <String>{};
-          for (var k = 2; k <= lvl; k++) {
-            final b = _layerBridge[k];
-            if (b != null) allowed.add(b);
-          }
-          if (lvl == 1) {
-            allowed.addAll({'bridge_boot', 'bridge_surface'});
-          }
-          if (lvl == 2) allowed.addAll(_bridgeNames);
+          // 批10-A：显式层-桥白名单（同 layer_audit.py），非自动放宽。
+          final allowed = _layerAllowedBridges[lvl] ?? const <String>{};
           if (!allowed.contains(base)) {
-            _fail(rel, '层 $lvl import 了非相邻桥 $imp');
+            _fail(rel, '层 $lvl import 了非白名单桥 $imp（允许：${allowed.toList()..sort()}）');
           }
         }
         continue;
@@ -237,17 +241,10 @@ void _checkForbiddenImports(String rel, String src) {
         if (!_bridgeNames.contains(base)) {
           _fail(rel, '非法桥文件名 $imp（五桥固定名）');
         } else if (lvl != null) {
-          final allowed = <String>{};
-          for (var k = 2; k <= lvl; k++) {
-            final b = _layerBridge[k];
-            if (b != null) allowed.add(b);
-          }
-          if (lvl == 1) {
-            allowed.addAll({'bridge_boot', 'bridge_surface'});
-          }
-          if (lvl == 2) allowed.addAll(_bridgeNames);
+          // 批10-A：显式层-桥白名单（同 layer_audit.py），非自动放宽。
+          final allowed = _layerAllowedBridges[lvl] ?? const <String>{};
           if (!allowed.contains(base)) {
-            _fail(rel, '层 $lvl import 了非相邻桥 $imp');
+            _fail(rel, '层 $lvl import 了非白名单桥 $imp（允许：${allowed.toList()..sort()}）');
           }
         }
       } else if (tLayer == null) {

@@ -12,6 +12,7 @@ import '../../bridges/bridge_core.dart' show SongBrief, SearchType;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show SongTile;
+import '../theme/tn_theme.dart' show TnDims, tnPadM, tnPadS;
 
 const String _tag = 'surface.search';
 
@@ -132,6 +133,7 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
         setState(() => _suggests = const <SearchSuggestItem>[]);
         return;
       }
+      // 自定义时长说明：防抖间隔 300ms 非动效时长，不属 TnMotion 三档，保留裸值。
       _debounce = Timer(const Duration(milliseconds: 300), () async {
         try {
           final list = await widget.search.suggestions(kw);
@@ -227,8 +229,8 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
   Widget build(BuildContext context) {
     try {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('搜索'),
+        appBar: TnAppBar(
+          title: '搜索',
           bottom: widget.typed == null
               ? null
               : TabBar(
@@ -254,7 +256,7 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
         ),
         body: Column(children: <Widget>[
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            padding: const EdgeInsets.fromLTRB(tnPadM, tnPadS, tnPadM, TnDims.padXS),
             child: TextField(
               controller: _kwCtrl,
               onChanged: _onChanged,
@@ -279,7 +281,7 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
           ),
           ..._suggests.map((s) => ListTile(
                 dense: true,
-                leading: const Icon(Icons.trending_up, size: 18),
+                leading: const Icon(Icons.trending_up, size: TnDims.iconS),
                 title: Text(s.keyword, maxLines: 1, overflow: TextOverflow.ellipsis),
                 onTap: () {
                   _kwCtrl.text = s.keyword;
@@ -332,7 +334,7 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
         return Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
           const Icon(Icons.search_off, size: 48),
-          const SizedBox(height: 8),
+          const SizedBox(height: tnPadS),
           Text('没有找到「$_committedKw」相关结果'),
         ]));
       }
@@ -344,7 +346,7 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
         itemBuilder: (ctx, i) {
           if (i == _results.length) {
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: tnPadL),
               child: Center(
                 child: _loadingMore || _searching
                     ? const SizedBox(

@@ -12,10 +12,13 @@ import '../player_controller.dart'
 import '../../bridges/bridge_core.dart'
     show AudioQuality, toPref, fromPref;
 import '../registry.dart';
+import '../theme/tn_motion.dart' show TnMotionStaggered, TnPageRoute, TnPressable;
 import '../widgets/common_widgets.dart' show CoverImage;
 import '../widgets/favorite_button.dart' show FavoriteButton;
 import '../widgets/quality_sheet.dart' show QualitySheet;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
+import '../theme/tn_theme.dart'
+    show TnDims, tnPadS, tnPadM, tnPadL;
 
 const String _tag = 'surface.player_page';
 
@@ -94,7 +97,7 @@ class MiniBar extends ConsumerWidget {
         elevation: 8,
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: SizedBox(
-          height: 56,
+          height: TnDims.barH,
           child: Row(children: <Widget>[
             Expanded(
               child: InkWell(
@@ -107,7 +110,7 @@ class MiniBar extends ConsumerWidget {
                 },
                 child: Row(children: <Widget>[
                   Padding(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(tnPadS),
                     child: CoverImage(url: song.albumName.isEmpty ? null : null),
                   ),
                   Expanded(
@@ -302,19 +305,23 @@ class _PlayerPageBody extends ConsumerWidget {
             : SafeArea(
                 child: Column(children: <Widget>[
                   const Spacer(),
+                  // 大封面点按反馈（TnPressable，TnMotion.fast 缩放回弹）
                   Center(
-                    child: CoverImage(
+                    child: TnPressable(
+                      onTap: () {},
+                      child: CoverImage(
                         url: null, size: const Size(240, 240)), // SongBrief 无封面 url
+                    ),
                   ),
                   const Spacer(),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: TnDims.padXL),
                     child: Column(children: <Widget>[
                       Text(song.name.isEmpty ? song.hash : song.name,
                           style: const TextStyle(
                               fontSize: 20, fontWeight: FontWeight.bold),
                           maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: TnDims.padXS),
                       Text(song.singer,
                           style: TextStyle(color: Theme.of(context).hintColor)),
                     ]),
@@ -334,7 +341,7 @@ class _PlayerPageBody extends ConsumerWidget {
                         : null,
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: TnDims.padXL),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: <Widget>[
@@ -358,7 +365,7 @@ class _PlayerPageBody extends ConsumerWidget {
                           }
                         },
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: tnPadL),
                       IconButton(
                         iconSize: 64,
                         icon: Icon(p.status == PlayerStatus.loading
@@ -374,7 +381,7 @@ class _PlayerPageBody extends ConsumerWidget {
                           }
                         },
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: tnPadL),
                       IconButton(
                         iconSize: 40,
                         icon: const Icon(Icons.skip_next),
@@ -388,10 +395,10 @@ class _PlayerPageBody extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: tnPadS),
                   // 音量条
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: TnDims.padXL),
                     child: Row(children: <Widget>[
                       const Icon(Icons.volume_down, size: 20),
                       Expanded(
@@ -415,7 +422,7 @@ class _PlayerPageBody extends ConsumerWidget {
                   // 四档 chip，调 ctl.setSpeed(v)。
                   if (p.lastError.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(tnPadS),
                       child: Text(p.lastError,
                           style: const TextStyle(color: Colors.red, fontSize: 12)),
                     ),

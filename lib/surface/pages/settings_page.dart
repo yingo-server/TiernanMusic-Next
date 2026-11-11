@@ -278,7 +278,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Builder(builder: (ctx) {
             final s = TnStrings.of(ctx);
             return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.fromLTRB(tnPadL, 0, tnPadL, tnPadS),
               child: Text(
                 '多语言：${TnStrings.supportedCodes.length}/'
                 '${TnStrings.plannedCodes.length} 语可用'
@@ -456,7 +456,7 @@ class _AccountSectionState extends State<_AccountSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          padding: const EdgeInsets.fromLTRB(tnPadL, tnPadS, tnPadL, TnDims.padXS),
           child: Row(
             children: [
               const Text('账号管理',
@@ -464,7 +464,7 @@ class _AccountSectionState extends State<_AccountSection> {
               const Spacer(),
               TextButton.icon(
                 onPressed: _save,
-                icon: const Icon(Icons.person_add_alt, size: 18),
+                icon: const Icon(Icons.person_add_alt, size: TnDims.iconS),
                 label: const Text('保存当前'),
               ),
             ],
@@ -472,7 +472,7 @@ class _AccountSectionState extends State<_AccountSection> {
         ),
         if (_items.isEmpty)
           const Padding(
-            padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+            padding: EdgeInsets.fromLTRB(tnPadL, TnDims.padXS, tnPadL, tnPadS),
             child: Text('暂无账号档案', style: TextStyle(fontSize: 12)),
           )
         else

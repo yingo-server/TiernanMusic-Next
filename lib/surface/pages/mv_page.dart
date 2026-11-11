@@ -1,4 +1,5 @@
 // L6 surface/pages · MV 页模块（批1-B · GAP_ANALYSIS #16）
+// TODO(批10-B): 收敛到 TnDims / TnColors 设计令牌表。
 // 装配方式（不动 modules.dart / assembly.dart，由主代理接线）：
 //   final mvLogic = MvLogic(client: ..., cache: ...);          // boot 装配
 //   SurfaceRegistry.install(buildMvModule(

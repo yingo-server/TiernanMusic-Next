@@ -121,3 +121,42 @@ class TnText {
     );
   }
 }
+
+// ── 设计令牌表（批10-B）：集中收敛 surface 层硬编码尺寸/颜色 ──
+/// 与 tnPad*/tnRadius* 保持一致的别名表；新代码优先用本表。
+class TnDims {
+  TnDims._();
+  // 间距
+  static const double padXS = 4;
+  static const double padS = tnPadS; // 8
+  static const double padM = tnPadM; // 12
+  static const double padL = tnPadL; // 16
+  static const double padXL = 24;
+  // 圆角
+  static const double rS = tnRadiusS; // 8
+  static const double rM = tnRadiusM; // 12
+  static const double rL = tnRadiusL; // 16
+  // 图标 / 封面 / 栏高
+  static const double iconS = 18;
+  static const double iconM = 24;
+  static const double coverS = 110;
+  static const double barH = 56;
+
+  // 常用组合 getter（可选糖）。
+  static EdgeInsets get padAllS => const EdgeInsets.all(tnPadS);
+  static EdgeInsets get padAllM => const EdgeInsets.all(tnPadM);
+  static EdgeInsets get padAllL => const EdgeInsets.all(tnPadL);
+  static EdgeInsets get padHL => const EdgeInsets.symmetric(horizontal: tnPadL);
+  static EdgeInsets get padHXL => const EdgeInsets.symmetric(horizontal: padXL);
+  static BorderRadius get rSBorder => BorderRadius.circular(tnRadiusS);
+  static BorderRadius get rMBorder => BorderRadius.circular(tnRadiusM);
+  static BorderRadius get rLBorder => BorderRadius.circular(tnRadiusL);
+}
+
+/// 占位/纯黑色板颜色令牌。
+class TnColors {
+  TnColors._();
+  static const Color pitchBlack = Color(0xFF000000);
+  static const Color pitchOn = Color(0xFFEDEDED);
+  static const Color placeholder = Color(0xFFBDBDBD);
+}

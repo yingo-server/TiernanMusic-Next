@@ -1,4 +1,5 @@
 // L6 surface/pages · 歌手页模块（功能对齐批4-A · GAP_ANALYSIS #22）
+// TODO(批10-B): 收敛到 TnDims / TnColors 设计令牌表。
 // 装配注入方式（不动 modules.dart / assembly.dart，由主代理接线）：
 //   final artistLogic = ArtistLogic(client: ..., cache: ...);      // boot 装配
 //   SurfaceRegistry.install(buildArtistModule(

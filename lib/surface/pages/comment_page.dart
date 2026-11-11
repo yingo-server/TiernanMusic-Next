@@ -1,4 +1,5 @@
 // L6 surface/pages · 评论页模块（GAP #14，批1-A）
+// TODO(批10-B): 收敛到 TnDims / TnColors 设计令牌表。
 // 无 navEntry——从播放页/歌单页 Navigator.push 进入。
 // 装配说明：本模块不由 modules.dart/assembly.dart 默认装配，
 // 由装配处执行 SurfaceRegistry.install(buildCommentModule(logic:..., mixSongIdProvider:...))。
