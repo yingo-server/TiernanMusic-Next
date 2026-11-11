@@ -142,16 +142,18 @@ class _HomePageBody extends StatelessWidget {
                 mainAxisSpacing: tnPadS, crossAxisSpacing: tnPadS,
                 childAspectRatio: 1.4,
                 children: <Widget>[
-                  for (final r in items)
-                    Container(alignment: Alignment.center,
+                  for (var ri = 0; ri < items.length; ri++)
+                    TnMotionStaggered(
+                      index: ri + 2, // 榜单整体后移，避免与首屏前两行争抢
+                      child: Container(alignment: Alignment.center,
                       padding: const EdgeInsets.all(TnDims.padXS),
                       decoration: BoxDecoration(
                         color: Theme.of(context)
                             .colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(tnRadiusS)),
-                      child: Text(r.name, maxLines: 2,
+                        child: Text(items[ri].name, maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center)),
+                          textAlign: TextAlign.center))),
                 ])),
           ),
           _SectionTitle('热搜词'),
@@ -172,11 +174,14 @@ class _HomePageBody extends StatelessWidget {
               child: Wrap(
                 spacing: tnPadS, runSpacing: tnPadS,
                 children: <Widget>[
-                  for (final w in words)
-                    ActionChip(
-                      label: Text(w, overflow: TextOverflow.ellipsis),
-                      onPressed: () =>
-                          _safe(() => onOpenSearch(), 'hot chip kw=$w'),
+                  for (var wi = 0; wi < words.length; wi++)
+                    TnMotionStaggered(
+                      index: wi + 3, // 热搜整体后移，衔接榜单节奏
+                      child: ActionChip(
+                        label: Text(words[wi], overflow: TextOverflow.ellipsis),
+                        onPressed: () =>
+                            _safe(() => onOpenSearch(), 'hot chip kw=${words[wi]}'),
+                      ),
                     ),
                 ],
               ),
@@ -199,7 +204,9 @@ class _HomePageBody extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(width: 10),
                 itemBuilder: (ctx, i) {
                   final p = items[i];
-                  return SizedBox(width: TnDims.coverS, child: Column(
+                  return TnMotionStaggered(
+                    index: i + 4, // 歌单卡整体后移，衔接热搜节奏
+                    child: SizedBox(width: TnDims.coverS, child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Expanded(
@@ -220,7 +227,7 @@ class _HomePageBody extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(p.name, maxLines: 1,
-                          overflow: TextOverflow.ellipsis)]));
+                          overflow: TextOverflow.ellipsis)])));
                 },
               ),
             ),
