@@ -192,28 +192,31 @@ class EndpointRegistry {
       id: 'fm_songs', path: '/v1/fm/songs');
 
   // ── MV/视频（批1-B · GAP #16）──
-  // mvDetail：POST /kmr/audio/mv，x-router: openapi.kugou.com，kg-tid: 38，
-  // body {album_audio_id}（出处：PARITY_NOTES.md §1「kmr/audio/mv openapi + KG-TID:38,
-  // body album_audio_id」；KUGOU_API.md §3.9）。
+  // mvDetail（批N2-B 实测修正）：POST /kmr/v1/audio/mv，x-router:
+  // openapi.kugou.com，kg-tid: 38，body {data:[{album_audio_id}], fields:''}
+  // ——响应 data 为嵌套数组 data[0][]（旧口径 /kmr/audio/mv 实测 502 不存在）。
   static const mvDetail = Endpoint(
-      id: 'mv_detail', path: '/kmr/audio/mv', method: 'POST',
+      id: 'mv_detail', path: '/kmr/v1/audio/mv', method: 'POST',
       router: 'openapi.kugou.com', tid: '38');
-  // videoDetail：POST /v1/video/detail，x-router: kmr.service.kugou.com，
-  // 返回清晰度 hash 档位列表（出处：PARITY_NOTES.md「video/detail 清晰度 hash 齐全」；
-  // KUGOU_API.md §3.9 video_detail）。备用形态 /kmr/v2/videos 同路由（mv_endpoints
-  // 内部 404/空档时容错回退，不在此重复注册 —— 见 videoDetailKmrV2）。
+  // videoDetail（批N2-B 实测修正）：POST /v1/video，x-router:
+  // kmr.service.kugou.com；⚠️ 实测需 clearDefaultParams 全参 body：
+  // appid/clientver/clienttime(秒)/mid/uuid/dfid/token/key=signParamsKey(秒)/
+  // show_resolution=1/data:[{video_id}]（网关默认参数形态 404/502）。
+  // 响应 data[0] 平铺 ld/sd/hd/fhd/qhd 档位 hash/filesize/bitrate。
   static const videoDetail = Endpoint(
-      id: 'video_detail', path: '/v1/video/detail', method: 'POST',
-      router: 'kmr.service.kugou.com');
+      id: 'video_detail', path: '/v1/video', method: 'POST',
+      router: 'kmr.service.kugou.com', clearDefaultParams: true);
   static const videoDetailKmrV2 = Endpoint(
       id: 'video_detail_kmr_v2', path: '/kmr/v2/videos', method: 'POST',
       router: 'kmr.service.kugou.com');
-  // videoUrl：GET /v2/interface/index，x-router: trackermv.kugou.com，
-  // 参数 hash/quality，返回 downurl 多 CDN（出处：PARITY_NOTES.md
-  // 「video/url downurl」；KUGOU_API.md §3.9 video_url）。
+  // videoUrl（批N2-B 实测修正）：GET /v2/interface/index，x-router:
+  // trackermv.kugou.com，参数 backupdomain=1/cmd=123/ext=mp4/ismp3=0/pid=1/
+  // type=1/hash；⚠️ encryptKey=true → KugouClient 自动注入
+  // key=md5(hash+signKeySalt+appid+mid+userid||0)，缺 key 实测 40003
+  // "Empty key"。响应 data[hash].downurl(串)+backupdownurl(数组)。
   static const videoUrl = Endpoint(
       id: 'video_url', path: '/v2/interface/index',
-      router: 'trackermv.kugou.com');
+      router: 'trackermv.kugou.com', encryptKey: true);
 
   // ── 账号 ──
   static const loginQrKey = Endpoint(

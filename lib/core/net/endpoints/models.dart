@@ -179,6 +179,63 @@ class SongBrief {
     }
   }
 
+  /// 批N2-B 实测（docs/API_FIELDS_TRUTH.md A4-2，2026-11-12）：
+  /// /v1/album_audio/lite data.songs[] 映射。item 10 键：base{audio_name/
+  /// author_name/album_id/audio_id/album_audio_id}/audio_info{hash/hash_128/
+  /// filesize/duration(ms)/bitrate/extname}/album_info{album_name/cover}/
+  /// authors[{author_name,author_id}]/copyright/deprecated/extend/extra/
+  /// mvdata[{typ,trk,hash,id}]/trans_param。与 pubsongs nofilt 口径
+  ///（fromTrackInfo）不同族，专用工厂。
+  factory SongBrief.fromAlbumLite(Map<String, dynamic> m) {
+    try {
+      final base = m['base'];
+      final ai = m['audio_info'];
+      final alb = m['album_info'];
+      final baseMap = base is Map ? base : const <String, dynamic>{};
+      final aiMap = ai is Map ? ai : const <String, dynamic>{};
+      final albMap = alb is Map ? alb : const <String, dynamic>{};
+      // duration 实测毫秒（如 226873），>100000 视为毫秒修正。
+      final dur = safeInt(aiMap['duration']);
+      return SongBrief(
+        hash: safeStr(aiMap['hash'] ?? aiMap['hash_128'] ??
+                m['hash'] ?? m['FileHash'])
+            .toLowerCase(),
+        name: safeStr(baseMap['audio_name'] ?? m['name'] ??
+            m['FileName'] ?? ''),
+        // 实测：顶层无 singer 键；base.author_name 优先，authors[] 聚合兜底。
+        singer: safeStr(baseMap['author_name'], () {
+          final authors = m['authors'];
+          if (authors is List && authors.isNotEmpty &&
+              authors.first is Map) {
+            final names = <String>[];
+            for (final a in authors) {
+              if (a is Map && a['author_name'] != null) {
+                names.add('${a['author_name']}');
+              }
+            }
+            return names.join('、');
+          }
+          return '';
+        }()),
+        mixSongId: safeInt(m['mixsongid'] ?? baseMap['audio_id']),
+        albumAudioId: safeInt(baseMap['album_audio_id'] ??
+            m['album_audio_id']),
+        durationSec: dur > 100000 ? dur ~/ 1000 : dur,
+        bitrate: safeInt(aiMap['bitrate']),
+        fileSize: safeInt(aiMap['filesize']),
+        albumId: safeStr(baseMap['album_id'] ?? m['album_id']),
+        albumName: safeStr(albMap['album_name']),
+        isVip: safeBool(m['musicpack_advance'],
+            safeBool(m['trans_param'] is Map
+                ? (m['trans_param'] as Map)['musicpack_advance']
+                : null)),
+      );
+    } catch (e, st) {
+      Log.e(_tag, 'SongBrief.fromAlbumLite failed', e, st);
+      return const SongBrief();
+    }
+  }
+
   factory SongBrief.fromTrackInfo(Map<String, dynamic> m) {
     try {
       // 批N1-B 实测（docs/API_FIELDS_TRUTH.md A2-3/A2-5）：
@@ -190,7 +247,6 @@ class SongBrief {
           safeInt(m['timelength'], safeInt(m['Duration'])));
       // rank/info songinfo[] 实测仅 songname/author/album_audio_id/album_cover
       //（docs/API_FIELDS_TRUTH.md A2-6），name 需 songname 兜底。
-      final nm = safeStr(m['name'], safeStr(m['FileName'] ?? m['songname'] ?? ''));
       final singerInfo = m['singerinfo'];
       // 批N1-C 实测：singerinfo 是完整数组（多歌手），聚合为「、」连接。
       String singerAgg = '';

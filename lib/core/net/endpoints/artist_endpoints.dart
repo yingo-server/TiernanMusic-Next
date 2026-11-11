@@ -51,8 +51,7 @@ Map<String, dynamic> _detailMap(Map<String, dynamic> res) {
 }
 /// 列表响应按候选键取第一个非空数组（data 内与顶层双查）。
 List<Map<String, dynamic>> _pickList(
-    Map<String, dynamic> res, List<String> keys) {
-  try {
+    Map<String, dynamic> res, List<String> keys) {  try {
     final d = dataOf(res);
     for (final k in keys) {
       for (final src in <Object?>[d[k], res[k]]) {
@@ -65,6 +64,14 @@ List<Map<String, dynamic>> _pickList(
     Log.e(_tag, '_pickList failed', e, st);
     return const <Map<String, dynamic>>[];
   }
+}
+/// 依序取第一个非空字符串值（空串跳过，批N2-B：intro='' 需落 long_intro）。
+String _nonEmpty(List<Object?> vals) {
+  for (final v in vals) {
+    final s = safeStr(v);
+    if (s.isNotEmpty) return s;
+  }
+  return '';
 }
 /// 服务端错误码留痕（20006=audios 清默认参数后签名不匹配典型返回）。
 void _logErr(String op, Map<String, dynamic> res) {
@@ -79,6 +86,10 @@ void _logErr(String op, Map<String, dynamic> res) {
 }
 
 /// 歌手摘要：id/name/avatar/fans 全容错。
+/// 批N2-B 实测：kmr/v3/author 平铺键 author_id/author_name/sizable_avatar/
+/// fansnums；authors[]（album_audio/lite、/v1/video）同键 author_id/
+/// author_name/sizable_avatar；搜索域 /v1/search/author 大写驼峰
+/// AuthorId/AuthorName/Avatar/FansNum（API_FIELDS_TRUTH.md §A1-4）。
 class ArtistBrief {
   const ArtistBrief({this.id = '', this.name = '', this.avatar = '',
       this.fans = 0});
@@ -86,11 +97,14 @@ class ArtistBrief {
   factory ArtistBrief.fromMap(Map<String, dynamic> m) {
     try {
       return ArtistBrief(
-        id: safeStr(m['author_id'] ?? m['authorid'] ?? m['singerid'] ?? m['id']),
-        name: safeStr(m['author_name'] ?? m['singername'] ?? m['name']),
-        avatar: safeStr(m['sizable_avatar'] ?? m['avatar'] ?? m['imgurl'] ??
-            m['pic']),
-        fans: safeInt(m['fans'] ?? m['fans_count'] ?? m['fans_num']),
+        id: safeStr(m['author_id'] ?? m['AuthorId'] ?? m['authorid'] ??
+            m['singerid'] ?? m['SingerID'] ?? m['id']),
+        name: safeStr(m['author_name'] ?? m['AuthorName'] ??
+            m['singername'] ?? m['name']),
+        avatar: safeStr(m['sizable_avatar'] ?? m['Avatar'] ?? m['avatar'] ??
+            m['imgurl'] ?? m['pic']),
+        fans: safeInt(m['fansnums'] ?? m['fans'] ?? m['FansNum'] ??
+            m['fans_count'] ?? m['fans_num']),
       );
     } catch (e, st) {
       Log.e(_tag, 'ArtistBrief.fromMap failed', e, st);
@@ -98,17 +112,34 @@ class ArtistBrief {
     }
   }
 }
-/// 歌手详情：id/name/intro/avatar 全容错。
+/// 歌手详情：id/name/intro/avatar/albumCount/songCount/mvCount/fans 全容错。
+/// 批N2-B 实测（/kmr/v3/author data 平铺，匿名=VIP 同键集 14 键）：
+/// author_id/author_name/sizable_avatar/intro/long_intro/album_count/
+/// song_count/mv_count/fansnums/area_id/birthday/is_publish/pinyin_initial/
+/// user_status。
 class ArtistDetail {
   const ArtistDetail({this.id = '', this.name = '', this.intro = '',
-      this.avatar = ''});
+      this.avatar = '', this.albumCount = 0, this.songCount = 0,
+      this.mvCount = 0, this.fans = 0});
   final String id; final String name; final String intro; final String avatar;
+  final int albumCount; final int songCount; final int mvCount;
+  final int fans;
   factory ArtistDetail.fromMap(Map<String, dynamic> m) {
     try {
       final b = ArtistBrief.fromMap(m);
       return ArtistDetail(id: b.id, name: b.name, avatar: b.avatar,
-        intro: safeStr(m['intro'] ?? m['introduction'] ?? m['desc'] ??
-            m['description'] ?? m['brief'] ?? m['biography']));
+        // 实测：intro 为短简介（可为空串），long_intro 为长文（含专辑文案）；
+        // 优先 intro，空串时落 long_intro（?? 不兜空串，需序列判定）。
+        intro: _nonEmpty([
+          m['intro'], m['introduction'], m['desc'], m['description'],
+          m['long_intro'], m['brief'], m['biography'],
+        ]),
+        albumCount: safeInt(m['album_count']),
+        songCount: safeInt(m['song_count']),
+        mvCount: safeInt(m['mv_count']),
+        // 实测键：fansnums（复数形式，非 fans/fans_num）。
+        fans: safeInt(m['fansnums'] ?? b.fans),
+      );
     } catch (e, st) {
       Log.e(_tag, 'ArtistDetail.fromMap failed', e, st);
       return const ArtistDetail();
@@ -116,6 +147,9 @@ class ArtistDetail {
   }
 }
 /// 专辑摘要（本文件内定义，不与批4-B 专辑页模型互相 import）。
+/// 批N2-B 实测（2026-11-12 /kmr/v2/albums data[0]，n2b_raw.json）：
+/// 键集 album_id/album_name/author_name/sizable_cover/publish_date/intro/
+/// publish_company/grade/grade_count/heat/language/type/quality/…
 class AlbumBrief {
   const AlbumBrief({this.id = '', this.name = '', this.cover = '',
       this.publishDate = '', this.songCount = 0});
@@ -124,13 +158,20 @@ class AlbumBrief {
   factory AlbumBrief.fromMap(Map<String, dynamic> m) {
     try {
       return AlbumBrief(
+        // 实测：kmr/v2/albums 键 album_id（字符串如 '958909'）；搜索域 albumid。
         id: safeStr(m['album_id'] ?? m['albumid'] ?? m['id']),
-        name: safeStr(m['album_name'] ?? m['name'] ?? m['albumname']),
+        // 实测：album_name（kmr）/ albumname（搜索域）/ name。
+        name: safeStr(m['album_name'] ?? m['albumname'] ?? m['name']),
+        // 实测：sizable_cover（{size} 模板完整 URL）；cover 只是裸文件名
+        // （如 '20250125121901851911.jpg'，非 URL——不映射）。
         cover: safeStr(m['sizable_cover'] ?? m['imgurl'] ?? m['img'] ??
             m['cover']),
-        publishDate: safeStr(m['publish_date'] ?? m['publishdate'] ??
-            m['publishtime']),
-        songCount: safeInt(m['song_count'] ?? m['count'] ?? m['songnum']),
+        publishDate: safeStr(m['publish_date'] ?? m['publish_time'] ??
+            m['publishdate'] ?? m['publishtime']),
+        // ⚠️ kmr/v2/albums 无曲目数键（count/song_count 均不存在）——
+        // 专辑歌曲数只能从 /v1/album_audio/lite 的 total 取，此处如实 0。
+        songCount: safeInt(m['song_count'] ?? m['count'] ?? m['songnum'] ??
+            m['songcount']),
       );
     } catch (e, st) {
       Log.e(_tag, 'AlbumBrief.fromMap failed', e, st);
@@ -163,9 +204,11 @@ Future<ArtistDetail> getArtistDetail(KugouClient client, String authorId) async 
   }
 }
 /// 歌手热门歌曲（POST /kmr/v1/author/audios），page 从 1 起。
-/// ⚠️【body/params 合并语义 · 必读】docs/PARITY_NOTES.md §1 与
-/// FEATURE_PARITY.md「特殊签名要求」：本端点签名需 defaultParams+body 合并，
-/// clearDefaultParams=true 会 20006。落到 KugouClient：
+/// ⚠️【实测 2026-11-12·批N2-B】本端点三态探针 502（网关风控/端点不可达），
+/// 字段树**未固化**——键集沿用 rank/audio 同族结构假设（songs[]/audio_info/
+/// base），不视为实证。getArtistAudios 的 _pickList 六键容错维持原样。
+/// ⚠️【签名语义·沿用 docs】defaultParams+body 合并，clearDefaultParams=true
+/// 会 20006（PARITY_NOTES §1）。落到 KugouClient：
 ///  - 声明恒 clearDefaultParams=false → request 把 dfid/uuid/appid/clientver/
 ///    srcappid/clienttime/token/userid 注入 query（defaultParams）；
 ///  - 本封装把业务参数镜像进 query params，并把同一组写进 POST body；
@@ -204,8 +247,12 @@ Future<List<SongBrief>> getArtistAudios(KugouClient client,
   }
 }
 /// 歌手专辑（GET /v1/author/albums），page 从 1 起。
+/// ⚠️【实测 2026-11-12·批N2-B】/v1/author/albums（tid 36/38/无）与
+/// /kmr/v1/author/albums（tid 36/无）三态均 502/403 —— 端点不可达，
+/// 字段树未固化、不猜。_pickList 五键容错维持原样；kmr/v2/albums 已实证
+/// （见 AlbumBrief.fromMap 注释），歌手专辑页数据可经 albumDetail 路径。
 /// ⚠️ docs 口径差异：PARITY_NOTES.md §1 记 kmr/v1/author/albums，
-/// 任务口径取 /v1/author/albums；实测后只改 EndpointRegistry 声明。
+/// 任务口径取 /v1/author/albums；复测后只改 EndpointRegistry 声明。
 Future<List<AlbumBrief>> getArtistAlbums(KugouClient client,
     String authorId, int page, {int pageSize = 30}) async {
   try {

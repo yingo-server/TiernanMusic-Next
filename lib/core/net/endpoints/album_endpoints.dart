@@ -35,6 +35,12 @@ class AlbumDetail {
 }
 
 /// 专辑详情（/kmr/v2/albums，body data:[{album_id}]）。
+/// 批N2-B 实测（2026-11-12，n2b_raw.json）：响应 data 为**数组**，data[0]
+/// 21 键：album_id('958909' 串)/album_name/author_name/sizable_cover(完整
+/// URL)/cover(裸文件名，非 URL)/intro(长文案)/publish_date('2005-11-01')/
+/// publish_company/grade('8.7')/grade_count/heat/language/language_id/
+/// category/classification/exclusive/is_publish/quality/special_tag/type/
+/// trans_param。**无曲目数键**——songCount 如实 0。
 Future<AlbumDetail> getAlbumDetail(KugouClient client, String albumId) async {
   try {
     final id = albumId.trim();
@@ -57,7 +63,9 @@ Future<AlbumDetail> getAlbumDetail(KugouClient client, String albumId) async {
     final d = AlbumDetail(
       id: safeStr(m['album_id'] ?? m['id'] ?? id),
       name: safeStr(m['album_name'] ?? m['name'] ?? m['albumname']),
-      cover: safeStr(m['sizable_cover'] ?? m['imgurl'] ?? m['cover']),
+      // 实测：sizable_cover 是 {size} 模板完整 URL；cover 键是裸文件名
+      //（非 URL），不作为回退（防死链）。
+      cover: safeStr(m['sizable_cover'] ?? m['imgurl']),
       intro: safeStr(m['intro'] ?? m['description']),
       publishDate: safeStr(m['publish_date'] ?? m['publish_time']),
     );
@@ -70,6 +78,15 @@ Future<AlbumDetail> getAlbumDetail(KugouClient client, String albumId) async {
 }
 
 /// 专辑歌曲（/v1/album_audio/lite，响应 {songs,total} 或 data.songs[]）。
+/// 批N2-B 实测（2026-11-12，n2b_raw.json，匿名=VIP 同构）：
+/// - 列表 data.songs[]，item 10 键：album_info/audio_info/authors/base/
+///   copyright/deprecated/extend/extra/mvdata/trans_param。
+/// - 歌曲核心在 base{}：audio_name/author_name/album_id/audio_id/
+///   album_audio_id；hash 在 audio_info{}：hash/hash_128/filesize/duration(ms)
+///   /hash_320/hash_flac/…；专辑在 album_info{}：album_name/cover。
+/// - mvdata[]: {typ,trk,hash,id}（MV hash 源）。
+/// fromTrackInfo 现有键（hash/name/singerinfo/albuminfo/timelen…）与该
+/// 结构**不同族**（那是 pubsongs nofilt 口径）→ 用专用工厂 fromAlbumLite。
 Future<TrackPage> getAlbumSongs(
   KugouClient client,
   String albumId,
@@ -95,7 +112,7 @@ Future<TrackPage> getAlbumSongs(
     final raw = data['songs'] ?? data['list'] ?? data['info'] ??
         res['songs'] ?? res['list'];
     final items = listOf(raw)
-        .map(SongBrief.fromTrackInfo)
+        .map(SongBrief.fromAlbumLite)
         .where((s) => s.hash.isNotEmpty)
         .toList(growable: false);
     final total = safeInt(data['total'] ?? res['total'] ?? items.length);
@@ -157,8 +174,17 @@ Future<List<PlaylistBrief>> getSimilarPlaylists(
         : listOf(data['data']);
     final items = <PlaylistBrief>[];
     for (final g in groups) {
+      // 形态二（批N2-C）：item.collection_list[] 双层。
       for (final m in listOf(g['collection_list'])) {
         final p = PlaylistBrief.fromMap(m);
+        if (p.id.isNotEmpty) items.add(p);
+      }
+      // 形态一（批N2-B 直测同一端点，2026-11-12）：item.collection_info
+      // 单对象（21 键：collection_name/cover/flexible_cover/heat/user_id/
+      // user_name/publish_date/…；⚠️ 无 song_count——trackCount 如实 0）。
+      final ci = g['collection_info'];
+      if (ci is Map) {
+        final p = PlaylistBrief.fromMap(ci.map((k, v) => MapEntry('$k', v)));
         if (p.id.isNotEmpty) items.add(p);
       }
     }

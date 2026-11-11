@@ -145,6 +145,136 @@
 
 ---
 
+# 批N2-B · A4+A5 歌手/专辑/MV 域实证（2026-11-12）
+
+> 探针：`.test_creds/n2b_probe.py`（A4）+ `n2b_mv_probe.py`（A5），复刻 n1c_probe
+> android 签名直连 gateway.kugou.com；留样 `n2b_raw.json` / `n2b_video_detail_ok.json`
+> / `n2b_videourl_qhd.json`。样例对象：周杰伦（author_id 3520，夜曲专辑 958909，
+> 夜曲 album_audio_id 32029511，MV video_id 596344）。
+
+## A4 · 歌手/专辑域
+
+### A4-1 · /kmr/v3/author（歌手详情，POST，openapi，kg-tid 36，body {author_id}）
+- 实测：匿名与 VIP 响应**同构**，`data` 平铺 **14 键**：
+  `author_id`(=3520)、`author_name`="周杰伦"、`sizable_avatar`({size} 模板)、
+  `intro`（短简介，可为空串）、`long_intro`（长文）、`album_count`、`song_count`、
+  `mv_count`、`fansnums`（⚠️ 复数形式键，非 fans/fans_num）、`area_id`、`birthday`、
+  `is_publish`、`pinyin_initial`、`user_status`。
+- 代码：`ArtistDetail` 扩 albumCount/songCount/mvCount/fans（fansnums）；intro 空
+  时落 long_intro；ArtistBrief 补 AuthorId/AuthorName/Avatar/FansNum 搜索域驼峰兜底。
+
+### A4-2 · /v1/album_audio/lite（专辑歌曲，POST，openapi，kg-tid 255，body {album_id,page,pagesize,is_buy:0}）
+- 实测（匿名=VIP 同构）：`data.songs[]`，item **10 键**：
+  `base`{audio_name,author_name,album_id,audio_id,album_audio_id,is_publish}、
+  `audio_info`{hash,hash_128,hash_320,hash_flac,hash_high,hash_super,filesize,
+  filesize_128/320/flac,bitrate,duration(**毫秒**,226873),duration_128/320/flac,
+  extname}、`album_info`{album_name,cover}、`authors`[{author_name,author_id,
+  sizable_avatar,is_publish}]、`copyright`{privilege,privilege_128/320/flac,…}、
+  `deprecated`{video_hash,hash_multitrack,pay_type,pay_block_tpl,cid,…}、
+  `extend`{has_obbligato,cd_name,disc,sort}、`extra`{remark}、
+  `mvdata`[{typ:0,trk:"3",hash,id:"596344"}]、`trans_param`{musicpack_advance:1,
+  ogg_*_hash/filesize,union_cover,hash_offset{offset_hash,start_ms,end_ms},…}。
+- ⚠️ 与 pubsongs nofilt 口径（fromTrackInfo）**不同族**：无 singerinfo/albuminfo/
+  timelen/size 键 → 新增 `SongBrief.fromAlbumLite` 专用工厂（hash=audio_info.hash、
+  名=base.audio_name、歌手=base.author_name→authors[]聚合、albumAudioId=
+  base.album_audio_id、duration ms→s、isVip=trans_param.musicpack_advance）。
+  `album_endpoints.getAlbumSongs` 已切换到 fromAlbumLite。
+
+### A4-3 · /kmr/v2/albums（专辑详情，POST，openapi，kg-tid 255，body {data:[{album_id}]}）
+- 实测：`data` 为**数组**，data[0] **21 键**：`album_id`("958909" 字符串)、
+  `album_name`="十一月的萧邦"、`author_name`、`sizable_cover`(完整 {size} URL)、
+  `cover`（⚠️ 裸文件名 "20250125121901851911.jpg"，**非 URL，不可直接展示**）、
+  `intro`(长文案)、`publish_date`="2005-11-01"（⚠️ 无 publish_time 键）、
+  `publish_company`="杰威尔音乐有限公司"、`grade`="8.7"、`grade_count`="5504"、
+  `heat`="2329975"、`language`="国语"、`language_id`、`category`、`classification`、
+  `exclusive`、`is_publish`、`quality`、`special_tag`、`type`="录音室专辑"、`trans_param`。
+- ⚠️ **无曲目数键**（count/song_count/songnum 均不存在）→ AlbumBrief.songCount
+  在此口径如实 0（曲目数取 A4-2 的 data.total）。
+- 代码：getAlbumDetail cover 改 sizable_cover/imgurl（去掉裸 cover 兜底防死链）。
+
+### A4-4 · /pubsongs/v1/kmr_get_similar_lists（相似歌单）
+- 实测（body {data:[{global_collection_id}]}，key/signature 可不带，status=1）：
+  `data` 为**数组**，data[i] 两键 `collection_info`（21 键）+ `tag_info`
+  [{tag_id,tag_name}]。collection_info 键：global_collection_id/collection_id/
+  cloudlist_id/collection_name/cover(150px 完整)/flexible_cover({size})/intro/
+  heat/user_id/user_name/publish_date/percount/type/is_publish/is_recommend/
+  sync/special_tag/ugc_talent_info/user_is_verified/trans_param。
+- ⚠️ 与批N2-C 实测的 `data[].collection_list[]` 双层形态并存（服务端按灰度/参数
+  返回两种形态）→ getSimilarPlaylists 已双形态容错。collection_info 口径
+  **无 song_count**（trackCount 如实 0）。
+
+### A4-5 · 歌手域两端点实测不可达（不猜字段）
+- `/v1/author/albums`（tid 36/38/无）与 `/kmr/v1/author/audios`（tid 36/38/255/无、
+  匿名/VIP、body 合并/清默认参数、gateway+openapi 直连）——**全部 502/403**。
+  字段树未固化；artist_endpoints 注释已如实标注，_pickList 容错维持原样。
+
+## A5 · MV 域（全部实测打通）
+
+### A5-1 · /kmr/v1/audio/mv（按歌查 MV，POST，openapi，kg-tid 38）
+- ⚠️ 旧口径 `/kmr/audio/mv`（body {album_audio_id}）实测 **502 不存在**。
+- 实测口径：body `{data:[{album_audio_id:"32029511"}], fields:''}`；
+  响应 `data` 为**嵌套数组** `data[0][]`，项键（27 个）：
+  `video_id`、`mv_name`（⚠️ 非 mvname/filename）、`singer`、`duration`(**毫秒**
+  231732)、`hdpic`({size} 高清封面)、`thumb`(缩略图)、`hit`/`hot`/`play_times`/
+  `download_total`/`collection_total`、`audio_id`/`album_audio_id`/`songid`、
+  `music_trac`、`have_mp4`、`is_recommend`/`is_ugc`/`is_short`/`is_publish`/
+  `is_other`、`publish_time`、`desc`/`other_desc`/`remark`/`topic`、`type`、
+  `user_id`/`user_name`/`user_avatar`、`__status`。
+- ⚠️ MV 项本身**无 hash 键**——播放 hash 来自歌曲侧 `mvdata[].hash` 或
+  `deprecated.video_hash`（A4-2），或由 video_id 走 A5-2 取档位 hash。
+- 代码：mvDetail 路径改 `/kmr/v1/audio/mv`；getMvBySong 双层取数+容错；
+  MvBrief.fromMap 键修 mv_name/hdpic。
+
+### A5-2 · /v1/video（MV 详情/清晰度，POST，kmr.service）
+- ⚠️ `/v1/video/detail` 实测 **404**；`/kmr/v2/videos` 404。
+- 实测口径（**clearDefaultParams 全参 body**）：`{appid:'1005',clientver:'20489',
+  clienttime:秒, mid, uuid, dfid, token:'', key:md5(appid+SALT+clientver+秒),
+  show_resolution:1, data:[{video_id:596344}]}`，android 签名对 body 全参。
+  网关默认参数形态（不带这些键）404/502。
+- 响应 `data[0]` 平铺 88 键，**清晰度档位以前缀展开**（无数组）：
+  `ld_*`(480×270)/`sd_*`(768×432)/`hd_*`(1280×720)/`fhd_*`(1920×1080)/
+  `qhd_*`(960×540)，每档 `{tier}_hash/{tier}_hash_265/{tier}_filesize/
+  {tier}_bitrate/{tier}_width/{tier}_height`（+ld/sd/hd/fhd/qhd 各实测留样，
+  如 qhd_hash=32952294B 对应 qhd_filesize）；另有 `mkv_sd_*`/`mkv_qhd_*` 三键、
+  `audio_hash/audio_filesize/audio_bitrate/audio_timelength`、
+  `video_name`="夜曲"、`hdpic`/`thumb_gif`/`thumb_mp4`/`thumb_hd_mp4`/
+  `thumb_hd_h265_mp4`、`timelength`(231732 ms)、`video_id`/`album_audio_id`/
+  `audio_id`、`authors[]`、`classification[]`、`publish_date`、`track`、
+  `have_mp4`、`heat`/`history_heat`/`play_times`/`download_total`/
+  `collection_total` 等。
+- 代码：videoDetail 路径改 `/v1/video` + clearDefaultParams:true；
+  MvQuality.fromFlat 平铺抽取（主档+265 档+mkv 档）。
+
+### A5-3 · /v2/interface/index（MV 播放地址，GET，trackermv）
+- 实测参数表（缺 key 即 40003）：
+  `backupdomain=1, cmd=123, ext=mp4, ismp3=0, hash, pid=1, type=1, key,
+  userid(0), appid('1005')`；key=md5(hash+**57ae12eb6890223e355ccfcb74edf70d**
+  (signKeySalt)+appid+mid+userid||0)（与 play_url 同盐；signing.playKey）。
+  ⚠️ cmd=12/4/25 及缺参数组合实测 40003 "Bad cmd"/"Empty key"。
+- 响应：`{status:1, privileges:{hash:0/1}, data:{hash:{downurl:"http://…mp4"
+  (单串), backupdownurl:["http://…mp4"](数组), filesize}}}`。
+- 代码：videoUrl 声明 encryptKey:true（KugouClient 自动注 key）；getVideoUrl
+  参数表更新，解析 data[hash].downurl+backupdownurl 并去重。
+
+## 模型映射修正清单（批N2-B 落地）
+| 位置 | 修正 |
+|---|---|
+| kugou_client.dart EndpointRegistry | mvDetail→/kmr/v1/audio/mv；videoDetail→/v1/video+clearDefaultParams；videoUrl+encryptKey |
+| mv_endpoints.dart getMvBySong | body {data:[{album_audio_id}]}；data[0][] 嵌套取数 |
+| mv_endpoints.dart MvBrief.fromMap | mv_name / hdpic / duration(ms) 实测键 |
+| mv_endpoints.dart MvQuality | 新增 fromFlat（ld/sd/hd/fhd/qhd 平铺+265+mkv） |
+| mv_endpoints.dart getVideoUrl | 实测参数表 cmd=123/pid=1 + data[hash].downurl/backupdownurl |
+| artist_endpoints.dart ArtistDetail | 扩 albumCount/songCount/mvCount/fans(fansnums)；long_intro 兜底 |
+| artist_endpoints.dart ArtistBrief | 补搜索域驼峰 AuthorId/AuthorName/Avatar/FansNum |
+| artist_endpoints.dart AlbumBrief | sizable_cover 优先；songcount 兜底；实测注释 |
+| models.dart SongBrief.fromAlbumLite | 新增（album_audio/lite 十键结构专用） |
+| album_endpoints.dart getAlbumSongs | fromTrackInfo→fromAlbumLite |
+| album_endpoints.dart getAlbumDetail | cover 不落裸文件名；publish_date 实测注释 |
+| album_endpoints.dart getSimilarPlaylists | collection_info / collection_list 双形态容错 |
+| tool/field_truth_test.dart | 追加 A4/A5 六组锚点（fromAlbumLite/MvQuality.fromFlat/MvBrief/AlbumBrief/ArtistDetail/MvPlayResult） |
+
+---
+
 # 批N2-C · A3 三端点收口实测（2026-11-12，探针 n2c_probe.py / n2c_playurl_final.json）
 
 ## A3-1 · play_url v5（/v5/url，x-router trackercdn.kugou.com）

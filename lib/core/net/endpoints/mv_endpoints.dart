@@ -228,11 +228,31 @@ Future<MvBrief?> getMvBySong(KugouClient client, int albumAudioId) async {
       Log.w(_tag, 'getMvBySong invalid albumAudioId=$albumAudioId');
       return null;
     }
+    // 批N2-B 实测（n2b_mv_dump.json）：真实口径 POST /kmr/v1/audio/mv
+    // （kg-tid 38），body {data:[{album_audio_id}], fields:''}；响应 data 为
+    // 嵌套数组 data[0][]。/kmr/audio/mv 旧口径实测 502（网关不存在）。
     final res = await client.request(EndpointRegistry.mvDetail,
         const <String, Object?>{},
-        body: <String, Object?>{'album_audio_id': albumAudioId});
+        body: <String, Object?>{
+          'data': <Object?>[
+            <String, Object?>{'album_audio_id': '$albumAudioId'},
+          ],
+          'fields': '',
+        });
     final data = dataOf(res);
-    final list = listOf(data['list'] ?? data['info'] ?? data['mv_list']);
+    // 嵌套数组容错：data[0][] 优先，回退 data.list / data.info / data 平铺。
+    var list = <Map<String, dynamic>>[];
+    if (data['data'] is List && (data['data'] as List).isNotEmpty) {
+      final first = (data['data'] as List).first;
+      if (first is List) {
+        list = listOf(first);
+      } else {
+        list = listOf(data['data']);
+      }
+    }
+    if (list.isEmpty) {
+      list = listOf(data['list'] ?? data['info'] ?? data['mv_list'] ?? data);
+    }
     if (list.isEmpty) {
       Log.d(_tag, 'getMvBySong empty list aid=$albumAudioId');
       return null;
@@ -304,8 +324,15 @@ List<MvQuality> _parseQualities(Map<String, dynamic> res) {
   }
 }
 
-/// getVideoUrl：按清晰度 hash 取播放地址（video/url，GET /v2/interface/index，
-/// 参数 hash/quality）。downurl 为多 CDN（主链+备链），全部收集由调用方容错。
+/// getVideoUrl：按清晰度 hash 取播放地址（GET /v2/interface/index，
+/// x-router trackermv）。
+/// 批N2-B 实测：参数必须 backupdomain=1/cmd=123/ext=mp4/ismp3=0/pid=1/type=1
+/// + hash，且 **必带 key=md5(hash+signKeySalt+appid+mid+userid||0)**
+/// （signKey；endpoint 声明 encryptKey=true 由 KugouClient 自动注入），
+/// 否则 errcode 40003 "Empty key"/"Bad cmd"（cmd=12/4/25 均拒绝）。
+/// 成功响应：{status:1, privileges:{hash:0/1}, data:{hash:{downurl:"…",
+/// backupdownurl:["…"], filesize}}}——downurl 为单串（主链），
+/// backupdownurl 为备链数组。
 Future<MvPlayResult> getVideoUrl(
   KugouClient client,
   String qualityHash, {
@@ -321,30 +348,32 @@ Future<MvPlayResult> getVideoUrl(
     final res = await client.request(EndpointRegistry.videoUrl,
         <String, Object?>{
       'hash': h,
-      'quality': quality.trim().isEmpty ? 'mp4' : quality.trim(),
-      'cmd': 12,
-      'pid': 2,
-      'ssl': 1,
+      'backupdomain': 1,
+      'cmd': 123,
       'ext': 'mp4',
+      'ismp3': 0,
+      'pid': 1,
+      'type': 1,
     });
-    // downurl 常见：顶层 downurl（数组/分号串）或 data.downurl。
-    var urls = _collectUrls(res['downurl'] ?? res['backupUrl']);
+    // 实测形态：data[hash].downurl（单串）+ data[hash].backupdownurl（数组）。
+    final data = dataOf(res);
+    var bucket = <String, dynamic>{};
+    final db = data[h];
+    if (db is Map) bucket = db.map((k, v) => MapEntry('$k', v));
+    var urls = <String>[
+      ..._collectUrls(bucket['downurl']),
+      ..._collectUrls(bucket['backupdownurl']),
+    ];
+    // 兼容旧形态：顶层 downurl / data.downurl / backupUrl。
     if (urls.isEmpty) {
-      final data = dataOf(res);
+      urls = _collectUrls(res['downurl'] ?? res['backupUrl']);
+    }
+    if (urls.isEmpty) {
       urls = _collectUrls(data['downurl'] ?? data['url']);
     }
-    // 分号拼接形态拆分（trackermv 常见返回 "a|b|c" 或 "a;b;c"）。
-    if (urls.length == 1 && (urls.first.contains('|'))) {
-      try {
-        urls = urls.first
-            .split(RegExp(r'[|;]'))
-            .map((s) => s.trim())
-            .where((s) => s.isNotEmpty)
-            .toList(growable: false);
-      } catch (e, st) {
-        Log.e(_tag, 'getVideoUrl split multi-cdn failed', e, st);
-      }
-    }
+    // 去重（主链与备链偶有重叠）。
+    final seen = <String>{};
+    urls = urls.where((u) => seen.add(u)).toList(growable: false);
     final r = MvPlayResult(urls: urls, quality: quality, title: title);
     Log.d(_tag,
         'getVideoUrl hash=$h cdn=${urls.length} ok=${r.playable}');

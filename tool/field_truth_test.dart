@@ -5,6 +5,10 @@
 import 'dart:convert';
 import 'dart:io' show exitCode, ZLibCodec;
 import '../lib/core/net/endpoints/models.dart';
+import '../lib/core/net/endpoints/mv_endpoints.dart'
+    show MvBrief, MvQuality;
+import '../lib/core/net/endpoints/artist_endpoints.dart'
+    show ArtistDetail, ArtistBrief, AlbumBrief;
 import '../lib/core/net/endpoints/search_typed_endpoints.dart';
 import '../lib/core/net/endpoints/misc_endpoints.dart'
     show krcDecode, kKrcXorKey;
@@ -384,6 +388,216 @@ void main() {
       'd6c78fbd24b64fee6ce6da8a229bc8cf');
   eq('similar song.mixSongId', simSong.mixSongId, 345871732);
   eq('similar song.durationSec(无键如实 0)', simSong.durationSec, 0);
+
+  // ══ A4 · 歌手/专辑域（批N2-B 实测 2026-11-12，n2b_raw.json）══
+
+  // ── A4-2 · /v1/album_audio/lite data.songs[]（夜曲实测留样）──
+  group('A4-2 album lite');
+  const liteItem = <String, dynamic>{
+    'base': {
+      'is_publish': 1,
+      'album_id': 958909,
+      'author_name': '周杰伦',
+      'audio_name': '夜曲',
+      'album_audio_id': 32029511,
+    },
+    'audio_info': {
+      'hash': '16C8AB298231370293D16BCF9E5FF9B6',
+      'hash_128': '16C8AB298231370293D16BCF9E5FF9B6',
+      'bitrate': 128,
+      'duration': 226873, // 实测毫秒
+      'filesize': 3630591,
+      'filesize_128': 3630591,
+      'extname': 'mp3',
+    },
+    'album_info': {
+      'album_name': '十一月的萧邦',
+      'cover': 'http://imge.kugou.com/stdmusic/{size}/20250125/x.jpg',
+    },
+    'authors': [
+      {'author_name': '周杰伦', 'author_id': 3520},
+    ],
+    'mvdata': [
+      {'typ': 0, 'trk': '3', 'hash': '14F783AB3068B2CFB40B64F7A79763C8',
+       'id': '596344'},
+    ],
+    'trans_param': {'musicpack_advance': 1},
+  };
+  final lite = SongBrief.fromAlbumLite(liteItem);
+  eq('lite.hash(audio_info.hash 小写)', lite.hash,
+      '16c8ab298231370293d16bcf9e5ff9b6');
+  eq('lite.name(base.audio_name)', lite.name, '夜曲');
+  eq('lite.singer(base.author_name)', lite.singer, '周杰伦');
+  eq('lite.albumAudioId(base.album_audio_id)', lite.albumAudioId, 32029511);
+  eq('lite.albumId(int→str)', lite.albumId, '958909');
+  eq('lite.albumName(album_info.album_name)', lite.albumName, '十一月的萧邦');
+  eq('lite.durationSec(ms→s)', lite.durationSec, 226);
+  eq('lite.fileSize(audio_info.filesize)', lite.fileSize, 3630591);
+  eq('lite.isVip(trans_param.musicpack_advance)', lite.isVip, true);
+  // authors[] 聚合兜底（base.author_name 缺失时）
+  final lite2 = SongBrief.fromAlbumLite(<String, dynamic>{
+    'base': {'audio_name': '夜曲'},
+    'audio_info': {'hash': '16C8AB298231370293D16BCF9E5FF9B6'},
+    'authors': [
+      {'author_name': '周杰伦', 'author_id': 3520},
+      {'author_name': '费玉清', 'author_id': 6638},
+    ],
+  });
+  eq('lite2.singer(authors[] 聚合「、」)', lite2.singer, '周杰伦、费玉清');
+
+  // ── A4-3 · /kmr/v2/albums data[0]（十一月的萧邦实测留样）──
+  group('A4-3 album detail');
+  const albumItem = <String, dynamic>{
+    'album_id': '958909',
+    'album_name': '十一月的萧邦',
+    'author_name': '周杰伦',
+    'sizable_cover': 'http://imge.kugou.com/stdmusic/{size}/20250125/x.jpg',
+    'cover': '20250125121901851911.jpg', // 实测裸文件名，非 URL
+    'intro': '周杰伦2005最新国语专辑',
+    'publish_date': '2005-11-01',
+    'publish_company': '杰威尔音乐有限公司',
+    'grade': '8.7',
+    'heat': '2329975',
+    'language': '国语',
+    'type': '录音室专辑',
+    // 实测无 count/song_count/songnum —— songCount 如实 0
+  };
+  final ab = AlbumBrief.fromMap(albumItem);
+  eq('album.id(str)', ab.id, '958909');
+  eq('album.name', ab.name, '十一月的萧邦');
+  eq('album.cover(sizable_cover 优先)', ab.cover,
+      'http://imge.kugou.com/stdmusic/{size}/20250125/x.jpg');
+  eq('album.publishDate', ab.publishDate, '2005-11-01');
+  eq('album.songCount(实测无键如实 0)', ab.songCount, 0);
+
+  // ── A4-1 · /kmr/v3/author data 平铺（周杰伦实测 14 键）──
+  group('A4-1 artist detail');
+  const authorItem = <String, dynamic>{
+    'author_id': 3520,
+    'author_name': '周杰伦',
+    'sizable_avatar': 'http://singerimg.kugou.com/uploadpic/softhead/{size}/x.jpg',
+    'intro': '',
+    'long_intro': '周杰伦（Jay Chou），1979年1月18日出生于台湾省新北市…',
+    'album_count': 40,
+    'song_count': 515,
+    'mv_count': 78,
+    'fansnums': 5810243, // 实测键 fansnums
+    'area_id': 15,
+    'is_publish': 1,
+    'pinyin_initial': 'zjl',
+    'user_status': 0,
+  };
+  final ad = ArtistDetail.fromMap(authorItem);
+  eq('artist.id', ad.id, '3520');
+  eq('artist.name', ad.name, '周杰伦');
+  eq('artist.avatar', ad.avatar,
+      'http://singerimg.kugou.com/uploadpic/softhead/{size}/x.jpg');
+  eq('artist.intro(空→long_intro 兜底)', ad.intro,
+      '周杰伦（Jay Chou），1979年1月18日出生于台湾省新北市…');
+  eq('artist.albumCount', ad.albumCount, 40);
+  eq('artist.songCount', ad.songCount, 515);
+  eq('artist.mvCount', ad.mvCount, 78);
+  eq('artist.fans(fansnums)', ad.fans, 5810243);
+  // 搜索域驼峰键兜底（A1-4 /v1/search/author）
+  final abr = ArtistBrief.fromMap(<String, dynamic>{
+    'AuthorId': 3520, 'AuthorName': '周杰伦', 'FansNum': 5810243,
+    'Avatar': 'http://singerimg.kugou.com/x.jpg',
+  });
+  eq('artistSearch.id(AuthorId)', abr.id, '3520');
+  eq('artistSearch.name(AuthorName)', abr.name, '周杰伦');
+  eq('artistSearch.fans(FansNum)', abr.fans, 5810243);
+
+  // ── A5-1 · /kmr/v1/audio/mv data[0][0]（夜曲 MV 实测留样）──
+  group('A5-1 mv brief');
+  const mvItem = <String, dynamic>{
+    'video_id': 596344,
+    'mv_name': '夜曲',
+    'singer': '周杰伦',
+    'duration': 231732, // 实测毫秒 3:51
+    'hdpic': 'http://imge.kugou.com/mvhdpic/{size}/20201126/x.jpg',
+    'thumb': 'http://imge.kugou.com/mvthumb/{size}/3e/d4/x.jpg',
+    'hit': 33229711,
+    'have_mp4': 1,
+    'audio_id': 338638,
+    'album_audio_id': 32029511,
+  };
+  final mv = MvBrief.fromMap(mvItem);
+  eq('mv.name(mv_name 实测键)', mv.name, '夜曲');
+  eq('mv.singer', mv.singer, '周杰伦');
+  eq('mv.durationMs', mv.durationMs, 231732);
+  eq('mv.coverUrl(hdpic 优先)', mv.coverUrl,
+      'http://imge.kugou.com/mvhdpic/{size}/20201126/x.jpg');
+
+  // ── A5-2 · /v1/video data[0] 平铺档位（夜曲 MV 实测留样）──
+  group('A5-2 mv qualities flat');
+  const videoDetail = <String, dynamic>{
+    'video_id': '596344',
+    'video_name': '夜曲',
+    'ld_hash': '8AA3FFCD89B2D644CD3499F920632D5C', 'ld_filesize': '15747489',
+    'ld_width': '480', 'ld_height': '270',
+    'sd_hash': 'E219A9287D08F632BCF96CE5DA74D7A0', 'sd_filesize': '18451967',
+    'hd_hash': '6F3AB816859A9F2F4ADEC162A74C5FC4', 'hd_filesize': '61979881',
+    'hd_height': '720',
+    'fhd_hash': 'EA6A48A677EFB989655F258D061BB5FD',
+    'fhd_filesize': '120093770', 'fhd_height': '1080',
+    'qhd_hash': '14F783AB3068B2CFB40B64F7A79763C8', // 实测留样（videourl_qhd）
+    'qhd_filesize': '32952294',
+    'qhd_hash_265': '2659D5F2E8017E537B56F2E08CDA420C',
+    'qhd_filesize_265': 15567229,
+    'mkv_qhd_hash': '5FA9DA04AFD3317DCAE55A5D73664596',
+    'mkv_qhd_filesize': '32684171',
+  };
+  final qs = MvQuality.fromFlat(videoDetail);
+  eq('mvQ.fromFlat 档位数(ld/sd/hd/fhd/qhd 主+qhd265+mkv)', qs.length, 7);
+  eq('mvQ ld.hash', qs[0].hash, '8aa3ffcd89b2d644cd3499f920632d5c');
+  eq('mvQ ld.size', qs[0].size, 15747489);
+  eq('mvQ fhd.hash', qs[3].hash, 'ea6a48a677efb989655f258d061bb5fd');
+  eq('mvQ qhd.hash(实测留样)', qs[4].hash, '14f783ab3068b2cfb40b64f7a79763c8');
+  eq('mvQ qhd_265.hash', qs[5].hash, '2659d5f2e8017e537b56f2e08cda420c');
+  eq('mvQ qhd_265.size', qs[5].size, 15567229);
+  eq('mvQ mkv.hash', qs[6].hash, '5fa9da04afd3317dcae55a5d73664596');
+
+  // ── A5-3 · /v2/interface/index data[hash].downurl（实测留样）──
+  group('A5-3 mv play url');
+  const urlResp = <String, dynamic>{
+    'status': 1,
+    'privileges': {'14f783ab3068b2cfb40b64f7a79763c8': 0},
+    'data': {
+      '14f783ab3068b2cfb40b64f7a79763c8': {
+        'backupdownurl': [
+          'http://fsmvpc.kugou.com/202611120720/b/KGTX/CLTX002/x.mp4',
+        ],
+        'filesize': '32952294',
+        'downurl':
+            'http://fsmvpc.tx.kugou.com/202611120720/a/v2/x/KGTX/CLTX002/x.mp4',
+      },
+    },
+  };
+  final d0 = dataOf(urlResp);
+  final bucket0 = d0['14f783ab3068b2cfb40b64f7a79763c8'] as Map;
+  final urls0 = <String>[
+    ...(bucket0['downurl'] is List
+        ? (bucket0['downurl'] as List).map((u) => '$u')
+        : ['${bucket0['downurl']}']),
+    ...(bucket0['backupdownurl'] as List).map((u) => '$u'),
+  ];
+  eq('mvUrl.downurl 单串主链', urls0[0],
+      'http://fsmvpc.tx.kugou.com/202611120720/a/v2/x/KGTX/CLTX002/x.mp4');
+  eq('mvUrl.backupdownurl 备链数组', urls0.length, 2);
+  eq('mvUrl.filesize(str)', safeInt(
+      (bucket0 as Map)['filesize']), 32952294);
+  // key 盐负对照锚点（批N2-B 实测）：缺 key/错 cmd → 40003 Empty key/Bad cmd；
+  // key 公式 = md5(hash + signKeySalt + appid + mid + userid||0)（同 play_url 盐）。
+  eq('mvKey.signKeySalt 与 play_url 同盐',
+      KugouSign.signKeySalt, '57ae12eb6890223e355ccfcb74edf70d');
+  eq('mvKey.playKey 拼接顺序', KugouSign.playKey(
+      '14f783ab3068b2cfb40b64f7a79763c8',
+      '281949768489412648962353822266799178366', ''),
+      _md5('14f783ab3068b2cfb40b64f7a79763c8'
+          '57ae12eb6890223e355ccfcb74edf70d'
+          '1005'
+          '281949768489412648962353822266799178366'
+          '0'));
 
   print('');
   print('pass=$_pass fail=$_fail');
