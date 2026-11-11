@@ -64,9 +64,9 @@ class _TnMotionStaggeredState extends State<TnMotionStaggered>
       final ctl = AnimationController(vsync: this, duration: TnMotion.normal);
       final curve = widget.curve ?? TnMotion.curve;
       _fade = CurvedAnimation(parent: ctl, curve: curve)
-          .drive(const Tween<double>(begin: 0, end: 1));
+          .drive(Tween<double>(begin: 0, end: 1));
       _slide = CurvedAnimation(parent: ctl, curve: curve)
-          .drive(const Tween<Offset>(begin: Offset(0, 0.06), end: Offset.zero));
+          .drive(Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero));
       _ctl = ctl;
       Future<void>.delayed(delay, () {
         if (mounted) ctl.forward();
@@ -116,8 +116,8 @@ class TnPageRoute<T> extends PageRouteBuilder<T> {
               return FadeTransition(
                 opacity: curved,
                 child: SlideTransition(
-                  position: curved.drive(
-                      const Tween<Offset>(begin: Offset(0, 0.04), end: Offset.zero)),
+                  position: curved.drive(Tween<Offset>(
+                      begin: const Offset(0, 0.04), end: Offset.zero)),
                   child: child,
                 ),
               );

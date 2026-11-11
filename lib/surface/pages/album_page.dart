@@ -10,6 +10,7 @@ import '../../bridges/bridge_logic.dart' show AlbumLogic, Log, LogicFacade;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
+import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadM, tnPadL, tnRadiusM;
 
 const String _tag = 'surface.album_page';
 
@@ -111,9 +112,9 @@ class _AlbumPageState extends State<AlbumPage> {
                 children: [
                   if (_detail.cover.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(tnPadL),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(tnRadiusM),
                         child: Image.network(_detail.cover,
                             height: 160, fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
@@ -122,7 +123,7 @@ class _AlbumPageState extends State<AlbumPage> {
                     ),
                   if (_detail.intro.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: tnPadL),
                       child: Text(_detail.intro,
                           maxLines: 3, overflow: TextOverflow.ellipsis),
                     ),
@@ -150,7 +151,7 @@ class _AlbumPageState extends State<AlbumPage> {
                           final p = _similar[i];
                           return Container(
                             width: 140,
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(tnPadS),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [

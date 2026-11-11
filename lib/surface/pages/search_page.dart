@@ -12,7 +12,8 @@ import '../../bridges/bridge_core.dart' show SongBrief, SearchType;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show SongTile;
-import '../theme/tn_theme.dart' show TnDims, tnPadM, tnPadS;
+import '../theme/tn_theme.dart' show TnDims, tnPadM, tnPadS, tnPadL;
+import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.search';
 

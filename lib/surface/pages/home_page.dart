@@ -11,7 +11,7 @@ import '../../bridges/bridge_logic.dart'
         RecommendLogic, SearchLogic, SongBrief;
 import '../registry.dart';
 import '../theme/tn_motion.dart' show TnMotionStaggered;
-import '../theme/tn_theme.dart' show TnDims, TnColors, tnPadS, tnPadM, tnPadL;
+import '../theme/tn_theme.dart' show TnDims, TnColors, tnPadS, tnPadM, tnPadL, tnRadiusS;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.home';

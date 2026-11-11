@@ -17,6 +17,7 @@ import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show CoverImage, SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
+import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadM, tnPadL, tnRadiusM;
 
 const String _tag = 'surface.playlist';
 
@@ -179,7 +180,7 @@ class _PlaylistPageBodyState extends State<_PlaylistPageBody> {
       return RefreshIndicator(
         onRefresh: () => _loadRecommend(reset: true),
         child: GridView.builder(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(tnPadS),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             childAspectRatio: 0.78,
@@ -392,7 +393,7 @@ class _PlaylistTracksPageState extends State<_PlaylistTracksPage> {
           itemBuilder: (ctx, i) {
             if (i == _tracks.length) {
               return const Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(tnPadL),
                 child: Center(child: CircularProgressIndicator()),
               );
             }

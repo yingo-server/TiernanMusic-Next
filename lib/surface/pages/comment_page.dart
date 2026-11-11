@@ -11,6 +11,7 @@ import '../../bridges/bridge_logic.dart'
     show CommentLogic, CommentItem, CommentPage, Log, LogicFacade;
 import '../registry.dart';
 import '../widgets/tn_app_bar.dart' show TnAppBar, TnPagePadding;
+import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadM, tnPadL, tnRadiusM;
 
 const String _tag = 'surface.comment_page';
 
@@ -171,7 +172,7 @@ class _CommentPageBodyState extends State<_CommentPageBody> {
             onRefresh: _model.refresh,
             child: ListView(
               controller: _scroll,
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: tnPadS),
               children: [
                 if (_model.hotWords.isNotEmpty)
                   TnPagePadding(child: _HotWordsChips(words: _model.hotWords)),
@@ -183,17 +184,17 @@ class _CommentPageBodyState extends State<_CommentPageBody> {
                     )),
                 if (_model.loading)
                   const Padding(
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(tnPadL),
                     child: Center(child: CircularProgressIndicator()),
                   )
                 else if (!_model.hasMore && _model.items.isNotEmpty)
                   const Padding(
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(tnPadL),
                     child: Center(child: Text('没有更多了')),
                   )
                 else if (_model.items.isEmpty && !_model.loading)
                   const Padding(
-                    padding: EdgeInsets.all(32),
+                    padding: EdgeInsets.all(TnDims.padXL),
                     child: Center(child: Text('暂无评论')),
                   ),
               ],
@@ -279,12 +280,12 @@ class _CommentTile extends StatelessWidget {
                 ]),
                 if (item.replyTo.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.only(top: TnDims.padXS),
                     child: Text('回复 @${item.replyTo}',
                         style: Theme.of(context).textTheme.bodySmall),
                   ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.symmetric(vertical: TnDims.padXS),
                   child: Text(item.content.isEmpty ? '（空内容）' : item.content),
                 ),
                 Row(children: [
@@ -356,17 +357,17 @@ class _FloorPageState extends State<_FloorPage> {
           leading: BackButton(onPressed: () => Navigator.of(context).maybePop()),
         ),
         body: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: tnPadS),
           children: [
             ..._items.map((c) => _CommentTile(item: c, onTapFloor: () {})),
             if (_loading)
               const Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(tnPadL),
                 child: Center(child: CircularProgressIndicator()),
               ),
             if (_items.isEmpty && !_loading)
               const Padding(
-                padding: EdgeInsets.all(32),
+                padding: EdgeInsets.all(TnDims.padXL),
                 child: Center(child: Text('暂无回复')),
               ),
           ],
