@@ -122,14 +122,17 @@ class EndpointRegistry {
       id: 'rank_info', path: '/ocean/v6/rank/info');
 
   // ── 歌词 ──
+  // 批N2-A 实测（API_FIELDS_TRUTH.md §A3-3/4，2026-11-12）：lyrics.kugou.com
+  // 裸请求一律 HTTP 200 空响应体——必须 android 签名 + dfid/mid/uuid/clienttime
+  // 默认参在场并参与签名（不能用 none/clearDefaultParams）。成功语义 status=200。
   static const lyricSearch = Endpoint(
       id: 'lyric_search',
       base: 'https://lyrics.kugou.com', path: '/v1/search',
-      signType: SignType.none, clearDefaultParams: true);
+      signType: SignType.android);
   static const lyricDownload = Endpoint(
       id: 'lyric_download',
       base: 'https://lyrics.kugou.com', path: '/download',
-      signType: SignType.none, clearDefaultParams: true);
+      signType: SignType.android);
 
   // ── 歌手/专辑 ──
   static const artistList = Endpoint(

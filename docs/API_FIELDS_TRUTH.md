@@ -142,3 +142,95 @@
 - /v6/search/complex 实测不可达（502）——三路容错维持原样。
 - Album/Author/Mv 搜索项无强类型模型：AlbumBrief/AuthorBrief/MvBrief 键集已在 §A1-3/4/5 固化。
 - fromTrackInfo 未映射 albuminfo.id（albumId 已有顶层 album_id，两处一致实测=981208）。
+
+## A3 · 播放/歌词域（批N2-A · 2026-11-12 实测，gateway.kugou.com + lyrics.kugou.com 三态）
+
+> 探针：`.test_creds/n2a_probe.py`（play_url/privilege_lite 签名直连）+ 内嵌 lyrics.kugou.com
+> 签名版请求。留样：`n2a_search_full.json` / `n2a_download_krc.json` / `n2a_download_lrc.json` /
+> `n2a_krc_plain.txt` / `n2a_lrc_plain.txt` / `n2a_playurl_{vip,nonvip,anon}.json` /
+> `n2a_privilege_lite.json`。样曲：晴天 hash `b3a52a7a958bf0aed0ebfba2e9a818b7`（VIP 曲，
+> album_audio_id 339589，cid 2456863）。
+
+### A3-1 · /v5/url（play_url，x-router trackercdn.kugou.com，GET + encryptKey）
+- 必带参数（缺一即失败）：`hash`(小写) + `key` = md5(hash + `57ae12eb6890223e355ccfcb74edf70d`
+  + appid + mid + userid||0)（signKey 公式复核 KuGouMusicApi util/helper.js，实测验证）+
+  token/userid 参数 + Cookie（含 t1）。
+  本次实测参数集：hash/album_audio_id/album_id/quality=128/area_code=1/behavior=play/
+  ssa_flag=is_fromtrack/version=11430/clientver=11430/page_id/ppage_id/pid=2/cmd=26/
+  pidversion=3001/cdnBackup=1。
+- **成功响应顶层即数据**（无 data 包层，与 FINDINGS.md §1 一致，本次逐键固化）：
+  `hash`、`status`(1=出URL)、`priv_status`(1=有权限)、`volume`=-10.8、`is_hash_backup`=1、
+  `backupUrl`=[1个]、`url`=[主链]、`tracker_through`={identity_block,cpy_grade=5,
+  musicpack_advance=1(VIP曲),all_quality_free,cpy_level}、`trans_param`={pay_block_tpl,
+  classmap,language,cpy_attr0,display=32,display_rate,cpy_map,qualitymap{bits,attr0,attr1},
+  is_original,flags,ogg_128_hash/filesize,ogg_320_hash/filesize,hash_multitrack,ipmap,union_cover}、
+  `fileHead`=0、`auth_through`=[]、`volume_peak`=0.2、`bitRate`=128000（**bps**）、
+  `timeLength`=269（**秒**）、`q`=0、`fileName`="晴天"、`extName`="mp3"、`fileSize`=4317292。
+- 三态行为（VIP 曲）：
+  - VIP：status=1 priv_status=1，url+backupUrl 各 1 条（fsmobile.tx.kugou.com，约5分钟有效期）。
+  - 非VIP：**status=0，error_code=35104 "Hash not found"，error="Hash not found"**（⚠️
+    与 2026-11-10 记录的 priv_status=0 不同——本次带 key 后错误形态变为 35104；
+    顶层还有 quality_degradable/trans_param/tracker_through）。
+  - 匿名：status=2，errcode=20028「本次请求需要验证」，顶层键仅
+    errcode/error/fail_process=["pkg"]/status。
+  - 权限判定以 status==1 && priv_status==1 && url 非空为准。
+- 回归锚点样例（VIP 成功态）已存 `n2a_playurl_vip.json`。
+
+### A3-2 · /v2/get_res_privilege/lite（privilege_lite，POST，x-router media.store.kugou.com）
+- body（实测通过，来自上游 privilege_lite.js 结构）：`{appid:'1005', area_code:1,
+  behavior:'play', clientver:'20489', need_hash_offset:1, relate:1, support_verify:1,
+  resource:[{type:'audio', page_id:0, hash, album_id:0}],
+  qualities:['128','320','flac','high','viper_atmos','viper_tape','viper_clear','super','multitrack']}`。
+  ⚠️ resource 必须是 **{type,page_id,hash,album_id} 对象数组**（裸 hash 字符串数组 → 20010
+  "param error, len resource:0"；旧记录「body 只需带 appid/clientver」不完整）。
+- 响应：`{appid_group, data[], error_code, message, should_cache, status}`；status=1 error_code=0。
+- data[0] 键（49 个）：`type`="audio"、`id`=20505418、`album_id`="0"、`recommend_album_id`、
+  `album_audio_id`=32100650（⚠️ 与搜索侧 339589 不同源，勿互混）、`hash`(大写)、`name`、
+  `singername`、`albumname`、`level`=2、`quality`="128"、`expire`=0、`publish`/`is_publish`=1、
+  `old_hide`=1、**`privilege`=10（int 标量，与 FINDINGS.md §10 一致：三态同值，不用于权限判定）**、
+  `status`=0、`fail_process`=12、`pay_type`=3、`price`=200、`pkg_price`=1、`topic_url`/`topic_remark`、
+  `start_time`/`end_time`="0000-00-00"、`cd_url`、`cid`=2456863、`old_cpy`、`rebuy_pay_type`、
+  `is_search_top`、`pay_block_text`、`is_separate`、`buy_count*`(4键)、`_msg`/`_errno`、
+  `info`={bitrate,duration,extname,filesize,flag,image,imgsize,intro}、
+  `popup`={btn_name,btn_url_android,btn_url_ios,content,redirect_url_h5,title}、
+  `trans_param`={...musicpack_advance,ogg_*,hash_offset,cpy_*...}、`relate_goods`[]。
+- 502 风控抖动：/v2/privilege_lite 路径不存在（502），正确路径为
+  /v2/get_res_privilege/lite（与 kugou_client.dart EndpointRegistry.privilegeLite 一致）。
+
+### A3-3 · lyrics.kugou.com/v1/search（歌词搜索，GET）
+- ⚠️ **重大实测修正（推翻 KUGOU_API.md §3.1「不签名」记载）**：直接裸 GET 一律返回
+  HTTP 200 + **空 body**（0 字节，无状态码线索，UA/头组合均试过无效）。
+  必须按 **android 签名 + 显式 dfid 请求头** 发送：params {album_audio_id, appid:'1005',
+  clientver:'20489', duration, hash(小写), keyword, lrctxt:1, man:'no'} 签名 android（无 body），
+  headers dfid=随机24位/mid/uuid='-'/clienttime/kg-*。
+- 成功语义：`status`=200（**不是 1**）、`errcode`=200、`info`="OK"（PARITY_NOTES 语义正确）。
+- 顶层键：status/info/errcode/errmsg/keyword/proposal/has_complete_right/companys/
+  ugc/ugccount/expire=7200/candidates[]/ai_candidates[]/ugccandidates[]。
+- candidates[0] 键（27 个）：`id`="274944371"（**字符串**）、`product_from`="官方推荐歌词"、
+  `accesskey`（大写MD5）、`can_score`=false、`singer`、`song`、`duration`=269792（**毫秒**）、
+  `uid`、`nickname`、`origiuid`/`transuid`/`sounduid`、`originame`/`transname`/`soundname`、
+  `parinfo`=[]、`parinfoExt`=[]、`language`="国语"、`krctype`=1、`hitlayer`=1、`hitcasemask`=111、
+  `adjust`=30、`score`=60、`contenttype`=0（0=krc）、`content_format`=1、`download_id`。
+- ⚠️ `id`/`uid`/`download_id` 实测为字符串——safeInt 可容错但建议 safeStr 透传。
+
+### A3-4 · lyrics.kugou.com/download（歌词下载，GET，同样需 android 签名 + dfid 头）
+- params：{ver:1, client:'android', id, accesskey, fmt:'krc'|'lrc', charset:'utf8'}，android 签名。
+- 响应键：`status`=200、`info`="OK"、`error_code`=0、`fmt`、`contenttype`、`_source`="bss"、
+  `charset`（krc 时空串；lrc 时 "utf8"）、`id`、`content`（base64）。
+- contenttype：**0=krc（加密）**，1=lrc（明文 base64）。fmt=lrc 请求同一 id/ak 成功返回 lrc。
+
+### A3-5 · krc 解密（本地，misc_endpoints.krcDecode 复核）
+- 魔数实测：b64 解码后前 4 字节 = `6b726331` = "krc1"（跳过），随后异或
+  `[64,71,97,119,94,50,116,71,81,54,49,45,206,210,110,105]` 16 字节循环，zlib inflate → utf8。
+  本次实测 4192 字节密文 → 8405 字符明文，krcDecode 算法逐字节验证正确。
+- krc 明文结构：`[ti:][ar:][al:][by:][offset:]` 头 + 行 `[start_ms,dur_ms]<s,e,0>字<s,e,0>字…`
+  （逐字卡拉 OK 时间轴，毫秒）。**晴天样例无 translation 独立轨**（译文内嵌未见，
+  GAP_ANALYSIS #17 的译文错行防御仍按条数不等不落缓存处理）。
+- lrc（contenttype=1）b64 直接 utf8 解码，标准 [mm:ss.xx] 行。
+
+### 模型映射修正清单（批N2-A 落地）
+| 位置 | 修正 |
+|---|---|
+| kugou_client.dart lyricSearch/lyricDownload Endpoint | SignType.none→android；clearDefaultParams 移除（需 dfid/mid/uuid/clienttime 默认参参与签名）；新增实测注释（空 body 风险） |
+| misc_endpoints.dart lyricSearch | candidates id 用 safeStr；注释按 A3-3 实测键集更新 |
+| misc_endpoints.dart lyricDownload | 增加 status==200 判定语义注释；_source/charset 如实不映射 |

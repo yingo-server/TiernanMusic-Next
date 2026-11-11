@@ -2,9 +2,12 @@
 // 数据源：docs/API_FIELDS_TRUTH.md（2026-11-12 probe 实测样例，gateway.kugou.com 三态）。
 // 断言 core/net/endpoints/models.dart + playlist_endpoints.dart 映射对真实响应逐字段正确。
 // 运行：/opt/dart/bin/dart run tool/field_truth_test.dart → 全过输出 FIELD-TRUTH-OK，失败退出码 1。
-import 'dart:io' show exitCode;
+import 'dart:convert';
+import 'dart:io' show exitCode, ZLibCodec;
 import '../lib/core/net/endpoints/models.dart';
 import '../lib/core/net/endpoints/search_typed_endpoints.dart';
+import '../lib/core/net/endpoints/misc_endpoints.dart'
+    show krcDecode, kKrcXorKey;
 
 int _pass = 0, _fail = 0;
 void eq(String name, Object? got, Object? want) {
@@ -221,6 +224,60 @@ void main() {
   final rs = SongBrief.fromTrackInfo(rankSong);
   eq('rankInfo song.name(songname 兜底，N1-C 修复)', rs.name, '村口吴老二 - 慌啥子嘛');
   eq('rankInfo song.albumAudioId(album_audio_id)', rs.albumAudioId, 968734427);
+
+  // ══ A3 · 播放/歌词域（批N2-A 实测 2026-11-12）══
+
+  // ── A3-3 · lyrics.kugou.com/v1/search candidates[0]（晴天，实测留样）──
+  group('A3-3 lyric search');
+  const lyricCand = <String, dynamic>{
+    'id': '274944371', // 实测字符串
+    'product_from': '官方推荐歌词',
+    'accesskey': '2A7B35884B3C20E9D3281686BA59A3F8',
+    'singer': '周杰伦',
+    'song': '晴天',
+    'duration': 269792, // 毫秒
+    'language': '国语',
+    'krctype': 1,
+    'contenttype': 0, // 0=krc
+    'content_format': 1,
+    'download_id': '274944371',
+    'score': 60,
+    'adjust': 30,
+  };
+  eq('lyricCand.id(safeInt 容错字符串)', safeInt(lyricCand['id']), 274944371);
+  eq('lyricCand.accesskey', safeStr(lyricCand['accesskey']),
+      '2A7B35884B3C20E9D3281686BA59A3F8');
+  eq('lyricCand.durationMs(毫秒)', safeInt(lyricCand['duration']), 269792);
+  eq('lyricCand.contenttype(0=krc)', safeInt(lyricCand['contenttype']), 0);
+
+  // ── A3-4/5 · /download 响应形态 + krc 本地解密（实测逐字节验证）──
+  group('A3-5 krc decode');
+  // 实测：晴天 krc 密文 b64 解码 4192B，魔数 "krc1"(6b726331)，异或+zlib → 8405 字符明文。
+  // 用确定性样例复现算法链：构造 "krc1" 魔数 + 已知明文 zlib 压缩后异或。
+  final plainSample = '[ti:晴天]\n[0,2250]<0,160,0>晴<160,160,0>天\n';
+  final zlibBody = ZLibCodec().encode(utf8.encode(plainSample));
+  final withMagic = <int>[0x6b, 0x72, 0x63, 0x31, ...zlibBody];
+  final xored = List<int>.from(withMagic);
+  for (var i = 4; i < xored.length; i++) {
+    xored[i] ^= kKrcXorKey[(i - 4) % 16];
+  }
+  final decoded = krcDecode(base64.encode(xored));
+  eq('krcDecode roundtrip(魔数+异或+inflate)', decoded, plainSample);
+  eq('krcDecode invalid → 空串不抛', krcDecode('not_base64!!'), '');
+  // contenttype==0 判定：krc；非 0 → lrc 仅 b64 解
+  const dlResp = <String, dynamic>{
+    'status': 200,
+    'info': 'OK',
+    'error_code': 0,
+    'fmt': 'krc',
+    'contenttype': 0,
+    '_source': 'bss',
+    'charset': '',
+    'id': '274944371',
+    'content': '',
+  };
+  eq('dlResp.status(成功语义 200)', safeInt(dlResp['status']), 200);
+  eq('dlResp.contenttype(krc)', safeInt(dlResp['contenttype']), 0);
 
   print('');
   print('pass=$_pass fail=$_fail');

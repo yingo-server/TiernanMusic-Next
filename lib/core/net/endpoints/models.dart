@@ -530,7 +530,7 @@ class LyricResult {
     this.isKrc = false,
   });
 
-  final int id; // candidates[].id（供 /download 使用）
+final int id; // candidates[].id（供 /download 使用；批N2-A 实测为字符串，safeInt 容错）
   final String accessKey; // candidates[].accesskey
   final String fmt; // krc / lrc
   final String content; // 解密后的纯文本（krc 已 inflate，lrc 已 base64 解）

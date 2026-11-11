@@ -17,6 +17,8 @@ const List<int> kKrcXorKey = <int>[
 ];
 
 /// krc 解码：输入 base64 内容；contenttype!=0（lrc）时仅 base64 解码。
+/// 批N2-A 实测（A3-5，晴天样曲逐字节验证）：b64 解码后前 4 字节魔数="krc1"
+/// （6b726331）跳过 → 异或 16 字节循环密钥 → zlib inflate → utf8。
 /// 失败返回 ''，不抛出。
 String krcDecode(String base64Content, {bool isKrc = true}) {
   try {
@@ -114,6 +116,8 @@ Future<List<LyricResult>> lyricSearch(
       'album_audio_id': albumAudioId,
       'lrctxt': 1,
       'man': 'no',
+      // 批N2-A 实测（A3-3）：appid/clientver 参与签名必须显式在场；
+      // candidates[].id 实测为字符串，safeInt 容错。
       'appid': KugouSign.appid,
       'clientver': KugouSign.clientver,
     });
@@ -126,7 +130,9 @@ Future<List<LyricResult>> lyricSearch(
         durationMs: safeInt(c['duration']),
       ));
     }
-    Log.d(_tag, 'lyricSearch hash=$h got=${out.length}');
+    // 批N2-A 实测（A3-3）：成功语义 status=200（errcode=200），非 1。
+    Log.d(_tag,
+        'lyricSearch hash=$h status=${res['status']} got=${out.length}');
     return out;
   } catch (e, st) {
     Log.e(_tag, 'lyricSearch failed hash=$hash', e, st);
@@ -134,7 +140,9 @@ Future<List<LyricResult>> lyricSearch(
   }
 }
 
-/// 歌词下载（lyrics.kugou.com/download）：content(base64) + contenttype。
+/// 歌词下载（lyrics.kugou.com/download，批N2-A 实测需 android 签名+dfid 头）：
+/// content(base64) + contenttype。成功语义 status=200；_source="bss"、
+/// charset（krc 空串/lrc "utf8"）为实测键，暂不映射。
 /// contenttype==0 → krc 加密内容，自动走 krcDecode；非 0 → 直接 base64 解码。
 /// 返回的 LyricResult.content 为解密后的纯文本。
 Future<LyricResult> lyricDownload(
