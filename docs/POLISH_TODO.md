@@ -17,6 +17,9 @@
    处理：替换为 tnPadS/M/L / TnDims.padXS/padXL / tnRadiusS，补 `import '../theme/tn_theme.dart';`，不改文案/签名/回调。
 2. 全仓剩余硬编码颜色 `Color(0x…)` 17 处（多数在 tn_theme.dart 定义常量处，属合规；页面内若还有则收敛到 TnColors）。
 3. 动画：home_page 仅「每日推荐」区块接 TnMotionStaggered；其余三区块与歌词页滚动可同法套用（可选增强，非硬缺口）。
+   → **已完成（批11-A 动态第一屏，commit 872de34）**：home_page 四区块全部接线
+   （每日推荐 index=0 起 / 榜单速览 +2 / 热搜词 +3 / 推荐歌单 +4，区块间基准错开）；
+   歌词页滚动增强仍未做。
 
 ## 纪律
 - 本地只跑 layer_audit + smoke_check（包无关）；静态分析交 CI（包齐全、不过滤）。
