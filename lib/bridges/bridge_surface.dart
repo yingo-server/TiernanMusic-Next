@@ -10,6 +10,8 @@ import '../kernel/kernel.dart' show Log;
 
 // 保留装配入口可见：SurfaceDeps（构造参数类型）与 AppRoot（根组件）。
 export '../surface/app_root.dart' show SurfaceDeps, AppRoot;
+// 启动失败错误页所需的 miuix 主题数据（L1 经桥取 L6 资源，禁直连）。
+export '../surface/theme/tn_theme.dart' show tnLightThemeData;
 
 /// installServices 转调：surface 全量装配（assembly.assembleAll）。
 Future<void> installServices(

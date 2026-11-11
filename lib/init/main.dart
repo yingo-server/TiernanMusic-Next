@@ -15,7 +15,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../bridges/bridge_boot.dart' show runBoot;
 import '../bridges/bridge_surface.dart'
-    show SurfaceDeps, bootstrapApp, installServices;
+    show SurfaceDeps, bootstrapApp, installServices, tnLightThemeData;
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -115,10 +115,9 @@ class _BootErrorApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: MiuixTheme(
-        data: MiuixThemeData(brightness: Brightness.light),
+        data: tnLightThemeData(),
         child: MiuixScaffold(
-          backgroundColor: const Color(0xFFF7F5FC),
-          child: SafeArea(
+          content: SafeArea(
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
