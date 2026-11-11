@@ -358,6 +358,9 @@ class KugouClient {
         ..putIfAbsent('appid', () => KugouSign.appid)
         ..putIfAbsent('clientver', () => KugouSign.clientver)
         ..putIfAbsent('srcappid', () => KugouSign.srcappid)
+        // 批N1-A 实测（A1）：mid 缺失/空串 → 全线 20006 err signature；
+        // 服务端只要求非空不校验格式，匿名态 session.mid 为空时给 '0'。
+        ..putIfAbsent('mid', () => session.mid.isEmpty ? '0' : session.mid)
         ..putIfAbsent('clienttime',
             () => DateTime.now().millisecondsSinceEpoch ~/ 1000);
       if (session.token.isNotEmpty) p.putIfAbsent('token', () => session.token);

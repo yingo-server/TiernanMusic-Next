@@ -63,22 +63,20 @@ Future<List<SearchSuggestItem>> searchSuggest(
     });
     final data = dataOf(res);
     final out = <SearchSuggestItem>[];
-    // data.records 是各分类容器：music/album/author/mv…每类内 lists[]/info[]
-    final records = data['records'];
-    if (records is Map) {
-      records.forEach((cat, bucket) {
-        final m = bucket is Map
-            ? bucket.map((k, v) => MapEntry('$k', v))
-            : const <String, dynamic>{};
-        final lists = listOf(m['lists'] ?? m['info']);
-        for (final item in lists) {
-          final kw2 = safeStr(
-              item['keyword'] ?? item['FileName'] ?? item['name'] ?? '');
+    // 批N1-A 实测（A1-2）：data 是数组，每组 {RecordDatas[], RecordCount, LableName}
+    //（LableName ''=综合、'MV'、'专辑'…）；词条在 RecordDatas[].HintInfo。
+    if (data['records'] is List) {
+      for (final group in listOf(data['records'])) {
+        if (group is! Map<String, dynamic>) continue;
+        final type = safeStr(group['LableName'], 'music');
+        for (final item in listOf(group['RecordDatas'])) {
+          if (item is! Map<String, dynamic>) continue;
+          final kw2 = safeStr(item['HintInfo']);
           if (kw2.isNotEmpty) {
-            out.add(SearchSuggestItem(keyword: kw2, type: safeStr(cat)));
+            out.add(SearchSuggestItem(keyword: kw2, type: type));
           }
         }
-      });
+      }
     }
     // 兜底：部分响应直接给 data.lists[]
     if (out.isEmpty) {
@@ -104,11 +102,16 @@ Future<List<SearchSuggestItem>> searchHot(KugouClient client) async {
         <String, Object?>{'navid': 1, 'plat': 2});
     final data = dataOf(res);
     final out = <SearchSuggestItem>[];
-    // 响应形如 data.list[]（每组含 list[] 热词），容错聚合。
-    for (final group in listOf(data['list'] ?? data['info'])) {
-      final gName = safeStr(group['tabname'] ?? group['name'] ?? 'hot');
-      for (final item in listOf(group['list'])) {
-        final kw = safeStr(item['keyword'] ?? item['word'] ?? item['name'] ?? '');
+    // 批N1-A 实测（A1-3）：分组容器 data.list[]，组字段 {name, keywords[]}，
+    // 热词在 keywords[].keyword（另有 reason 上榜理由）；无 tabname 键。
+    for (final group in listOf(data['list'])) {
+      final gName =
+          safeStr(group is Map<String, dynamic> ? group['name'] : '', 'hot');
+      for (final item in listOf(group is Map<String, dynamic>
+          ? group['keywords']
+          : null)) {
+        final kw = safeStr(
+            item is Map<String, dynamic> ? item['keyword'] : '');
         if (kw.isNotEmpty) {
           out.add(SearchSuggestItem(keyword: kw, type: gName));
         }
