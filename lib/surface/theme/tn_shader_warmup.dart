@@ -10,7 +10,7 @@
 // 2. 失败 Log 留痕且不重试——运行期自然编译兜底，不影响任何功能。
 // 3. 非动效组件：无 AnimationController；不引裸动效时长。
 // 4. 仅 surface 层引用；Log 经 bridge_logic、持久化经 bridge_core（合法跨层）。
-import 'dart:ui' show Image, Picture, PictureRecorder;
+import 'dart:ui' show PictureRecorder;
 
 import 'package:flutter/material.dart';
 
@@ -64,9 +64,9 @@ abstract final class TnShaderWarmup {
 
   static Future<void> _run(KeyValueSettings? settings) async {
     try {
-      await _warmGradient();
-      await _warmRoundedRect();
-      await _warmCircle();
+      _warmGradient();
+      _warmRoundedRect();
+      _warmCircle();
       _done = true;
       try {
         settings?.setInt(_kLastWarmupAt,
@@ -82,40 +82,26 @@ abstract final class TnShaderWarmup {
     }
   }
 
-  /// 通用离屏绘制：Recorder → draw → toImage 触发 raster 编译 → 立即释放。
-  static Future<void> _draw(
-      int w, int h, void Function(Canvas, Rect) paint) async {
+  /// 通用离屏绘制：Recorder → draw → endRecording 提交图层，
+  /// 提交后由引擎在 raster 线程光栅化时完成着色器编译（无需 toImage/显式释放，
+  /// Picture 由引擎持有并在帧结束后回收）。
+  static void _draw(int w, int h, void Function(Canvas, Rect) paint) {
     final recorder = PictureRecorder();
-    Picture? pic;
-    Image? img;
     try {
       final canvas = Canvas(recorder);
       final rect = Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble());
       paint(canvas, rect);
-      pic = recorder.endRecording();
-      img = await pic.toImage(w, h); // 光栅化即触发着色器编译
-    } finally {
-      // 每一步资源独立 try 释放：任一失败不阻断其余释放，异常上抛由 _run 留痕。
+      recorder.endRecording(); // 提交即触发后续光栅化编译
+    } catch (e, st) {
       try {
-        img?.dispose();
-      } catch (e, st) {
-        Log.w(_tag, 'warm image dispose failed: $e\n$st');
-      }
-      try {
-        pic?.dispose();
-      } catch (e, st) {
-        Log.w(_tag, 'warm picture dispose failed: $e\n$st');
-      }
-      try {
-        recorder.dispose();
-      } catch (e, st) {
-        Log.w(_tag, 'warm recorder dispose failed: $e\n$st');
-      }
+        recorder.endRecording(); // 异常路径也要 end，避免未关闭的 Recorder
+      } catch (_) {}
+      Log.w(_tag, 'warm draw failed: $e\n$st');
     }
   }
 
   /// 品牌紫线性渐变（对应动效/骨架屏/装饰渐变材质）。
-  static Future<void> _warmGradient() => _draw(64, 64, (canvas, rect) {
+  static void _warmGradient() => _draw(64, 64, (canvas, rect) {
         final shader = const LinearGradient(
           colors: [tnPrimary, tnPrimaryAlt],
         ).createShader(rect);
@@ -124,7 +110,7 @@ abstract final class TnShaderWarmup {
       });
 
   /// 圆角矩形（对应 TnAppBar 底部圆角 / 卡片 / Chip 材质）。
-  static Future<void> _warmRoundedRect() => _draw(64, 64, (canvas, rect) {
+  static void _warmRoundedRect() => _draw(64, 64, (canvas, rect) {
         final rrect = RRect.fromRectAndRadius(
             rect.deflate(8), const Radius.circular(12));
         canvas.drawRRect(
@@ -135,7 +121,7 @@ abstract final class TnShaderWarmup {
       });
 
   /// 圆形（对应头像 CircleAvatar / 进度环材质）。
-  static Future<void> _warmCircle() => _draw(64, 64, (canvas, rect) {
+  static void _warmCircle() => _draw(64, 64, (canvas, rect) {
         canvas.drawCircle(rect.center, 24, Paint()..color = tnPrimary);
       });
 }
