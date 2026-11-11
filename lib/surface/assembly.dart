@@ -228,6 +228,26 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         client: deps.client,
         cache: _newCache<String, dynamic>(32, 'user'),
       ))!;
+  // 批6-C 装配总收口：六类分类搜索 / 歌单写操作 / 20028 验证门面。
+  final searchTypedLogic = _step('SearchTypedLogic', () => SearchTypedLogic(
+        client: deps.client,
+        cache: _newCache<String, SearchResult>(64, 'search_typed'),
+      ))!;
+  final playlistWriteLogic = _step('PlaylistWriteLogic', () => PlaylistWriteLogic(
+        client: deps.client,
+        playlistDao: deps.playlistDao,
+        onChanged: () {
+          try {
+            playlist.invalidatePrefix(userid: deps.client.session.userid);
+          } catch (e, st) {
+            Log.e(_tag, 'playlist cache invalidation failed', e, st);
+          }
+        },
+      ))!;
+  final verificationLogic = _step('VerificationLogic', () => VerificationLogic(
+        client: deps.client,
+        settings: deps.settings,
+      ))!;
 
   // 步骤 3：PlayerController（批4-B）。
   // engine 参数类型为批4-B AudioEngine 抽象：批5-A 未完成时传 NullAudioEngine，
