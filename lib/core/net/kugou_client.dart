@@ -89,9 +89,6 @@ class EndpointRegistry {
   static const playlistTracks = Endpoint(
       id: 'playlist_tracks',
       path: '/pubsongs/v2/get_other_list_file_nofilt');
-  static const playlistAddSongsLegacy = Endpoint(
-      id: 'playlist_add_songs_legacy',
-      path: '/v2/add_songs_by_hash', method: 'POST');
   // ── 歌单写操作（批N3-B 三态实测 2026-11-12，docs/API_FIELDS_TRUTH.md A6）──
   // 建歌单：POST /cloudlist.service/v5/add_list（URL 前缀式，无 x-router）。
   // 成功 data.info.listid（⚠️ 非 data.listid）。srcappid 不得参与签名。
