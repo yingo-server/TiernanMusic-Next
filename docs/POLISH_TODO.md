@@ -1,0 +1,23 @@
+# 规范性收尾待办（批10 后）
+
+> 主会话独立盘点，2026-11-11。三项规范性的收口状态与剩余项。
+
+## 已完成
+- 六五：五桥齐全、跨层非桥 import=0、显式层-桥白名单、bridge_core/logic 各 3 个带捕获桥函数、§0 未动。
+- UI：TnDims/TnColors 设计令牌；home/player/search/settings/common_widgets 收敛 24 padding + 8 圆角 + 2 颜色；search_page 裸 AppBar → TnAppBar。
+- 动画：tn_motion.dart（Staggered/PageRoute/Pressable，dispose 安全）、ANIMATION_SPEC.md、player/home 接线。
+
+## 剩余（等 CI 43050367587 结论后统一处理，避免与在跑 CI 撞车）
+1. 五页硬编码收敛（共 17 处 EdgeInsets + 1 处圆角），当前仅 TODO 注释：
+   - album_page.dart：EdgeInsets 3、BorderRadius.circular(数字) 1
+   - artist_page.dart：EdgeInsets 3
+   - comment_page.dart：EdgeInsets 9
+   - mv_page.dart：0（已合规）
+   - playlist_page.dart：EdgeInsets 2
+   处理：替换为 tnPadS/M/L / TnDims.padXS/padXL / tnRadiusS，补 `import '../theme/tn_theme.dart';`，不改文案/签名/回调。
+2. 全仓剩余硬编码颜色 `Color(0x…)` 17 处（多数在 tn_theme.dart 定义常量处，属合规；页面内若还有则收敛到 TnColors）。
+3. 动画：home_page 仅「每日推荐」区块接 TnMotionStaggered；其余三区块与歌词页滚动可同法套用（可选增强，非硬缺口）。
+
+## 纪律
+- 本地只跑 layer_audit + smoke_check（包无关）；静态分析交 CI（包齐全、不过滤）。
+- 每次改动只推一次、CI 只跑一次；报错到时取结果、只修工作区等确认。
