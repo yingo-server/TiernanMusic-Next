@@ -125,14 +125,15 @@ class EndpointRegistry {
   // 批N2-A 实测（API_FIELDS_TRUTH.md §A3-3/4，2026-11-12）：lyrics.kugou.com
   // 裸请求一律 HTTP 200 空响应体——必须 android 签名 + dfid/mid/uuid/clienttime
   // 默认参在场并参与签名（不能用 none/clearDefaultParams）。成功语义 status=200。
+  // 批N2-C 实测（API_FIELDS_TRUTH.md A3-2）：lyrics.kugou.com 直连恒返回空体
+  //（HTTP 200 + 0 字节），必须走 gateway + 头 x-router: lyrics.kugou.com，
+  // android 签名 + 默认参数（dfid/mid/uuid/appid/clientver/clienttime）恒携带。
   static const lyricSearch = Endpoint(
-      id: 'lyric_search',
-      base: 'https://lyrics.kugou.com', path: '/v1/search',
-      signType: SignType.android);
+      id: 'lyric_search', path: '/v1/search',
+      router: 'lyrics.kugou.com');
   static const lyricDownload = Endpoint(
-      id: 'lyric_download',
-      base: 'https://lyrics.kugou.com', path: '/download',
-      signType: SignType.android);
+      id: 'lyric_download', path: '/download',
+      router: 'lyrics.kugou.com');
 
   // ── 歌手/专辑 ──
   static const artistList = Endpoint(

@@ -1,11 +1,18 @@
 // L4 core/net/endpoints · MV/视频端点封装（批1-B · GAP_ANALYSIS #16）
 // 端点出处（docs/KUGOU_API.md §3.9 / docs/PARITY_NOTES.md §1）：
-// - mvDetail: POST /kmr/audio/mv，x-router openapi.kugou.com，kg-tid 38，
-//   body {album_audio_id}；返回 data.list[0] 为 MV 摘要。
-// - videoDetail: POST /v1/video/detail（备用 /kmr/v2/videos），
-//   x-router kmr.service.kugou.com；响应含清晰度档位（hash 齐全）。
+// - mvDetail: POST /kmr/v1/audio/mv，x-router openapi.kugou.com，kg-tid 38，
+//   body {data:[{album_audio_id}], fields:''}；返回 data 是**嵌套数组**
+//   data[0][]（批N2-B 实测 2026-11-12，n2b_mv_dump.json），首项即 MV 摘要。
+// - videoDetail: POST /v1/video（备用 /kmr/v2/videos），
+//   x-router kmr.service.kugou.com；响应 data[0] 平铺清晰度档位
+//   （ld/sd/hd/fhd/qhd 各配 hash/filesize/bitrate/width/height + *_265 + mkv_*）。
+//   ⚠️ 实测签名形态：clearDefaultParams + body 全参数（含 key=signParamsKey）
+//   ——见 getVideoQualities 注释与 EndpointRegistry.videoDetail 声明。
 // - videoUrl: GET /v2/interface/index，x-router trackermv.kugou.com，
-//   参数 hash/quality；返回 downurl（多 CDN 数组）。
+//   参数 backupdomain=1/cmd=123/ext=mp4/ismp3=0/hash/pid=1/type=1，
+//   ⚠️ 必带 key=md5(hash+57ae12eb…+appid+mid+userid||0)（signKey），否则
+//   errcode 40003 "Empty key"（批N2-B 实测）；返回 data[hash].downurl(字符串)
+//   + backupdownurl(数组)。
 // 铁律：全部字段容错（safe*/dataOf/listOf），每函数 try/catch + Log('ep.mv')。
 import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
@@ -24,22 +31,29 @@ class MvBrief {
   });
 
   final String hash; // MV hash（清晰度查询用）
-  final String name; // mvname / filename
+  final String name; // mv_name / filename
   final String singer; // singername / author_name
-  final int durationMs; // duration（毫秒）
-  final String coverUrl; // imgurl / cover / suaac_cover
+  final int durationMs; // duration（毫秒，实测 231732=3:51）
+  final String coverUrl; // hdpic / thumb（{size} 模板）
 
   factory MvBrief.fromMap(Map<String, dynamic> m) {
     try {
       return MvBrief(
+        // 批N2-B 实测（kmr/v1/audio/mv data[0][0]）：hash 键是 deprecated.hash /
+        // mvdata[].hash 携带于上层 song 项；MV 摘要项本身标识键是 video_id，
+        // hash 由上游 mvdata 传入 → 保留 hash/mvhash/video_hash 三兜底。
         hash: safeStr(m['hash'] ?? m['mvhash'] ?? m['video_hash'])
             .toLowerCase(),
-        name: safeStr(m['mvname'] ?? m['filename'] ?? m['name'] ?? ''),
+        // 实测键：mv_name（非 mvname/filename）。
+        name: safeStr(m['mv_name'] ?? m['mvname'] ?? m['filename'] ?? m['name'] ?? ''),
         singer: safeStr(
             m['singername'] ?? m['author_name'] ?? m['singer'] ?? ''),
+        // 实测键：duration（毫秒，如 231732=3:51）。
         durationMs: safeInt(m['duration'] ?? m['timelength']),
+        // 实测键：hdpic（{size} 模板高清封面）/ thumb（缩略图）。
         coverUrl: safeStr(
-            m['imgurl'] ?? m['cover'] ?? m['suaac_cover'] ?? m['img'] ?? ''),
+            m['hdpic'] ?? m['imgurl'] ?? m['cover'] ?? m['thumb'] ??
+            m['suaac_cover'] ?? m['img'] ?? ''),
       );
     } catch (e, st) {
       Log.e(_tag, 'MvBrief.fromMap failed', e, st);
@@ -89,6 +103,49 @@ class MvQuality {
     } catch (e, st) {
       Log.e(_tag, 'MvQuality.fromMap failed', e, st);
       return const MvQuality();
+    }
+  }
+
+  /// 批N2-B 实测（/v1/video data[0] 平铺档位）：无档位数组，档位以
+  /// `ld/sd/hd/fhd/qhd` 前缀展开（ld_hash/sd_hash/…/qhd_hash_265/mkv_*）。
+  /// 由 data[0] 直接抽取 [MvQuality] 列表（主档 + 265 档 + mkv 档）。
+  static List<MvQuality> fromFlat(Map<String, dynamic> d) {
+    try {
+      final out = <MvQuality>[];
+      const tiers = <String, String>{
+        'ld': '流畅 270P', 'sd': '标清 432P', 'hd': '高清 720P',
+        'fhd': '全高清 1080P', 'qhd': '超高清 540P',
+      };
+      for (final e in tiers.entries) {
+        final h = safeStr(d['${e.key}_hash']).toLowerCase();
+        if (h.isEmpty) continue;
+        out.add(MvQuality(
+          id: e.key,
+          label: e.value,
+          hash: h,
+          size: safeInt(d['${e.key}_filesize']),
+        ));
+        final h265 = safeStr(d['${e.key}_hash_265']).toLowerCase();
+        if (h265.isNotEmpty) {
+          out.add(MvQuality(
+            id: '${e.key}_265',
+            label: '${e.value} H.265',
+            hash: h265,
+            size: safeInt(d['${e.key}_filesize_265']),
+          ));
+        }
+      }
+      final mkvH = safeStr(d['mkv_qhd_hash']).toLowerCase();
+      if (mkvH.isNotEmpty) {
+        out.add(MvQuality(
+          id: 'mkv_qhd', label: 'MKV 超高清',
+          hash: mkvH, size: safeInt(d['mkv_qhd_filesize']),
+        ));
+      }
+      return out;
+    } catch (e, st) {
+      Log.e(_tag, 'MvQuality.fromFlat failed', e, st);
+      return const <MvQuality>[];
     }
   }
 

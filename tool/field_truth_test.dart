@@ -8,6 +8,10 @@ import '../lib/core/net/endpoints/models.dart';
 import '../lib/core/net/endpoints/search_typed_endpoints.dart';
 import '../lib/core/net/endpoints/misc_endpoints.dart'
     show krcDecode, kKrcXorKey;
+import '../lib/core/net/signing.dart' show KugouSign, Md5;
+
+/// 测试锚点用 MD5（复用 signing.dart 纯 Dart 实现，小写 hex）。
+String _md5(String s) => Md5.hex(s);
 
 int _pass = 0, _fail = 0;
 void eq(String name, Object? got, Object? want) {
@@ -278,6 +282,108 @@ void main() {
   };
   eq('dlResp.status(成功语义 200)', safeInt(dlResp['status']), 200);
   eq('dlResp.contenttype(krc)', safeInt(dlResp['contenttype']), 0);
+
+  // ══ A3 · 批N2-C 收口实测（2026-11-12，探针 n2c_probe.py / n2c_playurl_final.json）══
+
+  // ── N2-C · play_url key 盐负对照锚点 ──
+  // 实测：key 盐 = 57ae12eb6890223e355ccfcb74edf70d（signing.dart signKeySalt）；
+  // 错盐 57ae12ebac930836ebac6f064f95b046 → status=0 error="illegal key"(31833)。
+  // 公式：md5(hash + 盐 + '1005' + mid + userid||0)。
+  group('N2-C play_url key salt');
+  eq('signKeySalt 定稿', KugouSign.signKeySalt, '57ae12eb6890223e355ccfcb74edf70d');
+  eq('playKey 拼接顺序(hash+盐+appid+mid+userid)',
+      KugouSign.playKey('b3a52a7a958bf0aed0ebfba2e9a818b7', '281949768489412648962353822266799178366', ''),
+      _md5('b3a52a7a958bf0aed0ebfba2e9a818b7'
+          '57ae12eb6890223e355ccfcb74edf70d'
+          '1005'
+          '281949768489412648962353822266799178366'
+          '0'));
+  // 成功响应顶层 22 键形态（VIP 实测留样）：flac 档 bitRate 恒 0（不可用 bitrate 判档）。
+  const playOk = <String, dynamic>{
+    'status': 1, 'priv_status': 1, 'bitRate': 0, 'extName': 'flac',
+    'timeLength': 269, 'q': 'flac',
+  };
+  eq('playOk flac bitRate=0(实测不判档)', safeInt(playOk['bitRate']), 0);
+  eq('playOk priv_status=1 权限位', safeInt(playOk['priv_status']), 1);
+  // 匿名 20028 形态：顶层仅 errcode/error/fail_process/status，无 priv_status。
+  const playAnon = <String, dynamic>{
+    'errcode': 20028, 'status': 2, 'error': '本次请求需要验证',
+    'fail_process': ['pkg'],
+  };
+  eq('playAnon 匿名 20028', safeInt(playAnon['errcode']), 20028);
+  eq('playAnon 无 priv_status 键', playAnon.containsKey('priv_status'), false);
+
+  // ── N2-C · similar 双层解析锚点（data[].collection_list[]）──
+  group('N2-C similar collection_list');
+  const similarResp = <String, dynamic>{
+    'status': 1,
+    'error_code': 0,
+    'data': [
+      {
+        'collection_list': [
+          {
+            'collection_id': '9443893',
+            'cloudlist_id': '15',
+            'global_collection_id': 'collection_3_1210326444_15_0',
+            'collection_name': '给身体来点电——燥起来吧',
+            'cover': 'http://c1.kgimg.com/custom/150/20260330/x.jpg',
+            'flexible_cover': 'http://c1.kgimg.com/custom/{size}/20260330/x.jpg',
+            'intro': '为运动和旅途准备的活力满满的歌单',
+            'heat': '286', // 实测字符串
+            'song_count': 52,
+            'percount': '0',
+            'publish_date': '2023-10-05',
+            'type': '0',
+            'is_publish': '1',
+            'user_id': '1210326444',
+            'user_name': '貔貅',
+            'user_avatar': 'http://imge.kugou.com/kugouicon/165/x.jpg',
+            'songs': [
+              {
+                'hash': 'D6C78FBD24B64FEE6CE6DA8A229BC8CF',
+                'name': 'Imagine Dragons、JID - ENEMY (宿敌).mp3',
+                'mixsongid': 345871732,
+                'cover': 'http://imge.kugou.com/stdmusic/{size}/20211028/x.jpg',
+                'privilege': 10,
+                'level': 1,
+                'sort': 0,
+              },
+            ],
+          },
+        ],
+        'tag_info': [
+          {'tag_id': '20', 'tag_name': '英语'},
+          {'tag_id': '50', 'tag_name': '兴奋'},
+        ],
+      },
+    ],
+  };
+  final simGroups = listOf((similarResp['data'] as List));
+  // 双层平铺：data[] → item.collection_list[] → PlaylistBrief
+  final simItems = <PlaylistBrief>[];
+  for (final g in simGroups) {
+    for (final m in listOf(g['collection_list'])) {
+      final p = PlaylistBrief.fromMap(m);
+      if (p.id.isNotEmpty) simItems.add(p);
+    }
+  }
+  eq('similar.data 是数组', simGroups.length, 1);
+  eq('similar 平铺 collection_list 双层', simItems.length, 1);
+  eq('similar.id(global_collection_id)', simItems.first.id,
+      'collection_3_1210326444_15_0');
+  eq('similar.name(collection_name)', simItems.first.name, '给身体来点电——燥起来吧');
+  eq('similar.cover(cover 完整URL)', simItems.first.cover,
+      'http://c1.kgimg.com/custom/150/20260330/x.jpg');
+  eq('similar.trackCount(song_count)', simItems.first.trackCount, 52);
+  eq('similar.creator(user_name)', simItems.first.creator, '貔貅');
+  // 内嵌 songs[] 无 duration/album_audio_id——fromTrackInfo 容错取 0，不猜。
+  final simSong = SongBrief.fromTrackInfo(
+      (similarResp['data'] as List)[0]['collection_list'][0]['songs'][0]
+          as Map<String, dynamic>);
+  eq('similar song.hash(小写化)', simSong.hash,
+      'd6c78fbd24b64fee6ce6da8a229bc8cf');
+  eq('similar song.mixSongId', simSong.mixSongId, 345871732);
+  eq('similar song.durationSec(无键如实 0)', simSong.durationSec, 0);
 
   print('');
   print('pass=$_pass fail=$_fail');

@@ -1,7 +1,7 @@
-# API_FIELDS_TRUTH — 网络层字段实证（批N1 · A1+A2，2026-11-12）
+# API_FIELDS_TRUTH — 网络层字段实证（批N1 · A1+A2，2026-11-12；批N2-C 补 A3，2026-11-12）
 
 > 探针：`.test_creds/n1c_probe.py` / `n1c_probe2.py`（复刻 lib/core/net/signing.dart android 签名，
-> 直连 gateway.kugou.com）。全部字段为**实测响应逐键留样**，非文档推断。
+> 直连 gateway.kugou.com）；批N2-C 补测 `.test_creds/n2c_probe.py` / `n2c_playurl_final.json`。全部字段为**实测响应逐键留样**，非文档推断。
 > 每键值样例见 `.test_creds/n1c_probe_out.json` / `n1c_probe_out2.json`。
 > 回归锚点：`tool/field_truth_test.dart`（纯 Dart，全过输出 FIELD-TRUTH-OK）。
 > 探针脚本自带 A1 五类+recommend 复跑（`import n1c_probe` 即触发），无关输出可忽略。
@@ -142,6 +142,101 @@
 - /v6/search/complex 实测不可达（502）——三路容错维持原样。
 - Album/Author/Mv 搜索项无强类型模型：AlbumBrief/AuthorBrief/MvBrief 键集已在 §A1-3/4/5 固化。
 - fromTrackInfo 未映射 albuminfo.id（albumId 已有顶层 album_id，两处一致实测=981208）。
+
+---
+
+# 批N2-C · A3 三端点收口实测（2026-11-12，探针 n2c_probe.py / n2c_playurl_final.json）
+
+## A3-1 · play_url v5（/v5/url，x-router trackercdn.kugou.com）
+
+### ★ 关键实测修正：key 盐是 `57ae12eb6890223e355ccfcb74edf70d`
+- key = md5(hash + `57ae12eb6890223e355ccfcb74edf70d` + appid + mid + userid||0)。
+- 负对照：错盐 `57ae12ebac930836ebac6f064f95b046`（docs 旧口径）→ `status=0, error="illegal key"`
+  （errcode 31833），恒拒绝。**与 lib/core/net/signing.dart `signKeySalt` 一致，Dart 实现正确。**
+- key 拼接顺序：hash、盐、appid（'1005'）、mid、userid（匿名/无登录态为 '0'）。三变体
+  （clientver=11430/20489、dfid=随机24位/'-'）均 status=1 出 URL；502 为网关风控抖动，幂等 GET 重试可过。
+
+### 三态矩阵（非 VIP 曲 hash=d613ca5d…（羽泉·深呼吸，实为 musicpack_advance=1 曲目）与 VIP 曲 b3a52a7a…（晴天））
+| 态 | 结果 |
+|---|---|
+| 匿名（无 cookie/token） | status=2, errcode=20028「本次请求需要验证」，顶层仅 errcode/error/fail_process:[pkg]/status，无 priv_status |
+| 非VIP（musicpack_advance=1 曲目） | status=2, **priv_status=0**，无 url；顶层有 tracker_through.musicpack_advance=1、hash_offset（试听 clip_hash/offset_hash/end_ms=60000）、fail_process |
+| VIP | status=1, priv_status=1, url[]（2 条，host fsandroid.kugou.com）+ backupUrl[]；128→bitRate=128000/extName=mp3；320→320000/mp3；flac→**bitRate=0/extName=flac**（flac 档 bitRate 恒 0，不可用 bitrate 判档） |
+| VIP 曲 VIP 号 | 同 VIP 出 URL（timeLength=269 秒） |
+
+- 成功响应**顶层即数据**（22 键）：`url[]`/`backupUrl[]`/`bitRate`/`extName`/`timeLength`(秒)/
+  `status`/`priv_status`/`hash`/`std_hash`/`std_hash_time`/`fileHead`/`fileName`/`fileSize`/
+  `hash_token`/`hash_token_query`/`q`(档位)/`volume`/`volume_gain`/`volume_peak`/`classmap`/
+  `tracker_through{musicpack_advance}`/`trans_param{qualitymap,ogg_*,union_cover,...}`/`auth_through[]`。
+- ⚠️ `IsFreePart=1` 实测 VIP 曲 VIP 号仍回全长（timeLength=269 与不传一致）——试听判定仍以
+  实际返回 timeLength/hash_offset 为准（与 FINDINGS.md §10 一致）。
+- ⚠️ 匿名请求连非 VIP 曲也 20028：play_url 必须登录态（token+userid+cookie t1），
+  与 2026-11-10 FINDINGS.md 矩阵一致。权限判定唯一可信源 status/priv_status。
+
+## A3-2 · 歌词 search + download（lyrics.kugou.com，网关 + x-router: lyrics.kugou.com）
+
+- **直连 lyrics.kugou.com 恒返回空体（HTTP 200 + 0 字节）**——必须走
+  `gateway.kugou.com` + 头 `x-router: lyrics.kugou.com`（GET /v1/search 与 /download 同）。
+- 请求：android 签名 + 默认参数（dfid/mid/uuid/appid/clientver/clienttime）；
+  /v1/search 参数 hash/keyword/duration/album_audio_id/lrctxt=1/man=no；
+  /download 参数 ver=1/client=android/id/accesskey/fmt/charset=utf8。
+- **search 响应顶层即数据**（非 {status:1,data:...} 包层）：`status`(HTTP 状态码复用，
+  200=OK；404=未命中，仍返回结构)、`candidates[]`、`info`、`keyword`（服务端纠正后的关键词，
+  实测回「周杰伦 - 晴天」）、`proposal`、`has_complete_right`、`companys`、`ugc/ugccount`、
+  `ugccandidates[]`、`artists[]`、`ai_candidates[]`、`errcode/errmsg`。
+- candidates[] item 键（25 个）：`id`（**字符串**，如 "167469123"）、`download_id`（字符串，同 id）、
+  `accesskey`（大写 hex）、`product_from`（"ugc"/"官方推荐歌词"）、`singer`、`song`、`duration`（毫秒）、
+  `uid`/`nickname`/`origiuid`/`transuid`/`transname`/`sounduid`/`soundname`、`language`、
+  `krctype`、`contenttype`（0=krc）、`content_format`、`can_score`、`score`、`adjust`、
+  `hitlayer`/`hitcasemask`、`parinfo`/`parinfoExt`。
+- 匿名/非VIP/VIP 三态均返回 candidates（歌词不校验登录态）；VIP 曲命中官方轨
+  （hitlayer=1，product_from=官方推荐歌词），匿名命中 UGC 轨。
+- **download 响应顶层**：`status=200`、`info="OK"`、`error_code=0`、`fmt="krc"`、
+  `contenttype=0`、`content`(base64 krc 密文)、`_source="bss"`、`charset`、`id`。
+- krc 解密链复测通过：base64 → 去 4 字节魔数 → XOR 16 字节密钥表 → zlib inflate → utf8
+  （VIP 轨 8405B/68 行，UGC 轨 6629B/59 行；样例落盘 n2c_krc_sample.txt）。
+- ⚠️ **Dart 侧修正**：`kugou_client.dart` lyricSearch/lyricDownload 声明改走 gateway + x-router
+  （原 base=lyrics.kugou.com 直连恒空）。候选 id 是字符串，safeInt 已兼容。
+- 翻译轨：krc 内嵌（transuid/transname 字段在候选中标识译文轨作者），无独立翻译端点
+  （与 ENDPOINT_TRUTH §6 一致，维持本地内嵌轨抽取）。
+
+## A3-3 · 相似歌单（POST /pubsongs/v1/kmr_get_similar_lists，gateway 无 x-router）
+
+- 请求 body（实测通过，全参不缺参）：`appid/clientver/clienttime(秒)/key=signParamsKey(秒)/
+  userid/ugc=1/show_list=1/need_songs=1/data:[{global_collection_id}]`。
+  ⚠️ key 盐是 `Or2onSUDL9kpyMys0NsMqDcYC0NVvEIf`（signParams 专用盐），公式
+  md5(排序 'k=v' 拼接 of {appid,clientver,clienttime,mid})，**不是** Dart `signParamsKey()`
+  的 md5(appid+OIlwieks28dk2k092lksi2UIkp+clientver+clienttime)——两种公式实测均 status=1
+  （body 同入 android 签名，key 仅 body 内容校验），维持 Dart 现公式即可。
+- 响应：`data` **直接是数组**（40 项），无包层。item 键（2 个）：
+  `collection_list[]`（相似歌单数组）+ `tag_info[]`。
+- `tag_info[]`：`[{tag_id:"20", tag_name:"英语"},...]`（**数组**，与歌单详情的逗号字符串不同形态）。
+- `collection_list[]` item 键（22 个）：`collection_id`("9443893")、`cloudlist_id`("15")、
+  `global_collection_id`("collection_3_1210326444_15_0")、`collection_name`、`cover`（完整 URL）、
+  `flexible_cover`（{size} 模板）、`intro`、`heat`("286" 字符串)、`song_count`(52 int)、
+  `percount`、`publish_date`、`type`("0")、`is_publish`("1")、`is_recommend`、`special_tag`、
+  `sync`、`user_id`/`user_name`/`user_avatar`/`user_is_verified`、`ugc_talent_info`、`trans_param`、
+  `songs[]`（need_songs=1 时内嵌，实测 8 首）。
+- `songs[]` item 键（8 个）：`hash`(大写)、`name`（含 .mp3 后缀）、`mixsongid`(int)、
+  `cover`、`privilege`(10)、`level`(1)、`sort`(0)、`trans_param{musicpack_advance,...}`。
+  ⚠️ 无 duration/album_audio_id——SimilarSong 如需时长需二次查询，不映射不猜。
+- ⚠️ **Dart 侧修正**：album_endpoints.getSimilarPlaylists 原取
+  `data.lists/list/info/similar/data`——实测列表路径是 `data[].collection_list[]`（双层），
+  已改为平铺 collection_list 并映射 PlaylistBrief（songs 内嵌曲目丢弃，不猜字段）。
+
+## 批N2-C 代码修正清单（本批落地）
+| 位置 | 修正 |
+|---|---|
+| kugou_client.dart lyricSearch/lyricDownload | base 改 gateway + x-router lyrics.kugou.com（直连恒空体） |
+| album_endpoints.dart getSimilarPlaylists | body 补 appid/clientver/clienttime/key/userid/ugc/show_list/need_songs；解析 data[].collection_list[] 双层平铺 |
+| models.dart SongBrief.fromSearchList | （A3 无涉，维持 N1 修正） |
+| play_endpoints.dart | key 由 KugouClient.encryptKey 生成，盐 signKeySalt 已实测正确，无需改 |
+
+## 批N2-C 未竟（如实标注，不猜）
+- artist_audios/artist_albums（A4，N2-B 502 未测成）——批N2-B 补测后确认真实路径
+  /kmr/v1/audio_group/author（kg-tid 220，body 带 key）与 /kmr/v1/author/albums（kg-tid 36）
+  均实测 status=1（字段树见 .test_creds/n2b_raw.json 补测），端点封装在批N3 收口时统一接线。
+- /v6/search/complex 维持「实测不可达」结论（上游模块本身 152，见 N1-A FINDINGS §5）。
 
 ## A3 · 播放/歌词域（批N2-A · 2026-11-12 实测，gateway.kugou.com + lyrics.kugou.com 三态）
 

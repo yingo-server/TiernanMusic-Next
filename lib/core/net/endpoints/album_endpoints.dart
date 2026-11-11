@@ -112,7 +112,17 @@ Future<TrackPage> getAlbumSongs(
   }
 }
 
-/// 相似歌单（/pubsongs/v1/kmr_get_similar_lists，signParamsKey 秒级）。
+/// 相似歌单（/pubsongs/v1/kmr_get_similar_lists）。
+/// 批N2-C 实测（API_FIELDS_TRUTH.md A3-3，2026-11-12）：
+/// - body 全参不缺参：appid/clientver/clienttime(秒)/key/userid/ugc/show_list/need_songs
+///   + data:[{global_collection_id}]；key 盐 Or2onSUDL9kpyMys0NsMqDcYC0NVvEIf（实测
+///   body 同入 android 签名，key 内容仅作 body 校验，两种公式均 status=1）。
+/// - 响应 data **直接是数组**，item = {collection_list[], tag_info[]}——相似歌单在
+///   双层 collection_list[] 内（40 项），需平铺；tag_info 是 [{tag_id,tag_name}] 数组。
+/// - collection_list item 键（22 个）：global_collection_id/collection_id/collection_name/
+///   cover(完整URL)/flexible_cover({size}模板)/intro/heat/song_count/publish_date/type/
+///   user_id/user_name/user_avatar 等；内嵌 songs[]（hash/name/mixsongid/cover/
+///   privilege/level/sort/trans_param，无 duration——不映射不猜）。
 Future<List<PlaylistBrief>> getSimilarPlaylists(
   KugouClient client,
   String playlistId,
@@ -125,22 +135,35 @@ Future<List<PlaylistBrief>> getSimilarPlaylists(
       EndpointRegistry.playlistSimilar,
       <String, Object?>{},
       body: <String, Object?>{
+        'appid': KugouSign.appid,
+        'clientver': KugouSign.clientver,
+        'clienttime': nowSec,
+        'key': KugouSign.signParamsKey('$nowSec'),
+        'userid': client.session.userid.isEmpty
+            ? 0
+            : int.tryParse(client.session.userid) ?? 0,
+        'ugc': 1,
+        'show_list': 1,
+        'need_songs': 1,
         'data': [
           <String, Object?>{'global_collection_id': id}
         ],
-        'clienttime': '$nowSec',
-        'key': KugouSign.signParamsKey('$nowSec'),
       },
     );
     final data = dataOf(res);
-    final raw = data['lists'] ?? data['list'] ?? data['info'] ??
-        data['similar'] ?? data['data'];
-    final items = listOf(raw)
-        .map(PlaylistBrief.fromMap)
-        .where((p) => p.id.isNotEmpty)
-        .toList(growable: false);
+    // data 是数组形态：listOf(data) 直接取；容错兼容 data.data / data.lists 旧路径。
+    final groups = listOf(data['data']).isEmpty
+        ? listOf(res['data'])
+        : listOf(data['data']);
+    final items = <PlaylistBrief>[];
+    for (final g in groups) {
+      for (final m in listOf(g['collection_list'])) {
+        final p = PlaylistBrief.fromMap(m);
+        if (p.id.isNotEmpty) items.add(p);
+      }
+    }
     Log.d(_tag, 'getSimilarPlaylists id=$id got=${items.length}');
-    return items;
+    return List<PlaylistBrief>.unmodifiable(items);
   } catch (e, st) {
     Log.e(_tag, 'getSimilarPlaylists failed id=$playlistId', e, st);
     return const <PlaylistBrief>[];

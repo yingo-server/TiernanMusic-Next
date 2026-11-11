@@ -393,7 +393,8 @@ class PlaylistBrief {
         id: safeStr(
             m['global_collection_id'] ?? m['specialid'] ?? m['listid'] ??
                 m['id'] ?? ''),
-        name: safeStr(m['specialname'] ?? m['name'] ?? ''),
+        name: safeStr(m['specialname'] ?? m['name'] ??
+            m['collection_name'] ?? ''),
         // 批N1-C 实测（API_FIELDS_TRUTH.md A2-2/A2-3/A2-4）：
         // - recommend special_list[]：cover 键 imgurl（recommend 命中），搜索
         //   special 命中是 img；play_count（下划线）、song_count。
@@ -403,7 +404,7 @@ class PlaylistBrief {
         playCount: safeInt(m['playcount'] ?? m['play_count']),
         trackCount: safeInt(m['count'] ?? m['song_count'] ?? m['track_count']),
         creator: safeStr(m['username'] ?? m['list_create_username'] ??
-            m['nickname'] ?? ''),
+            m['user_name'] ?? m['nickname'] ?? ''),
         intro: safeStr(m['intro'] ?? ''),
       );
     } catch (e, st) {
