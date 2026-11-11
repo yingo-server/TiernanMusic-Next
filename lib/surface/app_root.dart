@@ -212,11 +212,18 @@ class _AppRootState extends State<AppRoot> {
           title: 'TiernanMusicNext',
           theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
           darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
-          themeMode: switch (mode) { 1 => ThemeMode.light, 2 => ThemeMode.dark, _ => ThemeMode.system },
+          themeMode: switch (mode) {
+            1 => ThemeMode.light,
+            2 => ThemeMode.dark,
+            3 => ThemeMode.dark,
+            _ => ThemeMode.system
+          },
           home: MiuixTheme(
-            data: mode == 2
-                ? tnDarkThemeData()
-                : (mode == 1 ? tnLightThemeData() : tnLightThemeData()),
+            data: mode == 3
+                ? tnPitchBlackThemeData()
+                : (mode == 2
+                    ? tnDarkThemeData()
+                    : (mode == 1 ? tnLightThemeData() : tnLightThemeData())),
             child: const _HomeShell(),
           ),
         );

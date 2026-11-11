@@ -19,10 +19,12 @@ const String _tag = 'surface.settings';
 const String kAppVersion = '26.11.10.1';
 
 /// 主题模式 riverpod 状态（批4-B 的 ThemeController 可替换实现；默认跟随系统）。
-/// anyState：0=跟随系统 1=亮 2=暗。
+/// anyState：0=跟随系统 1=亮 2=暗 3=纯黑。
+/// ⚠️ 纯黑消费待 app_root 接线：app_root 的 themeModeProvider 只识别 0/1/2，
+/// mode==3 当前按跟随系统渲染（switch 落 default），需 app_root 接 tnPitchBlackThemeData()。
 final StateProvider<int> themeModeProvider = StateProvider<int>((_) => 0);
 
-/// 设置页依赖：全部经工厂注入。
+  /// 设置页依赖：全部经工厂注入（批8-B 追加 collect/onStartFm/verificationState 可选字段）。
 class SettingsDeps {
   const SettingsDeps({
     required this.auth,
@@ -32,30 +34,27 @@ class SettingsDeps {
     this.onLocaleChanged,
     this.accounts,
     this.collect,
+    this.onStartFm,
+    this.verificationState,
   });
-
   final AuthLogic auth;
-
   /// 多账号门面（可选；为空时设置页不显示账号管理卡片）。
   final AccountLogic? accounts;
-
   /// 收藏门面（可选；为空时收藏计数不显示）。
   final CollectLogic? collect;
-
   /// 歌词域（逐曲 clearFileCache 用）。
   final LyricsLogic lyrics;
-
   /// 缓存清理：逐曲 clearFileCache(hash) + LruCache.clear（由装配处组合）。
   final void Function() clearLyricCache;
-
   /// 曲库 hash 列表（用于逐曲清缓存；可直接给空实现退化）。
   final List<String> Function() lyricHashes;
-
   /// 语言切换回调（State 持有选中码；''=跟随系统，zh / zh_Hant / en）。
   final void Function(String code)? onLocaleChanged;
-}
-
-/// 设置页模块：id='settings'，底部导航入口「设置」。
+  /// 个人 FM 入口回调（可选；装配处接 FmLogic.start + controller.playAll）。
+  final void Function()? onStartFm;
+  /// 验证状态快照（可选；为空时不显示验证状态入口）。
+  final String Function()? verificationState;
+}/// 设置页模块：id='settings'，底部导航入口「设置」。
 class SettingsPageModule extends SurfaceModule {
   SettingsPageModule({required this.deps});
 
@@ -195,9 +194,30 @@ class _SettingsPageState extends State<SettingsPage> {
           if (widget.deps.collect != null)
             ListTile(
               leading: const Icon(Icons.favorite_border),
-              title: Text('已收藏 ${widget.deps.collect!.count} 首'),
-              subtitle: Text('收藏列表：${widget.deps.collect!.listFavorites().length} 条',
+              title: const Text('我的收藏'),
+              subtitle: Text(
+                  '已收藏 ${widget.deps.collect!.count} 首 · '
+                  '列表 ${widget.deps.collect!.listFavorites().length} 条',
                   style: t.aux),
+            ),
+          if (widget.deps.onStartFm != null)
+            ListTile(
+              leading: const Icon(Icons.radio),
+              title: const Text('个人 FM'),
+              subtitle: Text('随机连续播放，喜欢/不喜欢随时调整', style: t.aux),
+              onTap: () {
+                try {
+                  widget.deps.onStartFm!();
+                } catch (e, st) {
+                  Log.e(_tag, 'start fm failed', e, st);
+                }
+              },
+            ),
+          if (widget.deps.verificationState != null)
+            ListTile(
+              leading: const Icon(Icons.verified_user_outlined),
+              title: const Text('验证状态'),
+              subtitle: Text(widget.deps.verificationState!(), style: t.aux),
             ),
           const Divider(height: 1),
           Consumer(builder: (context, ref, _) {
@@ -206,10 +226,11 @@ class _SettingsPageState extends State<SettingsPage> {
               leading: const Icon(Icons.brightness_6),
               title: const Text('主题'),
               subtitle: SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment(value: 0, label: Text('系统')),
-                  ButtonSegment(value: 1, label: Text('亮')),
-                  ButtonSegment(value: 2, label: Text('暗')),
+                segments: <ButtonSegment<int>>[
+                  ButtonSegment<int>(value: 0, label: Text('系统')),
+                  ButtonSegment<int>(value: 1, label: Text('亮')),
+                  ButtonSegment<int>(value: 2, label: Text('暗')),
+                  ButtonSegment<int>(value: 3, label: Text('纯黑')),
                 ],
                 selected: {mode},
                 onSelectionChanged: (s) {
@@ -288,13 +309,11 @@ class _QrLoginDialogState extends State<_QrLoginDialog> {
   late QrLoginState _state = widget.state;
   Timer? _poll;
   String _hint = '等待扫码…';
-
   @override
   void initState() {
     super.initState();
     _startPolling();
   }
-
   void _startPolling() {
     _poll?.cancel();
     _poll = Timer.periodic(const Duration(milliseconds: 1500), (_) => _tick());
@@ -336,13 +355,11 @@ class _QrLoginDialogState extends State<_QrLoginDialog> {
       // 网络抖动：继续下一轮轮询。
     }
   }
-
   @override
   void dispose() {
     _poll?.cancel();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -407,7 +424,6 @@ class _AccountSectionState extends State<_AccountSection> {
       Log.e(_tag, 'account list failed', e, st);
     }
   }
-
   Future<void> _switch(AccountRecord r) async {
     try {
       await widget.accounts.switchTo(r.accountId);

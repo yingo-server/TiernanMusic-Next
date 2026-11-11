@@ -147,7 +147,10 @@ class PlaybackService {
   /// 匿名必然 needsVerification（20028）；VIP 曲非 VIP 号 noPrivilege（priv_status=0）。
   PlaybackError _mapError(PlayResult pr) {
     try {
-      if (pr.errcode == 20028) return PlaybackError.needsVerification;
+      if (pr.errcode == 20028) {
+        // VerificationLogic 是唯一验证门面，播放链路只上报状态，不在本文件另写验证实现。
+        return PlaybackError.needsVerification;
+      }
       // status=2 且 priv_status=0：过风控但无权限（VIP 曲非 VIP 号典型态）。
       if (pr.status == 2 && pr.privStatus == 0) {
         return PlaybackError.noPrivilege;

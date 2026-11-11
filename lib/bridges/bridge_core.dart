@@ -29,7 +29,7 @@ export '../core/database/dao.dart' show AccountDao;
 export '../core/net/endpoints/translation_models.dart'
     show TranslatedLine, TranslationResult, LyricsDisplayMode;
 export '../core/net/endpoints/translation_endpoints.dart'
-    show alignTranslation, extractOriginalLines, fetchTranslation;
+    show alignTranslation, extractOriginalLines, fetchTranslation, fetchTranslationFromContent, extractEmbeddedTranslatedLines;
 // ── 收藏域数据层（批2-C）：写操作结果模型经 core 桥转出 ──
 export '../core/net/endpoints/collect_endpoints.dart' show CollectResult;
 // ── 音质档位 + 每日推荐（功能对齐批3-C · GAP #30 / #20）──

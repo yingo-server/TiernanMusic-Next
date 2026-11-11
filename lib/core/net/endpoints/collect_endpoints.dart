@@ -1,8 +1,8 @@
-// L4 core/net/endpoints · 收藏域端点封装（功能对齐批2-C · 数据层）
-// 出处：KUGOU_API.md §3.9（favorite_count）；PARITY_NOTES.md /
-//   FEATURE_PARITY.md（cancel_collect 二进制 body 经验、登录守卫、写操作防重）。
-// ⚠️ 三态（anon/nonvip/vip）未留样：favoriteCount 路由/签名按 docs 类比（待实测）；
-//   cancel_collect 二进制 body 待实测，当前用 query 退化（body 显式留空）。
+// L4 core/net/endpoints · 收藏域端点封装（批9-B · 真实请求 + 本地镜像占位）
+// 出处：ENDPOINT_TRUTH.md §1/§5（favorite_count.js → GET /count/v1/audio/mget_collect）；
+//   PARITY_NOTES.md / FEATURE_PARITY.md（登录守卫、写操作防重）。
+// ⚠️ collect / cancel_collect：上游无歌曲收藏独立端点（ENDPOINT_TRUTH §5 明确），
+//   保持本地占位，不伪造网络成功、不臆造 URL。
 // 登录守卫只由 logic 层做，端点层不判（needsLogin 恒 false）。
 // 铁律：字段容错；每函数 try/catch + Log('ep.collect')；
 //   dfid/mid/uuid 恒显式携带并参与签名；只连酷狗官方 gateway 域名。
@@ -60,42 +60,6 @@ Map<String, Object?> _baseParams(KugouClient client) {
   }
 }
 
-/// 写端点成功语义容错（docs：成功语义因端点而异 / 写操作 maybeSucceeded
-/// 不回退、失败留痕）。待三态实测校准。
-bool _writeSucceeded(Map<String, dynamic> res, String op) {
-  try {
-    final data = dataOf(res);
-    final errRaw = res['errcode'] ?? res['err_code'] ?? res['ec'] ??
-        data['errcode'] ?? data['err_code'] ?? data['ec'];
-    if (safeInt(errRaw) != 0) {
-      Log.w(_tag, '$op rejected err=$errRaw');
-      return false;
-    }
-    final raw = res['status'] ?? data['status'] ??
-        res['result'] ?? data['result'];
-    if (raw != null) {
-      final n = safeInt(raw, -1);
-      final s = safeStr(raw).toLowerCase();
-      final ok = n == 1 || n == 200 || s == '1' || s == 'ok' ||
-          s == 'success' || s == 'true';
-      if (!ok) Log.w(_tag, '$op rejected status=$raw');
-      return ok;
-    }
-    final errMsg = safeStr(res['error'] ?? res['errmsg'] ?? res['msg'] ??
-        res['message'] ?? data['errmsg'] ?? data['error']);
-    if (errMsg.isNotEmpty || res.isEmpty) {
-      Log.w(_tag, '$op rejected msg=$errMsg empty=${res.isEmpty}');
-      return false;
-    }
-    // 无 status/errcode/error：写操作 maybeSucceeded，不回退、不重投。
-    Log.w(_tag, '$op maybeSucceeded keys=${res.keys.length} (unverified)');
-    return true;
-  } catch (e, st) {
-    Log.e(_tag, '_writeSucceeded failed op=$op', e, st);
-    return false;
-  }
-}
-
 /// 收藏总数容错提取：data.count / total / favorite_count / 顶层同键，
 /// 再退化到 data.lists|list|info 数组长度（字段缺失不崩）。
 int _countOf(Map<String, dynamic> res) {
@@ -117,8 +81,11 @@ int _countOf(Map<String, dynamic> res) {
   }
 }
 
-/// 收藏歌曲（POST /v2/collect）。hash 恒小写；mixSongId 显式携带。
-/// body 参与 android 签名；session 中的 userid/token 只透传，不判登录。
+/// 收藏歌曲（上游无此端点，本地镜像为准，不伪造网络成功）。
+/// ENDPOINT_TRUTH.md §5：KuGouMusicApi/module/ 内不存在歌曲 collect 端点，
+/// 不臆造 /collect URL。本函数不发网络请求、不猜 URL；
+/// ok=false，收藏条数以 logic 层本地镜像为单一事实源。
+/// hash 恒小写；mixSongId 仅留档。
 Future<CollectResult> collectSongByHash(
   KugouClient client,
   String hash,
@@ -130,35 +97,19 @@ Future<CollectResult> collectSongByHash(
       Log.w(_tag, 'collectSongByHash empty hash');
       return const CollectResult();
     }
-    final params = <String, Object?>{
-      ..._baseParams(client),
-      'hash': h,
-      'mixsongid': mixSongId,
-      if (client.session.userid.isNotEmpty) 'userid': client.session.userid,
-    };
-    final body = <String, Object?>{
-      'hash': h,
-      'mixsongid': mixSongId,
-      'userid': client.session.userid,
-      'token': client.session.token,
-      'plat': 1,
-      'source': 1,
-    };
-    final res = await client.request(EndpointRegistry.collectSong, params,
-        body: body);
-    final ok = _writeSucceeded(res, 'collect');
-    final count = _countOf(res);
-    Log.d(_tag, 'collectSongByHash hash=$h mix=$mixSongId ok=$ok count=$count');
-    return CollectResult(ok: ok, count: count);
+    Log.w(_tag, 'collectSongByHash upstream has no endpoint '
+        '(ENDPOINT_TRUTH §5): local mirror only, no network call, '
+        'no fake success hash=$h mix=$mixSongId');
+    return const CollectResult(ok: false);
   } catch (e, st) {
     Log.e(_tag, 'collectSongByHash failed hash=$hash', e, st);
     return const CollectResult();
   }
 }
 
-/// 取消收藏（POST /v2/cancel_collect）。
-/// ⚠️ docs：归档项目此端点走二进制 body（KugouClient.request 现只支持 JSON 体）；
-///    二进制载荷待三态实测，当前用 query 退化：全部参数走 query、body 显式留空。
+/// 取消收藏（上游无此端点，本地镜像为准，不伪造网络成功）。
+/// ENDPOINT_TRUTH.md §5：上游无歌曲 cancel_collect 模块，不应臆造 URL。
+/// 本函数不发网络请求、不猜 URL；ok=false，取消结果以 logic 层本地镜像为准。
 Future<CollectResult> cancelCollectByHash(
   KugouClient client,
   String hash,
@@ -169,38 +120,52 @@ Future<CollectResult> cancelCollectByHash(
       Log.w(_tag, 'cancelCollectByHash empty hash');
       return const CollectResult();
     }
-    final params = <String, Object?>{
-      ..._baseParams(client),
-      'hash': h,
-      'op': 'cancel',
-      'source': 1,
-      if (client.session.userid.isNotEmpty) 'userid': client.session.userid,
-    };
-    final res = await client.request(EndpointRegistry.cancelCollect, params,
-        body: const <String, Object?>{});
-    final ok = _writeSucceeded(res, 'cancel');
-    final count = _countOf(res);
-    Log.d(_tag, 'cancelCollectByHash hash=$h ok=$ok count=$count (query)');
-    return CollectResult(ok: ok, count: count);
+    Log.w(_tag, 'cancelCollectByHash upstream has no endpoint '
+        '(ENDPOINT_TRUTH §5): local mirror only, no network call, '
+        'no fake success hash=$h');
+    return const CollectResult(ok: false);
   } catch (e, st) {
     Log.e(_tag, 'cancelCollectByHash failed hash=$hash', e, st);
     return const CollectResult();
   }
 }
 
-/// 收藏计数（GET /v1/favorite/count，docs/KUGOU_API.md §3.9；
-/// 路由/签名按 docs 类比声明，待三态实测）。失败返回 0 且必 Log 留痕。
+/// 收藏计数（GET /count/v1/audio/mget_collect，ENDPOINT_TRUTH.md §1/§5
+/// favorite_count.js：query mixsongids（逗号分隔）+ 默认参数，android 签名；
+/// 响应 body.data 为 mixsongid→收藏数映射）。失败返回 0 且必 Log 留痕。
+/// 注：函数签名固定无 ids 入参，mixsongids 以空串占位并 Log.w（多参不缺参）。
 Future<int> getFavoriteCount(KugouClient client) async {
   try {
+    Log.w(_tag, 'getFavoriteCount no mixsongids in signature -> '
+        'placeholder empty string');
     final res = await client.request(
         EndpointRegistry.favoriteCount,
         <String, Object?>{
+          'mixsongids': '',
           ..._baseParams(client),
           if (client.session.userid.isNotEmpty) 'userid': client.session.userid,
         });
-    final n = _countOf(res);
+    // 数值容错：data 为映射时求和；退化 _countOf 常规键。
+    final data = dataOf(res);
+    var n = -1;
+    if (data.isNotEmpty && data['count'] == null && data['total'] == null) {
+      var sum = 0;
+      var numeric = false;
+      data.forEach((_, v) {
+        final x = safeInt(v, -1);
+        if (x >= 0) {
+          sum += x;
+          numeric = true;
+        }
+      });
+      if (numeric) n = sum;
+    }
+    if (n < 0) n = _countOf(res);
+    final ec = safeInt(res['error_code'] ?? res['errcode'] ??
+        data['error_code'] ?? data['errcode'], 0);
+    if (ec != 0) Log.w(_tag, 'getFavoriteCount server ec=$ec');
     Log.d(_tag, 'getFavoriteCount count=$n');
-    return n;
+    return n < 0 ? 0 : n;
   } catch (e, st) {
     Log.e(_tag, 'getFavoriteCount failed', e, st);
     return 0;

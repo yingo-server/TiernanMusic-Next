@@ -30,6 +30,7 @@ class SurfaceDeps {
     this.onQualitySelected,
     this.onOpenComments,
     this.searchTyped,
+    this.onStartFm,
   });
 
   /// 批2-C 装配好的搜索 logic。
@@ -52,6 +53,9 @@ class SurfaceDeps {
 
   /// 评论入口（可选）。
   final void Function()? onOpenComments;
+
+  /// 个人 FM 入口（可选；播放页 AppBar FM 按钮）。
+  final void Function()? onStartFm;
 
   /// 六类分类搜索门面（可选；批6-B 的 Tab 依赖此注入）。
   final SearchTypedLogic? searchTyped;
@@ -101,6 +105,7 @@ Future<List<SurfaceModule>> defaultModules(SurfaceDeps deps) async {
         collect: deps.collect,
         onQualitySelected: deps.onQualitySelected,
         onOpenComments: deps.onOpenComments,
+        onStartFm: deps.onStartFm,
       ),
     ];
   } catch (e, st) {

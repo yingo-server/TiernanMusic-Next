@@ -3,7 +3,7 @@
 // 对齐契约渲染原文/双语/译文三模式；条数不等绝不臆造译文（alignTranslation
 // 已保证）。零 UI、零网络直连；每方法 try/catch+Log('logic.translation')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show LruCache, LyricResult, LyricsDisplayMode, TranslatedLine, alignTranslation, buildKey, extractOriginalLines;
+import '../../bridges/bridge_core.dart' show LruCache, LyricResult, LyricsDisplayMode, TranslatedLine, alignTranslation, buildKey, extractOriginalLines, extractEmbeddedTranslatedLines;
 
 const String _tag = 'logic.translation';
 
@@ -25,19 +25,35 @@ class TranslationLogic {
 
   /// 按模式生成可渲染行。译文缺失时 bilingual/translation 自动退化为原文
   /// 并 Log.w 留痕（不静默假装已翻译）。
+  /// translatedLines 可选：未提供时经 bridge_core 调 fetchTranslationFromContent
+  /// 从 LyricResult.content 抽本地 KRC 内嵌翻译轨（不联网、不臆造 API）。
   List<DisplayLine> displayFor(
     LyricResult lyric,
     LyricsDisplayMode mode, {
     List<String>? translatedLines,
   }) {
     try {
+      List<String>? local = translatedLines;
+      if (local == null) {
+        try {
+          // 未显式传入译文时，从 LyricResult.content 抽本地 KRC 内嵌翻译轨
+          //（不联网；上游无独立翻译端点，见 ENDPOINT_TRUTH.md §6）。
+          final trans = extractEmbeddedTranslatedLines(lyric);
+          local = trans.isEmpty
+              ? null
+              : List<String>.unmodifiable(trans);
+        } catch (e, st) {
+          Log.w(_tag, 'local translation track extract failed: $e');
+          local = null;
+        }
+      }
       final key = buildKey(
         ns: 'translation',
         path: '/lyrics/display',
         params: <String, Object?>{
           'hash': lyric.id,
           'mode': mode.name,
-          'trans': translatedLines?.length ?? 0,
+          'trans': local?.length ?? 0,
         },
         schemaVer: 1,
       );
@@ -45,9 +61,9 @@ class TranslationLogic {
       if (hit != null) return hit;
 
       final originals = extractOriginalLines(lyric);
-      final aligned = translatedLines == null
+      final aligned = local == null
           ? const <TranslatedLine>[]
-          : alignTranslation(originals, translatedLines);
+          : alignTranslation(originals, local);
       final hasTrans = aligned.isNotEmpty;
 
       final out = <DisplayLine>[];

@@ -1,8 +1,8 @@
 // L4 core/net/endpoints · 用户域/上报端点封装（批6-A）
-// 范围：userDetail / uploadPlayHistory / getSongClimax / getUserCloud / reportListen。
-// ⚠️ 五端点全部「需三态实测，未实测不猜参数」：docs/PARITY_NOTES.md §4 未留样，
-//    故所有封装在探针确认前 **不发请求**，返回语义空值 + Log.w('needs probe')。
-//    实测后：只改本文件与 kugou_client.dart 声明，不动 request 实现。
+// 端点路径据 docs/ENDPOINT_TRUTH.md 修正（真实 URL/x-router 见 kugou_client.dart 声明）。
+// 实测状态：getUserCloud / getSongClimax 已按真实端点发请求（三态探针 status/errcode 已确认）；
+//   getUserDetail / uploadPlayHistory / reportListen 的参数契约（RSA p 串、songs 数组、body 形态）
+//   仍待三态实测，按「不猜参数」原则返回语义空值 + Log.w，不伪造成功。
 // 铁律：字段容错 safe* + try/catch + Log('ep.user')；dfid/mid/uuid 由
 //    KugouClient.request 默认参数恒显式携带并参与签名。
 import '../../../bridges/bridge_kernel.dart' show Log;
@@ -61,7 +61,7 @@ class UserProfile {
 }
 
 /// 用户详情（POST /v3/get_my_info）→ UserProfile。
-/// ⚠️ needs probe：未实测不发请求，返回语义空值。
+/// ⚠️ 据ENDPOINT_TRUTH.md 路径已修正，参数契约待三态实测，暂不发请求。
 Future<UserProfile> getUserDetail(KugouClient client) async {
   try {
     Log.w(_tag, 'getUserDetail needs probe (user_detail)'); // needs probe
@@ -96,8 +96,10 @@ Future<bool> uploadPlayHistory(
   }
 }
 
-/// 高潮片段（GET /v1/song_climax）→ 片段 URL 或「起始-结束秒」描述串。
-/// ⚠️ needs probe：未实测不发请求，返回 null（语义空值）。
+/// 高潮片段（GET /v1/audio_climax/audio，expendablekmrcdn.kugou.com）
+/// → 片段 URL 或「起始-结束秒」描述串。
+/// 据ENDPOINT_TRUTH.md 路径已修正，响应 data[] 取首项（start_time/end_time/url
+/// 容错），空 data 返回 null；完整参数契约仍待三态实测。
 Future<String?> getSongClimax(KugouClient client, String hash) async {
   try {
     final h = hash.trim().toLowerCase();
@@ -105,8 +107,24 @@ Future<String?> getSongClimax(KugouClient client, String hash) async {
       Log.w(_tag, 'getSongClimax empty hash, skip');
       return null;
     }
-    Log.w(_tag, 'getSongClimax needs probe (song_climax) hash=$h'); // needs probe
-    // 探针确认响应字段（url / starttime-endtime）前不发请求。
+    final res = await client.request(EndpointRegistry.songClimax,
+        <String, Object?>{'hash': h, 'album_audio_id': 0});
+    final data = res['data'];
+    if (data is! List || data.isEmpty) {
+      Log.d(_tag, 'getSongClimax empty data hash=$h');
+      return null;
+    }
+    final first = data.first;
+    if (first is! Map<String, dynamic>) {
+      Log.w(_tag, 'getSongClimax unexpected item shape hash=$h');
+      return null;
+    }
+    final url = safeStr(first['url'] ?? '');
+    if (url.isNotEmpty) return url;
+    final start = safeStr(first['start_time'] ?? first['starttime'] ?? '');
+    final end = safeStr(first['end_time'] ?? first['endtime'] ?? '');
+    if (start.isNotEmpty && end.isNotEmpty) return '$start-$end';
+    Log.d(_tag, 'getSongClimax no climax fields hash=$h');
     return null;
   } catch (e, st) {
     Log.e(_tag, 'getSongClimax failed hash=$hash', e, st);
@@ -114,25 +132,52 @@ Future<String?> getSongClimax(KugouClient client, String hash) async {
   }
 }
 
-/// 用户云盘歌曲列表（POST /v1/user_cloud）→ List<SongBrief>。
-/// ⚠️ needs probe：未实测不发请求，返回空列表（语义空值）。
+/// 用户云盘歌曲列表（POST /v1/get_list，mcloudservice.kugou.com）
+/// → List<SongBrief>。
+/// 据ENDPOINT_TRUTH.md 路径已修正；data.list[]/data.info[] 容错映射
+/// SongBrief.fromTrackInfo，data 空串/20010 返回空列表；完整加密参数契约
+/// （p/key/AES body）仍待三态实测。
 Future<List<SongBrief>> getUserCloud(KugouClient client) async {
   try {
-    Log.w(_tag, 'getUserCloud needs probe (user_cloud)'); // needs probe
     if (client.session.token.isEmpty) {
       Log.w(_tag, 'getUserCloud no token, skip');
       return const <SongBrief>[];
     }
-    // 探针确认分页/响应字段（data.info[] 形态）前不发请求。
-    return const <SongBrief>[];
+    final res = await client.request(EndpointRegistry.userCloud,
+        <String, Object?>{'page': 1, 'pagesize': 30});
+    final code = res['status'];
+    final data = res['data'];
+    if (data == null || data is String || code == 20010) {
+      Log.w(_tag, 'getUserCloud empty/error response status=$code');
+      return const <SongBrief>[];
+    }
+    final list = data is Map<String, dynamic>
+        ? (data['list'] ?? data['info'])
+        : data;
+    if (list is! List) {
+      Log.w(_tag, 'getUserCloud unexpected data shape status=$code');
+      return const <SongBrief>[];
+    }
+    final out = <SongBrief>[];
+    for (final item in list) {
+      if (item is Map<String, dynamic>) {
+        try {
+          out.add(SongBrief.fromTrackInfo(item));
+        } catch (e, st) {
+          Log.e(_tag, 'getUserCloud item map failed', e, st);
+        }
+      }
+    }
+    return out;
   } catch (e, st) {
     Log.e(_tag, 'getUserCloud failed', e, st);
     return const <SongBrief>[];
   }
 }
 
-/// 单曲试听上报（POST /v1/user_listen_report）。
-/// ⚠️ needs probe：未实测不发请求，恒返回 false（语义空值）。
+/// 单曲试听上报（POST /v2/get_list listenservice）。
+/// ⚠️ 据ENDPOINT_TRUTH.md 路径已修正，body 参数（t_userid/userid/list_type/p）
+/// 参数契约待三态实测，暂不发请求，恒返回 false（语义空值）。
 Future<bool> reportListen(KugouClient client, String hash) async {
   try {
     final h = hash.trim().toLowerCase();

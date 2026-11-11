@@ -1,5 +1,6 @@
 // L4 core/net/endpoints · 认证域端点封装（功能对齐批5-A · GAP #31）
 // 出处：docs/KUGOU_API.md §3.8（login_cellphone.js 短信验证码登录）+ §2.1/§2.2
+// ⚠️ 端点路径待 ENDPOINT_TRUTH.md 实测确认；当前按不猜参数原则返回语义空值，不伪造成功
 //   （AES 固定 key/iv + RSA 包 AES key）。
 // ⚠️ 端点实测状态：
 //   - smsLogin（/v7/login_by_verifycode）：路径/UA/docs 留样齐全，但**未三态实测**

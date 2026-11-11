@@ -1,7 +1,9 @@
-// L4 core/net/endpoints · 歌单写操作端点封装（功能对齐批5-B）
+// L4 core/net/endpoints · 歌单写操作端点封装（批9-B · 真实请求）
 // 范围：建歌单 / 删歌单 / 歌单删歌 / 歌单分类 tags / 用户歌单。
+// 端点路径与参数据 docs/ENDPOINT_TRUTH.md §4（playlist_add/del/tracks_del/
+//   tags/user_playlist），Registry 声明见 kugou_client.dart。
 // 质量原则：写操作禁止回退/重试（防重复提交，PARITY_NOTES.md）。
-// 全部端点「待三态实测」；字段容错 + try/catch + Log('ep.playlist.write')。
+// 字段容错（listid/status/error_code）+ try/catch + Log('ep.playlist.write')。
 import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart';
@@ -29,10 +31,25 @@ Future<String?> createPlaylist(KugouClient client, String name) async {
       return null;
     }
     final res = await client.request(EndpointRegistry.playlistCreate,
-        <String, Object?>{}, body: <String, Object?>{
-      'name': n,
+        <String, Object?>{
+      // ENDPOINT_TRUTH.md §4 playlist_add.js：type==0 自建时 query 显式
+      // last_time / last_area / userid / token（多参不缺参）。
+      'last_time': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      'last_area': 'gztx',
       'userid': client.session.userid,
       'token': client.session.token,
+    }, body: <String, Object?>{
+      'userid': client.session.userid,
+      'token': client.session.token,
+      'total_ver': 0,
+      'name': n,
+      'type': 0,
+      'source': 0,
+      'is_pri': 0,
+      'list_create_userid': 0,
+      'list_create_listid': 0,
+      'list_create_gid': 0,
+      'from_shupinmv': 0,
     });
     if (!_ok(res)) {
       Log.w(_tag, 'createPlaylist not ok name=$n');
@@ -57,9 +74,19 @@ Future<bool> deletePlaylist(KugouClient client, String listid) async {
       Log.w(_tag, 'deletePlaylist empty listid');
       return false;
     }
+    // ENDPOINT_TRUTH.md §4 playlist_del.js：query p/key/last_time/last_area 等
+    // AES/RSA 加密契约未留样（本仓库无 playlistAesDecrypt/rsaEncrypt2）；
+    // listid/total_ver/type 明文兜底发送，写操作不重试，失败留痕。
+    Log.w(_tag, 'deletePlaylist encrypted p/key contract unmeasured, '
+        'plain fallback (no retry)');
     final res = await client.request(EndpointRegistry.playlistDelete,
-        <String, Object?>{}, body: <String, Object?>{
+        <String, Object?>{
+      'last_area': 'gztx',
+      'last_time': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    }, body: <String, Object?>{
       'listid': id,
+      'total_ver': 0,
+      'type': 1,
       'userid': client.session.userid,
       'token': client.session.token,
     });
@@ -72,8 +99,8 @@ Future<bool> deletePlaylist(KugouClient client, String listid) async {
   }
 }
 
-/// 歌单删歌（POST /v2/del_songs_by_hash，待三态实测；与 add_songs_by_hash 对称）。
-/// 写操作：不重试。
+/// 歌单删歌（POST /v4/delete_songs，ENDPOINT_TRUTH.md §4
+/// playlist_tracks_del.js）。写操作：不重试。
 Future<bool> removeSongsFromPlaylist(
   KugouClient client,
   String listid,
@@ -119,6 +146,7 @@ Future<List<String>> getPlaylistTags(KugouClient client) async {
       'tag_id': 0,
       'source': 3,
     });
+    // 响应字段容错：data.tags[]/data.info[]（tagname/name/title 别名）。
     final data = dataOf(res);
     final raw = listOf(data['tags'] ?? data['data'] ?? data['info'] ??
         res['tags'] ?? res['data']);
@@ -157,13 +185,15 @@ Future<List<PlaylistBrief>> getUserPlaylists(
     final ps = pageSize < 1 ? 30 : pageSize;
     final res = await client.request(EndpointRegistry.userPlaylists,
         <String, Object?>{
+      // ENDPOINT_TRUTH.md §4 user_playlist.js：query plat/userid/token +
+      // 默认参数（多参不缺参）。
       'plat': 1,
       'userid': uid,
       'token': client.session.token,
     }, body: <String, Object?>{
       'userid': uid,
       'token': client.session.token,
-      'total_ver': 0,
+      'total_ver': 979,
       'type': 2,
       'page': p,
       'pagesize': ps,

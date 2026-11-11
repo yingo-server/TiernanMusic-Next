@@ -26,6 +26,7 @@ class PlayerPageModule implements SurfaceModule {
     this.collect,
     this.onQualitySelected,
     this.onOpenComments,
+    this.onStartFm,
   });
 
   final PlayerController controller;
@@ -38,6 +39,9 @@ class PlayerPageModule implements SurfaceModule {
 
   /// 评论入口（可选）。
   final VoidCallback? onOpenComments;
+
+  /// 个人 FM 入口（可选；为空时不显示 FM 按钮）。
+  final VoidCallback? onStartFm;
 
   @override
   String get id => 'player';
@@ -56,6 +60,7 @@ class PlayerPageModule implements SurfaceModule {
         collect: collect,
         onQualitySelected: onQualitySelected,
         onOpenComments: onOpenComments,
+        onStartFm: onStartFm,
       );
 }
 
@@ -162,11 +167,13 @@ class _PlayerPageBody extends ConsumerWidget {
     this.collect,
     this.onQualitySelected,
     this.onOpenComments,
+    this.onStartFm,
   });
 
   final CollectLogic? collect;
   final void Function(AudioQuality quality)? onQualitySelected;
   final VoidCallback? onOpenComments;
+  final VoidCallback? onStartFm;
 
   String _fmt(int ms) {
     try {
@@ -240,6 +247,18 @@ class _PlayerPageBody extends ConsumerWidget {
         appBar: TnAppBar(
           title: '正在播放',
           actions: <Widget>[
+            if (onStartFm != null)
+              IconButton(
+                icon: const Icon(Icons.radio),
+                tooltip: '个人 FM',
+                onPressed: () {
+                  try {
+                    onStartFm!();
+                  } catch (e, st) {
+                    Log.e(_tag, 'start fm failed', e, st);
+                  }
+                },
+              ),
             if (onOpenComments != null)
               IconButton(
                 icon: const Icon(Icons.comment_outlined),
@@ -390,6 +409,10 @@ class _PlayerPageBody extends ConsumerWidget {
                       const Icon(Icons.volume_up, size: 20),
                     ]),
                   ),
+                  // 倍速控件暂未提供：PlayerController / AudioEngine 均无
+                  // setSpeed 方法（契约见 player_controller.dart），按「不伪造
+                  // 能力」原则跳过；待引擎扩展 setSpeed 后在此补 0.5/1.0/1.5/2.0
+                  // 四档 chip，调 ctl.setSpeed(v)。
                   if (p.lastError.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.all(8),

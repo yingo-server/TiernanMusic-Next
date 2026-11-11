@@ -260,6 +260,16 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
           onOpenComments: () {
             Log.d(_tag, 'open comments requested (route /comment)');
           },
+          onStartFm: () {
+            // 播放页 FM 入口：同 SettingsDeps 组合语义。
+            try {
+              fmLogic.start().then((batch) {
+                if (batch.isNotEmpty) controller.playAll(batch, 0);
+              });
+            } catch (e, st) {
+              Log.e(_tag, 'onStartFm failed', e, st);
+            }
+          },
         ),
       ))!;
   modules.addAll(await built);
@@ -305,6 +315,13 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         lyricHashes: () => collectLogic.listFavorites(),
         accounts: accountLogic,
         collect: collectLogic,
+        onStartFm: () {
+          // 个人 FM：FmLogic.start() 取首批 → 非空批次整体入队从 0 播放。
+          fmLogic.start().then((batch) {
+            if (batch.isNotEmpty) controller.playAll(batch, 0);
+          });
+        },
+        verificationState: () => verificationLogic.state.name,
       ),
     ));
     return true;

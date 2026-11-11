@@ -228,14 +228,14 @@ class EndpointRegistry {
       base: 'https://loginserviceretry.kugou.com',
       path: '/v7/login_by_verifycode', method: 'POST',
       signType: SignType.none, clearDefaultParams: true);
-  // sendSmsCode：发送短信验证码端点。⚠️ docs 零留样（任务口径 POST
-  // /v1/send_verifycode，需三态实测），路径/路由/签名/参数全部待探针；
-  // 先按任务口径占位声明，实测后只改本声明。
+  // sendSmsCode：发送短信验证码（真实路径据 ENDPOINT_TRUTH.md §2
+  // captcha_sent.js：http://login.user.kugou.com/v7/send_mobile_code，
+  // body { businessid:5, mobile, plat:3 }）。参数契约待三态实测。
   static const sendSmsCode = Endpoint(
       id: 'send_sms_code',
-      base: 'https://loginserviceretry.kugou.com',
-      path: '/v1/send_verifycode', method: 'POST',
-      signType: SignType.none, clearDefaultParams: true);
+      base: 'http://login.user.kugou.com',
+      path: '/v7/send_mobile_code', method: 'POST',
+      signType: SignType.none, clearDefaultParams: true); // 真实路径据 ENDPOINT_TRUTH.md
 
   // ── 评论（docs/PARITY_NOTES.md：comment/music 参数走 query 非 body；count 走 web 签名） ──
   static const commentMusic = Endpoint(
@@ -257,31 +257,36 @@ class EndpointRegistry {
   // ⚠️ 待三态实测（anon/nonvip/vip）：favorite_count 的路径/路由/签名/响应字段
   //    均未留样；实测后只改本声明（或端点封装），不改 request 实现。
   static const favoriteCount = Endpoint(
-      id: 'favorite_count', path: '/v1/favorite/count',
-      router: 'sum.comment.service.kugou.com');
-  // collectSong：POST /v2/collect（收藏歌曲写端点；登录守卫在 logic 层）。
+      id: 'favorite_count', path: '/count/v1/audio/mget_collect',
+      router: 'sum.comment.service.kugou.com'); // 真实路径据 ENDPOINT_TRUTH.md
+  // collectSong / cancelCollect：上游无此模块（ENDPOINT_TRUTH.md §5：歌曲收藏
+  // 不应臆造 URL），路径不改、上游无此端点，本地镜像实现为准。
   static const collectSong = Endpoint(
-      id: 'collect_song', path: '/v2/collect', method: 'POST');
+      id: 'collect_song', path: '/v2/collect', method: 'POST'); // 上游无此端点，本地镜像实现为准
   // cancelCollect：POST /v2/cancel_collect（取消收藏写端点）。
   // ⚠️ docs/PARITY_NOTES.md / FEATURE_PARITY.md 记录：归档项目 cancel 走**二进制 body**；
   //    二进制载荷形态待三态实测，当前用 query 参数退化（端点层参数放 query、
   //    body 留空），实测后只改声明/封装，不改 request 实现。
   static const cancelCollect = Endpoint(
-      id: 'cancel_collect', path: '/v2/cancel_collect', method: 'POST');
+      id: 'cancel_collect', path: '/v2/cancel_collect', method: 'POST'); // 上游无此端点，本地镜像实现为准
 
   // ── 用户域/上报（批6-A · 只加声明，不动 KugouClient.request）──
   // ⚠️ 以下五端点全部「需三态实测，未实测不猜参数」：路径/参数/响应形态
   //    均未留样（docs/PARITY_NOTES.md §4），实测后只改本声明，不动 request。
   // userDetail：POST /v3/get_my_info（用户详情：昵称/头像/VIP/等级）。
   static const userDetail = Endpoint(
-      id: 'user_detail', path: '/v3/get_my_info', method: 'POST'); // 需三态实测，未实测不猜参数
+      id: 'user_detail', path: '/v3/get_my_info', method: 'POST',
+      router: 'usercenter.kugou.com'); // 真实路径据 ENDPOINT_TRUTH.md
   // playHistoryUpload：POST /playhistory/v1/upload_songs（听歌上报批量）。
   static const playHistoryUpload = Endpoint(
       id: 'play_history_upload', path: '/playhistory/v1/upload_songs',
       method: 'POST'); // 需三态实测，未实测不猜参数
-  // songClimax：GET /v1/song_climax（高潮片段 URL/时间）。
+  // songClimax：GET https://expendablekmrcdn.kugou.com/v1/audio_climax/audio
+  // （真实路径据 ENDPOINT_TRUTH.md §1 song_climax，非 gateway）。
   static const songClimax = Endpoint(
-      id: 'song_climax', path: '/v1/song_climax'); // 需三态实测，未实测不猜参数
+      id: 'song_climax',
+      base: 'https://expendablekmrcdn.kugou.com',
+      path: '/v1/audio_climax/audio');
   // userCloud：POST /v1/user_cloud（用户云盘歌曲列表）。
   static const userCloud = Endpoint(
       id: 'user_cloud', path: '/v1/user_cloud', method: 'POST'); // 需三态实测，未实测不猜参数

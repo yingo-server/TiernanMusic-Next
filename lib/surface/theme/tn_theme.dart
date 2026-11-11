@@ -47,6 +47,31 @@ MiuixThemeData tnDarkThemeData() => _miuixTheme(Brightness.dark);
 MiuixThemeData tnLightTheme() => tnLightThemeData();
 MiuixThemeData tnDarkTheme() => tnDarkThemeData();
 
+/// 纯黑模式（AMOLED）：surface 全黑 + 保留品牌紫 primary。
+/// 复用暗色基底并把背景色压到纯黑；失败兜底回暗色主题，不静默。
+MiuixThemeData tnPitchBlackThemeData() {
+  try {
+    final base = tnDarkThemeData();
+    final colors = base.colors.copy(
+      background: const Color(0xFF000000),
+      surface: const Color(0xFF000000),
+      surfaceContainer: const Color(0xFF000000),
+      onBackground: const Color(0xFFEDEDED),
+      primary: tnPrimary,
+      onPrimary: tnOnPrimary,
+    );
+    return base.copyWith(colors: colors);
+  } catch (e) {
+    assert(() {
+      // ignore: avoid_print
+      print('surface.tn_theme: pitch-black theme build failed, '
+          'fallback to dark: $e');
+      return true;
+    }());
+    return tnDarkThemeData();
+  }
+}
+
 MiuixThemeData _miuixTheme(Brightness b) {
   try {
     final base = b == Brightness.dark
