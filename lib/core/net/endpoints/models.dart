@@ -100,9 +100,9 @@ class SongBrief {
 
   final String hash; // FileHash（小写化）
   final String name; // FileName / name
-  final String singer; // SingerName / singername
+  final String singer; // SingerName / singername / singerinfo[].name 聚合
   final int mixSongId; // MixSongID（评论/上报用 mxid）
-  final int albumAudioId; // AlbumAudioId / album_audio_id
+  final int albumAudioId; // AlbumAudioId / album_audio_id / Audioid
   final int durationSec; // Duration / timelength(秒)
   final int bitrate;
   final int fileSize;
@@ -117,13 +117,20 @@ class SongBrief {
         name: safeStr(m['FileName'], m['name'] ?? ''),
         singer: safeStr(m['SingerName'], m['singername'] ?? ''),
         mixSongId: safeInt(m['MixSongID']),
-        albumAudioId: safeInt(m['AlbumAudioId']),
+        // 批N1-C 实测（2026-11-12 probe，API_FIELDS_TRUTH.md A1-1）：
+        // v3/song 列表项无 AlbumAudioId 键，音频 id 在 Audioid（=Scid）。
+        albumAudioId: safeInt(m['AlbumAudioId'],
+            safeInt(m['album_audio_id'], safeInt(m['Audioid']))),
         durationSec: safeInt(m['Duration']),
         bitrate: safeInt(m['Bitrate']),
         fileSize: safeInt(m['FileSize']),
         albumId: safeStr(m['AlbumID']),
         albumName: safeStr(m['AlbumName']),
-        isVip: safeBool(m['musicpack_advance']),
+        // 批N1-A 实测（A1-1）：musicpack_advance 在 trans_param 内。
+        isVip: safeBool(m['musicpack_advance'],
+            safeBool(m['trans_param'] is Map
+                ? (m['trans_param'] as Map)['musicpack_advance']
+                : null)),
       );
     } catch (e, st) {
       Log.e(_tag, 'SongBrief.fromSearchList failed', e, st);
@@ -131,19 +138,93 @@ class SongBrief {
     }
   }
 
+  /// 批N1-B 实测（docs/API_FIELDS_TRUTH.md A2-5）：
+  /// rank/audio songlist[] 映射。hash 在 audio_info.hash_128（deprecated.hash
+  /// 兜底）；时长 audio_info.duration_*（毫秒）；名次 business.sort（不落本模型）。
+  factory SongBrief.fromRankAudio(Map<String, dynamic> m) {
+    try {
+      final ai = m['audio_info'];
+      final dep = m['deprecated'];
+      final aiMap = ai is Map ? ai : const <String, dynamic>{};
+      final depMap = dep is Map ? dep : const <String, dynamic>{};
+      final dur = safeInt(aiMap['duration_128'],
+          safeInt(depMap['duration']));
+      final authors = m['authors'];
+      final authorFallback = (authors is List && authors.isNotEmpty &&
+              authors.first is Map)
+          ? safeStr((authors.first as Map)['author_name'])
+          : '';
+      final albumInfo = m['album_info'];
+      return SongBrief(
+        hash: safeStr(aiMap['hash_128'], safeStr(depMap['hash']))
+            .toLowerCase(),
+        name: safeStr(m['songname'], m['name'] ?? ''),
+        singer: safeStr(m['author_name'], authorFallback),
+        mixSongId: safeInt(m['audio_id']),
+        albumAudioId: safeInt(m['album_audio_id']),
+        durationSec: dur > 100000 ? dur ~/ 1000 : dur,
+        bitrate: safeInt(aiMap['bitrate'], safeInt(depMap['bitrate'])),
+        fileSize: safeInt(aiMap['filesize_128'],
+            safeInt(depMap['filesize'])),
+        albumId: safeStr(m['album_id']),
+        albumName: safeStr(
+            albumInfo is Map ? safeStr(albumInfo['album_name']) : ''),
+        // 实测：rank/audio 无 musicpack_advance；deprecated.pay_type 为
+        // 权益位（值示例 0/1，非 0 视为付费/VIP 曲目）。
+        isVip: safeBool(depMap['pay_type']),
+      );
+    } catch (e, st) {
+      Log.e(_tag, 'SongBrief.fromRankAudio failed', e, st);
+      return const SongBrief();
+    }
+  }
+
   factory SongBrief.fromTrackInfo(Map<String, dynamic> m) {
     try {
+      // 批N1-B 实测（docs/API_FIELDS_TRUTH.md A2-3/A2-5）：
+      // - 时长键是 timelen（毫秒），非 timelength；秒 = timelen/1000。
+      // - 大小键是 size（bytes），非 filesize。
+      // - songs[] 顶层无 singername/album_name：singer 从 singerinfo[0].name
+      //   或 author_name 兜底；albumName 从 albuminfo.name 兜底。
+      final tLen = safeInt(m['timelen'],
+          safeInt(m['timelength'], safeInt(m['Duration'])));
+      // rank/info songinfo[] 实测仅 songname/author/album_audio_id/album_cover
+      //（docs/API_FIELDS_TRUTH.md A2-6），name 需 songname 兜底。
+      final nm = safeStr(m['name'], safeStr(m['FileName'] ?? m['songname'] ?? ''));
+      final singerInfo = m['singerinfo'];
+      // 批N1-C 实测：singerinfo 是完整数组（多歌手），聚合为「、」连接。
+      String singerAgg = '';
+      if (singerInfo is List) {
+        final names = <String>[];
+        for (final si in singerInfo) {
+          if (si is Map && si['name'] != null) names.add('${si['name']}');
+        }
+        singerAgg = names.join('、');
+      }
+      final singerFallback = singerAgg;
+      final albumInfo = m['albuminfo'];
+      final albumNameFallback = (albumInfo is Map)
+          ? safeStr(albumInfo['name'],
+              safeStr(albumInfo['album_name']))
+          : '';
       return SongBrief(
         hash: safeStr(m['hash'], m['FileHash'] ?? '').toLowerCase(),
-        name: safeStr(m['name'], m['FileName'] ?? ''),
-        singer: safeStr(m['singername'], m['SingerName'] ?? ''),
+        name: safeStr(m['name'], m['FileName'] ?? m['songname'] ?? ''),
+        singer: safeStr(m['singername'],
+            safeStr(m['author_name'], singerFallback)),
         mixSongId: safeInt(m['mixsongid'], safeInt(m['MixSongID'])),
-        albumAudioId: safeInt(m['album_audio_id'], safeInt(m['AlbumAudioId'])),
-        durationSec: safeInt(m['timelength'], safeInt(m['Duration'])),
+        albumAudioId: safeInt(m['album_audio_id'],
+            safeInt(m['audio_id'], safeInt(m['AlbumAudioId']))),
+        // timelen 单位为毫秒 → 秒；Duration（搜索域）已是秒，>100000 视为毫秒修正。
+        durationSec: tLen > 100000
+            ? tLen ~/ 1000
+            : safeInt(m['Duration'], tLen),
         bitrate: safeInt(m['bitrate'], safeInt(m['Bitrate'])),
-        fileSize: safeInt(m['filesize'], safeInt(m['FileSize'])),
+        fileSize: safeInt(m['size'], safeInt(m['filesize'],
+            safeInt(m['FileSize']))),
         albumId: safeStr(m['album_id'], safeStr(m['AlbumID'])),
-        albumName: safeStr(m['album_name'], safeStr(m['AlbumName'])),
+        albumName: safeStr(m['album_name'],
+            safeStr(m['AlbumName'], albumNameFallback)),
         isVip: safeBool(m['musicpack_advance']),
       );
     } catch (e, st) {
@@ -300,10 +381,10 @@ class PlaylistBrief {
 
   final String id; // global_collection_id / specialid / listid
   final String name; // specialname
-  final String cover; // imgurl
+  final String cover; // imgurl（recommend）/ pic（detail）/ img（search special）
   final int playCount;
-  final int trackCount; // count
-  final String creator; // username
+  final int trackCount; // count / song_count
+  final String creator; // username / list_create_username / nickname
   final String intro;
 
   factory PlaylistBrief.fromMap(Map<String, dynamic> m) {
@@ -313,10 +394,16 @@ class PlaylistBrief {
             m['global_collection_id'] ?? m['specialid'] ?? m['listid'] ??
                 m['id'] ?? ''),
         name: safeStr(m['specialname'] ?? m['name'] ?? ''),
-        cover: safeStr(m['imgurl'] ?? m['cover'] ?? ''),
+        // 批N1-C 实测（API_FIELDS_TRUTH.md A2-2/A2-3/A2-4）：
+        // - recommend special_list[]：cover 键 imgurl（recommend 命中），搜索
+        //   special 命中是 img；play_count（下划线）、song_count。
+        // - detail 首项：cover 键 pic（无 imgurl）、count、creator 键
+        //   list_create_username（无 username）。tags 为逗号分隔字符串。
+        cover: safeStr(m['imgurl'] ?? m['pic'] ?? m['img'] ?? m['cover'] ?? ''),
         playCount: safeInt(m['playcount'] ?? m['play_count']),
-        trackCount: safeInt(m['count'] ?? m['track_count']),
-        creator: safeStr(m['username'] ?? m['nickname'] ?? ''),
+        trackCount: safeInt(m['count'] ?? m['song_count'] ?? m['track_count']),
+        creator: safeStr(m['username'] ?? m['list_create_username'] ??
+            m['nickname'] ?? ''),
         intro: safeStr(m['intro'] ?? ''),
       );
     } catch (e, st) {
@@ -407,11 +494,17 @@ class RankBrief {
 
   factory RankBrief.fromMap(Map<String, dynamic> m) {
     try {
+      // 批N1-B 实测（docs/API_FIELDS_TRUTH.md A2-4）：rank/list info[] 无
+      // updatetime 键；更新时间键是 rank_id_publish_date（期号发布时间），
+      // 另有 update_frequency（频率描述）/ rank_cid（本期快照 id）/ issue（期号）。
       return RankBrief(
         rankId: safeInt(m['rankid']),
         name: safeStr(m['rankname'] ?? m['name'] ?? ''),
         cover: safeStr(m['imgurl'] ?? m['img'] ?? ''),
-        updateTime: safeStr(m['updatetime'] ?? ''),
+        // 批N1-C 实测（A2-4 rank/list info[]）：更新时间键是
+        // rank_id_publish_date；另有 update_frequency（频率描述）。
+        updateTime: safeStr(m['rank_id_publish_date'] ??
+            m['updatetime'] ?? m['update_frequency'] ?? ''),
         intro: safeStr(m['intro'] ?? ''),
       );
     } catch (e, st) {

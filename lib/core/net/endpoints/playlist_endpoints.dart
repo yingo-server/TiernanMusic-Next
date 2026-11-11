@@ -46,7 +46,8 @@ Future<List<PlaylistBrief>> recommendPlaylists(
       'return_special_falg': 1,
     });
     final data = dataOf(res);
-    // 实测修正：响应在 data.special_list[]（specialid/specialname/imgurl/playcount）。
+    // 实测修正（批N1-C，A2-1）：响应在 data.special_list[]，列表项含
+    // global_collection_id/specialid/specialname/imgurl/play_count/nickname。
     final raw = listOf(data['special_list'] ?? data['special'] ??
         data['list'] ?? data['info']);
     final items = raw.map(PlaylistBrief.fromMap).toList(growable: false);
@@ -83,24 +84,37 @@ Future<PlaylistDetail> playlistDetail(
     // tags 兼容 List<String> / List<Map>
     final tags = <String>[];
     try {
-      for (final t in (first['tags'] as List? ?? const [])) {
-        if (t is Map) {
-          tags.add(safeStr(t['tagname'] ?? t['name'] ?? ''));
-        } else {
-          tags.add(safeStr(t));
+      final rawTags = first['tags'];
+      if (rawTags is String && rawTags.trim().isNotEmpty) {
+        // 批N1-B 实测：get_list_info 的 tags 是逗号分隔字符串。
+        for (final t in rawTags.split(',')) {
+          final s = t.trim();
+          if (s.isNotEmpty) tags.add(s);
+        }
+      } else {
+        for (final t in (rawTags as List? ?? const [])) {
+          if (t is Map) {
+            tags.add(safeStr(t['tagname'] ?? t['tag_name'] ?? t['name'] ?? ''));
+          } else {
+            tags.add(safeStr(t));
+          }
         }
       }
     } catch (e, st) {
       Log.e(_tag, 'parse tags failed', e, st);
     }
     final d = PlaylistDetail(
+      // 批N1-B 实测（docs/API_FIELDS_TRUTH.md A2-2）：get_list_info data[0]
+      // 键为 name/pic/list_create_username（无 specialname/imgurl/username），
+      // 无 playcount；tags 是逗号分隔字符串（非数组）。
       id: safeStr(first['global_collection_id'] ?? id),
-      name: safeStr(first['specialname']),
-      cover: safeStr(first['imgurl']),
-      playCount: safeInt(first['playcount']),
+      name: safeStr(first['name'], safeStr(first['specialname'])),
+      cover: safeStr(first['pic'], safeStr(first['imgurl'])),
+      playCount: safeInt(first['playcount'] ?? first['play_count']),
       trackCount: safeInt(first['count']),
       intro: safeStr(first['intro']),
-      creator: safeStr(first['username']),
+      creator: safeStr(first['list_create_username'],
+          safeStr(first['username'])),
       tags: tags,
     );
     Log.d(_tag, 'playlistDetail id=$id name=${d.name}');

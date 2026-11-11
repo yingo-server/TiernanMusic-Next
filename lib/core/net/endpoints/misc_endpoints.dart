@@ -58,21 +58,32 @@ Future<List<RankBrief>> rankList(KugouClient client) async {
   }
 }
 
-/// 排行榜详情（/ocean/v6/rank/info）：data.songs[]/data.list[]。
-Future<List<SongBrief>> rankInfo(KugouClient client, int rankId) async {
+/// 排行榜曲目列表（批N1-B 实测：正确端点是 POST /openapi/kmr/v2/rank/audio，
+/// kg-tid 369；旧 /ocean/v6/rank/info 只回 3 首预览 songinfo）。
+/// 曲目 hash 不在顶层：128k 在 audio_info.hash_128（deprecated.hash 兜底），
+/// 歌手 author_name / authors[]，时长 audio_info.duration_128（毫秒），
+/// 名次 business.sort。
+Future<List<SongBrief>> rankInfo(KugouClient client, int rankId,
+    {int page = 1, int pageSize = 30}) async {
   try {
-    final res = await client.request(EndpointRegistry.rankInfo,
-        <String, Object?>{
-      'rankid': rankId,
+    final res = await client.request(EndpointRegistry.rankAudio,
+        <String, Object?>{}, body: <String, Object?>{
+      'show_portrait_mv': 1,
+      'show_type_total': 1,
+      'filter_original_remarks': 1,
+      'area_code': 1,
+      'pagesize': pageSize,
       'rank_cid': 0,
-      'with_album_img': 1,
-      'zone': '',
+      'type': 1,
+      'page': page,
+      'rank_id': rankId,
     });
     final data = dataOf(res);
-    final items = listOf(data['songs'] ?? data['list'] ?? data['info'])
-        .map(SongBrief.fromTrackInfo)
+    final items = listOf(data['songlist'] ?? data['songs'] ?? data['list'])
+        .map(SongBrief.fromRankAudio)
         .toList(growable: false);
-    Log.d(_tag, 'rankInfo rankId=$rankId got=${items.length}');
+    Log.d(_tag,
+        'rankInfo(rank_audio) rankId=$rankId page=$page got=${items.length}');
     return items;
   } catch (e, st) {
     Log.e(_tag, 'rankInfo failed rankId=$rankId', e, st);

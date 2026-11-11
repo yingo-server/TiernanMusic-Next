@@ -111,6 +111,13 @@ class EndpointRegistry {
   // ── 排行榜 ──
   static const rankList = Endpoint(
       id: 'rank_list', path: '/ocean/v6/rank/list');
+  // 批N1-B 实测（docs/API_FIELDS_TRUTH.md A2-6）：/ocean/v6/rank/info 只回
+  // 榜单元信息 + 3 首 songinfo 预览，无完整曲目列表（data.songs/list 不存在）。
+  // 取榜单曲目改走 POST /openapi/kmr/v2/rank/audio（kg-tid 369，无 x-router；
+  // 缺 kg-tid → error_code 20006 "err KG-TID"）。
+  static const rankAudio = Endpoint(
+      id: 'rank_audio', path: '/openapi/kmr/v2/rank/audio', method: 'POST',
+      tid: '369');
   static const rankInfo = Endpoint(
       id: 'rank_info', path: '/ocean/v6/rank/info');
 
@@ -309,7 +316,7 @@ class EndpointRegistry {
     playlistRecommend, playlistDetail, playlistTracks, playlistAddSongs,
     playlistCreate, playlistDelete, playlistDelSongs, playlistTags,
     userPlaylists,
-    rankList, rankInfo, lyricSearch, lyricDownload,
+    rankList, rankInfo, rankAudio, lyricSearch, lyricDownload,
     artistList, artistDetail, artistAudios, artistAlbums, albumDetail,
     albumSongs, playlistSimilar, recommendSongs, personalFm, fmSongs,
     mvDetail, videoDetail, videoDetailKmrV2, videoUrl,
