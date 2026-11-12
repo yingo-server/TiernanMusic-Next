@@ -620,3 +620,12 @@
   `_raw_text` 非 JSON 响应回退；deletePlaylist（playlist_write_endpoints.dart）
   按上述契约构造 p/密文 body，失败仍 false + Log 留痕。
 - **待实测**：三态验证 20010 是否消除（本批不验证不提交）。
+
+## 降级接线（批F1-C，2026-11-12）
+
+| 原不可达端点 | 实测结论 | 降级路径（已接线） |
+|---|---|---|
+| `/v6/search/complex`、`/v3/search/mixed` | error_code=152 Parameter Error（上游模块本身失效，用 Node 原 axios 流程复现同样 152） | 综合搜索 = `/v3/search/song` + `/v1/search/special` + `/v1/search/album` 三段并列（各段独立分页/缓存），`searchComplexV6` 改为薄委托 v3/song 保签名兼容；不猜 v6 字段 |
+| `/v1/author/albums`、`/kmr/v1/author/albums` | 三态全部 502/403 | ①`/kmr/v3/author` 取歌手名 → ②`/v1/search/album`（keyword=歌手名）→ ③空表兜底用 `/kmr/v1/audio_group/author` 实测 `item.album_id/album_name` 组装 AlbumBrief；产出的 albumid 即 `/kmr/v2/albums` albumDetail 所需参数 |
+
+另：`artist_page` 的「专辑」点击此前是 SnackBar 占位，已改为装配层注入 `onOpenAlbum` 回调 → 写 `SurfaceNavState.albumId` → Navigator 打开 AlbumPage（模块间零直接 import）。
