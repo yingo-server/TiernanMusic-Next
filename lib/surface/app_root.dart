@@ -22,9 +22,10 @@ import 'audio/keep_alive.dart';
 import 'player_controller.dart'
     show playerProvider, playerControllerProvider, PlayerSnapshot;
 import 'registry.dart';
-import 'widgets/common.dart' show ErrorRetryBox;
+import 'widgets/common_m3.dart' show ErrorRetryBox;
 import 'widgets/mini_bar.dart' show MiniBar;
 import 'l10n/l10n_helper.dart' show TnStrings;
+import 'theme/theme_state.dart' show themeModeProvider, settingsProvider;
 import 'theme/tn_theme.dart';
 import 'theme/tn_shader_warmup.dart' show TnShaderWarmup;
 
@@ -87,22 +88,8 @@ final Provider<DownloadManager> downloadManagerProvider =
 /// logic 能力门面（registry.SurfaceModule.enabled/builder 拿这个）
 final Provider<LogicFacade> logicFacadeProvider = Provider((_) => const LogicFacade());
 
-/// 亮暗模式（0=跟随系统, 1=亮, 2=暗）
-final StateNotifierProvider<ThemeModeNotifier, int> themeModeProvider =
-    StateNotifierProvider<ThemeModeNotifier, int>((ref) => ThemeModeNotifier());
-
-class ThemeModeNotifier extends StateNotifier<int> {
-  ThemeModeNotifier() : super(0);
-  void cycle() {
-    try {
-      state = (state + 1) % 3;
-      Log.d('surface.app_root', 'theme mode -> $state');
-    } catch (e, st) {
-      Log.e('surface.app_root', 'cycle theme failed', e, st);
-    }
-  }
-}
-
+// 主题模式唯一状态源见 theme/theme_state.dart（app_root 与 settings_page 共用；
+// 此前两处各自声明同名 themeModeProvider 且互不 import，导致切主题对渲染零影响）。
 /// 组装函数：bootloader 装配后由 bootstrapApp 调用，注入 core 依赖。
 /// 批5-B：不再自装配兜底——强制走 assembly.assembleAll（失败即暴露，不静默降级）。
 Future<void> installServices(
@@ -143,6 +130,8 @@ void bootstrapApp(dynamic result) {
       overrides: [
         depsProvider.overrideWithValue(deps),
         assemblyProvider.overrideWithValue(assembly),
+        // 主题模式持久化存储（theme_state.settingsProvider）。
+        settingsProvider.overrideWithValue(deps.settings),
         ...SurfaceRegistry.providerOverrides,
       ],
       child: const AppRoot(),
@@ -214,7 +203,10 @@ class _AppRootState extends State<AppRoot> {
     try {
       _keepAlive?.stop();
       Log.d('surface.app_root', 'dispose');
-    } catch (_) {}
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('surface.app_root: dispose failed: $e');
+    }
     super.dispose();
   }
 
@@ -228,7 +220,12 @@ class _AppRootState extends State<AppRoot> {
         return ValueListenableBuilder<int>(
           valueListenable: localeRevision,
           builder: (ctx, _, __) {
-            try { Log.d('surface.app_root', 'locale rebuild rev=$_'); } catch (_) {}
+            try {
+              Log.d('surface.app_root', 'locale rebuild rev=$_');
+            } catch (e, st) {
+              // ignore: avoid_print
+              print('surface.app_root: locale rebuild log failed: $e');
+            }
             return _buildMaterialApp(mode);
           },
         );
@@ -317,7 +314,10 @@ class _HomeShellState extends State<_HomeShell> {
     try {
       homeTabRequest.removeListener(_dispatchTabRequest);
       Log.d('surface.home_shell', 'dispose');
-    } catch (_) {}
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('surface.home_shell: dispose failed: $e');
+    }
     super.dispose();
   }
 
@@ -423,7 +423,10 @@ class _ModuleViewState extends State<_ModuleView> {
   void dispose() {
     try {
       Log.d('surface.module_view', 'dispose ${widget.module.id}');
-    } catch (_) {}
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('surface.module_view: dispose failed: $e');
+    }
     super.dispose();
   }
 

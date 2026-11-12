@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bridges/bridge_logic.dart';
 import '../l10n/l10n_helper.dart' show TnStrings;
 import '../registry.dart';
+import '../theme/theme_state.dart' show themeModeProvider;
 import '../theme/tn_theme.dart';
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 import '../widgets/settings_qr_dialog.dart'
@@ -17,11 +18,8 @@ import '../widgets/settings_qr_dialog.dart'
 const String _tag = 'surface.settings';
 const String kAppVersion = '26.11.10.1';
 
-/// 主题模式 riverpod 状态（批4-B 的 ThemeController 可替换实现；默认跟随系统）。
-/// anyState：0=跟随系统 1=亮 2=暗 3=纯黑。
-/// ⚠️ 纯黑消费待 app_root 接线：app_root 的 themeModeProvider 只识别 0/1/2，
-/// mode==3 当前按跟随系统渲染（switch 落 default），需 app_root 接 tnPitchBlackThemeData()。
-final StateProvider<int> themeModeProvider = StateProvider<int>((_) => 0);
+// 主题模式唯一状态源见 ../theme/theme_state.dart（0=跟随系统 1=亮 2=暗 3=纯黑）。
+// 此前本页与 app_root 各声明一个同名 provider 且互不 import → 切换主题对渲染零影响。
 
   /// 设置页依赖：全部经工厂注入（批8-B 追加 collect/onStartFm/verificationState 可选字段）。
 class SettingsDeps {
@@ -237,7 +235,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 selected: {mode},
                 onSelectionChanged: (s) {
                   try {
-                    ref.read(themeModeProvider.notifier).state = s.first;
+                    ref.read(themeModeProvider.notifier).set(s.first);
                     Log.d(_tag, 'theme mode=${s.first}');
                   } catch (e, st) {
                     Log.e(_tag, 'set theme failed', e, st);

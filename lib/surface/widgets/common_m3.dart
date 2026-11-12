@@ -71,8 +71,8 @@ SliderThemeData tnSliderTheme(BuildContext context) {
 final Duration tnSnackBarDuration = Durations.long2 * 8;
 
 /// 歌曲条目：歌名 / 歌手 / 时长 + 播放按钮回调。
-class SongTile extends StatelessWidget {
-  const SongTile({
+class M3SongTile extends StatelessWidget {
+  const M3SongTile({
     super.key,
     required this.title,
     required this.artist,
@@ -253,5 +253,9 @@ class SectionHeader extends StatelessWidget {
 void _logCrash(String where, Object e, StackTrace st) {
   try {
     Log.e(_tag, '$where crashed', e, st);
-  } catch (_) {}
+  } catch (err, stk) {
+    // Log 自身失败：兜底 print（不可再调 Log，否则递归）。
+    // ignore: avoid_print
+    print('$_tag: $where crashed ERR=$e ST=$st (log failed: $err)');
+  }
 }

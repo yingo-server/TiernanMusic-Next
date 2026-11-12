@@ -12,8 +12,6 @@ import '../bridges/bridge_boot.dart' as bb;
 import '../bridges/bridge_boot.dart' show KernelContext, Log;
 import '../bridges/bridge_core.dart' as core;
 import '../bridges/bridge_logic.dart' as lg;
-import '../bridges/bridge_core.dart' as core;
-import '../bridges/bridge_logic.dart' as lg;
 
 /// init 层拿到的启动结果。
 /// 批5-B：成功路径装配的 core 单例随结果上交，由 main（L1 依赖根，白名单）

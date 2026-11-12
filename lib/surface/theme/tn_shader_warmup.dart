@@ -95,7 +95,10 @@ abstract final class TnShaderWarmup {
     } catch (e, st) {
       try {
         recorder.endRecording(); // 异常路径也要 end，避免未关闭的 Recorder
-      } catch (_) {}
+      } catch (e2, st2) {
+        // ignore: avoid_print
+        print('surface.shader_warmup: endRecording failed: $e2');
+      }
       Log.w(_tag, 'warm draw failed: $e\n$st');
     }
   }

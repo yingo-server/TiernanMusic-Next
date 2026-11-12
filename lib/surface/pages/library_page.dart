@@ -171,7 +171,7 @@ class _LocalTab extends StatelessWidget {
             // 曲库列表入场交错动画（R2-B 接线）。
             return TnMotionStaggered(
               index: i,
-              child: SongTile(
+              child: LibrarySongTile(
               title: s.fileName.isEmpty ? s.hash : s.fileName,
               subtitle: [
                 if (s.singerName.isNotEmpty) s.singerName,
@@ -236,7 +236,7 @@ class _RecentTab extends StatelessWidget {
             // 最近播放列表入场交错动画（R2-B 接线）。
             return TnMotionStaggered(
               index: i,
-              child: SongTile(
+              child: LibrarySongTile(
               title: h.fileName.isEmpty ? h.hash : h.fileName,
               subtitle:
                   '${h.singerName} · ${dt.month}/${dt.day} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
@@ -368,8 +368,8 @@ class _TaskTile extends StatelessWidget {
 }
 
 /// 通用歌曲行（曲库/最近播放共用；widgets 抽离前先留在本文件，≤500 行约束内）。
-class SongTile extends StatelessWidget {
-  const SongTile({
+class LibrarySongTile extends StatelessWidget {
+  const LibrarySongTile({
     super.key,
     required this.title,
     required this.subtitle,

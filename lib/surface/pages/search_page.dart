@@ -1,10 +1,8 @@
-// L6 surface/pages · 搜索页（R3-C 拆出 SearchDetailPage → search_detail_page.dart）。
-// 综合三段并列（歌曲+歌单+专辑）：M3 SegmentedButton、独立缓存、翻页互不串扰。
+// L6 surface/pages · 搜索页（R3-C 拆出 SearchDetailPage）。综合三段：M3 SegmentedButton、独立缓存、翻页互不串扰。
 // M3：颜色/文本/动效走 colorScheme/textTheme/TnMotionStaggered。
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../bridges/bridge_logic.dart'
-    show SearchLogic, SearchSuggestItem, SearchResult, Log, LogicFacade, SearchTypedLogic;
+import '../../bridges/bridge_logic.dart' show SearchLogic, SearchSuggestItem, SearchResult, Log, LogicFacade, SearchTypedLogic;
 import '../../bridges/bridge_core.dart' show SongBrief, SearchType;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';

@@ -38,9 +38,12 @@ void main() {
     final src = f.readAsStringSync();
     checked++;
     _checkBrackets(rel, src);
+    _checkLineBudget(rel, src);
     _checkForbiddenImports(rel, src);
+    _checkEmptyCatches(rel, src);
   }
   _checkBridgeUniqueness(lib);
+  _checkDuplicateClassNames();
 
   // ignore: avoid_print
   print('smoke_check: scanned $checked dart files');
@@ -331,4 +334,61 @@ bool _isLayerException(String rel, String imp) {
     'init/main.dart:../bootloader/register.dart',
   };
   return exceptions.contains('$rel:$imp');
+}
+
+/// 跨文件同名类检测（遮蔽风险）。
+/// 背景：v26.11.13.03 启动崩溃源于 bridge_boot 里的 BootResult 遮蔽了 bootloader 的真类型；
+/// 同名类在不同库并存会造成类型不一致/import 歧义。此处按「同名类必须唯一」拦截。
+void _checkDuplicateClassNames() {
+  final map = <String, List<String>>{};
+  final dirs = Directory('lib');
+  if (!dirs.existsSync()) return;
+  for (final e in dirs.listSync(recursive: true)) {
+    if (e is! File || !e.path.endsWith('.dart')) continue;
+    final rel = e.path.replaceAll('\\', '/');
+    final src = e.readAsStringSync();
+    for (final m in RegExp(r'^(?:abstract\s+)?class\s+(\w+)', multiLine: true)
+        .allMatches(src)) {
+      map.putIfAbsent(m.group(1)!, () => <String>[]).add(rel);
+    }
+  }
+  final dups = map.entries.where((e) => e.value.length > 1).toList()
+    ..sort((a, b) => a.key.compareTo(b.key));
+  for (final d in dups) {
+    _fail('lib/', '同名类 ${d.key} 定义于 ${d.value.length} 处（遮蔽风险）：${d.value.join(' / ')}');
+  }
+}
+
+/// 空 catch 检测（异常吞没防线）。
+/// 铁律：每个 catch 必须留痕（Log/print/rethrow/throw），否则异常静默消失。
+/// 豁免：显式标注 ignore-silent-catch 的行（极少用，需说明理由）。
+void _checkEmptyCatches(String rel, String src) {
+  final lines = src.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    final m = RegExp(r'\}\s*catch\s*(\([^)]*\))?\s*\{').firstMatch(lines[i]);
+    if (m == null) continue;
+    // 收集 catch 块体（最多 20 行）
+    var depth = 1;
+    final body = <String>[];
+    for (var j = i; j < lines.length && j < i + 20; j++) {
+      body.add(lines[j]);
+      depth += '{'.allMatches(lines[j]).length - '}'.allMatches(lines[j]).length;
+      if (depth <= 0 && j > i) break;
+    }
+    final blob = body.join('\n');
+    final empty = RegExp(r'catch\s*(\([^)]*\))?\s*\{\s*\}').hasMatch(blob);
+    if (empty && !blob.contains('ignore-silent-catch')) {
+      _fail(rel, '空 catch 吞没异常（行 ${i + 1}）：${lines[i].trim()}');
+    }
+  }
+}
+
+
+/// 单文件行数上限（铁律：≤500 行，便于审计与热插拔替换）。
+void _checkLineBudget(String rel, String src) {
+  const maxLines = 500;
+  final n = '\n'.allMatches(src).length + 1;
+  if (n > maxLines) {
+    _fail(rel, '文件 $n 行超过上限 $maxLines（需拆分）');
+  }
 }

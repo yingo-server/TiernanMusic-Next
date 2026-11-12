@@ -21,13 +21,21 @@ const String _tag = 'surface.player';
 void _d(String msg) {
   try {
     Log.d(_tag, msg);
-  } catch (_) {}
+  } catch (e, st) {
+    // Log 自身失败：兜底 print（不可再调 Log，否则递归）。
+    // ignore: avoid_print
+    print('$_tag: $msg (log failed: $e)');
+  }
 }
 
 void _e(String msg, Object? err, StackTrace? st) {
   try {
     Log.e(_tag, msg, err, st);
-  } catch (_) {}
+  } catch (e, st) {
+    // Log 自身失败：兜底 print（不可再调 Log，否则递归）。
+    // ignore: avoid_print
+    print('$_tag: $msg ERR=$err ST=$st (log failed: $e)');
+  }
 }
 
 /// 倍速偏好存储门面（经 bridge_core 暴露的 KeyValueSettings）。

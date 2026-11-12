@@ -4,13 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_logic.dart'
     show
-        PlaylistLogic,
-        PlaylistBrief,
-        PlaylistDetail,
-        PlaylistMeta,
-        TrackPage,
-        Log,
-        LogicFacade;
+        PlaylistLogic, PlaylistBrief, PlaylistDetail, TrackPage, Log, LogicFacade;
 import '../../bridges/bridge_core.dart' show SongBrief, PlaylistMeta;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';

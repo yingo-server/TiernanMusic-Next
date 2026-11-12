@@ -159,8 +159,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         settings: deps.settings,
         isLoggedIn: () => auth.session.userid.isNotEmpty,
       ))!;
-  final translationLogic = _step('TranslationLogic',
-      () => TranslationLogic())!;
+  final translationLogic = _step('TranslationLogic', () => TranslationLogic())!;
   // 多账号切换时的缓存失效器收集器：先声明空列表，各 logic 声明后逐个 add，
   // 避免闭包前向引用未声明的 final 局部变量（Dart 编译期禁止）。
   final accountInvalidators = <void Function()>[];
@@ -193,9 +192,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         },
       ))!;
   final recommendLogic = _step('RecommendLogic', () => RecommendLogic(
-        client: deps.client,
-        cache: _newCache<String, dynamic>(64, 'recommend'),
-      ))!;
+      client: deps.client, cache: _newCache<String, dynamic>(64, 'recommend')))!;
   final artistLogic = _step('ArtistLogic', () => ArtistLogic(
         client: deps.client,
         cache: _newCache<String, dynamic>(64, 'artist'),
@@ -206,16 +203,11 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
       ))!;
   final fmLogic = _step('FmLogic', () => FmLogic(
         client: deps.client,
-        cache: _newCache<String, dynamic>(32, 'fm'),
-      ))!;
+      client: deps.client, cache: _newCache<String, dynamic>(32, 'fm')))!;
   final userLogic = _step('UserLogic', () => UserLogic(
-        client: deps.client,
-        cache: _newCache<String, dynamic>(32, 'user'),
-      ))!;
+      client: deps.client, cache: _newCache<String, dynamic>(32, 'user')))!;
   final searchTypedLogic = _step('SearchTypedLogic', () => SearchTypedLogic(
-        client: deps.client,
-        cache: _newCache<String, SearchResult>(64, 'search_typed'),
-      ))!;
+      client: deps.client, cache: _newCache<String, SearchResult>(64, 'search_typed')))!;
   // 后声明的 7 个域补进多账号失效清单（按声明顺序，无前向引用）。
   accountInvalidators.add(() => recommendLogic.invalidatePrefix(
       userid: deps.client.session.userid));
@@ -365,7 +357,6 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
       )));
     return true;
   });
-
   _step('CommentModule', () {
     modules.add(buildCommentModule(
       logic: commentLogic,
@@ -386,7 +377,6 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     ));
     return true;
   });
-
   _step('ArtistModule', () {
     modules.add(buildArtistModule(
       logic: artistLogic,

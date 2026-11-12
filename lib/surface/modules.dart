@@ -21,8 +21,8 @@ export 'widgets/mini_bar.dart' show MiniBar;
 export '../bridges/bridge_logic.dart' show PlaybackService;
 
 /// Surface 层装配依赖（由 bootloader 注入，surface 不 import logic 内部/装配代码）。
-class SurfaceDeps {
-  SurfaceDeps({
+class ModuleDeps {
+  ModuleDeps({
     required this.search,
     required this.playlist,
     required this.resolver,
@@ -66,10 +66,10 @@ class SurfaceDeps {
 /// audio_service 初始化为可选能力，await 失败不阻断）。
 /// 用法（boot 处）：
 /// ```dart
-/// final deps = SurfaceDeps(search: s, playlist: p, resolver: playback.resolvePlaySource);
+/// final deps = ModuleDeps(search: s, playlist: p, resolver: playback.resolvePlaySource);
 /// for (final m in defaultModules(deps)) SurfaceRegistry.install(m);
 /// ```
-Future<List<SurfaceModule>> defaultModules(SurfaceDeps deps) async {
+Future<List<SurfaceModule>> defaultModules(ModuleDeps deps) async {
   try {
     // 播放控制器：唯一实例，经两个 provider 暴露（boot 处 override）。
     // 引擎回调需引用尚未构造完的 controller，用可空引用间接接通。
