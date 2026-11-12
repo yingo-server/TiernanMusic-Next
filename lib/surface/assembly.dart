@@ -160,27 +160,29 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
       ))!;
   final translationLogic = _step('TranslationLogic',
       () => TranslationLogic())!;
+  // 多账号切换时的缓存失效器收集器：先声明空列表，各 logic 声明后逐个 add，
+  // 避免闭包前向引用未声明的 final 局部变量（Dart 编译期禁止）。
+  final accountInvalidators = <void Function()>[];
+  accountInvalidators.add(
+      () => search.invalidatePrefix(userid: deps.client.session.userid));
+  accountInvalidators.add(
+      () => playlist.invalidatePrefix(userid: deps.client.session.userid));
+  accountInvalidators.add(
+      () => rank.invalidatePrefix(userid: deps.client.session.userid));
+  accountInvalidators.add(
+      () => commentLogic.invalidatePrefix(userid: deps.client.session.userid));
+  accountInvalidators
+      .add(() => mvLogic.invalidatePrefix(userid: deps.client.session.userid));
+  accountInvalidators.add(() => collectLogic.resetLocalMirror());
+  accountInvalidators.add(() => translationLogic.invalidatePrefix(
+      userid: deps.client.session.userid));
   final accountLogic = _step('AccountLogic', () => AccountLogic(
         dao: AccountDao(),
         client: deps.client,
         settings: deps.settings,
         onAccountChanged: () {
           try {
-            for (final invalidate in <void Function()>[
-              () => search.invalidatePrefix(userid: deps.client.session.userid),
-              () => searchTypedLogic.invalidatePrefix(userid: deps.client.session.userid),
-              () => playlist.invalidatePrefix(userid: deps.client.session.userid),
-              () => rank.invalidatePrefix(userid: deps.client.session.userid),
-              () => commentLogic.invalidatePrefix(userid: deps.client.session.userid),
-              () => mvLogic.invalidatePrefix(userid: deps.client.session.userid),
-              () => recommendLogic.invalidatePrefix(userid: deps.client.session.userid),
-              () => artistLogic.invalidatePrefix(userid: deps.client.session.userid),
-              () => albumLogic.invalidatePrefix(userid: deps.client.session.userid),
-              () => fmLogic.invalidatePrefix(userid: deps.client.session.userid),
-              () => userLogic.invalidatePrefix(userid: deps.client.session.userid),
-              () => translationLogic.invalidatePrefix(userid: deps.client.session.userid),
-              () => collectLogic.resetLocalMirror(),
-            ]) {
+            for (final invalidate in accountInvalidators) {
               invalidate();
             }
             Log.d(_tag, 'account caches invalidated');
@@ -213,6 +215,19 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         client: deps.client,
         cache: _newCache<String, SearchResult>(64, 'search_typed'),
       ))!;
+  // 后声明的 7 个域补进多账号失效清单（按声明顺序，无前向引用）。
+  accountInvalidators.add(() => recommendLogic.invalidatePrefix(
+      userid: deps.client.session.userid));
+  accountInvalidators
+      .add(() => artistLogic.invalidatePrefix(userid: deps.client.session.userid));
+  accountInvalidators
+      .add(() => albumLogic.invalidatePrefix(userid: deps.client.session.userid));
+  accountInvalidators
+      .add(() => fmLogic.invalidatePrefix(userid: deps.client.session.userid));
+  accountInvalidators
+      .add(() => userLogic.invalidatePrefix(userid: deps.client.session.userid));
+  accountInvalidators.add(() => searchTypedLogic.invalidatePrefix(
+      userid: deps.client.session.userid));
   final playlistWriteLogic = _step('PlaylistWriteLogic', () => PlaylistWriteLogic(
         client: deps.client,
         playlistDao: deps.playlistDao,
@@ -267,7 +282,9 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
                 return;
               }
               nav.push(TnPageRoute<void>(
-                  m.first.builder(const LogicFacade())(ctx)));
+                Builder(builder: (ctx) =>
+                    m.first.builder(const LogicFacade())(ctx)),
+              ));
               Log.d(_tag, 'open comments ok');
             } catch (e, st) {
               Log.e(_tag, 'open comments failed', e, st);

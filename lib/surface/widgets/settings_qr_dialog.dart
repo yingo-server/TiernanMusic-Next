@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../bridges/bridge_core.dart' show AccountRecord;
 import '../../bridges/bridge_logic.dart';
 import '../l10n/l10n_helper.dart' show TnStrings;
+import '../pages/settings_page.dart' show SettingsDeps;
 import '../theme/tn_theme.dart';
 import 'qr_view.dart';
 

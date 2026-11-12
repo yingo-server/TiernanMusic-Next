@@ -4,6 +4,7 @@ import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import '../signing.dart' show KugouSign;
 import 'models.dart';
+import 'playlist_write_endpoints.dart' as write;
 
 const String _tag = 'ep.playlist';
 
@@ -180,37 +181,30 @@ Future<TrackPage> playlistTracks(
 Future<bool> addSongsToPlaylist(
   KugouClient client,
   String playlistId,
-  List<SongBrief> songs,
-) async {
+  List<SongBrief> songs, {
+  int listVer = 0,
+}) async {
+  // 批R3：旧猜测契约（resource/songid）已被 N3-B 实测证伪；统一转发到
+  // playlist_write_endpoints 的真实 /v6/add_song 契约（data 全字段 + list_ver）。
   try {
-    final id = playlistId.trim();
-    final clean = songs.where((s) => s.hash.isNotEmpty).toList(growable: false);
-    if (id.isEmpty || clean.isEmpty) {
-      Log.w(_tag, 'addSongsToPlaylist empty id or songs');
-      return false;
-    }
-    final res = await client.request(EndpointRegistry.playlistAddSongs,
-        <String, Object?>{}, body: <String, Object?>{
-      'resource': [
-        for (final s in clean)
-          <String, Object?>{
+    final rows = await write.addSongsToPlaylist(
+      client,
+      playlistId,
+      <Map<String, String>>[
+        for (final s in songs)
+          <String, String>{
             'name': s.name,
             'hash': s.hash,
-            'album_id': s.albumId,
-            'mixsongid': s.mixSongId,
-            'number': 1,
+            'albumId': s.albumId,
+            'mixsongid': '${s.mixSongId}',
+            'size': '${s.fileSize}',
+            'timelen': '${s.durationSec * 1000}',
+            'bitrate': '${s.bitrate}',
           },
       ],
-      'listid': id,
-      'userid': client.session.userid,
-      'token': client.session.token,
-      'list_ver': 0,
-    });
-    final ok = safeInt(dataOf(res)['status'],
-        safeInt(res['status'], 1)) == 1;
-    Log.d(_tag,
-        'addSongsToPlaylist id=$id n=${clean.length} ok=$ok');
-    return ok;
+      listVer: listVer,
+    );
+    return rows.isNotEmpty;
   } catch (e, st) {
     Log.e(_tag, 'addSongsToPlaylist failed id=$playlistId', e, st);
     return false;

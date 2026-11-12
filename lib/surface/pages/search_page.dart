@@ -429,6 +429,7 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
   }
   Widget _buildList(_SegmentState s, SearchType type, ScrollController scroll, String footer) {
     try {
+      final cs = Theme.of(context).colorScheme;
       final tt = Theme.of(context).textTheme;
       return ListView.builder(controller: scroll, itemCount: s.items.length + 1,
         itemBuilder: (ctx, i) {
