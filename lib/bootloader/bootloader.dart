@@ -150,7 +150,9 @@ WidgetBuilderHook bootstrapWidgetHook = (r) =>
     throw UnimplementedError('surface bridge not installed');
 
 // 批7-A：启动序列注册到 bridge_boot（L1 init 只经 runBoot 调本方法）。
-final _registerRunBoot = () {
+// 注意：Dart 顶层变量惰性初始化，顶层 final 无人读取时永不执行；
+// 故改为显式安装函数，由 L1 经 lib/bootloader/register.dart 调用一次。
+void installBootBridge() {
   bb.setRunBootImpl(
       ({bool bypassIntegrity = false,
         String? rootDir,
@@ -161,5 +163,4 @@ final _registerRunBoot = () {
               rootDir: rootDir,
               manifest: manifest,
               moduleBytes: moduleBytes));
-  return true;
-}();
+}

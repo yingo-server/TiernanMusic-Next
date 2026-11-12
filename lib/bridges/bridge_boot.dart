@@ -21,11 +21,14 @@ class BootBridge {
   // verifyIntegrity 已删除（运行期完整性校验移除，见 bootloader.dart 头注释）。
 }
 
-class BootResult {
-  const BootResult({required this.rejected, required this.kernel});
-  final bool rejected;
-  final k.KernelContext? kernel;
-}
+/// init 层拿到的启动失败结果（仅失败路径）：桥无法反向 import L2，
+/// 故用 Map 传递失败原因，由 init 层渲染错误页（真实异常不被吞）。
+Map<String, Object?> bootFailure(String reason, Object? error) => <String, Object?>{
+      'rejected': true,
+      'kernel': null,
+      'error': reason,
+      'detail': error?.toString() ?? '',
+    };
 
 /// init 层唯一启动入口包装：转调 bootloader.Bootstrap.run（L1 禁直连 L2）。
 /// try/catch + Log 留痕；失败返回 rejected=true 的 BootResult 形状
@@ -46,7 +49,7 @@ dynamic runBoot(
         moduleBytes: moduleBytes);
   } catch (e, st) {
     k.Log.e('bridge_boot', 'runBoot failed', e, st);
-    return const BootResult(rejected: true, kernel: null);
+    return bootFailure('runBoot failed', e);
   }
 }
 
@@ -89,6 +92,6 @@ dynamic runBootImpl(
         moduleBytes: moduleBytes);
   } catch (e, st) {
     k.Log.e('bridge_boot', 'runBootImpl failed', e, st);
-    return const BootResult(rejected: true, kernel: null);
+    return bootFailure('runBootImpl failed', e);
   }
 }

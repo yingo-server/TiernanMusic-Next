@@ -39,6 +39,12 @@ LAYER_ALLOWED_BRIDGES = {
     5: {'bridge_logic', 'bridge_core', 'bridge_kernel'},  # bridge_kernel 为 Log 载体（现状）
     6: {'bridge_surface', 'bridge_logic', 'bridge_core'},
 }
+
+# 显式登记的跨层装配例外（语言层面必要，非业务调用）：
+#   (源文件, 目标文件) —— 新增必须在此登记并写明理由，禁止隐式放宽。
+LAYER_EXCEPTIONS = {
+    ('init/main.dart', 'bootloader/register.dart'),
+}
 # L1 init 是依赖根：允许装配桥 + flutter 基础包（WidgetsFlutterBinding/SystemNavigator/debugPrint）
 L1_EXTRA = ('package:flutter/material.dart', 'package:flutter/services.dart',
             'package:path_provider/path_provider.dart')
@@ -159,6 +165,12 @@ def check_imports(rel, src, lvl):
             fail(rel, 'import 指向六层之外：`%s`' % imp)
             continue
         if tlayer != lvl:
+            # 显式装配例外（语言层面必要，显式登记，禁隐式放宽）：
+            #   init/main.dart → bootloader/register.dart
+            #   Dart 顶层变量惰性初始化，bootloader 的桥注册必须由 L1 显式触发加载；
+            #   该文件只做「安装一次启动实现」，无业务逻辑，业务调用仍全部经 bridge_boot。
+            if (rel, target) in LAYER_EXCEPTIONS:
+                continue
             fail(rel, '跨层直连 import 非桥文件 `lib/%s`（层 %d→%d，必须改走 lib/bridges/ 相邻桥）'
                  % (target, lvl, tlayer))
 

@@ -12,6 +12,10 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../bridges/bridge_boot.dart' show runBoot;
+// L1 装配根触发 L2 自注册（bootloader.dart 的注册语句需文件被加载才执行；
+// 见 lib/bootloader/register.dart 头注释）。这是 L1→L2 的最小装配例外，
+// 业务调用仍全部经 bridge_boot。
+import '../bootloader/register.dart' show registerBootloader;
 import '../bridges/bridge_surface.dart'
     show SurfaceDeps, bootstrapApp, installServices, tnLightThemeData;
 
@@ -42,10 +46,20 @@ Future<void> _boot({required bool debugBypass}) async {
   //    改为 CI 构建时生成 verification.json（加盐 md5/sha512 + RSA-4096 签名）
   //    随同版本 release 发布；本地无法验证时仅警报不阻塞（用户原则）。
 
-  // ③ runBoot（core 装配）。
+  // ③ runBoot（core 装配）。失败时返回 Map{rejected,error,detail}（见 bridge_boot）。
+  registerBootloader();
   final exit = runBoot(
       bypassIntegrity: debugBypass,
       rootDir: rootDir);
+
+  if (exit is Map) {
+    // 启动失败（桥兜底形状）：显示真实原因，不静默退出。
+    final reason = '${exit['error'] ?? 'boot failed'}'
+        '\n${exit['detail'] ?? ''}'.trim();
+    debugPrint('main: boot failure: $reason');
+    runApp(_BootErrorApp(message: '启动失败：$reason'));
+    return;
+  }
 
   // ④ surface 装配（L6 经桥）。
   if (exit.client != null && exit.songDao != null) {

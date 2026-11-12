@@ -226,7 +226,11 @@ void _checkForbiddenImports(String rel, String src) {
       if (tLayer == null) {
         _fail(rel, 'import 非六层目录内文件：$imp');
       } else if (lvl != null && tLayer != lvl) {
-        _fail(rel, '跨层直连 import 非桥文件 $imp（层 $lvl → 层 $tLayer，须改走相邻桥）');
+        // 显式登记的装配例外（与 layer_audit.py 同口径）：L1 → L2 register.dart
+        // （Dart 顶层惰性初始化，bootloader 桥注册须由 L1 显式触发加载）。
+        if (!_isLayerException(rel, imp)) {
+          _fail(rel, '跨层直连 import 非桥文件 $imp（层 $lvl → 层 $tLayer，须改走相邻桥）');
+        }
       }
       continue;
     }
@@ -250,7 +254,11 @@ void _checkForbiddenImports(String rel, String src) {
       } else if (tLayer == null) {
         _fail(rel, 'import 非六层目录内文件：$imp');
       } else if (lvl != null && tLayer != lvl) {
-        _fail(rel, '跨层直连 import 非桥文件 $imp（层 $lvl → 层 $tLayer，须改走相邻桥）');
+        // 显式登记的装配例外（与 layer_audit.py 同口径）：L1 → L2 register.dart
+        // （Dart 顶层惰性初始化，bootloader 桥注册须由 L1 显式触发加载）。
+        if (!_isLayerException(rel, imp)) {
+          _fail(rel, '跨层直连 import 非桥文件 $imp（层 $lvl → 层 $tLayer，须改走相邻桥）');
+        }
       }
       continue;
     }
@@ -314,4 +322,13 @@ void _report() {
     print('VIOLATION $v');
   }
   exitCode = 1;
+}
+
+
+/// 显式登记的跨层装配例外（与 tool/layer_audit.py 的 LAYER_EXCEPTIONS 同口径）。
+bool _isLayerException(String rel, String imp) {
+  const exceptions = <String>{
+    'init/main.dart:../bootloader/register.dart',
+  };
+  return exceptions.contains('$rel:$imp');
 }
