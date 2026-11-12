@@ -20,6 +20,7 @@ import '../bridges/bridge_core.dart'
 import '../bridges/bridge_logic.dart'
     show
         Log,
+        LogicFacade,
         SearchLogic,
         PlaylistLogic,
         RankLogic,
