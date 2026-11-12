@@ -461,7 +461,7 @@ class _PlayerPageBody extends ConsumerWidget {
                           onTap: () => _showSpeedSheet(context),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: tnPadM, vertical: tnPadXS),
+                                horizontal: tnPadM, vertical: TnDims.padXS),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(999),
                               border: Border.all(

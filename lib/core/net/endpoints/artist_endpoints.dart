@@ -266,16 +266,16 @@ Future<List<SongBrief>> getArtistAudios(KugouClient client,
     return const <SongBrief>[];
   }
 }
-/// 歌手专辑（GET /v1/author/albums），page 从 1 起。
-/// ⚠️【批N3-C 复测 2026-11-12·n3c_artist_raw.json】/v1/author/albums 与
-/// /kmr/v1/author/albums（tid 36，author_id=3520 匿名）仍 502 —— 端点
-/// 不可达，字段树未固化、不猜。_pickList 五键容错维持原样；调用方（L5
-/// ArtistLogic.albums / artist_page 专辑 Tab）应以下述实证路径降级：
-/// albumDetail（POST /kmr/v2/albums，tid 255）已实证（见 AlbumBrief.fromMap
-/// 注释），歌手专辑列表可经 artistLogic.detail 的专辑计数 + 专辑域端点组合，
-/// 或继续以本端点为主、空表降级专辑搜索（/v1/search/album 键集已固化）。
-/// ⚠️ docs 口径差异：PARITY_NOTES.md §1 记 kmr/v1/author/albums，
-/// 任务口径取 /v1/author/albums；实测后只改 EndpointRegistry 声明。
+/// 【批F1-C 降级接线】/v1/author/albums 与 /kmr/v1/author/albums 实测恒 502
+/// （docs/API_FIELDS_TRUTH.md §A4-3'），不再请求该不可达端点。降级链路：
+///  ① 取歌手名：getArtistDetail(/kmr/v3/author，实证可用) → author_name；
+///  ② 专辑搜索：GET /v1/search/album（keyword=歌手名，A1-3 实测键集
+///     albumid/albumname/singer/songcount/publish_time/img 已固化）；
+///  ③ 空表兜底：getArtistAudios(/kmr/v1/audio_group/author，A4-2' 实证)
+///     的 item.album_id/album_name（实测如 958909/十一月的萧邦）去重组
+///     AlbumBrief 卡片——albumDetail(/kmr/v2/albums) 需要的 albumid 由此产出；
+///  ④ surface 歌手页点击卡片进 AlbumPage（走 /kmr/v2/albums + /v1/album_audio/lite）。
+/// 只连官方域 complexsearch/openapi/gateway.kugou.com；dfid/mid/uuid 恒显式。
 Future<List<AlbumBrief>> getArtistAlbums(KugouClient client,
     String authorId, int page, {int pageSize = 30}) async {
   try {
@@ -286,17 +286,67 @@ Future<List<AlbumBrief>> getArtistAlbums(KugouClient client,
     }
     final p = page < 1 ? 1 : page;
     final ps = pageSize < 1 ? 30 : pageSize;
-    final res = await client.request(EndpointRegistry.artistAlbums,
+    // ① 歌手名（详情端点实证可用；失败留痕后以 id 作 keyword 继续）。
+    var name = '';
+    try {
+      name = (await getArtistDetail(client, id)).name.trim();
+    } catch (e, st) {
+      Log.e(_tag, 'getArtistAlbums detail failed id=$id', e, st);
+    }
+    final kw = name.isEmpty ? id : name;
+    // ② 专辑搜索（每端点一声明，参数不缺参）。
+    final res = await client.request(
+        const Endpoint(id: 'artist_albums_search', path: '/v1/search/album',
+            router: 'complexsearch.kugou.com'),
         <String, Object?>{..._baseParams(client),
-          'author_id': _aid(id), 'page': p, 'pagesize': ps});
-    _logErr('getArtistAlbums', res);
-    final items = _pickList(res, <String>['albums', 'lists', 'list',
-        'info', 'data']).map(AlbumBrief.fromMap).toList(growable: false);
-    Log.d(_tag, 'getArtistAlbums id=$id page=$p got=${items.length}');
-    return items;
+          'keyword': kw, 'page': p, 'pagesize': ps,
+          'albumhide': 0, 'iscorrection': 1, 'nocollect': 0,
+          'platform': 'AndroidFilter'});
+    _logErr('getArtistAlbums/search', res);
+    final items = _pickList(res, <String>['lists', 'albumlist', 'info', 'data'])
+        .map(albumBriefFromSearchAlbum)
+        .where((a) => a.id.isNotEmpty && a.name.isNotEmpty)
+        .toList(growable: false);
+    if (items.isNotEmpty) {
+      Log.d(_tag, 'getArtistAlbums degraded→/v1/search/album id=$id '
+          'kw=$kw page=$p got=${items.length}');
+      return items;
+    }
+    // ③ 空表兜底：audios 实测 item.album_id/album_name 去重组卡。
+    final audios = await getArtistAudios(client, id, p, pageSize: ps);
+    final seen = <String>{};
+    final fallback = <AlbumBrief>[];
+    for (final s in audios) {
+      if (s.albumId.isEmpty || s.albumName.isEmpty) continue;
+      if (!seen.add(s.albumId)) continue;
+      fallback.add(AlbumBrief(id: s.albumId, name: s.albumName));
+    }
+    Log.d(_tag, 'getArtistAlbums degraded→audio_group/album_id id=$id '
+        'page=$p got=${fallback.length} (§A4-3\')');
+    return fallback;
   } catch (e, st) {
     Log.e(_tag, 'getArtistAlbums failed id=$authorId page=$page', e, st);
     return const <AlbumBrief>[];
+  }
+}
+
+/// 专辑搜索项 → AlbumBrief（A1-3 实测键集，不猜不可达端点字段）。
+/// img 可能是裸文件名（同 A4-3 的 cover），只有 http(s) 完整 URL 才作封面。
+AlbumBrief albumBriefFromSearchAlbum(Map<String, dynamic> m) {
+  try {
+    final img = safeStr(m['img'] ?? m['imgurl'] ?? m['sizable_cover']);
+    final cover = img.startsWith('http://') || img.startsWith('https://')
+        ? img : '';
+    return AlbumBrief(
+      id: safeStr(m['albumid'] ?? m['album_id'] ?? m['id']),
+      name: safeStr(m['albumname'] ?? m['album_name'] ?? m['name']),
+      cover: cover,
+      publishDate: safeStr(m['publish_time'] ?? m['publish_date']),
+      songCount: safeInt(m['songcount'] ?? m['song_count'] ?? m['count']),
+    );
+  } catch (e, st) {
+    Log.e(_tag, 'albumBriefFromSearchAlbum failed', e, st);
+    return const AlbumBrief();
   }
 }
 /// 歌手列表（GET /ocean/v6/singer/list，docs §3.6 五参）。

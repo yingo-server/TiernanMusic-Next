@@ -4,6 +4,8 @@
 //   tags/user_playlist），Registry 声明见 kugou_client.dart。
 // 质量原则：写操作禁止回退/重试（防重复提交，PARITY_NOTES.md）。
 // 字段容错（listid/status/error_code）+ try/catch + Log('ep.playlist.write')。
+import 'dart:convert';
+
 import '../../../bridges/bridge_kernel.dart' show Log;
 import '../crypto_rsa.dart' show playlistAesEncrypt, playlistAesDecrypt, rsaEncrypt2;
 import '../kugou_client.dart';

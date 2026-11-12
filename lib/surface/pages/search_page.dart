@@ -1,17 +1,13 @@
-// L6 surface/pages · 搜索页模块（SurfaceModule 热插拔）
-// 批M2-A：按 Google M3 控件规范重写 UI 层，业务/回调/函数签名/文案零改动。
-//   · Scaffold(M3 surface) + TnAppBar(M3 TopAppBar) + M3 TabBar；
-//   · Card(elevation=1 / surfaceTintColor=scheme.surfaceTint / margin=zero)；
-//     FilterChip 用 M3 默认形状；进度全改 LinearProgressIndicator；
-//   · 空态用 M3 文本层级 titleMedium/bodyMedium；交错入场保留 TnMotionStaggered；
-//   · 颜色只取 Theme.of(context).colorScheme，禁硬编码色，无裸动效 Duration。
-// 搜索框 onChanged 防抖 300ms 调 suggestions + hotSearch 空态；
-// 提交调 search(keyword, page)，列表滚动到底自动翻页；
-// 点击结果经注入的 PlayerController 回调 playSong(SongBrief)。
+// L6 surface/pages · 搜索页（批F1-C 不可达端点降级接线）
+// /v6/search/complex 实测恒 152 Parameter Error（上游模块失效，
+// §A4-3'）→ 移除 v6 依赖。综合搜索降级为「歌曲(v3/song) + 歌单(v1/search/special)
+// + 专辑(v1/search/album)」三段并列：M3 SegmentedButton 切段、Card 行、
+// LinearProgressIndicator；三段独立 items/page/total/ScrollController/首屏缓存，
+// 网络缓存键为 L5 typed(type,keyword,page)，翻页互不串扰。不猜 v6 字段。
+// M3：颜色只取 colorScheme、文本只取 textTheme、动效走 TnMotionStaggered。
+// 依赖：只经 bridge_logic/bridge_core 取门面/模型；每函数 try/catch+Log 留痕。
 import 'dart:async';
-
 import 'package:flutter/material.dart';
-
 import '../../bridges/bridge_logic.dart'
     show SearchLogic, SearchSuggestItem, SearchResult, Log, LogicFacade, SearchTypedLogic;
 import '../../bridges/bridge_core.dart' show SongBrief, SearchType;
@@ -21,479 +17,471 @@ import '../theme/tn_motion.dart' show TnMotionStaggered;
 import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadL;
 import '../widgets/common_widgets.dart' show SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
-
 const String _tag = 'surface.search';
-
-/// 搜索页模块。deps 注入 SearchLogic 与 PlayerController 工厂。
+const int _kPageSize = 30;
 class SearchPageModule implements SurfaceModule {
   SearchPageModule({required SearchLogic search, required PlayerController player,
-      SearchTypedLogic? typed})
-      : _search = search,
-        _player = player,
-        _typed = typed;
-
-  final SearchLogic _search;
-  final PlayerController _player;
-
-  /// 可选六类分类搜索门面（批6-B）；为空时保持原单类型搜索（向后兼容）。
-  final SearchTypedLogic? _typed;
-
-  @override
-  String get id => 'search';
-
-  @override
-  String get route => '/search';
-
-  @override
-  NavEntry? get navEntry => const NavEntry('搜索', 'search');
-
-  @override
-  bool enabled(LogicFacade logic) => true;
-
-  @override
-  WidgetBuilder builder(LogicFacade logic) => (ctx) => _SearchPageBody(
-        search: _search,
-        player: _player,
-        typed: _typed,
-      );
+      SearchTypedLogic? typed}) : _search = search, _player = player, _typed = typed;
+  final SearchLogic _search; final PlayerController _player; final SearchTypedLogic? _typed;
+  @override String get id => 'search';
+  @override String get route => '/search';
+  @override NavEntry? get navEntry => const NavEntry('搜索', 'search');
+  @override bool enabled(LogicFacade logic) => true;
+  @override WidgetBuilder builder(LogicFacade logic) {
+    try { return (ctx) => _SearchPageBody(search: _search, player: _player, typed: _typed); }
+    catch (e, st) { Log.e(_tag, 'builder failed', e, st); return (ctx) => const SizedBox.shrink(); }
+  }
 }
-
 class _SearchPageBody extends StatefulWidget {
-  const _SearchPageBody(
-      {required this.search, required this.player, this.typed});
-
-  final SearchLogic search;
-  final PlayerController player;
-
-  /// 可选六类分类搜索；为空时 Tab 栏不渲染，行为与旧版一致。
-  final SearchTypedLogic? typed;
-
-  @override
-  State<_SearchPageBody> createState() => _SearchPageBodyState();
+  const _SearchPageBody({required this.search, required this.player, this.typed});
+  final SearchLogic search; final PlayerController player; final SearchTypedLogic? typed;
+  @override State<_SearchPageBody> createState() => _SearchPageBodyState();
 }
-
+class _SegmentState {
+  _SegmentState() : scroll = ScrollController();
+  final ScrollController scroll;
+  String kw = ''; int page = 1; int total = 0;
+  bool loaded = false, searching = false, loadingMore = false, more = false;
+  List<SongTileData> items = const <SongTileData>[];
+  void reset(String k) {
+    try {
+      kw = k; page = 1; total = 0; loaded = false;
+      searching = false; loadingMore = false; more = false;
+      items = const <SongTileData>[];
+      Log.d(_tag, 'segment reset kw=$k');
+    } catch (e, st) { Log.e(_tag, 'segment reset failed', e, st); }
+  }
+}
 class _SearchPageBodyState extends State<_SearchPageBody> {
   final TextEditingController _kwCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
-
   Timer? _debounce;
   List<SearchSuggestItem> _suggests = const <SearchSuggestItem>[];
   List<SearchSuggestItem> _hot = const <SearchSuggestItem>[];
-  List<SongTileData> _results = const <SongTileData>[];
-  int _page = 1;
-  int _total = 0;
-  bool _searching = false;
-  bool _loadingMore = false;
-  String _committedKw = '';
-
-  /// 批6-B 六类 Tab：null=未启用（typed 未注入或 song Tab 退回旧链路）。
-  /// 语义：歌曲→SearchType.song（v3），歌单→special，专辑→album，
-  /// 歌手→author，MV→mv，歌词→lyric（v1，KUGOU_API.md §3.1）。
+  final _SegmentState _legacy = _SegmentState(); // 分类 Tab / typed==null 旧链路
+  bool _searching = false; String _committedKw = '';
+  static const List<String> _kTypeLabels = <String>['歌曲', '歌单', '专辑', '歌手', 'MV', '歌词'];
   static const List<SearchType> _kTypes = <SearchType>[
     SearchType.song, SearchType.special, SearchType.album,
-    SearchType.author, SearchType.mv, SearchType.lyric,
-  ];
-  static const List<String> _kTypeLabels = <String>[
-    '歌曲', '歌单', '专辑', '歌手', 'MV', '歌词',
-  ];
-  int? _typeIndex;
-
-  @override
-  void initState() {
+    SearchType.author, SearchType.mv, SearchType.lyric];
+  static const List<SearchType> _kSegTypes = <SearchType>[
+    SearchType.song, SearchType.special, SearchType.album];
+  static const List<String> _kSegLabels = <String>['歌曲', '歌单', '专辑'];
+  static const List<IconData> _kSegIcons = <IconData>[Icons.audiotrack, Icons.queue_music, Icons.album];
+  int _tabIndex = 0; SearchType _segment = SearchType.song;
+  final Map<SearchType, _SegmentState> _segments = <SearchType, _SegmentState>{
+    for (final t in _kSegTypes) t: _SegmentState(),
+  };
+  @override void initState() {
     super.initState();
     try {
       _scrollCtrl.addListener(_onScroll);
+      for (final t in _kSegTypes) { _segments[t]!.scroll.addListener(() => _onSegmentScroll(t)); }
       _loadHot();
-      Log.d(_tag, 'initState');
-    } catch (e, st) {
-      Log.e(_tag, 'initState failed', e, st);
-    }
+      Log.d(_tag, 'initState comprehensive=3 typed=${widget.typed != null}');
+    } catch (e, st) { Log.e(_tag, 'initState failed', e, st); }
   }
-
-  @override
-  void dispose() {
+  @override void dispose() {
     try {
-      _debounce?.cancel();
-      _kwCtrl.dispose();
-      _scrollCtrl.dispose();
+      _debounce?.cancel(); _kwCtrl.dispose(); _scrollCtrl.dispose();
+      _legacy.scroll.dispose();
+      for (final s in _segments.values) { s.scroll.dispose(); }
       Log.d(_tag, 'dispose');
-    } catch (e, st) {
-      Log.e(_tag, 'dispose failed', e, st);
-    }
+    } catch (e, st) { Log.e(_tag, 'dispose failed', e, st); }
     super.dispose();
   }
-
   Future<void> _loadHot() async {
-    try {
-      final hot = await widget.search.hotSearch();
+    try { final hot = await widget.search.hotSearch();
       if (!mounted) return;
       setState(() => _hot = hot);
-    } catch (e, st) {
-      Log.e(_tag, 'loadHot failed', e, st);
-    }
+      Log.d(_tag, 'hot loaded n=${_hot.length}');
+    } catch (e, st) { Log.e(_tag, 'loadHot failed', e, st); }
   }
-
-  /// 输入防抖 300ms → suggestions。
   void _onChanged(String kw) {
     try {
       _debounce?.cancel();
-      if (kw.trim().isEmpty) {
-        setState(() => _suggests = const <SearchSuggestItem>[]);
-        return;
-      }
-      // 自定义时长说明：防抖间隔 300ms 非动效时长，不属 TnMotion 三档，保留裸值。
+      if (kw.trim().isEmpty) { setState(() => _suggests = const <SearchSuggestItem>[]); return; }
       _debounce = Timer(const Duration(milliseconds: 300), () async {
         try {
           final list = await widget.search.suggestions(kw);
           if (!mounted) return;
           setState(() => _suggests = list);
-        } catch (e, st) {
-          Log.e(_tag, 'suggestions failed', e, st);
-        }
+          Log.d(_tag, 'suggestions n=${list.length}');
+        } catch (e, st) { Log.e(_tag, 'suggestions failed', e, st); }
       });
-    } catch (e, st) {
-      Log.e(_tag, 'onChanged failed', e, st);
-    }
+    } catch (e, st) { Log.e(_tag, 'onChanged failed', e, st); }
   }
-
-  /// 提交搜索：重置到第 1 页（批6-B：typed 注入时按当前 Tab 分类搜）。
   Future<void> _submit(String kw) async {
     try {
       final k = kw.trim();
       if (k.isEmpty || _searching) return;
       setState(() {
-        _searching = true;
-        _committedKw = k;
-        _page = 1;
-        _results = const <SongTileData>[];
-        _total = 0;
+        _searching = true; _committedKw = k;
+        _legacy.reset(k);
+        for (final s in _segments.values) { s.reset(k); }
         _suggests = const <SearchSuggestItem>[];
       });
       final typed = widget.typed;
-      final res = (typed != null && _typeIndex != null)
-          ? await typed.typed(_kTypes[_typeIndex!], k, 1)
-          : await widget.search.search(k, 1);
-      if (!mounted) return;
-      setState(() {
-        _results = _toTiles(res);
-        _total = res.total;
-        _searching = false;
-      });
-      Log.d(_tag, 'submit kw=$k got=${res.items.length}/${res.total}');
+      if (typed == null) {
+        await _legacyFirst(k);
+      } else if (_tabIndex == 0) {
+        await Future.wait(<Future<void>>[for (final t in _kSegTypes) _segmentFirst(t, k)]);
+        if (!mounted) return;
+        setState(() => _searching = false);
+        Log.d(_tag, 'comprehensive done kw=$k segments=3');
+      } else {
+        final res = await typed.typed(_kTypes[_tabIndex - 1], k, 1);
+        if (!mounted) return;
+        setState(() {
+          _legacy.items = _toTiles(res); _legacy.total = res.total;
+          _legacy.loaded = true; _legacy.more = _moreOf(_legacy, res.items.length);
+          _searching = false;
+        });
+        Log.d(_tag, 'submit typed=${_kTypes[_tabIndex - 1].name} kw=$k');
+      }
     } catch (e, st) {
       Log.e(_tag, 'submit failed kw=$kw', e, st);
       if (mounted) setState(() => _searching = false);
     }
   }
-
-  /// 滚动到底自动翻页。
-  void _onScroll() {
-    try {
-      if (!_scrollCtrl.hasClients) return;
-      final pos = _scrollCtrl.position;
-      if (pos.pixels < pos.maxScrollExtent - 200) return;
-      _loadMore();
-    } catch (e, st) {
-      Log.e(_tag, 'onScroll failed', e, st);
-    }
-  }
-
-  Future<void> _loadMore() async {
-    try {
-      final k = _committedKw;
-      if (k.isEmpty || _loadingMore || _searching) return;
-      if (_total > 0 && _results.length >= _total) return;
-      setState(() => _loadingMore = true);
-      final typed = widget.typed;
-      final res = (typed != null && _typeIndex != null)
-          ? await typed.typed(_kTypes[_typeIndex!], k, _page + 1)
-          : await widget.search.search(k, _page + 1);
+  Future<void> _legacyFirst(String k) async {
+    try { final res = await widget.search.search(k, 1);
       if (!mounted) return;
       setState(() {
-        _page += 1;
-        _results = <SongTileData>[..._results, ..._toTiles(res)];
-        _loadingMore = false;
+        _legacy.items = _toTiles(res); _legacy.total = res.total;
+        _legacy.loaded = true; _legacy.more = _moreOf(_legacy, res.items.length);
+        _searching = false;
       });
-      Log.d(_tag, 'loadMore kw=$k page=$_page got=${res.items.length}');
+      Log.d(_tag, 'legacy first kw=$k got=${res.items.length}');
+    } catch (e, st) {
+      Log.e(_tag, 'legacyFirst failed kw=$k', e, st);
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+  Future<void> _segmentFirst(SearchType type, String kw) async {
+    try {
+      final s = _segments[type]!;
+      if (s.loaded || s.searching || s.loadingMore) return;
+      setState(() => s.searching = true);
+      final res = await widget.typed!.typed(type, kw, 1);
+      if (!mounted || s.kw != kw || _committedKw != kw) return;
+      setState(() {
+        s.page = 1; s.total = res.total; s.items = _toTiles(res);
+        s.loaded = true; s.searching = false; s.more = _moreOf(s, res.items.length);
+      });
+      Log.d(_tag, 'seg first type=${type.name} kw=$kw got=${s.items.length}');
+    } catch (e, st) {
+      Log.e(_tag, 'segFirst failed type=${type.name} kw=$kw', e, st);
+      if (mounted) setState(() => _segments[type]!.searching = false);
+    }
+  }
+  Future<void> _segmentMore(SearchType type) async {
+    try {
+      final s = _segments[type]!; final k = s.kw;
+      if (k.isEmpty || !s.loaded || !s.more || s.loadingMore || s.searching) return;
+      setState(() => s.loadingMore = true);
+      final res = await widget.typed!.typed(type, k, s.page + 1);
+      if (!mounted || s.kw != k || _committedKw != k) return;
+      setState(() {
+        s.page += 1;
+        s.items = <SongTileData>[...s.items, ..._toTiles(res)];
+        s.loadingMore = false; s.more = _moreOf(s, res.items.length);
+      });
+      Log.d(_tag, 'seg more type=${type.name} kw=$k page=${s.page}');
+    } catch (e, st) {
+      Log.e(_tag, 'segMore failed type=${type.name}', e, st);
+      if (mounted) setState(() => _segments[type]!.loadingMore = false);
+    }
+  }
+  Future<void> _loadMore() async {
+    try {
+      final k = _committedKw; final s = _legacy;
+      if (k.isEmpty || s.loadingMore || _searching || !s.more) return;
+      setState(() => s.loadingMore = true);
+      final typed = widget.typed;
+      final res = (typed != null && _tabIndex > 0)
+          ? await typed.typed(_kTypes[_tabIndex - 1], k, s.page + 1)
+          : await widget.search.search(k, s.page + 1);
+      if (!mounted) return;
+      setState(() {
+        s.page += 1;
+        s.items = <SongTileData>[...s.items, ..._toTiles(res)];
+        s.loadingMore = false; s.more = _moreOf(s, res.items.length);
+      });
+      Log.d(_tag, 'loadMore kw=$k page=${s.page} got=${res.items.length}');
     } catch (e, st) {
       Log.e(_tag, 'loadMore failed', e, st);
-      if (mounted) setState(() => _loadingMore = false);
+      if (mounted) setState(() => _legacy.loadingMore = false);
     }
   }
-
-  List<SongTileData> _toTiles(SearchResult res) =>
-      <SongTileData>[for (final s in res.items) SongTileData(s)];
-
-  void _play(SongTileData d) {
+  bool _moreOf(_SegmentState s, int fetched) {
+    try { return fetched >= _kPageSize && (s.total <= 0 || s.items.length < s.total); }
+    catch (e, st) { Log.e(_tag, 'moreOf failed', e, st); return false; }
+  }
+  void _onSegmentChanged(Set<SearchType> selected) {
     try {
-      widget.player.playSong(d.song);
-      Log.d(_tag, 'play ${d.song.hash}');
-    } catch (e, st) {
-      Log.e(_tag, 'play failed', e, st);
-    }
+      if (selected.isEmpty) return;
+      final t = selected.first;
+      setState(() => _segment = t);
+      if (_committedKw.isNotEmpty && !_segments[t]!.loaded) { _segmentFirst(t, _committedKw); }
+      Log.d(_tag, 'segment switch type=${t.name} loaded=${_segments[t]!.loaded}');
+    } catch (e, st) { Log.e(_tag, 'segment switch failed', e, st); }
   }
-
-  @override
-  Widget build(BuildContext context) {
+  void _onTab(int i) {
+    try {
+      setState(() => _tabIndex = i);
+      if (_committedKw.isNotEmpty) _submit(_committedKw);
+      Log.d(_tag, 'tab switch index=$i');
+    } catch (e, st) { Log.e(_tag, 'tab switch failed', e, st); }
+  }
+  void _onSegmentScroll(SearchType type) {
+    try { _autoMore(_segments[type]!.scroll, () => _segmentMore(type)); }
+    catch (e, st) { Log.e(_tag, 'segment scroll failed type=${type.name}', e, st); }
+  }
+  void _onScroll() {
+    try { _autoMore(_scrollCtrl, _loadMore); }
+    catch (e, st) { Log.e(_tag, 'onScroll failed', e, st); }
+  }
+  void _autoMore(ScrollController c, VoidCallback load) {
+    try { if (c.hasClients && c.position.pixels >= c.position.maxScrollExtent - 200) load(); }
+    catch (e, st) { Log.e(_tag, 'autoMore failed', e, st); }
+  }
+  List<SongTileData> _toTiles(SearchResult res) {
+    try { return <SongTileData>[for (final s in res.items) SongTileData(s)]; }
+    catch (e, st) { Log.e(_tag, 'toTiles failed', e, st); return const <SongTileData>[]; }
+  }
+  void _play(SongTileData d) {
+    try { widget.player.playSong(d.song); Log.d(_tag, 'play ${d.song.hash}'); }
+    catch (e, st) { Log.e(_tag, 'play failed', e, st); }
+  }
+  void _drillDown(SongTileData d, SearchType type) {
+    try {
+      if (d.song.name.isEmpty) return;
+      _kwCtrl.text = d.song.name; _submit(d.song.name);
+      Log.d(_tag, 'drillDown type=${type.name} kw=${d.song.name}');
+    } catch (e, st) { Log.e(_tag, 'drillDown failed type=${type.name}', e, st); }
+  }
+  @override Widget build(BuildContext context) {
     try {
       final cs = Theme.of(context).colorScheme;
       final tt = Theme.of(context).textTheme;
-      return Scaffold(
+      return DefaultTabController(length: 7, child: Scaffold(
         backgroundColor: cs.surface,
-        appBar: TnAppBar(
-          title: '搜索',
-          bottom: widget.typed == null
-              ? null
-              : TabBar(
-                  isScrollable: true,
-                  indicatorColor: cs.primary,
-                  labelColor: cs.primary,
-                  unselectedLabelColor: cs.onSurfaceVariant,
-                  tabs: <Widget>[
-                    for (final label in _kTypeLabels) Tab(text: label),
-                  ],
-                  onTap: (i) {
-                    try {
-                      setState(() {
-                        _typeIndex = i;
-                        _results = const <SongTileData>[];
-                        _total = 0;
-                        _page = 1;
-                      });
-                      if (_committedKw.isNotEmpty) _submit(_committedKw);
-                      Log.d(_tag, 'tab switch type=${_kTypes[i].name}');
-                    } catch (e, st) {
-                      Log.e(_tag, 'tab switch failed', e, st);
-                    }
-                  },
-                ),
-        ),
+        appBar: TnAppBar(title: '搜索', bottom: widget.typed == null ? null : TabBar(
+          isScrollable: true, indicatorColor: cs.primary, labelColor: cs.primary,
+          unselectedLabelColor: cs.onSurfaceVariant,
+          tabs: <Widget>[const Tab(text: '综合'),
+            for (final label in _kTypeLabels) Tab(text: label)],
+          onTap: _onTab)),
         body: Column(children: <Widget>[
           Padding(
             padding: const EdgeInsets.fromLTRB(tnPadL, tnPadS, tnPadL, tnPadS),
             child: TextField(
-              controller: _kwCtrl,
-              onChanged: _onChanged,
-              onSubmitted: _submit,
+              controller: _kwCtrl, onChanged: _onChanged, onSubmitted: _submit,
               textInputAction: TextInputAction.search,
               style: tt.bodyMedium?.copyWith(color: cs.onSurface),
               decoration: InputDecoration(
                 hintText: '搜歌曲 / 歌手 / 专辑',
                 hintStyle: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                 prefixIcon: Icon(Icons.search, color: cs.onSurfaceVariant),
-                suffixIcon: _kwCtrl.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: Icon(Icons.clear, color: cs.onSurfaceVariant),
-                        onPressed: () {
-                          try {
-                            _kwCtrl.clear();
-                            _onChanged('');
-                          } catch (e, st) {
-                            Log.e(_tag, 'clear failed', e, st);
-                          }
-                        },
-                      ),
-                filled: true,
-                fillColor: cs.surfaceContainerHighest,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: tnPadL, vertical: tnPadS),
-                border: OutlineInputBorder(
-                    borderRadius: TnDims.rLBorder,
-                    borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(
-                    borderRadius: TnDims.rLBorder,
-                    borderSide: BorderSide.none),
-                focusedBorder: OutlineInputBorder(
-                    borderRadius: TnDims.rLBorder,
+                suffixIcon: _kwCtrl.text.isEmpty ? null : IconButton(
+                  icon: Icon(Icons.clear, color: cs.onSurfaceVariant),
+                  onPressed: () {
+                    try { _kwCtrl.clear(); _onChanged(''); }
+                    catch (e, st) { Log.e(_tag, 'clear failed', e, st); }
+                  }),
+                filled: true, fillColor: cs.surfaceContainerHighest,
+                contentPadding: const EdgeInsets.symmetric(horizontal: tnPadL, vertical: tnPadS),
+                border: OutlineInputBorder(borderRadius: TnDims.rLBorder, borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(borderRadius: TnDims.rLBorder,
                     borderSide: BorderSide(color: cs.primary, width: 2)),
               ),
             ),
           ),
-          // 联想词：FilterChip 用 M3 默认形状（不覆盖 shape / side / 状态色），
-          // 点击仍走原 _submit 链路，文案 s.keyword 零改动。
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: tnPadL),
-            child: Wrap(
-              spacing: tnPadS, runSpacing: tnPadS,
-              children: <Widget>[
-                for (final s in _suggests)
-                  Builder(builder: (ctx) {
-                    try {
-                      final chipCs = Theme.of(ctx).colorScheme;
-                      return FilterChip(
-                        selected: false,
-                        avatar: Icon(Icons.trending_up,
-                            size: TnDims.iconS, color: chipCs.primary),
-                        label: Text(s.keyword, maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                        onSelected: (_) {
-                          try {
-                            _kwCtrl.text = s.keyword;
-                            _submit(s.keyword);
-                          } catch (e, st) {
-                            Log.e(_tag, 'suggest tap failed', e, st);
-                          }
-                        },
-                      );
-                    } catch (e, st) {
-                      Log.e(_tag, 'suggest chip build failed', e, st);
-                      return const SizedBox.shrink();
-                    }
-                  }),
-              ],
-            ),
+            child: Wrap(spacing: tnPadS, runSpacing: tnPadS, children: <Widget>[
+              for (final s in _suggests) Builder(builder: (ctx) {
+                try {
+                  final chipCs = Theme.of(ctx).colorScheme;
+                  return FilterChip(selected: false,
+                    avatar: Icon(Icons.trending_up, size: TnDims.iconS, color: chipCs.primary),
+                    label: Text(s.keyword, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    onSelected: (_) {
+                      try { _kwCtrl.text = s.keyword; _submit(s.keyword); }
+                      catch (e, st) { Log.e(_tag, 'suggest tap failed', e, st); }
+                    });
+                } catch (e, st) {
+                  Log.e(_tag, 'suggest chip build failed', e, st);
+                  return const SizedBox.shrink();
+                }
+              }),
+            ]),
           ),
           Divider(height: 1, color: cs.outlineVariant),
           Expanded(child: _buildBody()),
         ]),
-      );
+      ));
     } catch (e, st) {
       Log.e(_tag, 'build crashed', e, st);
       return const SizedBox.shrink();
     }
   }
-
   Widget _buildBody() {
     try {
       final cs = Theme.of(context).colorScheme;
       final tt = Theme.of(context).textTheme;
-      // 空态：热搜榜（M3 Card + 标准密度 ListTile + 文本层级）。
-      if (_committedKw.isEmpty) {
-        if (_hot.isEmpty) {
-          return Center(child: Text('暂无热搜',
-              style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)));
-        }
-        return ListView.builder(
-          controller: _scrollCtrl,
-          itemCount: _hot.length,
-          itemBuilder: (ctx, i) {
-            try {
-              final h = _hot[i];
-              final hotCs = Theme.of(ctx).colorScheme;
-              final hotTt = Theme.of(ctx).textTheme;
-              return TnMotionStaggered(
-                index: i,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      tnPadL, 0, tnPadL, tnPadS),
-                  child: Card(
-                    margin: EdgeInsets.zero,
-                    elevation: 1,
-                    surfaceTintColor: hotCs.surfaceTint,
-                    color: hotCs.surfaceContainer,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: TnDims.rMBorder),
-                    clipBehavior: Clip.antiAlias,
-                    child: ListTile(
-                      leading: Text('${i + 1}',
-                          style: hotTt.titleMedium?.copyWith(
-                              color: i < 3
-                                  ? hotCs.primary
-                                  : hotCs.onSurfaceVariant,
-                              fontWeight: FontWeight.bold)),
-                      title: Text(h.keyword, maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: hotTt.bodyMedium
-                              ?.copyWith(color: hotCs.onSurface)),
-                      onTap: () {
-                        try {
-                          _kwCtrl.text = h.keyword;
-                          _submit(h.keyword);
-                        } catch (e, st) {
-                          Log.e(_tag, 'hot tap failed', e, st);
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              );
-            } catch (e, st) {
-              Log.e(_tag, 'hot tile build failed', e, st);
-              return const SizedBox.shrink();
-            }
-          },
-        );
+      if (_committedKw.isEmpty) return _buildHot();
+      if (widget.typed != null && _tabIndex == 0) return _buildComprehensive();
+      if (_searching && _legacy.items.isEmpty) return _progress(cs);
+      if (_legacy.items.isEmpty) {
+        return Center(child: Text('没有找到「$_committedKw」相关结果',
+            style: tt.titleMedium?.copyWith(color: cs.onSurface)));
       }
-      // 搜索中首屏：M3 线性进度。
-      if (_searching && _results.isEmpty) {
-        return Padding(
-          padding: const EdgeInsets.all(tnPadL),
-          child: LinearProgressIndicator(
-            color: cs.primary,
-            backgroundColor: cs.surfaceContainerHighest,
-          ),
-        );
-      }
-      // 无结果：M3 文本层级 titleMedium + onSurfaceVariant 图标。
-      if (_results.isEmpty) {
-        return Center(
-            child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-          Icon(Icons.search_off, size: 48, color: cs.onSurfaceVariant),
-          const SizedBox(height: tnPadS),
-          Text('没有找到「$_committedKw」相关结果',
-              style: tt.titleMedium?.copyWith(color: cs.onSurface)),
-        ]));
-      }
-      // 结果列表 + 分页加载（TnMotionStaggered 交错入场，M3 官方时长/曲线）。
-      final count = _results.length + 1;
-      return ListView.builder(
-        controller: _scrollCtrl,
-        itemCount: count,
-        itemBuilder: (ctx, i) {
-          try {
-            if (i == _results.length) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: tnPadL),
-                child: Center(
-                  child: _loadingMore || _searching
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: tnPadL),
-                          child: LinearProgressIndicator(
-                            color: cs.primary,
-                            backgroundColor: cs.surfaceContainerHighest,
-                          ),
-                        )
-                      : Text('上拉加载更多',
-                          style: tt.bodyMedium
-                              ?.copyWith(color: cs.onSurfaceVariant)),
-                ),
-              );
-            }
-            final d = _results[i];
-            return TnMotionStaggered(
-              index: i,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    tnPadL, 0, tnPadL, tnPadS),
-                child: Card(
-                  margin: EdgeInsets.zero,
-                  elevation: 1,
-                  surfaceTintColor: cs.surfaceTint,
-                  color: cs.surfaceContainer,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: TnDims.rMBorder),
-                  clipBehavior: Clip.antiAlias,
-                  child: SongTile(
-                      song: d.song, onPlay: (s) => _play(d), index: i + 1),
-                ),
-              ),
-            );
-          } catch (e, st) {
-            Log.e(_tag, 'result tile build failed', e, st);
-            return const SizedBox.shrink();
-          }
-        },
-      );
+      final type = (widget.typed != null && _tabIndex > 0)
+          ? _kTypes[_tabIndex - 1] : SearchType.song;
+      return _buildList(_legacy, type, _scrollCtrl, '上拉加载更多');
     } catch (e, st) {
       Log.e(_tag, 'buildBody crashed', e, st);
       return const SizedBox.shrink();
     }
   }
+  Widget _progress(ColorScheme cs) {
+    try { return Padding(padding: const EdgeInsets.all(tnPadL),
+      child: LinearProgressIndicator(color: cs.primary,
+          backgroundColor: cs.surfaceContainerHighest));
+    } catch (e, st) { Log.e(_tag, 'progress crashed', e, st); return const SizedBox.shrink(); }
+  }
+  Widget _buildHot() {
+    try {
+      final cs = Theme.of(context).colorScheme;
+      final tt = Theme.of(context).textTheme;
+      if (_hot.isEmpty) { return Center(child: Text('暂无热搜',
+          style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant))); }
+      return ListView.builder(controller: _scrollCtrl, itemCount: _hot.length,
+        itemBuilder: (ctx, i) {
+          try {
+            final h = _hot[i];
+            final c = Theme.of(ctx).colorScheme;
+            final t = Theme.of(ctx).textTheme;
+            return _card(ctx, i, ListTile(
+              leading: Text('${i + 1}', style: t.titleMedium?.copyWith(
+                  color: i < 3 ? c.primary : c.onSurfaceVariant,
+                  fontWeight: FontWeight.bold)),
+              title: Text(h.keyword, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: t.bodyMedium?.copyWith(color: c.onSurface)),
+              onTap: () {
+                try { _kwCtrl.text = h.keyword; _submit(h.keyword); }
+                catch (e, st) { Log.e(_tag, 'hot tap failed', e, st); }
+              }));
+          } catch (e, st) {
+            Log.e(_tag, 'hot tile build failed', e, st);
+            return const SizedBox.shrink();
+          }
+        });
+    } catch (e, st) { Log.e(_tag, 'buildHot crashed', e, st); return const SizedBox.shrink(); }
+  }
+  Widget _buildComprehensive() {
+    try {
+      return Column(children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(tnPadL, tnPadS, tnPadL, tnPadS),
+          child: SegmentedButton<SearchType>(
+            segments: <ButtonSegment<SearchType>>[
+              for (var i = 0; i < _kSegTypes.length; i++)
+                ButtonSegment<SearchType>(value: _kSegTypes[i],
+                    label: Text(_kSegLabels[i]), icon: Icon(_kSegIcons[i])),
+            ],
+            selected: <SearchType>{_segment},
+            onSelectionChanged: _onSegmentChanged,
+          ),
+        ),
+        Expanded(child: _buildSegmentList(_segment)),
+      ]);
+    } catch (e, st) { Log.e(_tag, 'buildComprehensive crashed', e, st); return const SizedBox.shrink(); }
+  }
+  Widget _buildSegmentList(SearchType type) {
+    try {
+      final cs = Theme.of(context).colorScheme;
+      final tt = Theme.of(context).textTheme;
+      final s = _segments[type]!;
+      if (s.searching && s.items.isEmpty) return _progress(cs);
+      if (s.items.isEmpty) { return Center(child: Text(
+          '该分类没有找到「$_committedKw」相关结果',
+          style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant))); }
+      return _buildList(s, type, s.scroll, s.more ? '上拉加载更多' : '没有更多了');
+    } catch (e, st) {
+      Log.e(_tag, 'buildSegmentList crashed type=${type.name}', e, st);
+      return const SizedBox.shrink();
+    }
+  }
+  Widget _buildList(_SegmentState s, SearchType type, ScrollController scroll, String footer) {
+    try {
+      final cs = Theme.of(context).colorScheme;
+      final tt = Theme.of(context).textTheme;
+      return ListView.builder(controller: scroll, itemCount: s.items.length + 1,
+        itemBuilder: (ctx, i) {
+          try {
+            if (i == s.items.length) {
+              final busy = s.loadingMore || s.searching || _searching;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: tnPadL),
+                child: Center(child: busy
+                    ? Padding(padding: const EdgeInsets.symmetric(horizontal: tnPadL),
+                        child: LinearProgressIndicator(color: cs.primary,
+                            backgroundColor: cs.surfaceContainerHighest))
+                    : Text(footer, style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant))));
+            }
+            return _buildCardRow(ctx, s.items[i], i, type);
+          } catch (e, st) {
+            Log.e(_tag, 'list row failed type=${type.name}', e, st);
+            return const SizedBox.shrink();
+          }
+        });
+    } catch (e, st) {
+      Log.e(_tag, 'buildList crashed type=${type.name}', e, st);
+      return const SizedBox.shrink();
+    }
+  }
+  Widget _card(BuildContext ctx, int i, Widget child) {
+    try {
+      final cs = Theme.of(ctx).colorScheme;
+      return TnMotionStaggered(index: i, child: Padding(
+        padding: const EdgeInsets.fromLTRB(tnPadL, 0, tnPadL, tnPadS),
+        child: Card(margin: EdgeInsets.zero, elevation: 1,
+          surfaceTintColor: cs.surfaceTint, color: cs.surfaceContainer,
+          shape: RoundedRectangleBorder(borderRadius: TnDims.rMBorder),
+          clipBehavior: Clip.antiAlias, child: child)));
+    } catch (e, st) { Log.e(_tag, 'card crashed', e, st); return const SizedBox.shrink(); }
+  }
+  Widget _buildCardRow(BuildContext ctx, SongTileData d, int i, SearchType type) {
+    try {
+      final cs = Theme.of(ctx).colorScheme;
+      final tt = Theme.of(ctx).textTheme;
+      final Widget child;
+      if (type == SearchType.song) {
+        child = SongTile(song: d.song, onPlay: (s) => _play(d), index: i + 1);
+      } else {
+        final owner = d.song.singer.isEmpty
+            ? (type == SearchType.special ? '歌单' : '专辑') : d.song.singer;
+        final id = type == SearchType.special ? '${d.song.mixSongId}' : d.song.albumId;
+        child = ListTile(
+          leading: Icon(type == SearchType.special ? Icons.queue_music : Icons.album,
+              color: cs.primary),
+          title: Text(d.song.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: tt.bodyMedium?.copyWith(color: cs.onSurface)),
+          subtitle: Text('$owner · ${d.song.durationSec}首 · id=$id',
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+          onTap: () => _drillDown(d, type));
+      }
+      return _card(ctx, i, child);
+    } catch (e, st) {
+      Log.e(_tag, 'card row crashed type=${type.name}', e, st);
+      return const SizedBox.shrink();
+    }
+  }
 }
-
-/// 列表项包装（便于 append 分页去重扩展）。
 class SongTileData {
   const SongTileData(this.song);
   final SongBrief song;
