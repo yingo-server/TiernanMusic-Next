@@ -3,11 +3,11 @@
 > 严格六五原则；每页按 Google Material Design 3 官方控件/间距/动效规范；完成后发布 v26.11.14.01 M3 LTS。不通知用户直到两任务全完成。
 
 ## 底座（M1）
-- `tn_theme.dart`：去 MiuixThemeData，改 `ColorScheme.fromSeed(seedColor: 品牌紫)` + M3 Typography（display/headline/title/body/label）；亮/暗/纯黑三态。
-- `tn_motion.dart`：时长改 Google M3 官方表（short 100 / medium 200 / long 300 / extra-long 500；easing emphasizedDecelerate/Standard），页面转场共享轴、容器变换。
-- `tn_app_bar.dart`：M3 TopAppBar（small/center-aligned，surfaceTint、elevation onScroll）。
-- `app_root.dart`：`MaterialApp(useMaterial3:true)` + `NavigationBar`（非 BottomNavigationBar）、NavigationDestination 标准图标态；错误页（init/main.dart）同步 M3 全屏。
-- `layer_audit/smoke_check` 白名单移除 flutter_miuix；pubspec 卸载 miuix。
+- [x] `tn_theme.dart`：去 MiuixThemeData，改 `ColorScheme.fromSeed(seedColor: 0xFF7C4DFF)` + M3 Typography 常量（display/headline/title/body/label 15 档） + `Typography.material2021()`；亮/暗/纯黑三态 ThemeData 工厂，保留 TnDims/TnColors/TnText/TnMotion 兼容名。（M1-A）
+- [x] `tn_motion.dart`：时长/曲线全改 Google M3 官方 `Durations.*` / `Easing.*`（short3 150 / medium1 250 / medium3 350 / long2 500；standard、emphasizedDecelerate、emphasizedAccelerate），交错入场短步长 short1、页面转场共享轴 fade-through；保留 TnMotionSpec/TnMotionStaggered/TnPageRoute/TnPressable 组件名，禁裸 Duration。（M1-A）
+- [x] `tn_app_bar.dart`：M3 TopAppBar（small/center-aligned、64dp、surfaceTintColor=scheme.surfaceTint、elevation 0 → onScroll scrolledUnderElevation 3、无圆角假分层）；保留 TnAppBar/TnPagePadding 名。（M1-A）
+- [ ] `app_root.dart`：`MaterialApp(theme:/darkTheme:/themeMode:)` 接三态工厂 + `NavigationBar`（非 BottomNavigationBar）、NavigationDestination 标准图标态；移除 MiuixTheme/MiuixScaffold 包裹；错误页（init/main.dart）同步 M3 全屏。（M1-B）
+- [ ] `layer_audit/smoke_check` 白名单移除 flutter_miuix；pubspec 卸载 miuix。（M4）
 
 ## 页面（M2-M3，共 12 页 + MiniBar + 错误页）
 | 页 | M3 控件规范 |
