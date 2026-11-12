@@ -8,7 +8,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_miuix/miuix.dart';
 // L1 特例（架构放行）：仅 main 允许 path_provider——L2 bootloader 禁 flutter，
 // 存储根目录必须由依赖图根（main）拿好后注入 runBoot(rootDir:)。
 import 'package:path_provider/path_provider.dart';
@@ -105,7 +104,7 @@ Future<void> _boot({required bool debugBypass}) async {
 }
 
 /// 启动失败可见页（miuix 风格全屏报错，替代静默退出/闪退观感）。
-/// 与 app_root 相同的宿主方式：MaterialApp + MiuixTheme + MiuixScaffold。
+/// M3 全屏报错（替代静默退出/闪退观感）。
 class _BootErrorApp extends StatelessWidget {
   const _BootErrorApp({required this.message});
   final String message;
@@ -114,29 +113,28 @@ class _BootErrorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: MiuixTheme(
-        data: tnLightThemeData(),
-        child: MiuixScaffold(
-          content: (_) => SafeArea(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline,
-                        size: 48, color: Color(0xFF7C4DFF)),
-                    const SizedBox(height: 16),
-                    const Text('TiernanMusicNext 无法启动',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Text(message, textAlign: TextAlign.center),
-                    const SizedBox(height: 24),
-                    const Text('v26.11.12.01 LTS',
-                        style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  ],
-                ),
+      theme: tnLightThemeData(),
+      home: Scaffold(
+        appBar: AppBar(title: const Text('TiernanMusicNext 无法启动')),
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(height: 16),
+                  Text('TiernanMusicNext 无法启动',
+                      style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(message, textAlign: TextAlign.center),
+                  const SizedBox(height: 24),
+                  Text('TiernanMusicNext LTS',
+                      style: Theme.of(context).textTheme.labelSmall),
+                ],
               ),
             ),
           ),

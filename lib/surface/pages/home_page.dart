@@ -1,4 +1,13 @@
 // L6 surface/pages · 首页聚合模块（功能对齐批5-C · FEATURE_PARITY「首页聚合」）
+// 批M2-A：按 Google Material Design 3 控件规范重写 UI 层，业务逻辑 / 回调 /
+// 函数签名 / 文案零改动；无 flutter_miuix import。
+//   · Scaffold(M3 surface) + TnAppBar(已是 M3 TopAppBar) + IconButton；
+//   · 卡片统一 Card(elevation=1 / surfaceTintColor=scheme.surfaceTint /
+//     margin=zero 消除默认 4dp)、ActionChip 用 M3 默认形状（不覆盖 shape）；
+//   · 加载态 LinearProgressIndicator；空态 M3 文本层级 bodyMedium/titleMedium；
+//   · 间距只取 8/16/24dp（tnPadS/tnPadL/TnDims.padXL），圆角只取 12/16dp
+//     （TnDims.rM/rL）；色彩只取 Theme.of(context).colorScheme，禁硬编码色；
+//   · 交错入场保留 TnMotionStaggered（M1 已换 M3 Durations/Easing），无裸 Duration。
 // 装配方式：assembly 经 buildHomeModule(...) 构造后 SurfaceRegistry.install
 //（id='home', route='/home', navEntry('首页','home')）；deps 注入四个 logic
 //（Recommend/Rank/Search/Playlist）+ onPlay/onOpenSearch 回调，模块间零直接
@@ -11,7 +20,7 @@ import '../../bridges/bridge_logic.dart'
         RecommendLogic, SearchLogic, SongBrief;
 import '../registry.dart';
 import '../theme/tn_motion.dart' show TnMotionStaggered;
-import '../theme/tn_theme.dart' show TnDims, TnColors, tnPadS, tnPadM, tnPadL, tnRadiusS;
+import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadL;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.home';
@@ -88,7 +97,10 @@ class _HomePageBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     try {
+      final cs = Theme.of(context).colorScheme;
+      final tt = Theme.of(context).textTheme;
       return Scaffold(
+        backgroundColor: cs.surface,
         appBar: TnAppBar(title: '首页',
           actions: <Widget>[IconButton(icon: const Icon(Icons.search),
               tooltip: '搜索',
@@ -107,21 +119,39 @@ class _HomePageBody extends StatelessWidget {
             },
             empty: '今日暂无推荐',
             builder: (items) => Column(children: <Widget>[
-              // 列表项交错入场（TnMotionStaggered，30ms/项，封顶 6）；
+              // 列表项交错入场（TnMotionStaggered，M3 Durations.short1/项，封顶 6）；
               // 其余区块（榜单速览/热搜词/推荐歌单）同法可套。
               for (var i = 0; i < items.length; i++)
                 TnMotionStaggered(
                   index: i,
-                  child: ListTile(dense: true,
-                  leading: Text('${i + 1}',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  title: Text(items[i].name, maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  subtitle: Text(items[i].singer, maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  trailing: const Icon(Icons.play_arrow),
-                  onTap: () => _safe(() => onPlay(items[i]), 'daily play'),
-                ))]),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(tnPadL, 0, tnPadL, tnPadS),
+                    child: Card(
+                      margin: EdgeInsets.zero,
+                      elevation: 1,
+                      surfaceTintColor: cs.surfaceTint,
+                      color: cs.surfaceContainer,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: TnDims.rMBorder),
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        leading: Text('${i + 1}',
+                            style: tt.titleMedium?.copyWith(
+                                color: cs.primary,
+                                fontWeight: FontWeight.bold)),
+                        title: Text(items[i].name, maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.bodyMedium?.copyWith(color: cs.onSurface)),
+                        subtitle: Text(items[i].singer, maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tt.bodySmall
+                                ?.copyWith(color: cs.onSurfaceVariant)),
+                        trailing: Icon(Icons.play_arrow, color: cs.primary),
+                        onTap: () => _safe(() => onPlay(items[i]), 'daily play'),
+                      ),
+                    ),
+                  ),
+                )]),
           ),
           _SectionTitle('榜单速览'),
           _FutureBlock<List<RankBrief>>(
@@ -145,15 +175,24 @@ class _HomePageBody extends StatelessWidget {
                   for (var ri = 0; ri < items.length; ri++)
                     TnMotionStaggered(
                       index: ri + 2, // 榜单整体后移，避免与首屏前两行争抢
-                      child: Container(alignment: Alignment.center,
-                      padding: const EdgeInsets.all(TnDims.padXS),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(tnRadiusS)),
-                        child: Text(items[ri].name, maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center))),
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        elevation: 1,
+                        surfaceTintColor: cs.surfaceTint,
+                        color: cs.surfaceContainer,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: TnDims.rMBorder),
+                        clipBehavior: Clip.antiAlias,
+                        child: Padding(
+                          padding: const EdgeInsets.all(tnPadS),
+                          child: Center(child: Text(items[ri].name, maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: tt.bodyMedium
+                                  ?.copyWith(color: cs.onSurface))),
+                        ),
+                      ),
+                    ),
                 ])),
           ),
           _SectionTitle('热搜词'),
@@ -177,6 +216,8 @@ class _HomePageBody extends StatelessWidget {
                   for (var wi = 0; wi < words.length; wi++)
                     TnMotionStaggered(
                       index: wi + 3, // 热搜整体后移，衔接榜单节奏
+                      // ActionChip：M3 默认形状（不覆盖 shape / side / 状态色），
+                      // 由 useMaterial3 主题提供官方圆角与 surfaceTint。
                       child: ActionChip(
                         label: Text(words[wi], overflow: TextOverflow.ellipsis),
                         onPressed: () =>
@@ -201,33 +242,51 @@ class _HomePageBody extends StatelessWidget {
               child: ListView.separated(scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: tnPadL),
                 itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                separatorBuilder: (_, __) => const SizedBox(width: tnPadS),
                 itemBuilder: (ctx, i) {
                   final p = items[i];
                   return TnMotionStaggered(
                     index: i + 4, // 歌单卡整体后移，衔接热搜节奏
-                    child: SizedBox(width: TnDims.coverS, child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(tnRadiusS),
-                          child: p.cover.isNotEmpty
-                              ? Image.network(
-                                  p.cover,
-                                  width: TnDims.coverS,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const Icon(Icons.music_note),
-                                )
-                              : const ColoredBox(
-                                  color: TnColors.placeholder,
-                                  child: Icon(Icons.music_note),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(p.name, maxLines: 1,
-                          overflow: TextOverflow.ellipsis)])));
+                    child: Card(
+                      margin: EdgeInsets.zero,
+                      elevation: 1,
+                      surfaceTintColor: cs.surfaceTint,
+                      color: cs.surfaceContainer,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: TnDims.rMBorder),
+                      clipBehavior: Clip.antiAlias,
+                      child: SizedBox(width: TnDims.coverS, child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: TnDims.rMBorder,
+                              child: p.cover.isNotEmpty
+                                  ? Image.network(
+                                      p.cover,
+                                      width: TnDims.coverS,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Icon(
+                                          Icons.music_note,
+                                          color: cs.onSurfaceVariant),
+                                    )
+                                  : ColoredBox(
+                                      color: cs.surfaceContainerHighest,
+                                      child: Icon(Icons.music_note,
+                                          color: cs.onSurfaceVariant),
+                                    ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(tnPadS),
+                            child: Text(p.name, maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(ctx).textTheme.bodyMedium
+                                    ?.copyWith(color: cs.onSurface)),
+                          ),
+                        ])),
+                    ),
+                  );
                 },
               ),
             ),
@@ -240,41 +299,70 @@ class _HomePageBody extends StatelessWidget {
     }
   }
 }
+/// M3 搜索入口：Card（16dp 圆角 · elevation/surfaceTintColor 按 M3），
+/// 文案与 onTap 回调保持原样。
 class _SearchEntry extends StatelessWidget {
   const _SearchEntry({required this.onTap});
   final void Function() onTap;
   @override
   Widget build(BuildContext context) {
     try {
-      return Padding(padding: const EdgeInsets.fromLTRB(tnPadL, tnPadM, tnPadL, TnDims.padXS),
-        child: InkWell(borderRadius: BorderRadius.circular(TnDims.padXL), onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: tnPadL, vertical: tnPadM),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(TnDims.padXL)),
-            child: const Row(children: <Widget>[
-              Icon(Icons.search, size: 20),
-              SizedBox(width: tnPadS),
-              Expanded(child: Text('搜索歌曲 / 歌手 / 专辑 / MV')),
-            ]))));
+      final cs = Theme.of(context).colorScheme;
+      final tt = Theme.of(context).textTheme;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(tnPadL, tnPadL, tnPadL, tnPadS),
+        child: Card(
+          margin: EdgeInsets.zero,
+          elevation: 1,
+          surfaceTintColor: cs.surfaceTint,
+          color: cs.surfaceContainerHighest,
+          shape: RoundedRectangleBorder(borderRadius: TnDims.rLBorder),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            borderRadius: TnDims.rLBorder,
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: tnPadL, vertical: tnPadL),
+              child: Row(children: <Widget>[
+                Icon(Icons.search, size: TnDims.iconM,
+                    color: cs.onSurfaceVariant),
+                const SizedBox(width: tnPadS),
+                Expanded(child: Text('搜索歌曲 / 歌手 / 专辑 / MV',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: tt.bodyMedium
+                        ?.copyWith(color: cs.onSurfaceVariant))),
+              ]),
+            ),
+          ),
+        ),
+      );
     } catch (e, st) {
       Log.e(_tag, 'searchEntry build failed', e, st);
       return const SizedBox.shrink();
     }
   }
 }
+/// 区块标题：M3 文本层级 titleMedium + onSurface。
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.title);
   final String title;
   @override
-  Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.fromLTRB(tnPadL, tnPadL, tnPadL, TnDims.padXS),
-      child: Text(title,
-          style: Theme.of(context).textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold)));
+  Widget build(BuildContext context) {
+    try {
+      final cs = Theme.of(context).colorScheme;
+      return Padding(
+          padding: const EdgeInsets.fromLTRB(tnPadL, tnPadL, tnPadL, tnPadS),
+          child: Text(title,
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold, color: cs.onSurface)));
+    } catch (e, st) {
+      Log.e(_tag, 'sectionTitle build failed', e, st);
+      return const SizedBox.shrink();
+    }
+  }
 }
-/// 区块通用 FutureBuilder 三态壳：加载圈 / 空态 / 数据构建，互不拖垮。
+/// 区块通用 FutureBuilder 三态壳：M3 线性进度 / 空态 / 数据构建，互不拖垮。
 class _FutureBlock<T> extends StatelessWidget {
   const _FutureBlock(
       {required this.load, required this.empty, required this.builder});
@@ -289,9 +377,14 @@ class _FutureBlock<T> extends StatelessWidget {
         builder: (ctx, snap) {
           try {
             if (snap.connectionState != ConnectionState.done) {
-              return const Padding(padding: EdgeInsets.all(tnPadL),
-                  child: Center(
-                      child: CircularProgressIndicator(strokeWidth: 2)));
+              final cs = Theme.of(ctx).colorScheme;
+              return Padding(
+                padding: const EdgeInsets.all(tnPadL),
+                child: LinearProgressIndicator(
+                  color: cs.primary,
+                  backgroundColor: cs.surfaceContainerHighest,
+                ),
+              );
             }
             if (snap.hasError) {
               Log.e(_tag, 'block error $empty', snap.error!, StackTrace.current);
@@ -314,7 +407,27 @@ class _FutureBlock<T> extends StatelessWidget {
     }
   }
 }
-Widget _placeholder(String msg) => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: tnPadL, vertical: tnPadS),
-      child: Text(msg, style: const TextStyle(color: TnColors.placeholder)),
-    );
+/// 空态：M3 文本层级 bodyMedium + onSurfaceVariant。
+/// 签名保持不变（无 BuildContext），经 Builder 就近取主题。
+Widget _placeholder(String msg) {
+  try {
+    return Builder(builder: (context) {
+      try {
+        final theme = Theme.of(context);
+        return Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: tnPadL, vertical: tnPadS),
+          child: Text(msg,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        );
+      } catch (e, st) {
+        Log.e(_tag, 'placeholder inner build failed', e, st);
+        return const SizedBox.shrink();
+      }
+    });
+  } catch (e, st) {
+    Log.e(_tag, 'placeholder build failed', e, st);
+    return const SizedBox.shrink();
+  }
+}

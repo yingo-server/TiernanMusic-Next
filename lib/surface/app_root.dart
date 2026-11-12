@@ -12,7 +12,6 @@
 // flutter / miuix / riverpod，禁触 core/logic 内部。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_miuix/miuix.dart';
 
 import '../bridges/bridge_core.dart' show KugouClient, SongDao;
 import '../bridges/bridge_logic.dart';
@@ -211,25 +210,19 @@ class _AppRootState extends State<AppRoot> {
     try {
       return Consumer(builder: (context, ref, _) {
         final mode = ref.watch(themeModeProvider);
-        // flutter_miuix 1.3.0 无 MiuixApp 宿主——MaterialApp + MiuixTheme 包裹。
+        // M3 宿主：三态 ThemeData 由 theme/darkTheme 直接提供（无 miuix 包裹）。
         return MaterialApp(
           title: 'TiernanMusicNext',
-          theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
-          darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
+          theme: tnLightThemeData(),
+          darkTheme:
+              mode == 3 ? tnPitchBlackThemeData() : tnDarkThemeData(),
           themeMode: switch (mode) {
             1 => ThemeMode.light,
             2 => ThemeMode.dark,
             3 => ThemeMode.dark,
             _ => ThemeMode.system
           },
-          home: MiuixTheme(
-            data: mode == 3
-                ? tnPitchBlackThemeData()
-                : (mode == 2
-                    ? tnDarkThemeData()
-                    : (mode == 1 ? tnLightThemeData() : tnLightThemeData())),
-            child: const _HomeShell(),
-          ),
+          home: const _HomeShell(),
         );
       });
     } catch (e, st) {
@@ -269,24 +262,25 @@ class _HomeShellState extends State<_HomeShell> {
       }
       if (_index >= modules.length) _index = 0;
       final entries = modules.map((m) => m.navEntry!).toList();
-      return MiuixScaffold(
-        bottomBar: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _index,
-          onTap: (i) {
+      return Scaffold(
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _index,
+          onDestinationSelected: (i) {
             try {
               setState(() => _index = i);
             } catch (e, st) {
               Log.e('surface.home_shell', 'tab tap failed', e, st);
             }
           },
-          items: [
+          destinations: [
             for (final e in entries)
-              BottomNavigationBarItem(
-                  icon: Icon(_iconOf(e.icon)), label: e.label),
+              NavigationDestination(
+                  icon: Icon(_iconOf(e.icon)),
+                  selectedIcon: Icon(_iconOf(e.icon)),
+                  label: e.label),
           ],
         ),
-        content: (_) => Column(children: [
+        body: Column(children: [
           Container(
             alignment: Alignment.centerLeft,
               padding: const EdgeInsets.fromLTRB(tnPadL, tnPadL, tnPadL, tnPadS),
@@ -365,13 +359,21 @@ class _ScaffoldMessage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     debugPrint('surface.app_root: $msg');
-    return MiuixScaffold(
-      containerColor: const Color(0xFFF6F5FA),
-      content: (_) => Center(
-          child: Padding(
-              padding: const EdgeInsets.all(tnPadL),
-              child: Text(msg, textAlign: TextAlign.center))),
-    );
+    try {
+      final cs = Theme.of(context).colorScheme;
+      return Scaffold(
+        backgroundColor: cs.surface,
+        body: Center(
+            child: Padding(
+                padding: const EdgeInsets.all(tnPadL),
+                child: Text(msg,
+                    textAlign: TextAlign.center,
+                    style: TnText.of(context).body))),
+      );
+    } catch (e) {
+      debugPrint('surface.app_root: scaffold message failed: $e');
+      return const SizedBox(width: 0, height: 0);
+    }
   }
 }
 
@@ -380,9 +382,8 @@ class _FallbackApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     try {
-      return MiuixScaffold(
-        containerColor: const Color(0xFFF6F5FA),
-        content: (_) => const Center(child: Text('TiernanMusicNext 启动异常')),
+      return Scaffold(
+        body: const Center(child: Text('TiernanMusicNext 启动异常')),
       );
     } catch (e) {
       debugPrint('surface.app_root: fallback build failed: $e');

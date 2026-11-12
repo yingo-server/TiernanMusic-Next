@@ -41,9 +41,8 @@ LAYER_ALLOWED_BRIDGES = {
 }
 # L1 init 是依赖根：允许装配桥 + flutter 基础包（WidgetsFlutterBinding/SystemNavigator/debugPrint）
 L1_EXTRA = ('package:flutter/material.dart', 'package:flutter/services.dart',
-            'package:flutter_miuix/miuix.dart',
             'package:path_provider/path_provider.dart')
-L6_EXTRA = ('package:flutter', 'package:flutter_miuix', 'package:flutter_riverpod',
+L6_EXTRA = ('package:flutter', 'package:flutter_riverpod',
             'package:miuix', 'package:riverpod', 'package:just_audio',
             'package:audio_service', 'package:path_provider',
             'package:flutter_localizations')
