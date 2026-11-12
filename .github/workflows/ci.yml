@@ -225,7 +225,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: apk-all-abi
-          path: dist/*.apk
+          path: |
+            dist/*.apk
+            verification.json
 
   release:
     needs: [analyze-test, build]
@@ -254,7 +256,7 @@ jobs:
           tag_name: v${{ env.ver }}
           files: |
             dist/*.apk
-            verification.json
+            dist/verification.json
           body_path: ${{ env.body }}
           prerelease: ${{ github.event.inputs.debug == 'true' }}
           draft: false
