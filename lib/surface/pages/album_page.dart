@@ -9,6 +9,7 @@ import '../../bridges/bridge_logic.dart' show AlbumLogic, Log, LogicFacade;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
+import '../theme/tn_motion.dart' show TnMotionStaggered;
 import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadM, tnPadL, tnRadiusM;
 
 const String _tag = 'surface.album_page';
@@ -105,7 +106,8 @@ class _AlbumPageState extends State<AlbumPage> {
       return Scaffold(
         appBar: TnAppBar(title: _detail.name.isEmpty ? '专辑' : _detail.name),
         body: _loading
-            ? const Center(child: CircularProgressIndicator())
+            // 页面级加载态（R2-B 统一）：M3 规范 Linear（局部加载才用 Circular）。
+            ? const LinearProgressIndicator(minHeight: 2)
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -133,9 +135,13 @@ class _AlbumPageState extends State<AlbumPage> {
                             itemCount: _songs.length,
                             itemBuilder: (ctx, i) {
                               final s = _songs[i];
-                              return SongTile(
-                                song: s,
-                                onPlay: widget.onPlay,
+                              // 歌曲列表入场交错动画（R2-B 接线）。
+                              return TnMotionStaggered(
+                                index: i,
+                                child: SongTile(
+                                  song: s,
+                                  onPlay: widget.onPlay,
+                                ),
                               );
                             },
                           ),
@@ -148,7 +154,10 @@ class _AlbumPageState extends State<AlbumPage> {
                         itemCount: _similar.length,
                         itemBuilder: (ctx, i) {
                           final p = _similar[i];
-                          return Container(
+                          // 相似歌单横滑区入场交错动画（R2-B 接线）：+4 错开歌曲列表。
+                          return TnMotionStaggered(
+                            index: i + 4,
+                            child: Container(
                             width: 140,
                             padding: const EdgeInsets.all(tnPadS),
                             child: Column(
@@ -163,7 +172,7 @@ class _AlbumPageState extends State<AlbumPage> {
                                     style: const TextStyle(fontSize: 11)),
                               ],
                             ),
-                          );
+                          ));
                         },
                       ),
                     ),

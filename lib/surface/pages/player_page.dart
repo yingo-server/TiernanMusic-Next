@@ -62,7 +62,7 @@ class PlayerPageModule implements SurfaceModule {
   bool enabled(LogicFacade logic) => true;
 
   @override
-  WidgetBuilder builder(LogicFacade logic) => (ctx) => _PlayerPageBody(
+  WidgetBuilder builder(LogicFacade logic) => (ctx) => PlayerPageBody(
         collect: collect,
         onQualitySelected: onQualitySelected,
         onOpenComments: onOpenComments,

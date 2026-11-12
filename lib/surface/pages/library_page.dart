@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../../bridges/bridge_core.dart';
 import '../../bridges/bridge_logic.dart';
 import '../registry.dart';
+import '../theme/tn_motion.dart' show TnMotionStaggered;
 import '../theme/tn_theme.dart' show TnDims, TnText, tnPadL;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 
@@ -156,7 +157,8 @@ class _LocalTab extends StatelessWidget {
       future: _load(),
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
+          // 页面级（tab 内容）加载态统一为 Linear（R2-B）。
+          return const LinearProgressIndicator(minHeight: 2);
         }
         final songs = snap.data ?? const <SongRecord>[];
         if (songs.isEmpty) {
@@ -166,7 +168,10 @@ class _LocalTab extends StatelessWidget {
           itemCount: songs.length,
           itemBuilder: (context, i) {
             final s = songs[i];
-            return SongTile(
+            // 曲库列表入场交错动画（R2-B 接线）。
+            return TnMotionStaggered(
+              index: i,
+              child: SongTile(
               title: s.fileName.isEmpty ? s.hash : s.fileName,
               subtitle: [
                 if (s.singerName.isNotEmpty) s.singerName,
@@ -186,6 +191,7 @@ class _LocalTab extends StatelessWidget {
                   Log.e(_tag, 'onPlay failed hash=${s.hash}', e, st);
                 }
               },
+            ),
             );
           },
         );
@@ -214,7 +220,8 @@ class _RecentTab extends StatelessWidget {
       }(),
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
+          // 页面级（tab 内容）加载态统一为 Linear（R2-B）。
+          return const LinearProgressIndicator(minHeight: 2);
         }
         final items = snap.data ?? const <PlayHistoryEntry>[];
         if (items.isEmpty) {
@@ -226,7 +233,10 @@ class _RecentTab extends StatelessWidget {
             final h = items[i];
             final dt =
                 DateTime.fromMillisecondsSinceEpoch(h.playedAt);
-            return SongTile(
+            // 最近播放列表入场交错动画（R2-B 接线）。
+            return TnMotionStaggered(
+              index: i,
+              child: SongTile(
               title: h.fileName.isEmpty ? h.hash : h.fileName,
               subtitle:
                   '${h.singerName} · ${dt.month}/${dt.day} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
@@ -241,6 +251,7 @@ class _RecentTab extends StatelessWidget {
                   Log.e(_tag, 'onPlay(history) failed hash=${h.hash}', e, st);
                 }
               },
+            ),
             );
           },
         );

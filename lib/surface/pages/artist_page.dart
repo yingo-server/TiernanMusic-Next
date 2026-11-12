@@ -17,6 +17,7 @@ import '../../bridges/bridge_logic.dart'
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show CoverImage, SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar, TnPagePadding;
+import '../theme/tn_motion.dart' show TnMotionStaggered;
 import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadM, tnPadL, tnRadiusM;
 
 const String _tag = 'surface.artist_page';
@@ -251,7 +252,10 @@ class _ArtistPageBodyState extends State<_ArtistPageBody> {
               child: Center(child: CircularProgressIndicator()),
             );
           }
-          return SongTile(song: _audios[i], index: i + 1, onPlay: _play);
+          return TnMotionStaggered(
+            index: i,
+            child: SongTile(song: _audios[i], index: i + 1, onPlay: _play),
+          );
         },
       );
     } catch (e, st) {
@@ -280,14 +284,17 @@ class _ArtistPageBodyState extends State<_ArtistPageBody> {
             );
           }
           final a = _albums[i];
-          return ListTile(
+          // 专辑列表入场交错动画（R2-B 接线）：+4 错开热门歌曲 tab。
+          return TnMotionStaggered(
+            index: i + 4,
+            child: ListTile(
             leading: CoverImage(url: a.cover, size: const Size(56, 56)),
             title: Text(a.name.isEmpty ? a.id : a.name,
                 maxLines: 1, overflow: TextOverflow.ellipsis),
             subtitle: Text('${a.publishDate} · ${a.songCount}首',
                 maxLines: 1, overflow: TextOverflow.ellipsis),
             onTap: () => _openAlbum(a),
-          );
+          ));
         },
       );
     } catch (e, st) {

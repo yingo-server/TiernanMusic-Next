@@ -23,6 +23,7 @@ import 'player_controller.dart'
     show playerProvider, playerControllerProvider, PlayerSnapshot;
 import 'registry.dart';
 import 'widgets/common.dart' show ErrorRetryBox;
+import 'widgets/mini_bar.dart' show MiniBar;
 import 'l10n/l10n_helper.dart' show TnStrings;
 import 'theme/tn_theme.dart';
 import 'theme/tn_shader_warmup.dart' show TnShaderWarmup;
@@ -32,6 +33,13 @@ export 'deps.dart' show SurfaceDeps;
 /// 全局 Navigator key：assembly 的二级页跳转（专辑/歌手）无需 BuildContext。
 final GlobalKey<NavigatorState> appNavigatorKey =
     GlobalKey<NavigatorState>();
+
+/// 首页 tab 切换请求（装配层 onOpenSearch 等回调写入；_HomeShellState 消费）。
+/// 值 = 目标模块 id（如 'search'）；_HomeShellState 收到后定位对应 tab。
+final ValueNotifier<String?> homeTabRequest = ValueNotifier<String?>(null);
+
+/// 语言/区域变更重建信号（设置页切语言后 ++，AppRoot 重建 MaterialApp 生效）。
+final ValueNotifier<int> localeRevision = ValueNotifier<int>(0);
 
 // ───────────────────────── 装配 ─────────────────────────
 
@@ -215,8 +223,25 @@ class _AppRootState extends State<AppRoot> {
     try {
       return Consumer(builder: (context, ref, _) {
         final mode = ref.watch(themeModeProvider);
-        // M3 宿主：三态 ThemeData 由 theme/darkTheme 直接提供（无 miuix 包裹）。
-        return MaterialApp(
+        // 语言切换重建信号：设置页 _pickLocale 后 ++，此处 ValueListenableBuilder
+        // 重建 MaterialApp 使 locale: TnStrings.appLocale() 立即生效（免重启）。
+        return ValueListenableBuilder<int>(
+          valueListenable: localeRevision,
+          builder: (ctx, _, __) {
+            try { Log.d('surface.app_root', 'locale rebuild rev=$_'); } catch (_) {}
+            return _buildMaterialApp(mode);
+          },
+        );
+      });
+    } catch (e, st) {
+      Log.e('surface.app_root', 'build crashed', e, st);
+      return const _FallbackApp();
+    }
+  }
+
+  Widget _buildMaterialApp(int mode) {
+    try {
+      return MaterialApp(
           navigatorKey: appNavigatorKey,
           title: 'TiernanMusicNext',
           theme: tnLightThemeData(),
@@ -238,9 +263,8 @@ class _AppRootState extends State<AppRoot> {
           ],
           home: const _HomeShell(),
         );
-      });
     } catch (e, st) {
-      Log.e('surface.app_root', 'build crashed', e, st);
+      Log.e('surface.app_root', 'buildMaterialApp crashed', e, st);
       return const _FallbackApp();
     }
   }
@@ -255,10 +279,43 @@ class _HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<_HomeShell> {
   int _index = 0;
+  // homeTabRequest 监听：装配层回调（onOpenSearch 等）请求切 tab。
+  // 弱引用回调句柄（dispose 时移除），防壳重建后悬挂引用。
+  static void Function(String)? _tabRequestHandler;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabRequestHandler = (moduleId) {
+      try {
+        if (!mounted) return;
+        final modules = SurfaceRegistry.active(
+            ProviderScope.containerOf(context, listen: false)
+                .read(logicFacadeProvider))
+            .where((m) => m.navEntry != null)
+            .toList();
+        final i = modules.indexWhere((m) => m.id == moduleId);
+        if (i >= 0 && mounted) setState(() => _index = i);
+      } catch (e, st) {
+        Log.e('surface.home_shell', 'tab request failed id=$moduleId', e, st);
+      }
+    };
+    homeTabRequest.addListener(_dispatchTabRequest);
+  }
+
+  static void _dispatchTabRequest() {
+    try {
+      final id = homeTabRequest.value;
+      if (id != null && id.isNotEmpty) _tabRequestHandler?.call(id);
+    } catch (e, st) {
+      Log.e('surface.home_shell', 'dispatch tab request failed', e, st);
+    }
+  }
 
   @override
   void dispose() {
     try {
+      homeTabRequest.removeListener(_dispatchTabRequest);
       Log.d('surface.home_shell', 'dispose');
     } catch (_) {}
     super.dispose();
@@ -301,11 +358,35 @@ class _HomeShellState extends State<_HomeShell> {
             child: Text(entries[_index].label, style: TnText.of(context).title),
           ),
           Expanded(child: _ModuleView(module: modules[_index])),
+          // 全局迷你播放条：悬浮于底部导航上方（有当前曲才显示）；
+          // 点击展开走已装配的播放页模块（id='player'，带收藏/音质/FM/评论回调）。
+          MiniBar(onExpand: _expandFullPlayer),
         ]),
       );
     } catch (e, st) {
       Log.e('surface.home_shell', 'build crashed', e, st);
       return _ScaffoldMessage('壳构建异常：$e');
+    }
+  }
+
+  /// 展开全屏播放页：复用已装配的播放页模块 builder（含收藏/音质/FM/评论接线），
+  /// 不使用 MiniBar 内置的裸 PlayerPageBody（那会丢失装配回调）。
+  void _expandFullPlayer(BuildContext ctx) {
+    try {
+      final c = ProviderScope.containerOf(ctx, listen: false);
+      final modules = SurfaceRegistry.active(c.read(logicFacadeProvider))
+          .where((m) => m.id == 'player')
+          .toList();
+      if (modules.isEmpty) {
+        Log.w('surface.home_shell', 'player module not installed');
+        return;
+      }
+      final builder = modules.first.builder(c.read(logicFacadeProvider));
+      Navigator.of(ctx).push(MaterialPageRoute<void>(
+          builder: builder, fullscreenDialog: true));
+      Log.d('surface.home_shell', 'expand full player');
+    } catch (e, st) {
+      Log.e('surface.home_shell', 'expandFullPlayer failed', e, st);
     }
   }
 

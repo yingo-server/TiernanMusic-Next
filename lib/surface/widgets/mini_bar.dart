@@ -8,6 +8,7 @@ import '../../bridges/bridge_logic.dart'
     show PlayerStatus, Log;
 import '../player_controller.dart' show playerProvider;
 import '../pages/player_page.dart' show PlayerPageBody;
+import '../theme/tn_motion.dart' show TnPageRoute;
 import '../theme/tn_theme.dart' show TnDims, tnPadS;
 import 'common_widgets.dart' show CoverImage;
 
@@ -21,8 +22,8 @@ class MiniBar extends ConsumerWidget {
 
   void _defaultExpand(BuildContext ctx) {
     try {
-      Navigator.of(ctx).push(MaterialPageRoute<void>(
-          builder: (_) => const PlayerPageBody(), fullscreenDialog: true));
+      Navigator.of(ctx).push(TnPageRoute<void>(
+          const PlayerPageBody()));
     } catch (e, st) {
       Log.e(_tag, 'miniBar expand failed', e, st);
     }

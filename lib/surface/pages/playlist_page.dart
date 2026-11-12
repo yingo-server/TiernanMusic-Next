@@ -16,6 +16,7 @@ import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show CoverImage, SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
+import '../theme/tn_motion.dart' show TnMotionStaggered, TnPageRoute;
 import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadM, tnPadL, tnRadiusM;
 
 const String _tag = 'surface.playlist';
@@ -120,8 +121,8 @@ class _PlaylistPageBodyState extends State<_PlaylistPageBody> {
 
   Future<void> _openDetail(PlaylistBrief brief) async {
     try {
-      await Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => _PlaylistTracksPage(
+      await Navigator.of(context).push(TnPageRoute<void>(
+        _PlaylistTracksPage(
           playlist: widget.playlist,
           player: widget.player,
           playlistId: brief.id,
@@ -136,8 +137,8 @@ class _PlaylistPageBodyState extends State<_PlaylistPageBody> {
 
   void _openLocalMirror(PlaylistMeta meta) {
     try {
-      Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => _LocalMirrorPage(
+      Navigator.of(context).push(TnPageRoute<void>(
+        _LocalMirrorPage(
           player: widget.player,
           meta: meta,
           playlist: widget.playlist,
@@ -199,7 +200,10 @@ class _PlaylistPageBodyState extends State<_PlaylistPageBody> {
               return const Center(child: CircularProgressIndicator());
             }
             final b = _recommend[i];
-            return InkWell(
+            // 列表入场交错动画（R2-B 接线）：封面网格自下淡入，封顶 6。
+            return TnMotionStaggered(
+              index: i,
+              child: InkWell(
               onTap: () => _openDetail(b),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
@@ -217,7 +221,7 @@ class _PlaylistPageBodyState extends State<_PlaylistPageBody> {
                     style: TextStyle(
                         fontSize: 11, color: Theme.of(ctx).hintColor)),
               ]),
-            );
+            ));
           },
         ),
       );
@@ -236,13 +240,14 @@ class _PlaylistPageBodyState extends State<_PlaylistPageBody> {
         itemCount: _local.length,
         itemBuilder: (ctx, i) {
           final m = _local[i];
-          return ListTile(
+          // 列表入场交错动画（R2-B 接线）。
+          return TnMotionStaggered(index: i, child: ListTile(
             leading: CoverImage(url: m.coverUrl),
             title: Text(m.name.isEmpty ? m.playlistId : m.name,
                 maxLines: 1, overflow: TextOverflow.ellipsis),
             subtitle: Text('${m.songHashes.length}首 · ${m.source}'),
             onTap: () => _openLocalMirror(m),
-          );
+          ));
         },
       );
     } catch (e, st) {

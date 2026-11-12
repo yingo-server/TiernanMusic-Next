@@ -5,10 +5,11 @@
 //
 // 层纪律：只 import flutter_riverpod / ../bridges/* / 本层文件。
 // 铁律：每个装配步骤 try/catch + Log('surface.assembly')。
-import 'package:flutter/material.dart' show MaterialPageRoute;
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 
 import 'deps.dart' show SurfaceDeps;
+import 'registry.dart' show SurfaceRegistry;
 import '../bridges/bridge_core.dart'
     show
         KugouClient,
@@ -55,14 +56,14 @@ import 'pages/lyrics_page.dart' show LyricsPageModule, LyricsDeps;
 import 'pages/settings_page.dart' show SettingsPageModule, SettingsDeps;
 import 'pages/comment_page.dart' show buildCommentModule;
 import 'pages/mv_page.dart' show buildMvModule;
-import 'app_root.dart' show appNavigatorKey;
+import 'app_root.dart' show appNavigatorKey, homeTabRequest, localeRevision;
 import 'pages/artist_page.dart' show buildArtistModule;
 import 'pages/album_page.dart' show buildAlbumModule, AlbumPage;
 import 'nav_state.dart' show SurfaceNavState;
 import 'pages/home_page.dart' show buildHomeModule;
 import 'player_controller.dart'
     show PlayerController, AudioEngine, NullAudioEngine;
-import 'registry.dart' show SurfaceRegistry;
+import 'theme/tn_motion.dart' show TnPageRoute;
 
 const String _tag = 'surface.assembly';
 
@@ -283,7 +284,26 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
             }
           },
           onOpenComments: () {
-            Log.d(_tag, 'open comments requested (route /comment)');
+            try {
+              final nav = appNavigatorKey.currentState;
+              if (nav == null) {
+                Log.w(_tag, 'open comments skipped: navigator not ready');
+                return;
+              }
+              // 评论页为已装配模块（id='comment'），经其 builder 打开（同层零 import）。
+              final m = SurfaceRegistry.active(const LogicFacade())
+                  .where((x) => x.id == 'comment')
+                  .toList();
+              if (m.isEmpty) {
+                Log.w(_tag, 'comment module not installed');
+                return;
+              }
+              nav.push(TnPageRoute<void>(
+                  m.first.builder(const LogicFacade())(ctx)));
+              Log.d(_tag, 'open comments ok');
+            } catch (e, st) {
+              Log.e(_tag, 'open comments failed', e, st);
+            }
           },
           onStartFm: () {
             // 播放页 FM 入口：同 SettingsDeps 组合语义。
@@ -347,8 +367,16 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
           });
         },
         verificationState: () => verificationLogic.state.name,
-      ),
-    ));
+        onLocaleChanged: (code) {
+          try {
+            // 语言持久化已在 settings 页 saveLocale 落盘；此处通知 AppRoot 重建。
+            localeRevision.value = localeRevision.value + 1;
+            Log.d(_tag, 'locale changed → rebuild code=$code');
+          } catch (e, st) {
+            Log.e(_tag, 'onLocaleChanged failed', e, st);
+          }
+        },
+      )));
     return true;
   });
 
@@ -387,13 +415,11 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
             Log.w('surface.assembly', 'open album skipped: navigator not ready');
             return;
           }
-          nav.push(MaterialPageRoute<void>(
-            builder: (_) => AlbumPage(
+          nav.push(TnPageRoute<void>(AlbumPage(
               logic: albumLogic,
               albumId: album.id,
               onPlay: controller.playSong,
-            ),
-          ));
+            )));
         } catch (e, st) {
           Log.e('surface.assembly', 'open album failed', e, st);
         }
@@ -419,7 +445,13 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
       playlist: playlist,
       onPlay: controller.playSong,
       onOpenSearch: () {
-        Log.d(_tag, 'open search requested (route /search)');
+        try {
+          // 首页搜索入口 → 请求切到搜索 tab（app_root.homeTabRequest 消费）。
+          homeTabRequest.value = 'search';
+          Log.d(_tag, 'open search → tab search');
+        } catch (e, st) {
+          Log.e(_tag, 'onOpenSearch failed', e, st);
+        }
       },
     ));
     return true;

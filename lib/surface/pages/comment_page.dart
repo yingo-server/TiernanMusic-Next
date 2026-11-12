@@ -11,6 +11,7 @@ import '../../bridges/bridge_logic.dart'
     show CommentLogic, CommentItem, CommentPage, Log, LogicFacade;
 import '../registry.dart';
 import '../widgets/tn_app_bar.dart' show TnAppBar, TnPagePadding;
+import '../theme/tn_motion.dart' show TnPageRoute, TnMotionStaggered;
 import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadM, tnPadL, tnRadiusM;
 
 const String _tag = 'surface.comment_page';
@@ -150,8 +151,8 @@ class _CommentPageBodyState extends State<_CommentPageBody> {
 
   void _openFloor(CommentItem c) {
     try {
-      Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => _FloorPage(logic: widget.logic, commentId: c.id),
+      Navigator.of(context).push(TnPageRoute<void>(
+        _FloorPage(logic: widget.logic, commentId: c.id),
       ));
     } catch (e, st) {
       Log.e(_tag, 'openFloor failed cid=${c.id}', e, st);
@@ -178,9 +179,13 @@ class _CommentPageBodyState extends State<_CommentPageBody> {
                   TnPagePadding(child: _HotWordsChips(words: _model.hotWords)),
                 if (_model.error != null)
                   TnPagePadding(child: Text('加载失败：${_model.error}')),
-                ..._model.items.map((c) => _CommentTile(
-                      item: c,
-                      onTapFloor: () => _openFloor(c),
+                ..._model.items.asMap().entries.map((e) => TnMotionStaggered(
+                      // 评论流入场（R2-B 接线）：+2 错开热词区基准。
+                      index: e.key + 2,
+                      child: _CommentTile(
+                        item: e.value,
+                        onTapFloor: () => _openFloor(e.value),
+                      ),
                     )),
                 if (_model.loading)
                   const Padding(
