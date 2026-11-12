@@ -370,6 +370,7 @@ class _QrLoginDialogState extends State<_QrLoginDialog> {
           Container(
             width: 200,
             height: 200,
+            // 二维码扫码对比度要求纯白底，M3 语义色例外（不改 scheme.surface）。
             color: Colors.white,
             alignment: Alignment.center,
             child: _state.qrcode.isEmpty
