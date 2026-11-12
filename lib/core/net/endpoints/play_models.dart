@@ -3,6 +3,8 @@
 import '../../../bridges/bridge_kernel.dart' show Log;
 import 'models_util.dart';
 
+
+const String _tag = 'net.models.play';
 class PlayResult {
   const PlayResult({
     this.status = 0,

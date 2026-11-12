@@ -3,6 +3,8 @@
 import '../../../bridges/bridge_kernel.dart' show Log;
 import 'models_util.dart';
 
+
+const String _tag = 'net.models.song';
 /// 歌曲摘要（搜索 data.lists[] / 歌单 data.info[] 通用映射）。
 /// 实测字段：FileHash/FileName/SingerName/MixSongID/AlbumAudioId/Duration/Bitrate/FileSize。
 class SongBrief {

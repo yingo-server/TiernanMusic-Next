@@ -2,7 +2,10 @@
 // 来源拆分：models.dart（614 行超行拆分，R2-A）；类体逐字搬移，零逻辑改动。
 import '../../../bridges/bridge_kernel.dart' show Log;
 import 'models_util.dart';
+import 'song_models.dart' show SongBrief;
 
+
+const String _tag = 'net.models.playlist';
 class PlaylistBrief {
   const PlaylistBrief({
     this.id = '',
