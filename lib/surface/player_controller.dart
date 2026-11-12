@@ -37,8 +37,12 @@ KeyValueSettings? _fallbackSettings;
 
 KeyValueSettings? _settingsOf(KeyValueSettings? injected) {
   try {
-    final s = injected ?? _fallbackSettings ??= KeyValueSettings(StoragePaths.I);
-    return s;
+    if (injected != null) return injected;
+    final existing = _fallbackSettings;
+    if (existing != null) return existing;
+    final created = KeyValueSettings(StoragePaths.I);
+    _fallbackSettings = created;
+    return created;
   } catch (e, st) {
     _e('resolve KeyValueSettings failed', e, st);
     return null;
