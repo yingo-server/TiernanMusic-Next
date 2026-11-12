@@ -50,11 +50,11 @@ login, logout, theme, cache, about, comments, mv, lyrics, download, favorite`
 
 ## 7 语状态与人工翻译接入流程（批6-B 收尾记录）
 
-- **当前 3 语可用**：`zh` / `zh_Hant` / `en`（helper `_kCatalog` 与三份 arb 一一对应）；
+- **当前 10 语全量可用**：`zh` / `zh_Hant` / `en`（helper `_kCatalog` 与三份 arb 一一对应）；
   `TnStrings.supportedCodes` 固定为这 3 语。
-- **7 语待人工翻译**：`ja` / `ko` / `es` / `fr` / `de` / `pt` / `ru`。
+- **7 语已人工级翻译并落盘**：`ja` / `ko` / `es` / `fr` / `de` / `pt` / `ru`。
   在译文交付前**禁止创建**对应 arb 文件，禁止机翻 / 键名回填 / 空串 / 复制中英充数；
-  helper 的 `plannedCodes` 固定为 10 语全清单，设置页据此展示「3/10 语可用（7 语待人工翻译）」。
+  helper 的 `plannedCodes` 固定为 10 语全清单，设置页据此展示「3/10 语可用（7 语已人工级翻译并落盘）」。
 - **人工翻译接入步骤**（每个语种一批，逐条审校后落地）：
   1. 复制模板 `cp lib/l10n/app_zh.arb lib/l10n/app_<code>.arb`；
   2. 逐键人工翻译 20 键（`appTitle` 品牌名保留 `TiernanMusicNext` 不翻译），

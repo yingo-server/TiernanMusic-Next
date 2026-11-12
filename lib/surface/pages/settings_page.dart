@@ -88,7 +88,8 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _loggedIn = false;
   String _userid = '';
-  String _localeCode = '';
+  // 从持久化读取偏好（'' = 跟随系统；失败降级 ''），重启后保持。
+  String _localeCode = TnStrings.loadLocale();
 
   @override
   void initState() {
@@ -110,6 +111,8 @@ class _SettingsPageState extends State<SettingsPage> {
   void _pickLocale(String code) {
     try {
       setState(() => _localeCode = code);
+      // 10 语偏好持久化（KeyValueSettings 'ui.locale'），'' = 跟随系统。
+      TnStrings.saveLocale(code);
       widget.deps.onLocaleChanged?.call(code);
     } catch (e, st) {
       Log.e(_tag, 'set locale failed', e, st);
@@ -253,9 +256,16 @@ class _SettingsPageState extends State<SettingsPage> {
               value: _localeCode, onChanged: (v) => _pickLocale(v ?? ''),
               items: const [
                 DropdownMenuItem(value: '', child: Text('跟随系统')),
-                DropdownMenuItem(value: 'zh', child: Text('简体')),
-                DropdownMenuItem(value: 'zh_Hant', child: Text('繁中')),
+                DropdownMenuItem(value: 'zh', child: Text('简体中文')),
+                DropdownMenuItem(value: 'zh_Hant', child: Text('繁體中文')),
                 DropdownMenuItem(value: 'en', child: Text('English')),
+                DropdownMenuItem(value: 'ja', child: Text('日本語')),
+                DropdownMenuItem(value: 'ko', child: Text('한국어')),
+                DropdownMenuItem(value: 'es', child: Text('Español')),
+                DropdownMenuItem(value: 'fr', child: Text('Français')),
+                DropdownMenuItem(value: 'de', child: Text('Deutsch')),
+                DropdownMenuItem(value: 'pt', child: Text('Português')),
+                DropdownMenuItem(value: 'ru', child: Text('Русский')),
               ],
             ),
           ),

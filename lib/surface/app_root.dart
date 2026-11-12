@@ -23,6 +23,7 @@ import 'player_controller.dart'
     show playerProvider, playerControllerProvider, PlayerSnapshot;
 import 'registry.dart';
 import 'widgets/common.dart' show ErrorRetryBox;
+import 'l10n/l10n_helper.dart' show TnStrings;
 import 'theme/tn_theme.dart';
 import 'theme/tn_shader_warmup.dart' show TnShaderWarmup;
 
@@ -222,6 +223,14 @@ class _AppRootState extends State<AppRoot> {
             3 => ThemeMode.dark,
             _ => ThemeMode.system
           },
+          // 10 语偏好（TnStrings 从 KeyValueSettings 读取；null = 跟随系统）。
+          locale: TnStrings.appLocale(),
+          supportedLocales: const <Locale>[
+            Locale('zh'),
+            Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+            Locale('en'), Locale('ja'), Locale('ko'), Locale('es'),
+            Locale('fr'), Locale('de'), Locale('pt'), Locale('ru'),
+          ],
           home: const _HomeShell(),
         );
       });

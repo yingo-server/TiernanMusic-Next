@@ -5,6 +5,7 @@
 //   ③ 每个 logic 被 assembly 装配并经 bridge 暴露；
 //   ④ 关键 UI 页面存在且注册进 SurfaceRegistry；
 //   ⑤ 不存在 needsProbe 恒空分支（占位即失败）。
+import 'dart:convert';
 import 'dart:io';
 
 var pass = 0, fail = 0;
@@ -138,6 +139,22 @@ void main() {
       .join('\n');
   check('miuix fully removed (no import)',
       !miuixImport.hasMatch(surfaceSrc) && !miuixImport.hasMatch(initSrc));
+
+  // ── 10 语 i18n 全量（逐键同集）──
+  final arbDir = Directory('lib/l10n');
+  final arbs = arbDir.listSync().whereType<File>()
+      .where((f) => f.path.endsWith('.arb')).map((f) => jsonDecode(read(f.path)) as Map)
+      .toList();
+  check('10 language arb files', arbs.length == 10);
+  final baseKeys = (arbs.first.keys.where((k) => !k.startsWith('@')).toList()..sort()).join(',');
+  check('arb 20 keys, all languages identical', baseKeys.split(',').length == 20 &&
+      arbs.every((m) {
+        final k = m.keys.where((x) => !x.startsWith('@')).toList()..sort();
+        return k.join(',') == baseKeys;
+      }));
+  check('TnStrings 10 supported languages', has(surfaceSrc, "supportedCodes") &&
+      has(surfaceSrc, "'ja'") && has(surfaceSrc, "'ru'"));
+  check('locale persisted', has(surfaceSrc, 'ui.locale'));
 
   check('M3 ColorScheme in theme', has(read('lib/surface/theme/tn_theme.dart'),
       'ColorScheme.fromSeed'));
