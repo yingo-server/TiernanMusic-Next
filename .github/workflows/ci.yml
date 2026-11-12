@@ -166,25 +166,52 @@ jobs:
           printf '%s' "$KS_B64" | base64 -d > android/app/release.keystore
           printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=chat-ai\nstoreFile=release.keystore\n' \
             "$KS_PW" "$KS_PW" > android/key.properties
-          {
-            echo ''
-            echo '// Persistent release signing (injected by CI).'
-            echo 'def ksProps = new Properties()'
-            echo 'def ksFile = rootProject.file("key.properties")'
-            echo 'if (ksFile.exists()) ksProps.load(new FileInputStream(ksFile))'
-            echo 'android {'
-            echo '  signingConfigs {'
-            echo '    release {'
-            echo '      storeFile file(ksProps["storeFile"] ?: "release.keystore")'
-            echo '      storePassword ksProps["storePassword"]'
-            echo '      keyAlias ksProps["keyAlias"] ?: "chat-ai"'
-            echo '      keyPassword ksProps["keyPassword"]'
-            echo '    }'
-            echo '  }'
-            echo '  buildTypes { release { signingConfig signingConfigs.release } }'
-            echo '}'
-          } >> android/app/build.gradle
-          test -s android/app/release.keystore && echo "release keystore ready"
+          # Flutter 3.50 模板生成 build.gradle.kts；写 Groovy 到 .gradle 会造成双构建脚本并存，
+          # Flutter 报 unsupported Gradle project。按实际文件选择语法。
+          GRADLE_FILE=android/app/build.gradle.kts
+          if [ -f android/app/build.gradle ]; then
+            GRADLE_FILE=android/app/build.gradle
+          fi
+          if [ "${GRADLE_FILE##*.}" = "kts" ]; then
+            {
+              echo ''
+              echo '// Persistent release signing (injected by CI).'
+              echo 'val ksProps = java.util.Properties()'
+              echo 'val ksFile = rootProject.file("key.properties")'
+              echo 'if (ksFile.exists()) ksProps.load(java.io.FileInputStream(ksFile))'
+              echo 'android {'
+              echo '  signingConfigs {'
+              echo '    create("release") {'
+              echo '      storeFile = file(ksProps.getProperty("storeFile") ?: "release.keystore")'
+              echo '      storePassword = ksProps.getProperty("storePassword")'
+              echo '      keyAlias = ksProps.getProperty("keyAlias") ?: "chat-ai"'
+              echo '      keyPassword = ksProps.getProperty("keyPassword")'
+              echo '    }'
+              echo '  }'
+              echo '  buildTypes { getByName("release") { signingConfig = signingConfigs.getByName("release") } }'
+              echo '}'
+            } >> "$GRADLE_FILE"
+          else
+            {
+              echo ''
+              echo '// Persistent release signing (injected by CI).'
+              echo 'def ksProps = new Properties()'
+              echo 'def ksFile = rootProject.file("key.properties")'
+              echo 'if (ksFile.exists()) ksProps.load(new FileInputStream(ksFile))'
+              echo 'android {'
+              echo '  signingConfigs {'
+              echo '    release {'
+              echo '      storeFile file(ksProps["storeFile"] ?: "release.keystore")'
+              echo '      storePassword ksProps["storePassword"]'
+              echo '      keyAlias ksProps["keyAlias"] ?: "chat-ai"'
+              echo '      keyPassword ksProps["keyPassword"]'
+              echo '    }'
+              echo '  }'
+              echo '  buildTypes { release { signingConfig signingConfigs.release } }'
+              echo '}'
+            } >> "$GRADLE_FILE"
+          fi
+          test -s android/app/release.keystore && echo "release keystore ready ($GRADLE_FILE)"
       - name: build apk (split-per-abi)
         env:
           NEXT_DEBUG: ${{ github.event.inputs.debug }}
