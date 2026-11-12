@@ -13,7 +13,7 @@
 //    封面缺失或切回占位时调 clearCoverTheme(ref) 回落品牌紫。
 // 4) 效果：dynamicThemeProvider.notifier.updateFromImageBytes →
 //    extractDominant（32 级色桶直方图）→ fromSeed（HSL 四色）；
-//    app_root 消费 dynamicThemeProvider 覆盖 MiuixThemeData.colors。
+//    app_root 消费 dynamicThemeProvider 覆盖 M3 ThemeData.colorScheme。
 // 5) 本批不改 player_page.dart / app_root.dart，装配由主会话完成。
 import 'package:flutter_riverpod/flutter_riverpod.dart' show WidgetRef;
 

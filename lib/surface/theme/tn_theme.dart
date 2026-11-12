@@ -3,7 +3,7 @@
 //       禁止 import flutter_miuix；异常一律经 bridge_logic 的 Log 留痕，不静默。
 // 兼容契约（调用方不改）：保留 TnDims / TnColors / TnText / TnMotion，以及
 //   tnLightThemeData / tnDarkThemeData / tnPitchBlackThemeData /
-//   tnLightTheme / tnDarkTheme 全部工厂名；返回值由 MiuixThemeData 改为 M3 ThemeData，
+//   tnLightTheme / tnDarkTheme 全部工厂名；返回值改为 M3 ThemeData，
 //   由 M1-B 的 MaterialApp(theme: / darkTheme: / themeMode:) 直接接入。
 import 'package:flutter/material.dart';
 

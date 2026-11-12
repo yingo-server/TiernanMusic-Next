@@ -39,7 +39,7 @@ class ColorSeed {
   String toString() => 'ColorSeed($r,$g,$b)';
 }
 
-/// 由主色推导的四色调色板（供 MiuixThemeData.colors.copy / Material Theme 使用）。
+/// 由主色推导的四色调色板（供 M3 ThemeData.colorScheme 使用）。
 class ThemePalette {
   const ThemePalette({
     required this.primary,
