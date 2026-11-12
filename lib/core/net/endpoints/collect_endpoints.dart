@@ -9,6 +9,8 @@
 import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart' show safeInt, safeStr, dataOf, listOf;
+import 'playlist_write_endpoints.dart'
+    show addSongsToPlaylist, getUserPlaylists, removeSongsFromPlaylist;
 
 const String _tag = 'ep.collect';
 
@@ -82,51 +84,102 @@ int _countOf(Map<String, dynamic> res) {
 }
 
 /// 收藏歌曲（上游无此端点，本地镜像为准，不伪造网络成功）。
-/// ENDPOINT_TRUTH.md §5：KuGouMusicApi/module/ 内不存在歌曲 collect 端点，
-/// 不臆造 /collect URL。本函数不发网络请求、不猜 URL；
-/// ok=false，收藏条数以 logic 层本地镜像为单一事实源。
-/// hash 恒小写；mixSongId 仅留档。
+/// 真实收藏：把歌曲加入「我喜欢」歌单（不是已弃用的「默认收藏」概念版）。
+/// 实测 2026-11-12：/v7/get_all_list 返回 listid=1「默认收藏」(弃用)、
+/// listid=2「我喜欢」(真正的收藏，count=484)；cloudlist 系须 omitSrcappid。
+/// 链路：getUserPlaylists 找 name=='我喜欢' 的 listid → v6/add_song 写入。
+/// 歌单字段来自 SongBrief（hash/name/albumAudioId/mixSongId/durationSec 等），
+/// 缺字段用 0/空串占位（多参不缺参），不猜上游字段。
 Future<CollectResult> collectSongByHash(
   KugouClient client,
   String hash,
-  int mixSongId,
-) async {
+  int mixSongId, {
+  String name = '',
+  String albumAudioId = '',
+  String size = '',
+  String timelen = '',
+  String bitrate = '',
+  String albumId = '',
+}) async {
   try {
     final h = hash.trim().toLowerCase();
     if (h.isEmpty) {
       Log.w(_tag, 'collectSongByHash empty hash');
       return const CollectResult();
     }
-    Log.w(_tag, 'collectSongByHash upstream has no endpoint '
-        '(ENDPOINT_TRUTH §5): local mirror only, no network call, '
-        'no fake success hash=$h mix=$mixSongId');
-    return const CollectResult(ok: false);
+    final listid = await _favoriteListId(client);
+    if (listid == null) {
+      Log.w(_tag, 'collectSongByHash no 我喜欢 playlist hash=$h');
+      return const CollectResult(ok: false, needsLogin: true);
+    }
+    final rows = await addSongsToPlaylist(client, listid, <Map<String, String>>[
+      <String, String>{
+        'name': name,
+        'hash': h,
+        'albumId': albumId,
+        'mixsongid': '$mixSongId',
+        'size': size,
+        'timelen': timelen,
+        'bitrate': bitrate,
+      },
+    ]);
+    final ok = rows.isNotEmpty;
+    Log.d(_tag, 'collectSongByHash via 我喜欢 listid=$listid ok=$ok hash=$h');
+    return CollectResult(ok: ok, count: ok ? 1 : 0);
   } catch (e, st) {
     Log.e(_tag, 'collectSongByHash failed hash=$hash', e, st);
     return const CollectResult();
   }
 }
 
-/// 取消收藏（上游无此端点，本地镜像为准，不伪造网络成功）。
-/// ENDPOINT_TRUTH.md §5：上游无歌曲 cancel_collect 模块，不应臆造 URL。
-/// 本函数不发网络请求、不猜 URL；ok=false，取消结果以 logic 层本地镜像为准。
+/// 取消收藏：从「我喜欢」歌单删除（fileid = album_audio_id，实测契约）。
 Future<CollectResult> cancelCollectByHash(
   KugouClient client,
-  String hash,
-) async {
+  String hash, {
+  String albumAudioId = '',
+}) async {
   try {
     final h = hash.trim().toLowerCase();
     if (h.isEmpty) {
       Log.w(_tag, 'cancelCollectByHash empty hash');
       return const CollectResult();
     }
-    Log.w(_tag, 'cancelCollectByHash upstream has no endpoint '
-        '(ENDPOINT_TRUTH §5): local mirror only, no network call, '
-        'no fake success hash=$h');
-    return const CollectResult(ok: false);
+    final listid = await _favoriteListId(client);
+    if (listid == null) {
+      Log.w(_tag, 'cancelCollectByHash no 我喜欢 playlist hash=$h');
+      return const CollectResult(ok: false, needsLogin: true);
+    }
+    final ok = await removeSongsFromPlaylist(
+        client, listid, <String>[albumAudioId.isEmpty ? h : albumAudioId]);
+    Log.d(_tag, 'cancelCollectByHash via 我喜欢 listid=$listid ok=$ok');
+    return CollectResult(ok: ok, count: 0);
   } catch (e, st) {
     Log.e(_tag, 'cancelCollectByHash failed hash=$hash', e, st);
     return const CollectResult();
+  }
+}
+
+/// 查找「我喜欢」歌单 listid（跳过 listid=1「默认收藏」概念版）。
+/// 登录态缺失时 getUserPlaylists 返回空 → null。
+Future<String?> _favoriteListId(KugouClient client) async {
+  try {
+    if (client.session.userid.isEmpty) return null;
+    final lists = await getUserPlaylists(client, page: 1, pageSize: 100);
+    for (final p in lists) {
+      if (p.name.trim() != '我喜欢') continue;
+      final id = p.listid.trim();
+      if (id.isEmpty) {
+        Log.w(_tag, '我喜欢 playlist has empty listid');
+        return null;
+      }
+      Log.d(_tag, 'favorite playlist 我喜欢 listid=$id');
+      return id;
+    }
+    Log.w(_tag, 'favorite playlist 我喜欢 not found (n=${lists.length})');
+    return null;
+  } catch (e, st) {
+    Log.e(_tag, 'favorite playlist lookup failed', e, st);
+    return null;
   }
 }
 

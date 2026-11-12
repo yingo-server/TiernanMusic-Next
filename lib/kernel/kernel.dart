@@ -58,7 +58,8 @@ class IntegrityVerifier {
         }
         final h = Sha512.saltedHex(bytes, salt);
         if (h != e.value) {
-          Log.w('integrity', 'hash mismatch: ${e.key}');
+          Log.w('integrity',
+              'hash mismatch: ${e.key} expect=${e.value} got=$h bytes=${bytes.length}');
           return false;
         }
       }

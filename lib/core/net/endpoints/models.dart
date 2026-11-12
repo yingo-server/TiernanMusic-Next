@@ -436,6 +436,7 @@ class PrivilegeItem {
 class PlaylistBrief {
   const PlaylistBrief({
     this.id = '',
+    this.listid = '',
     this.name = '',
     this.cover = '',
     this.playCount = 0,
@@ -445,6 +446,8 @@ class PlaylistBrief {
   });
 
   final String id; // global_collection_id / specialid / listid
+  /// 数字歌单 id（/v7/get_all_list 的 listid，写操作 add_song/delete_songs 专用）。
+  final String listid;
   final String name; // specialname
   final String cover; // imgurl（recommend）/ pic（detail）/ img（search special）
   final int playCount;
@@ -458,6 +461,7 @@ class PlaylistBrief {
         id: safeStr(
             m['global_collection_id'] ?? m['specialid'] ?? m['listid'] ??
                 m['id'] ?? ''),
+        listid: safeStr(m['listid'] ?? m['id'] ?? ''),
         name: safeStr(m['specialname'] ?? m['name'] ??
             m['collection_name'] ?? ''),
         // 批N1-C 实测（API_FIELDS_TRUTH.md A2-2/A2-3/A2-4）：

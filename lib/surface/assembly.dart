@@ -5,8 +5,7 @@
 //
 // 层纪律：只 import flutter_riverpod / ../bridges/* / 本层文件。
 // 铁律：每个装配步骤 try/catch + Log('surface.assembly')。
-import 'package:flutter/material.dart' show MaterialPageRoute, Navigator;
-import 'package:flutter/widgets.dart' show WidgetsBinding;
+import 'package:flutter/material.dart' show MaterialPageRoute;
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 
 import 'deps.dart' show SurfaceDeps;
@@ -56,6 +55,7 @@ import 'pages/lyrics_page.dart' show LyricsPageModule, LyricsDeps;
 import 'pages/settings_page.dart' show SettingsPageModule, SettingsDeps;
 import 'pages/comment_page.dart' show buildCommentModule;
 import 'pages/mv_page.dart' show buildMvModule;
+import 'app_root.dart' show appNavigatorKey;
 import 'pages/artist_page.dart' show buildArtistModule;
 import 'pages/album_page.dart' show buildAlbumModule, AlbumPage;
 import 'nav_state.dart' show SurfaceNavState;
@@ -382,12 +382,11 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
       onOpenAlbum: (album) {
         try {
           navState.setAlbum(album.id);
-          final ctx = WidgetsBinding.instance.rootElement?.context;
-          if (ctx == null) {
-            Log.w('surface.assembly', 'open album skipped: no context');
+          final nav = appNavigatorKey.currentState;
+          if (nav == null) {
+            Log.w('surface.assembly', 'open album skipped: navigator not ready');
             return;
           }
-          final nav = Navigator.of(ctx, rootNavigator: false);
           nav.push(MaterialPageRoute<void>(
             builder: (_) => AlbumPage(
               logic: albumLogic,

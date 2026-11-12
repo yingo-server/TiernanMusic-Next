@@ -112,9 +112,12 @@ class EndpointRegistry {
   // query last_time/last_area=gztx/userid/token；body data:[{number,name,hash
   // (小写),size,sort,timelen,bitrate,album_id,mixsongid}]。成功 data.info[]
   // 逐曲回执（fileid/hash/name/cover/audio_id）。
+  // 实测 2026-11-12：URL 前缀式 /cloudlist.service/v6/add_song 网关 404；
+  // 真实可用 = /v6/add_song + x-router cloudlist.service（VIP 加/删往返 status=1）。
   static const playlistAddSongs = Endpoint(
-      id: 'playlist_add_songs', path: '/cloudlist.service/v6/add_song',
-      method: 'POST', omitSrcappid: true);  // 歌单分类 tags：POST /pubsongs/v1/get_tags_by_type（docs §3.3）。
+      id: 'playlist_add_songs', path: '/v6/add_song',
+      method: 'POST', router: 'cloudlist.service.kugou.com',
+      omitSrcappid: true);
   // 走 gateway（无 x-router；pubsongs 子域直连 404，见可用性矩阵）。
   static const playlistTags = Endpoint(
       id: 'playlist_tags',

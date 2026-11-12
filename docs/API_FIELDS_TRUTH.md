@@ -629,3 +629,17 @@
 | `/v1/author/albums`、`/kmr/v1/author/albums` | 三态全部 502/403 | ①`/kmr/v3/author` 取歌手名 → ②`/v1/search/album`（keyword=歌手名）→ ③空表兜底用 `/kmr/v1/audio_group/author` 实测 `item.album_id/album_name` 组装 AlbumBrief；产出的 albumid 即 `/kmr/v2/albums` albumDetail 所需参数 |
 
 另：`artist_page` 的「专辑」点击此前是 SnackBar 占位，已改为装配层注入 `onOpenAlbum` 回调 → 写 `SurfaceNavState.albumId` → Navigator 打开 AlbumPage（模块间零直接 import）。
+
+## 收藏真实契约（2026-11-12 三态实测，纠正 ENDPOINT_TRUTH §5 结论）
+
+- 上游确无「歌曲 collect/cancel_collect」独立端点，但**收藏 = 写入「我喜欢」歌单**：
+  - `/v7/get_all_list`（x-router cloudlist.service，omitSrcappid）返回用户歌单 18 个：
+    `listid=1`「默认收藏」（**已弃用概念版，不用**）、`listid=2`「我喜欢」（count=484，真正收藏）、其余自建/订阅歌单。
+  - 加收藏：`POST /v6/add_song` + x-router cloudlist.service（**不是** URL 前缀式
+    `/cloudlist.service/v6/add_song`，后者实测 404）；body 全参 `{userid,token,listid,list_ver,type,slow_upload,scene,data:[{number,name,hash,size,sort,timelen,bitrate,album_id,mixsongid}]}`；
+    回执 `data.info[0].fileid`（实测 1126）/ `data.listid` / `pre_list_ver`。
+  - 取消收藏：`POST /v4/delete_songs` + 同 router；body `{userid,token,listid,list_ver,type:0,data:[{fileid,number:1}]}`，
+    **fileid 来自 add 回执或歌单曲目，不是 hash**；实测 status=1 err=0。
+  - VIP 账号完整加/删往返已实测通过并删除测试数据，无脏数据。
+- 结论：`collectSongByHash/cancelCollectByHash` 改为「找 name=='我喜欢' 的 listid → 写/删歌单」；
+  本地镜像仍由 CollectLogic 维护（防重锁 + 登录守卫），网络成功后才更新。

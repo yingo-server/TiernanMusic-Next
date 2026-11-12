@@ -29,6 +29,10 @@ import 'theme/tn_shader_warmup.dart' show TnShaderWarmup;
 
 export 'deps.dart' show SurfaceDeps;
 
+/// 全局 Navigator key：assembly 的二级页跳转（专辑/歌手）无需 BuildContext。
+final GlobalKey<NavigatorState> appNavigatorKey =
+    GlobalKey<NavigatorState>();
+
 // ───────────────────────── 装配 ─────────────────────────
 
 // SurfaceDeps 抽至 deps.dart（避免与 assembly.dart 循环 import）。
@@ -213,6 +217,7 @@ class _AppRootState extends State<AppRoot> {
         final mode = ref.watch(themeModeProvider);
         // M3 宿主：三态 ThemeData 由 theme/darkTheme 直接提供（无 miuix 包裹）。
         return MaterialApp(
+          navigatorKey: appNavigatorKey,
           title: 'TiernanMusicNext',
           theme: tnLightThemeData(),
           darkTheme:

@@ -20,6 +20,11 @@ void main(List<String> args) {
   final effectiveSalt =
       (saltEnv == null || saltEnv.isEmpty) ? 'next-manifest-unsigned' : saltEnv;
   final signed = keyEnv != null && keyEnv.isNotEmpty;
+  if (!signed) {
+    stderr.writeln('gen_manifest: FATAL — NEXT_MANIFEST_KEY/SALT not configured; '
+        'refusing to produce an unsigned manifest (runtime would reject it).');
+    exit(2);
+  }
 
   final libDir = Directory('lib');
   final modules = <String, String>{};
@@ -30,8 +35,9 @@ void main(List<String> args) {
     if (f is! File || !f.path.endsWith('.dart')) continue;
     final rel = f.path.replaceAll('\\', '/');
     modules[rel] = Sha512.saltedHex(f.readAsBytesSync(), effectiveSalt);
-    // 复制到 assets，供运行期逐字节校验（保留原目录结构）。
-    final dst = File('${outRoot.path}/$rel');
+    // 复制到 assets（.dat 后缀，避免 Flutter 工具链把 .dart 当源码忽略/排除）。
+    // 运行期按同一逻辑路径读 <rel>.dat，哈希的是原始字节。
+    final dst = File('${outRoot.path}/$rel.dat');
     dst.parent.createSync(recursive: true);
     dst.writeAsBytesSync(f.readAsBytesSync());
   }

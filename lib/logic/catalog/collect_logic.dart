@@ -6,7 +6,9 @@
 import 'dart:convert';
 
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' as ep show CollectResult, cancelCollectByHash, collectSongByHash, getFavoriteCount;
+import '../../bridges/bridge_core.dart' as ep
+    show CollectResult, cancelCollectByHash, collectSongByHash, getFavoriteCount;
+import '../../bridges/bridge_core.dart' show SongBrief;
 import '../../bridges/bridge_core.dart' show KeyValueSettings, KugouClient;
 
 const String _tag = 'logic.collect';
@@ -83,7 +85,8 @@ class CollectLogic {
   /// - 空 hash：返回默认失败结果；
   /// - 同 hash 并发：putIfAbsent 复用同一 Future，whenComplete 释放锁；
   /// - 端点成功：更新镜像 + 计数 + _flush() + onChanged?；失败不写镜像。
-  Future<ep.CollectResult> toggle(String hash, int mixSongId) {
+  Future<ep.CollectResult> toggle(String hash, int mixSongId,
+      {SongBrief? song}) {
     try {
       final h = _norm(hash);
       if (h.isEmpty) {
@@ -101,7 +104,7 @@ class CollectLogic {
       }
       // putIfAbsent：唯一在途写；whenComplete 无论成功/失败/异常都释放锁。
       final shared = _inFlight.putIfAbsent(h, () {
-        return _doToggle(h, mixSongId).whenComplete(() {
+        return _doToggle(h, mixSongId, song: song).whenComplete(() {
           try {
             _inFlight.remove(h);
             Log.d(_tag, 'toggle lock released hash=$h');
@@ -119,14 +122,22 @@ class CollectLogic {
   }
 
   /// 实际写流程（每个分支显式 return）。
-  Future<ep.CollectResult> _doToggle(String h, int mixSongId) async {
+  Future<ep.CollectResult> _doToggle(String h, int mixSongId,
+      {SongBrief? song}) async {
     try {
       final wasCollected = _favorites.contains(h);
       final ep.CollectResult r;
       if (wasCollected) {
-        r = await ep.cancelCollectByHash(_client, h);
+        r = await ep.cancelCollectByHash(_client, h,
+            albumAudioId: '${song?.albumAudioId ?? 0}');
       } else {
-        r = await ep.collectSongByHash(_client, h, mixSongId);
+        r = await ep.collectSongByHash(_client, h, mixSongId,
+            name: song?.name ?? '',
+            albumAudioId: '${song?.albumAudioId ?? 0}',
+            size: '${song?.fileSize ?? 0}',
+            timelen: '${(song?.durationSec ?? 0) * 1000}',
+            bitrate: '${song?.bitrate ?? 0}',
+            albumId: song?.albumId ?? '');
       }
       if (!r.ok) {
         Log.w(_tag, 'toggle rejected hash=$h cancel=$wasCollected '

@@ -42,18 +42,26 @@ Future<void> _boot({required bool debugBypass}) async {
   // ② 完整性清单 + 模块字节（Android APK 内无 lib/ 路径，必须随包携带）。
   var manifest = <String, dynamic>{};
   var moduleBytes = <String, List<int>>{};
+  var loadError = '';
   try {
     final raw = await rootBundle.loadString('assets/integrity/manifest.json');
     manifest = jsonDecode(raw) as Map<String, dynamic>;
     final mods = (manifest['modules'] as Map).cast<String, dynamic>();
     for (final path in mods.keys) {
-      final data = await rootBundle.load('assets/integrity/modules/$path');
-      moduleBytes[path] = data.buffer.asUint8List(
-          data.offsetInBytes, data.lengthInBytes);
+      try {
+        final data = await rootBundle.load('assets/integrity/modules/$path.dat');
+        moduleBytes[path] = data.buffer.asUint8List(
+            data.offsetInBytes, data.lengthInBytes);
+      } catch (e) {
+        loadError = '模块 asset 缺失: $path.dat ($e)';
+        debugPrint('main: $loadError');
+        break;
+      }
     }
-    debugPrint('main: manifest loaded, ${moduleBytes.length} module blobs');
+    debugPrint('main: manifest loaded, ${moduleBytes.length}/${mods.length} blobs');
   } catch (e, st) {
-    debugPrint('main: integrity assets unavailable: $e/$st');
+    loadError = '完整性清单加载失败: $e';
+    debugPrint('main: $loadError\n$st');
   }
 
   // ③ runBoot（完整性校验 + core 装配）。
@@ -64,9 +72,9 @@ Future<void> _boot({required bool debugBypass}) async {
       moduleBytes: moduleBytes);
   if (exit.rejected && !debugBypass) {
     // 校验未通过：显示明确原因（不是静默退出）。
-    runApp(const _BootErrorApp(
+    runApp(_BootErrorApp(
       message: '完整性校验未通过，应用已停止启动。\n'
-          '请从官方渠道重新安装最新版本。',
+          '${loadError.isEmpty ? "请从官方渠道重新安装最新版本。" : "原因：$loadError"}',
     ));
     return;
   }

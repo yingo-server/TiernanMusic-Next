@@ -220,18 +220,20 @@ Future<bool> removeSongsFromPlaylist(
         .map((h) => h.trim())
         .where((h) => h.isNotEmpty)
         .toList(growable: false);
-    if (id.isEmpty || hs.isEmpty) {
-      Log.w(_tag, 'removeSongsFromPlaylist empty listid or hashes');
+    if (id.isEmpty || hs.isEmpty || hs.every((h) => h == '0')) {
+      Log.w(_tag, 'removeSongsFromPlaylist empty/invalid listid or fileids');
       return false;
     }
     final res = await client.request(EndpointRegistry.playlistDelSongs,
         <String, Object?>{}, body: <String, Object?>{
       // 批N3-B 实测：data:[{fileid}]，fileid=album_audio_id（audio_id），
       // 非 hash；body {listid,userid,data,type:0,token,list_ver}。
-      'resource': [
+      // 调用方传入的 hashes 实为 fileid 字符串（album_audio_id）。
+      'data': [
         for (final h in hs)
-          <String, Object?>{'hash': h, 'number': 1},
+          <String, Object?>{'fileid': int.tryParse(h) ?? 0, 'number': 1},
       ],
+      'type': 0,
       'listid': id,
       'userid': client.session.userid,
       'token': client.session.token,

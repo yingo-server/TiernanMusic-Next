@@ -154,7 +154,37 @@ jobs:
         env:
           NEXT_MANIFEST_SALT: ${{ secrets.NEXT_MANIFEST_SALT }}
           NEXT_MANIFEST_KEY: ${{ secrets.NEXT_MANIFEST_KEY }}
-        run: dart run tool/gen_manifest.dart
+        run: |
+          dart run tool/gen_manifest.dart
+          dart run tool/integrity_chain_test.dart
+      - name: configure persistent APK signing
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          # 固定 release keystore：每次构建签名一致，安装可直接覆盖升级，无需卸载重装。
+          printf '%s' "$KS_B64" | base64 -d > android/app/release.keystore
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=chat-ai\nstoreFile=release.keystore\n' \
+            "$KS_PW" "$KS_PW" > android/key.properties
+          {
+            echo ''
+            echo '// Persistent release signing (injected by CI).'
+            echo 'def ksProps = new Properties()'
+            echo 'def ksFile = rootProject.file("key.properties")'
+            echo 'if (ksFile.exists()) ksProps.load(new FileInputStream(ksFile))'
+            echo 'android {'
+            echo '  signingConfigs {'
+            echo '    release {'
+            echo '      storeFile file(ksProps["storeFile"] ?: "release.keystore")'
+            echo '      storePassword ksProps["storePassword"]'
+            echo '      keyAlias ksProps["keyAlias"] ?: "chat-ai"'
+            echo '      keyPassword ksProps["keyPassword"]'
+            echo '    }'
+            echo '  }'
+            echo '  buildTypes { release { signingConfig signingConfigs.release } }'
+            echo '}'
+          } >> android/app/build.gradle
+          test -s android/app/release.keystore && echo "release keystore ready"
       - name: build apk (split-per-abi)
         env:
           NEXT_DEBUG: ${{ github.event.inputs.debug }}
@@ -197,3 +227,4 @@ jobs:
           files: dist/*.apk
           body_path: ${{ env.body }}
           prerelease: ${{ github.event.inputs.debug == 'true' }}
+          draft: false

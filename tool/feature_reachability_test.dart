@@ -156,6 +156,12 @@ void main() {
       has(surfaceSrc, "'ja'") && has(surfaceSrc, "'ru'"));
   check('locale persisted', has(surfaceSrc, 'ui.locale'));
 
+  check('favorites via 我喜欢 playlist (not deprecated 默认收藏)',
+      has(read('lib/core/net/endpoints/collect_endpoints.dart'), '我喜欢') &&
+      has(read('lib/core/net/endpoints/collect_endpoints.dart'), 'addSongsToPlaylist'));
+  check('playlistAddSongs uses x-router /v6/add_song',
+      has(client, "path: '/v6/add_song'"));
+
   check('M3 ColorScheme in theme', has(read('lib/surface/theme/tn_theme.dart'),
       'ColorScheme.fromSeed'));
 

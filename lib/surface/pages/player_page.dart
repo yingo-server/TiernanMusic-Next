@@ -315,7 +315,8 @@ class _PlayerPageBody extends ConsumerWidget {
                 onToggle: () async {
                   final h = song?.hash ?? '';
                   if (h.isEmpty) return;
-                  final r = await collect!.toggle(h, song?.mixSongId ?? 0);
+                  final r = await collect!.toggle(
+                      h, song?.mixSongId ?? 0, song: song);
                   if (r.needsLogin && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('请先登录后再收藏')));
