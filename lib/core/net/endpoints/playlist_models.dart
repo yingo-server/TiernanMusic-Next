@@ -72,6 +72,7 @@ class PlaylistDetail {
     this.intro = '',
     this.creator = '',
     this.tags = const <String>[],
+    this.listVer = 0,
   });
 
   final String id;
@@ -82,11 +83,14 @@ class PlaylistDetail {
   final String intro;
   final String creator;
   final List<String> tags;
+  /// 批N3-B 实测（A2-2）：get_list_info data[0].list_ver 歌单内容版本号，
+  /// 写操作请求体 list_ver 须与服务器一致。detail 成功后写入 _listVerCache。
+  final int listVer;
 
   Map<String, Object?> toMap() => <String, Object?>{
         'id': id, 'name': name, 'cover': cover, 'playCount': playCount,
         'trackCount': trackCount, 'intro': intro, 'creator': creator,
-        'tags': tags,
+        'tags': tags, 'listVer': listVer,
       };
 }
 

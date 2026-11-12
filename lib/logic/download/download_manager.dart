@@ -439,12 +439,15 @@ class DownloadManager {
   }
 
   Future<String> _storeDir() async {
-    final recs = _store.listAll();
-    if (recs.isNotEmpty) {
-      final p = _store.absolutePathOf(recs.first);
-      if (p != null) return File(p).parent.path;
+    // R3-C #4：直接取 DownloadStore.targetDir（downloads 目录绝对路径），
+    // 不再从索引第一条记录猜目录；空索引也不再退化系统临时目录。
+    try {
+      final dir = _store.targetDir;
+      if (dir.isNotEmpty) return dir;
+      Log.w(_tag, '_storeDir empty targetDir, fallback temp');
+    } catch (e, st) {
+      Log.e(_tag, '_storeDir failed', e, st);
     }
-    // 索引为空：退化为系统临时目录承载 .dlpart（提交时再归位）。
     return Directory.systemTemp.path;
   }
 

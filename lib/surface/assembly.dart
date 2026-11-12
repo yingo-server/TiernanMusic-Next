@@ -1,10 +1,3 @@
-// L6 surface · 全局装配总入口（批5-B）
-// 把批4 散装模块（批4-A logic 单例 / 批4-B PlayerController / 批4-C 三页面模块）
-// 接成完整 App。app_root.installServices 内部改调本文件 assembleAll，
-// 自装配兜底路径已删除（强制走本装配）。
-//
-// 层纪律：只 import flutter_riverpod / ../bridges/* / 本层文件。
-// 铁律：每个装配步骤 try/catch + Log('surface.assembly')。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 
@@ -44,7 +37,6 @@ import '../bridges/bridge_logic.dart'
         ArtistLogic,
         AlbumLogic,
         FmLogic,
-        // 批5/批6 新增：验证（20028）/ 分类搜索 / 歌单写。
         VerificationLogic,
         SearchTypedLogic,
         PlaylistWriteLogic,
@@ -67,10 +59,6 @@ import 'theme/tn_motion.dart' show TnPageRoute;
 
 const String _tag = 'surface.assembly';
 
-// ───────────────────────── 装配清单 ─────────────────────────
-
-/// assembleAll 的返回值（app_root 消费）：
-/// logic 单例 + PlayerController + provider overrides + 清缓存钩子。
 class AssemblyResult {
   AssemblyResult({
     required this.search,
@@ -94,7 +82,6 @@ class AssemblyResult {
     required this.clearLyricCache,
   });
 
-  // logic 单例（全 App 唯一实例，经 provider 或本对象获取）。
   final SearchLogic search;
   final PlaylistLogic playlist;
   final RankLogic rank;
@@ -107,44 +94,28 @@ class AssemblyResult {
   final ArtistLogic artist;
   final FmLogic fm;
 
-  /// 批5/批6 新增 logic 单例。
-  /// 批5：分类搜索（六类）。
   final SearchTypedLogic searchTyped;
-  /// 批6：歌单写（写后失效镜像缓存）。
   final PlaylistWriteLogic playlistWrite;
-  /// 批6：20028 验证门面。
   final VerificationLogic verification;
   final UserLogic user;
 
-  /// 批4-B 播放控制器（engine 可替换，批5-A 传 JustAudioEngine）。
   final PlayerController controller;
 
-  /// 注入 ProviderScope 的 overrides（playerProvider 等 overrideWithValue）。
   final List<Override> providerOverrides;
 
-  /// 已 install 的模块 id（装配清单留痕）。
   final List<String> moduleIds;
 
-  /// 组合清缓存钩子：歌词 LruCache.clear + PlaybackService 内存缓存兜底。
   final void Function() clearLyricCache;
 }
 
-// ───────────────────────── 装配总入口 ─────────────────────────
-
-/// 装配全部 surface 依赖。
-/// [engine]：批5-A 完成后传 JustAudioEngine；缺省 NullAudioEngine（占位可跑通）。
-/// [quality]：默认目标音质。
 Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     {AudioEngine? engine, String quality = '128'}) async {
-  // 步骤 1：缓存实例集中创建（各域独立 LruCache，不复用同一实例）。
   final searchCache = _newCache<String, SearchResult>(128, 'search');
   final playlistCache = _newCache<String, dynamic>(64, 'playlist');
-  // 导航参数共享 holder（歌手/专辑等二级页参数；模块间零直接 import）。
   final navState = SurfaceNavState();
   final rankCache = _newCache<String, dynamic>(64, 'rank');
   final lyricCache = _newCache<String, LyricResult>(32, 'lyrics');
 
-  // 步骤 2：logic 单例（每步独立 try/catch，失败留痕后 rethrow 由外层兜底）。
   final search = _step('SearchLogic', () => SearchLogic(
         client: deps.client, cache: searchCache,
       ))!;
@@ -174,7 +145,6 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         downloadStore: deps.downloadStore,
       ))!;
 
-  // 批1/批2 新增 logic 单例（评论 / MV / 收藏）。
   final commentCache = _newCache<String, CommentPage>(64, 'comment');
   final commentLogic = _step('CommentLogic', () => CommentLogic(
         client: deps.client, cache: commentCache,
@@ -195,7 +165,6 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         client: deps.client,
         settings: deps.settings,
         onAccountChanged: () {
-          // 账号切换：各域缓存按用户隔离失效（无跨层直连，仅调用已装配单例）。
           try {
             for (final invalidate in <void Function()>[
               () => search.invalidatePrefix(userid: deps.client.session.userid),
@@ -210,8 +179,6 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
               () => fmLogic.invalidatePrefix(userid: deps.client.session.userid),
               () => userLogic.invalidatePrefix(userid: deps.client.session.userid),
               () => translationLogic.invalidatePrefix(userid: deps.client.session.userid),
-              // 收藏镜像按键值存储无用户前缀：换号时清内存镜像并重载（换号后
-              // refreshCount 回填服务端收藏，避免上一账号收藏串号显示）。
               () => collectLogic.resetLocalMirror(),
             ]) {
               invalidate();
@@ -222,7 +189,6 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
           }
         },
       ))!;
-  // 批3/批4 内容发现 logic 单例。
   final recommendLogic = _step('RecommendLogic', () => RecommendLogic(
         client: deps.client,
         cache: _newCache<String, dynamic>(64, 'recommend'),
@@ -239,12 +205,10 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         client: deps.client,
         cache: _newCache<String, dynamic>(32, 'fm'),
       ))!;
-  // 批6-A 用户域（端点未实测，装配留痕供后续 UI 消费）。
   final userLogic = _step('UserLogic', () => UserLogic(
         client: deps.client,
         cache: _newCache<String, dynamic>(32, 'user'),
       ))!;
-  // 批6-C 装配总收口：六类分类搜索 / 歌单写操作 / 20028 验证门面。
   final searchTypedLogic = _step('SearchTypedLogic', () => SearchTypedLogic(
         client: deps.client,
         cache: _newCache<String, SearchResult>(64, 'search_typed'),
@@ -265,16 +229,12 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         settings: deps.settings,
       ))!;
 
-  // 步骤 3：PlayerController（批4-B）。
-  // engine 参数类型为批4-B AudioEngine 抽象：批5-A 未完成时传 NullAudioEngine，
-  // 完成后 app_root/installServices 调用处替换为 JustAudioEngine 即可（可替换点）。
   final controller = _step('PlayerController', () => PlayerController(
         resolver: playback.resolvePlaySource,
         engine: engine ?? NullAudioEngine(),
         quality: quality,
       ))!;
 
-  // 步骤 4：批4-C 三模块 Deps 组装 + 全部 6 模块 install。
   final modules = <dynamic>[];
   final built = _step('defaultModules', () => mod.defaultModules(
         mod.SurfaceDeps(
@@ -286,7 +246,6 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
           searchTyped: searchTypedLogic,
           onQualitySelected: (q) {
             try {
-              // 音质偏好持久化；播放器 quality 由装配参数注入，切歌后生效。
               deps.settings.setString('preferred_quality', toPref(q));
               Log.d(_tag, 'quality pref saved=${toPref(q)}');
             } catch (e, st) {
@@ -300,7 +259,6 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
                 Log.w(_tag, 'open comments skipped: navigator not ready');
                 return;
               }
-              // 评论页为已装配模块（id='comment'），经其 builder 打开（同层零 import）。
               final m = SurfaceRegistry.active(const LogicFacade())
                   .where((x) => x.id == 'comment')
                   .toList();

@@ -25,6 +25,10 @@ class PlaylistWriteLogic {
   final PlaylistDao _dao;
   final void Function()? _onChanged;
 
+  /// R3-C #3：Listid → list_ver 缓存（与 playlist_logic._listVerCache 同语义，
+  /// 独立实例）。写操作成功后 +1；后续写请求携带（端点默认 0 兼容）。
+  final Map<String, int> _listVerCache = <String, int>{};
+
   /// 写成功后失效本地镜像缓存（清镜像 + 通知回调）。
   Future<void> _invalidate(String listid) async {
     try {
@@ -87,20 +91,24 @@ class PlaylistWriteLogic {
   }
 
   /// 歌单删歌。写操作：一次提交，不重试；成功后失效镜像。
-  Future<bool> removeSongs(String listid, List<String> hashes) async {
+  /// 参数名为 fileIds：端点实测要求 album_audio_id（audio_id），非 hash。
+  Future<bool> removeSongs(String listid, List<String> fileIds) async {
     try {
       final id = listid.trim();
-      if (id.isEmpty || hashes.isEmpty) {
-        Log.w(_tag, 'removeSongs: empty listid or hashes');
+      if (id.isEmpty || fileIds.isEmpty) {
+        Log.w(_tag, 'removeSongs: empty listid or fileIds');
         return false;
       }
       if (_client.session.userid.isEmpty) {
         Log.w(_tag, 'removeSongs: not logged in');
         return false;
       }
-      final ok = await removeSongsFromPlaylist(_client, id, hashes);
+      final lv = _listVerCache[id] ?? 0;
+      final ok = await removeSongsFromPlaylist(_client, id, fileIds,
+          listVer: lv);
       if (ok) {
-        Log.d(_tag, 'removeSongs ok id=$id n=${hashes.length}');
+        _listVerCache[id] = lv + 1;
+        Log.d(_tag, 'removeSongs ok id=$id n=${fileIds.length} listVer=${lv + 1}');
         await _invalidate(id);
       }
       return ok;

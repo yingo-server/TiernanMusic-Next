@@ -154,8 +154,9 @@ Future<bool> deletePlaylist(KugouClient client, String listid) async {
 Future<List<Map<String, dynamic>>> addSongsToPlaylist(
   KugouClient client,
   String listid,
-  List<Map<String, String>> songs, // {name, hash, albumId, mixsongid, size, timelen, bitrate}
-) async {
+  List<Map<String, String>> songs, { // {name, hash, albumId, mixsongid, size, timelen, bitrate}
+  int listVer = 0, // R3-C #3：detail 缓存的 list_ver（实测字段，默认 0 兼容）
+}) async {
   try {
     final id = int.tryParse(listid.trim());
     if (id == null || songs.isEmpty) {
@@ -173,7 +174,7 @@ Future<List<Map<String, dynamic>>> addSongsToPlaylist(
       'userid': client.session.userid,
       'token': client.session.token,
       'listid': id,
-      'list_ver': 0,
+      'list_ver': listVer,
       'type': 0,
       'slow_upload': 1,
       'scene': 'false;null',
@@ -212,35 +213,47 @@ Future<List<Map<String, dynamic>>> addSongsToPlaylist(
 Future<bool> removeSongsFromPlaylist(
   KugouClient client,
   String listid,
-  List<String> hashes,
-) async {
+  List<String> fileIds, {
+  int listVer = 0,
+}) async {
   try {
     final id = listid.trim();
-    final hs = hashes
+    final hs = fileIds
         .map((h) => h.trim())
         .where((h) => h.isNotEmpty)
         .toList(growable: false);
     if (id.isEmpty || hs.isEmpty || hs.every((h) => h == '0')) {
-      Log.w(_tag, 'removeSongsFromPlaylist empty/invalid listid or fileids');
+      Log.w(_tag, 'removeSongsFromPlaylist empty/invalid listid or fileIds');
+      return false;
+    }
+    final entries = <Map<String, Object?>>[];
+    for (final h in hs) {
+      final fid = int.tryParse(h) ?? 0;
+      if (fid == 0) {
+        Log.w(_tag, 'removeSongsFromPlaylist skip invalid fileId=$h '
+            '(album_audio_id required)');
+        continue;
+      }
+      entries.add(<String, Object?>{'fileid': fid, 'number': 1});
+    }
+    if (entries.isEmpty) {
+      Log.w(_tag, 'removeSongsFromPlaylist all fileIds invalid');
       return false;
     }
     final res = await client.request(EndpointRegistry.playlistDelSongs,
         <String, Object?>{}, body: <String, Object?>{
       // 批N3-B 实测：data:[{fileid}]，fileid=album_audio_id（audio_id），
       // 非 hash；body {listid,userid,data,type:0,token,list_ver}。
-      // 调用方传入的 hashes 实为 fileid 字符串（album_audio_id）。
-      'data': [
-        for (final h in hs)
-          <String, Object?>{'fileid': int.tryParse(h) ?? 0, 'number': 1},
-      ],
+      'data': entries,
       'type': 0,
       'listid': id,
       'userid': client.session.userid,
       'token': client.session.token,
-      'list_ver': 0,
+      'list_ver': listVer,
     });
     final ok = _ok(res);
-    Log.d(_tag, 'removeSongsFromPlaylist id=$id n=${hs.length} ok=$ok');
+    Log.d(_tag, 'removeSongsFromPlaylist id=$id n=${entries.length} '
+        'listVer=$listVer ok=$ok');
     return ok;
   } catch (e, st) {
     Log.e(_tag, 'removeSongsFromPlaylist failed listid=$listid', e, st);

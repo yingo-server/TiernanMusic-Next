@@ -116,8 +116,10 @@ Future<PlaylistDetail> playlistDetail(
       creator: safeStr(first['list_create_username'],
           safeStr(first['username'])),
       tags: tags,
+      // 批N3-B 实测（API_FIELDS_TRUTH.md A2-2）：data[0].list_ver 存在。
+      listVer: safeInt(first['list_ver']),
     );
-    Log.d(_tag, 'playlistDetail id=$id name=${d.name}');
+    Log.d(_tag, 'playlistDetail id=$id name=${d.name} listVer=${d.listVer}');
     return d;
   } catch (e, st) {
     Log.e(_tag, 'playlistDetail failed id=$playlistId', e, st);

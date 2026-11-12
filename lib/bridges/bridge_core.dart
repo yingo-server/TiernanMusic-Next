@@ -8,6 +8,8 @@ export '../core/database/entities.dart'
     show SongRecord, PlaylistMeta, PlayHistoryEntry;
 export '../core/net/endpoints/models.dart'
     show SongBrief, SearchResult, PlaylistBrief, PlaylistDetail, TrackPage, LyricResult;
+// R3-C #3：PlaylistDetail 已含实测字段 listVer（models.dart re-export 自
+// playlist_models.dart），无需重复 export。
 // MV 域模型（批1-B · GAP #16）：ep.mv 端点强类型结果经 core 桥转出。
 export '../core/net/endpoints/mv_endpoints.dart'
     show MvBrief, MvQuality, MvPlayResult;

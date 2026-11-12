@@ -27,6 +27,11 @@ class PlaylistLogic {
   final PlaylistDao _dao;
   final LruCache<String, dynamic> _cache;
 
+  /// R3-C #3：Listid → list_ver 缓存。detail 成功后写入（get_list_info
+  /// data[0].list_ver 实测存在），写操作（add/removeSongs）作为请求体
+  /// list_ver 携带（端点默认 0 兼容旧调用）。
+  final Map<String, int> _listVerCache = <String, int>{};
+
   String _uid() => _client.session.userid;
 
   // ── 在线歌单 ──
@@ -77,7 +82,9 @@ class PlaylistLogic {
       }
       final d = await playlistDetail(_client, id);
       _cache.put(key, d);
-      Log.d(_tag, 'detail id=$id name=${d.name}');
+      // R3-C #3：detail 成功后记录 list_ver（实测字段，写操作回传）。
+      if (d.listVer > 0) { _listVerCache[id] = d.listVer; }
+      Log.d(_tag, 'detail id=$id name=${d.name} listVer=${d.listVer}');
       return d;
     } catch (e, st) {
       Log.e(_tag, 'detail failed id=$playlistId', e, st);
@@ -116,16 +123,20 @@ class PlaylistLogic {
   }
 
   /// 加歌到酷狗在线歌单（经 addSongsToPlaylist）；成功后失效该歌单 tracks 缓存。
+  /// list_ver：优先用 detail 缓存值，写成功后本地 +1（实测响应回执含递增
+  /// list_ver 时以回执为准——此处保守本地递增）。
   Future<bool> addSongsToKugouPlaylist(
       String playlistId, List<SongBrief> songs) async {
     try {
-      final ok = await addSongsToPlaylist(_client, playlistId, songs);
+      final id = playlistId.trim();
+      final lv = _listVerCache[id] ?? 0;
+      final ok = await addSongsToPlaylist(_client, id, songs, listVer: lv);
       if (ok) {
+        _listVerCache[id] = lv + 1;
         // 歌单内容变更：失效该 id 的 tracks 分页缓存 + detail 缓存（detail
         // 内含歌曲总数 count，不失效则 UI 首页显示旧总数）。按精确特殊 id
         // 匹配（数字 id 编码后与原文一致；同时匹配 detail 的 'id' 参数）。
-        final encId = Uri.encodeQueryComponent(playlistId.trim());
-        _cache.invalidateWhere((k) {
+        final encId = Uri.encodeQueryComponent(playlistId.trim());        _cache.invalidateWhere((k) {
           final info = parseKey('$k');
           return info.valid &&
               info.namespace == _ns &&
@@ -134,12 +145,25 @@ class PlaylistLogic {
               (info.query.contains('specialid=$encId') ||
                   info.query.contains('id=$encId'));
         });
-        Log.d(_tag, 'addSongsToKugouPlaylist ok id=$playlistId n=${songs.length}');
+        Log.d(_tag, 'addSongsToKugouPlaylist ok id=$id n=${songs.length} '
+            'listVer=${_listVerCache[id]}');
       }
       return ok;
     } catch (e, st) {
       Log.e(_tag, 'addSongsToKugouPlaylist failed id=$playlistId', e, st);
       return false;
+    }
+  }
+
+  /// R3-C #3：外部读取某歌单当前 list_ver（无缓存返回 0）。
+  int listVerOf(String listid) {
+    try {
+      final v = _listVerCache[listid.trim()] ?? 0;
+      Log.d(_tag, 'listVerOf id=$listid ver=$v');
+      return v;
+    } catch (e, st) {
+      Log.e(_tag, 'listVerOf failed id=$listid', e, st);
+      return 0;
     }
   }
 

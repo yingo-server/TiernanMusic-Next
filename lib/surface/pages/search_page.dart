@@ -1,11 +1,6 @@
-// L6 surface/pages · 搜索页（批F1-C 不可达端点降级接线）
-// /v6/search/complex 实测恒 152 Parameter Error（上游模块失效，
-// §A4-3'）→ 移除 v6 依赖。综合搜索降级为「歌曲(v3/song) + 歌单(v1/search/special)
-// + 专辑(v1/search/album)」三段并列：M3 SegmentedButton 切段、Card 行、
-// LinearProgressIndicator；三段独立 items/page/total/ScrollController/首屏缓存，
-// 网络缓存键为 L5 typed(type,keyword,page)，翻页互不串扰。不猜 v6 字段。
-// M3：颜色只取 colorScheme、文本只取 textTheme、动效走 TnMotionStaggered。
-// 依赖：只经 bridge_logic/bridge_core 取门面/模型；每函数 try/catch+Log 留痕。
+// L6 surface/pages · 搜索页（R3-C 拆出 SearchDetailPage → search_detail_page.dart）。
+// 综合三段并列（歌曲+歌单+专辑）：M3 SegmentedButton、独立缓存、翻页互不串扰。
+// M3：颜色/文本/动效走 colorScheme/textTheme/TnMotionStaggered。
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../bridges/bridge_logic.dart'
@@ -17,6 +12,7 @@ import '../theme/tn_motion.dart' show TnMotionStaggered;
 import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadL;
 import '../widgets/common_widgets.dart' show SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
+import 'search_detail_page.dart' show SearchDetailPage;
 const String _tag = 'surface.search';
 const int _kPageSize = 30;
 class SearchPageModule implements SurfaceModule {
@@ -270,7 +266,7 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
       if (id.isEmpty || id == '0') return;
       final nav = Navigator.of(context);
       nav.push(MaterialPageRoute<void>(
-        builder: (_) => _SearchDetailPage(
+        builder: (_) => SearchDetailPage(
           title: d.song.name, kind: type, refId: id,
           player: widget.player, typed: widget.typed),
       ));
@@ -502,104 +498,3 @@ class SongTileData {
   final SongBrief song;
 }
 
-/// 搜索结果歌单/专辑详情页（走查修复）：以命中标题检索曲目并整列表播放。
-class _SearchDetailPage extends StatefulWidget {
-  const _SearchDetailPage({
-    required this.title, required this.kind, required this.refId,
-    required this.player, this.typed,
-  });
-  final String title;
-  final SearchType kind;
-  final String refId;
-  final PlayerController player;
-  final SearchTypedLogic? typed;
-
-  @override
-  State<_SearchDetailPage> createState() => _SearchDetailPageState();
-}
-
-class _SearchDetailPageState extends State<_SearchDetailPage> {
-  List<SongBrief> _songs = const <SongBrief>[];
-  bool _loading = true;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
-  }
-
-  Future<void> _load() async {
-    try {
-      setState(() { _loading = true; _error = null; });
-      // 以命中行标题作关键词检索歌曲补曲目（不猜未实测的歌单/专辑曲目端点字段）。
-      final typed = widget.typed;
-      final List<SongBrief> songs = typed == null
-          ? const <SongBrief>[]
-          : (await typed.typed(SearchType.song, widget.title, 1)).items;
-      if (!mounted) return;
-      setState(() { _songs = songs; _loading = false; });
-      Log.d(_tag, 'detail loaded kind=${widget.kind.name} n=${songs.length}');
-    } catch (e, st) {
-      Log.e(_tag, 'detail load failed', e, st);
-      if (mounted) setState(() { _loading = false; _error = '$e'; });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    try {
-      return Scaffold(
-        appBar: TnAppBar(title: widget.title.isEmpty
-            ? (widget.kind == SearchType.special ? '歌单' : '专辑')
-            : widget.title),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? _msg(context, '加载失败：$_error')
-                : _songs.isEmpty
-                    ? _msg(context, '暂无曲目')
-                    : Column(children: <Widget>[
-                        Padding(
-                          padding: const EdgeInsets.all(tnPadL),
-                          child: FilledButton.icon(
-                            onPressed: () {
-                              try {
-                                widget.player.playAll(_songs, 0);
-                              } catch (e, st) {
-                                Log.e(_tag, 'playAll failed', e, st);
-                              }
-                            },
-                            icon: const Icon(Icons.play_arrow),
-                            label: Text('播放全部（${_songs.length}首）'),
-                          ),
-                        ),
-                        Expanded(child: ListView.builder(
-                          itemCount: _songs.length,
-                          itemBuilder: (ctx, i) {
-                            try {
-                              return SongTile(song: _songs[i], index: i + 1,
-                                onPlay: (s) {
-                                  try {
-                                    widget.player.playAll(_songs, i);
-                                  } catch (e, st) {
-                                    Log.e(_tag, 'tile play failed', e, st);
-                                  }
-                                });
-                            } catch (e, st) {
-                              Log.e(_tag, 'tile build failed', e, st);
-                              return const SizedBox.shrink();
-                            }
-                          })),
-                      ]),
-      );
-    } catch (e, st) {
-      Log.e(_tag, 'detail build crashed', e, st);
-      return const Scaffold(body: Center(child: Text('页面加载失败')));
-    }
-  }
-
-  Widget _msg(BuildContext ctx, String text) => Center(
-      child: Text(text, style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-          color: Theme.of(ctx).colorScheme.onSurfaceVariant)));
-}

@@ -62,6 +62,19 @@ class DownloadStore {
   File get _indexFile =>
       File('${_downloadsDir.path}${Platform.pathSeparator}index.json');
 
+  /// R3-C #4：downloads 目录绝对路径（download_manager 直接取用，
+  /// 不再从索引第一条记录的 relativePath 猜目录）。
+  String get targetDir {
+    try {
+      final p = _downloadsDir.path;
+      Log.d('dlstore', 'targetDir=$p');
+      return p;
+    } catch (e, st) {
+      Log.e('dlstore', 'targetDir failed', e, st);
+      return '';
+    }
+  }
+
   // ─── 索引 ───
 
   /// 加载索引（内存缓存，进程内一次；forceReload 可强制重读）。

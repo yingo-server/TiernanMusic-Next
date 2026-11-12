@@ -133,6 +133,7 @@ Future<CollectResult> collectSongByHash(
 }
 
 /// 取消收藏：从「我喜欢」歌单删除（fileid = album_audio_id，实测契约）。
+/// 形参沿用 hash 兼容旧调用，albumAudioId 传入时优先作为 fileIds。
 Future<CollectResult> cancelCollectByHash(
   KugouClient client,
   String hash, {
@@ -150,8 +151,7 @@ Future<CollectResult> cancelCollectByHash(
       return const CollectResult(ok: false, needsLogin: true);
     }
     final ok = await removeSongsFromPlaylist(
-        client, listid, <String>[albumAudioId.isEmpty ? h : albumAudioId]);
-    Log.d(_tag, 'cancelCollectByHash via 我喜欢 listid=$listid ok=$ok');
+        client, listid, <String>[albumAudioId.isEmpty ? h : albumAudioId]);    Log.d(_tag, 'cancelCollectByHash via 我喜欢 listid=$listid ok=$ok');
     return CollectResult(ok: ok, count: 0);
   } catch (e, st) {
     Log.e(_tag, 'cancelCollectByHash failed hash=$hash', e, st);
