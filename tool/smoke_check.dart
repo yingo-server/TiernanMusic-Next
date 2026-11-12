@@ -7,7 +7,7 @@
 //      - logic/ 出现任何 'package:flutter' → 违规（logic 层零 UI 依赖）
 //      - 强约束六五规则（与 tool/layer_audit.py 一致）：
 //        每层只许 import 同层、SDK(dart:*)、相邻桥（lib/bridges/ 下五桥之一）、
-//        L6 额外允许 package:flutter*/miuix/riverpod/just_audio/audio_service/path_provider；
+//        L6 额外允许 package:flutter*/riverpod/just_audio/audio_service/path_provider；
 //        跨层 import 非桥 .dart 文件 → VIOLATION（含 init→surface、core→kernel、
 //        logic→core、surface→kernel 等一切直连，白名单全部删除）。
 //   c) 桥文件唯一性：lib/bridges/*.dart 不得存在影子目录（lib/surface/bridges、
@@ -162,7 +162,7 @@ const _layerAllowedBridges = <int, Set<String>>{
   6: {'bridge_surface', 'bridge_logic', 'bridge_core'},
 };
 const _l6Extra = [
-  'package:flutter', 'package:miuix', 'package:riverpod',
+  'package:flutter', 'package:riverpod',
   'package:just_audio', 'package:audio_service', 'package:path_provider',
 ];
 
@@ -257,7 +257,7 @@ void _checkForbiddenImports(String rel, String src) {
 
     // 第三方包：L6 白名单 + L1 装配基础包 + L4 isar
     const l1Extra = ['package:flutter/material.dart',
-        'package:flutter/services.dart', 'package:flutter_miuix/miuix.dart',
+        'package:flutter/services.dart',
         'package:path_provider/path_provider.dart'];
     const l4Extra = ['package:isar/isar.dart'];
     final allowed = (lvl == 6 && _l6Extra.any((p) => imp.startsWith(p))) ||

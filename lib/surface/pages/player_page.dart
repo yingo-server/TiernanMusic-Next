@@ -424,7 +424,9 @@ class _PlayerPageBody extends ConsumerWidget {
                     Padding(
                       padding: const EdgeInsets.all(tnPadS),
                       child: Text(p.lastError,
-                          style: const TextStyle(color: Colors.red, fontSize: 12)),
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                              fontSize: 12)),
                     ),
                 ]),
               ),

@@ -5,7 +5,7 @@
 五桥唯一存在于 lib/bridges/：bridge_boot / bridge_kernel / bridge_core / bridge_logic / bridge_surface。
 
 允许：同层 import、SDK(dart:*)、五桥中相邻桥、L1 的装配桥(bridge_boot/bridge_surface)
-       + L1 的 flutter 基础包(main 装配必需)、L6 的 flutter/miuix/riverpod/just_audio/
+       + L1 的 flutter 基础包(main 装配必需)、L6 的 flutter/riverpod/just_audio/
        audio_service/path_provider、lib/bridges 自身对其下层实现文件的 import。
 拒绝：跨层 import 非桥 .dart（含 init→surface、core→kernel、logic→core、surface→kernel）。
 拒绝：lib/bridges 之外的影子 bridges/ 目录含 .dart；五桥缺失/多余；
@@ -43,7 +43,7 @@ LAYER_ALLOWED_BRIDGES = {
 L1_EXTRA = ('package:flutter/material.dart', 'package:flutter/services.dart',
             'package:path_provider/path_provider.dart')
 L6_EXTRA = ('package:flutter', 'package:flutter_riverpod',
-            'package:miuix', 'package:riverpod', 'package:just_audio',
+            'package:riverpod', 'package:just_audio',
             'package:audio_service', 'package:path_provider',
             'package:flutter_localizations')
 # L4 core 数据库域必需的 isar（存储/数据库四域之一）

@@ -237,7 +237,10 @@ class _MvPageBodyState extends State<_MvPageBody> {
                                   child: _loading
                                       ? const CircularProgressIndicator()
                                       : Icon(Icons.play_circle_outline,
-                                          size: 64, color: Colors.white
+                                          size: 64,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onPrimary
                                               .withValues(alpha: 0.9)),
                                 ),
                               ),
