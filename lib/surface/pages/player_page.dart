@@ -213,6 +213,42 @@ class _PlayerPageBody extends ConsumerWidget {
     }
   }
 
+  /// 弹出倍速选择（0.5/1.0/1.5/2.0，ChoiceChip 选中态）。
+  void _showSpeedSheet(BuildContext context, WidgetRef ref) {
+    try {
+      const speeds = <double>[0.5, 1.0, 1.5, 2.0];
+      showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(tnPadL),
+            child: Wrap(
+              spacing: tnPadS,
+              children: <Widget>[
+                for (final s in speeds)
+                  ChoiceChip(
+                    label: Text('${s.toStringAsFixed(1)}x'),
+                    selected: s == ref.read(playerProvider.notifier).speed,
+                    onSelected: (_) {
+                      try {
+                        ref.read(playerProvider.notifier).setSpeed(s);
+                      } catch (e, st) {
+                        Log.e(_tag, 'setSpeed failed $s', e, st);
+                      }
+                      Navigator.of(ctx).pop();
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e, st) {
+      Log.e(_tag, 'showSpeedSheet failed', e, st);
+    }
+  }
+
   IconData _modeIcon(PlayMode m) {    try {
       switch (m) {
         case PlayMode.sequence:

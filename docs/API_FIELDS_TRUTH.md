@@ -599,3 +599,24 @@
 - 匿名态对写端点（add_list/add_song/delete_songs）未逐个跑：body 依赖
   userid/token，匿名请求缺登录态本就是 20010/20006 族，实证价值有限。
 - `pl_cache.json` 收藏他人歌单（add_list type≠0）形态未测：本批仅测 type=0 自建。
+
+### A6-7 · 删歌单加密契约落地（批F1-B，2026-11-12）
+- **上游契约真相（已实现）**：知识来源 KuGouMusicApi `util/crypto.js` +
+  `module/playlist_del.js`（API 参考项目，非归档 Flutter 项目）：
+  - `p = rsaEncrypt2(jsonEncode({aes, uid, token})).toUpperCase()`：
+    RSAES-PKCS1-V1_5（EME-PKCS1-v1_5 填充，非零随机 PS ≥8 字节），
+    1024 位公钥 publicRasKey，e=65537，forge bytesToHex → 大写。
+  - AES：`playlistAesEncrypt({listid:Number, total_ver:0, type:1})`：
+    key=randomString(6) 小写字母数字；encryptKey=md5(key)[0,16)，
+    iv=md5(key)[16,32)；AES-128-CBC PKCS7；body = Base64(ciphertext)。
+  - query：clienttime(秒)/key=signParamsKey(秒)/last_area='gztx'/clientver/
+    appid/last_time(秒)/p —— 多参不缺参。
+  - 响应为 AES 密文（Base64），同 key 派生解密后判 status。
+  - 签名：android 默认参数 + 上述 query + body 原文（AES 密文字符串）入签。
+- **实现**：lib/core/net/crypto_rsa.dart（新建，162 行）：
+  rsaEncrypt2（PKCS1 v1.5 填充 + 复用 crypto_extra.dart BigIntL/RsaRaw 模幂）、
+  playlistAesEncrypt/playlistAesDecrypt（复用 AesCbc + signing.dart md5Hex）。
+  KugouClient.request 新增 `rawBody`（字符串原样入签+发送）与
+  `_raw_text` 非 JSON 响应回退；deletePlaylist（playlist_write_endpoints.dart）
+  按上述契约构造 p/密文 body，失败仍 false + Log 留痕。
+- **待实测**：三态验证 20010 是否消除（本批不验证不提交）。

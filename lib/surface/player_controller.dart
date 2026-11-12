@@ -13,7 +13,7 @@ import '../bridges/bridge_logic.dart'
     show PlaySource, QueueState, PlayerState, PlayerStatus, PlayMode,
         PlaybackAction, StartLoad, Playing, Paused, Progress, Completed,
         ErrorAction, SeekTo, QueueJump, SetVolume, Resume, Stop,
-        playbackReducer;
+        SetSpeed, playbackReducer;
 
 const String _tag = 'surface.player';
 
@@ -82,13 +82,23 @@ class NullAudioEngine implements AudioEngine {
 
 /// 不可变组合快照（StateNotifier 单状态约束）。
 class PlayerSnapshot {
-  const PlayerSnapshot({this.queue = const QueueState(), this.player = const PlayerState()});
+  const PlayerSnapshot({
+    this.queue = const QueueState(),
+    this.player = const PlayerState(),
+    this.speed = 1.0,
+  });
 
   final QueueState queue;
   final PlayerState player;
 
-  PlayerSnapshot copyWith({QueueState? queue, PlayerState? player}) =>
-      PlayerSnapshot(queue: queue ?? this.queue, player: player ?? this.player);
+  /// 倍速（0.5~2.0，UI 偏好维度；默认 1.0）。
+  final double speed;
+
+  PlayerSnapshot copyWith({QueueState? queue, PlayerState? player, double? speed}) =>
+      PlayerSnapshot(
+          queue: queue ?? this.queue,
+          player: player ?? this.player,
+          speed: speed ?? this.speed);
 }
 
 // ── 控制器 ──
@@ -242,22 +252,9 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
     }
   }
 
-  /// 音量 0.0~1.0。
-  Future<void> setVolume(double volume) async {
-    try {
-      _dispatch(SetVolume(volume));
-      await _engine.setVolume(volume);
-    } catch (e, st) {
-      _e('setVolume failed $volume', e, st);
-    }
-  }
-
-  /// 当前倍速（0.5~2.0，默认 1.0）。speed 属 UI 偏好而非播放队列状态，
-  /// 不入 PlayerState，以 getter 形式暴露（快照外独立维度）。
-  double get speed => _speed;
-
   /// 倍速 0.5~2.0：越界 clamp + Log.w 留痕；经引擎 setSpeed 生效，
   /// 并持久化到 KeyValueSettings('preferred_speed')（经 bridge_core 门面）。
+  /// speed 属 UI 偏好不入 PlayerState，以 getter 暴露（snap.speed）。
   Future<void> setSpeed(double speed) async {
     try {
       var s = speed.isNaN ? 1.0 : speed;
@@ -268,6 +265,7 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
         s = s.clamp(0.5, 2.0);
       }
       _speed = s;
+      _dispatch(SetSpeed(s));
       await _engine.setSpeed(s);
       try {
         _settings?.setDouble('preferred_speed', s);
@@ -279,6 +277,19 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
       _e('setSpeed failed $speed', e, st);
     }
   }
+
+  /// 音量 0.0~1.0。
+  Future<void> setVolume(double volume) async {
+    try {
+      _dispatch(SetVolume(volume));
+      await _engine.setVolume(volume);
+    } catch (e, st) {
+      _e('setVolume failed $volume', e, st);
+    }
+  }
+
+  /// 当前倍速（0.5~2.0，默认 1.0，含 preferred_speed 恢复值）。
+  double get speed => _speed;
 
   // ── 内部：起播当前曲 ──
 
@@ -350,7 +361,7 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
   void _dispatch(PlaybackAction action) {
     try {
       final player = playbackReducer(state.player, action);
-      state = state.copyWith(player: player);
+      state = state.copyWith(player: player, speed: _speed);
       _d('dispatch ${action.runtimeType}');
     } catch (e, st) {
       _e('dispatch ${action.runtimeType} failed', e, st);

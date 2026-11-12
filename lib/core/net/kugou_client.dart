@@ -96,8 +96,10 @@ class EndpointRegistry {
       id: 'playlist_create', path: '/cloudlist.service/v5/add_list',
       method: 'POST', omitSrcappid: true);
   // 删歌单：POST /v2/delete_list + x-router cloudlist.service.kugou.com。
-  // 加密契约（p=rsaEncrypt2 + AES body）未留样，明文兜底实测 error_code 20010
-  // 「need param p」——诚实失败，不猜加密。
+  // 批F1-B：加密契约据 KuGouMusicApi util/crypto.js + module/playlist_del.js
+  // 实现于 crypto_rsa.dart / playlist_write_endpoints.deletePlaylist：
+  // p=rsaEncrypt2({aes,uid,token}) PKCS1-V1_5 + body=AES-128-CBC Base64
+  // {listid,total_ver,type:1}（待实测验证 20010 是否消除）。
   static const playlistDelete = Endpoint(
       id: 'playlist_delete', path: '/v2/delete_list', method: 'POST',
       router: 'cloudlist.service.kugou.com', omitSrcappid: true);
@@ -366,14 +368,19 @@ class KugouClient {
     ..connectionTimeout = const Duration(seconds: 10);
 
   /// 执行端点请求。params：查询参数；body：POST JSON 体（参与签名）。
+  /// rawBody（批F1-B）：非 null 时原样作为请求体发送并参与 android 签名
+  /// （出处 KuGouMusicApi util/request.js：data 为字符串时直接签名/发送，
+  /// delete_list 的 AES Base64 密文即此类）；响应非 JSON 时回退返回
+  /// {'_raw_text': text} 交由端点层解密，不抛形状异常。
   Future<Map<String, dynamic>> request(
     Endpoint ep,
     Map<String, Object?> params, {
     Map<String, Object?> body = const {},
+    String? rawBody,
   }) async {
     final p = Map<String, Object?>.from(params);
     final bodyStr =
-        ep.method == 'POST' ? jsonEncode(body) : '';
+        rawBody ?? (ep.method == 'POST' ? jsonEncode(body) : '');
     if (!ep.clearDefaultParams) {
       p..putIfAbsent('dfid', () => session.dfid)
         ..putIfAbsent('uuid', () => '-')
@@ -440,6 +447,8 @@ class KugouClient {
     }
     final decoded = jsonDecode(text);
     if (decoded is Map<String, dynamic>) return decoded;
+    // rawBody 端点（加密响应如 delete_list）回退原文，由端点层解密。
+    if (rawBody != null) return <String, dynamic>{'_raw_text': text};
     // 实测（FINDINGS.md §1）：play_url 等端点成功时顶层即数据，
     // 调用方按端点自行取 url/status/priv_status 等顶层字段。
     throw KugouApiException(res.statusCode, 'unexpected response shape');

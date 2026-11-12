@@ -5,7 +5,9 @@
 // 质量原则：写操作禁止回退/重试（防重复提交，PARITY_NOTES.md）。
 // 字段容错（listid/status/error_code）+ try/catch + Log('ep.playlist.write')。
 import '../../../bridges/bridge_kernel.dart' show Log;
+import '../crypto_rsa.dart' show playlistAesEncrypt, playlistAesDecrypt, rsaEncrypt2;
 import '../kugou_client.dart';
+import '../signing.dart' show KugouSign;
 import 'models.dart';
 
 const String _tag = 'ep.playlist.write';
@@ -70,32 +72,72 @@ Future<String?> createPlaylist(KugouClient client, String name) async {
   }
 }
 
-/// 删歌单（POST /v2/del_playlist，待三态实测）。写操作：不重试。
+/// 删歌单（POST /v2/delete_list + x-router cloudlist.service.kugou.com）。
+/// 真实加密契约（出处 KuGouMusicApi util/crypto.js + module/playlist_del.js，
+/// 批F1-B 落地；实测 20010 "need param p" 后按上游契约实现）：
+///   dataMap = {listid:Number, total_ver:0, type:1}（明文 body 为此 JSON 时
+///     网关不识别，body 必须是 AES Base64 密文）；
+///   aes = playlistAesEncrypt(dataMap)：key=randomString(6) 小写，
+///     encryptKey=md5(key)[0,16)，iv=md5(key)[16,32)，AES-128-CBC PKCS7，
+///     body = Base64(ciphertext)；
+///   p = rsaEncrypt2(jsonEncode({aes:key, uid:userid, token})).toUpperCase()
+///     （RSAES-PKCS1-V1_5，1024 位公钥）；
+///   query 含 p + key=signParamsKey(clienttime 秒) + clientver/appid/
+///     clienttime/last_time/last_area='gztx'（多参不缺参）。
+/// 响应为 AES 密文（Base64），同 key 派生解密。写操作不重试，失败 false + Log。
 Future<bool> deletePlaylist(KugouClient client, String listid) async {
   try {
-    final id = listid.trim();
-    if (id.isEmpty) {
-      Log.w(_tag, 'deletePlaylist empty listid');
+    final id = int.tryParse(listid.trim());
+    final uid = int.tryParse(client.session.userid.trim());
+    final token = client.session.token;
+    if (id == null || uid == null || token.isEmpty) {
+      Log.w(_tag, 'deletePlaylist missing listid/userid/token');
       return false;
     }
-    // ENDPOINT_TRUTH.md §4 playlist_del.js：query p/key/last_time/last_area 等
-    // AES/RSA 加密契约未留样（本仓库无 playlistAesDecrypt/rsaEncrypt2）；
-    // listid/total_ver/type 明文兜底发送，写操作不重试，失败留痕。
-    Log.w(_tag, 'deletePlaylist encrypted p/key contract unmeasured, '
-        'plain fallback (no retry)');
-    final res = await client.request(EndpointRegistry.playlistDelete,
-        <String, Object?>{
-      'last_area': 'gztx',
-      'last_time': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-    }, body: <String, Object?>{
+    final clienttime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final dataMap = <String, Object?>{
       'listid': id,
       'total_ver': 0,
       'type': 1,
-      'userid': client.session.userid,
-      'token': client.session.token,
-    });
-    final ok = _ok(res);
-    Log.d(_tag, 'deletePlaylist id=$id ok=$ok');
+    };
+    final aes = playlistAesEncrypt(dataMap);
+    final p = rsaEncrypt2(jsonEncode(<String, Object?>{
+      'aes': aes.key,
+      'uid': uid,
+      'token': token,
+    }));
+    final res = await client.request(EndpointRegistry.playlistDelete,
+        <String, Object?>{
+      // module/playlist_del.js paramsMap：clienttime/key/last_area/clientver/
+      // appid/last_time/p（key=signParamsKey，多参不缺参）。
+      'clienttime': clienttime,
+      'key': KugouSign.signParamsKey('$clienttime'),
+      'last_area': 'gztx',
+      'clientver': KugouSign.clientver,
+      'appid': KugouSign.appid,
+      'last_time': clienttime,
+      'p': p,
+    }, rawBody: aes.cipherBase64);
+    // 响应为 AES 密文（非 JSON → _raw_text），同 key 派生解密后判 status。
+    final rawText = '${res['_raw_text'] ?? ''}';
+    if (rawText.isEmpty) {
+      // 网关偶发直接回 JSON：按通用 _ok 判定。
+      final ok = _ok(res);
+      Log.d(_tag, 'deletePlaylist id=$listid plain-json ok=$ok');
+      return ok;
+    }
+    final text = playlistAesDecrypt(rawText, aes.key);
+    Map<String, dynamic> body;
+    try {
+      final dec = jsonDecode(text);
+      body = dec is Map<String, dynamic>
+          ? dec
+          : <String, dynamic>{'_raw': text};
+    } catch (_) {
+      body = <String, dynamic>{'_raw': text};
+    }
+    final ok = _ok(body);
+    Log.d(_tag, 'deletePlaylist id=$listid decrypted ok=$ok');
     return ok;
   } catch (e, st) {
     Log.e(_tag, 'deletePlaylist failed listid=$listid', e, st);
