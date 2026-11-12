@@ -173,19 +173,17 @@ jobs:
             GRADLE_FILE=android/app/build.gradle
           fi
           if [ "${GRADLE_FILE##*.}" = "kts" ]; then
+            # KTS 作用域里 java.* 全限定名会被误解析；直接把 Secret 值内插，避免任何 import。
             {
               echo ''
               echo '// Persistent release signing (injected by CI).'
-              echo 'val ksProps = java.util.Properties()'
-              echo 'val ksFile = rootProject.file("key.properties")'
-              echo 'if (ksFile.exists()) ksProps.load(java.io.FileInputStream(ksFile))'
               echo 'android {'
               echo '  signingConfigs {'
               echo '    create("release") {'
-              echo '      storeFile = file(ksProps.getProperty("storeFile") ?: "release.keystore")'
-              echo '      storePassword = ksProps.getProperty("storePassword")'
-              echo '      keyAlias = ksProps.getProperty("keyAlias") ?: "chat-ai"'
-              echo '      keyPassword = ksProps.getProperty("keyPassword")'
+              echo '      storeFile = file("release.keystore")'
+              echo "      storePassword = \"$KS_PW\""
+              echo '      keyAlias = "chat-ai"'
+              echo "      keyPassword = \"$KS_PW\""
               echo '    }'
               echo '  }'
               echo '  buildTypes { getByName("release") { signingConfig = signingConfigs.getByName("release") } }'
