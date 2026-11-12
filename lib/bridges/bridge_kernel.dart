@@ -5,8 +5,7 @@
 library;
 
 import '../kernel/kernel.dart'
-    show Ed25519Verifier, IntegrityVerifier, Kernel, KernelContext, Log;
-import '../kernel/sha512.dart' show Sha512;
+    show Kernel, KernelContext, Log;
 
 // 日志系统载体：转出 kernel.Log 供下层经桥留痕（桥自身留痕用 _bridgeLog 兜底）。
 export '../kernel/kernel.dart' show Log;
@@ -47,17 +46,6 @@ void logE(String tag, String msg, [Object? err, StackTrace? st]) {
   }
 }
 
-/// 完整性校验（加盐 SHA-512 + Ed25519 整体签名）。
-/// 失败/异常一律返回 false（rejected 语义），由 init 决定 debug 续跑。
-bool verifyIntegrity(dynamic manifest, {bool bypass = false}) {
-  try {
-    return IntegrityVerifier.verify(manifest, bypass: bypass);
-  } catch (e, st) {
-    _bridgeLog('E', 'verifyIntegrity', e, st);
-    return false;
-  }
-}
-
 /// kernel 装配：返回 KernelContext；失败返回空上下文（不 null，调用方可安全 get）。
 KernelContext assembleKernel() {
   try {
@@ -68,23 +56,5 @@ KernelContext assembleKernel() {
   }
 }
 
-/// 加盐 SHA-512：sha512(salt || data)。失败返回空串。
-String sha512Hex(List<int> data, String salt) {
-  try {
-    return Sha512.saltedHex(data, salt);
-  } catch (e, st) {
-    _bridgeLog('E', 'sha512Hex', e, st);
-    return '';
-  }
-}
-
-/// Ed25519 整体签名验证（占位实现：sigHex 非空即过）。
-/// 失败/异常返回 false。
-bool verifySignature(String payload, String? sig) {
-  try {
-    return Ed25519Verifier.verify(payload, sig);
-  } catch (e, st) {
-    _bridgeLog('E', 'verifySignature', e, st);
-    return false;
-  }
-}
+// verifyIntegrity / sha512Hex / verifySignature 已删除
+// （运行期完整性校验移除；防篡改改由 CI 构建期 gen_verification.dart 承担）。

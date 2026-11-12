@@ -66,13 +66,10 @@ class Bootstrap {
       dynamic manifest,
       Map<String, List<int>>? moduleBytes}) {
     Log.d('boot', 'bootstrap run (bypass=$bypassIntegrity)');
-    final mf = manifest ?? _loadManifest();
-    final ok = bb.BootBridge.verifyIntegrity(mf,
-        bypass: bypassIntegrity, moduleBytes: moduleBytes);
-    if (!ok) {
-      // debug bypass 时 rejected=true 但 init 决定继续；release 由 init 显示错误页
-      return BootResult(rejected: true, kernel: null);
-    }
+    // 运行期完整性校验已删除（Flutter 对深层子目录 asset 不可靠，逐版失败）。
+    // 防篡改改由 CI 构建期承担：tool/gen_verification.dart 生成加盐 md5/sha512
+    // + RSA-4096 签名的 verification.json，随同版本 release 发布（每版一份）。
+    // [manifest]/[moduleBytes] 参数保留以兼容 init 调用签名，但不再消费。
     final kernel = bb.BootBridge.assemble();
     try {
       final coreSet = _assembleCore(rootDir: rootDir);

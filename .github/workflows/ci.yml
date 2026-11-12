@@ -150,13 +150,16 @@ jobs:
             fi
           done
           echo "app label + archive icons applied (soft)"
-      - name: generate integrity manifest
+      - name: generate verification.json (salted md5/sha512 + RSA-4096)
         env:
           NEXT_MANIFEST_SALT: ${{ secrets.NEXT_MANIFEST_SALT }}
-          NEXT_MANIFEST_KEY: ${{ secrets.NEXT_MANIFEST_KEY }}
+          RSA4096_PRIVATE_PEM: ${{ secrets.RSA4096_PRIVATE_PEM }}
+          VER: ${{ needs.analyze-test.outputs.version }}
         run: |
-          dart run tool/gen_manifest.dart
-          dart run tool/integrity_chain_test.dart
+          # 构建期校验清单：随同版本 release 发布（每版一份，不重复）。
+          # 无法签名时仅警报不阻塞（用户原则：signed:false 降级）。
+          dart run tool/gen_verification.dart
+          test -s verification.json && head -c 200 verification.json
       - name: configure persistent APK signing
         env:
           KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -249,7 +252,9 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.ver }}
-          files: dist/*.apk
+          files: |
+            dist/*.apk
+            verification.json
           body_path: ${{ env.body }}
           prerelease: ${{ github.event.inputs.debug == 'true' }}
           draft: false

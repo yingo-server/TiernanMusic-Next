@@ -1,0 +1,422 @@
+{
+  "algo": "salted_md5+salted_sha512+rsa4096_sig",
+  "salt": "local_sim",
+  "signed": true,
+  "signature": "IkYZIAqBKfKI84m0J79B9gvyPRLwas0birbWe7gdH7CSbeZ0iYH9aLirnvngTRwhMmTCkYjxhCiqhPEDZjwTBfG93hJG7lF2LNQS53hkxlDxfokG5kMW+KGzW54/NYOw7DxquAgQMM5VQkfP6M1wW1ZiJaftvVeqVUEJJdsy3TkVvtXXd6etAThlDvxqd9VpU+rgmwfQS0EjS81tjGBar1mVFGdLzxNGP6IrAiDAqFnQWN/sCIxPYKG79qV3c2L7FRZn7DBPlnTDVR71/jbN9kcOeKgMSlhnC5tLdu6J30yV06puRTAJTRIvrqlVJWj+CyVVG6cj+OmnLKzGdWr1x+l8X8qOCSr9/fuaNoM25OBTM024zWdB3gleso/DXj8qsbUD5NBSQn7VaoIFHxIjvvlXz+NPbJkGaRo+FReBO7/iubzeiQdhSAu+YbTI4SHrAaoNBX5nuclWGATxflCN62DZ4zRzbrUpO4S4Tdb+VmUTFSW3aJWL8o2N+6f+DSwDc0qRCMVClqHF7lmlEY1Z8Iq79dBzOTbo1GL/Fbrbi4koWRXQ1BhEAL0nje2f8QF/ihSi7IUHXxpH8UnfC83G8UdMu0c1BWXtMxrNj0MQcHEHqyp2oEHXrSeZ9lNRqnSHVpGJX9oXfwt03QMMoMNdDQA2ypA4bpELulTd9FEidN4=",
+  "signature_algo": "RSA-4096/SHA-512",
+  "version": "26.11.12.15",
+  "modules": {
+    "lib/bootloader/bootloader.dart": {
+      "md5": "5a688d67edb37d8161050c9d89fe5e24",
+      "sha512": "bea0c3c00699e31b7496294e13bb4c9bd90f7321e82966d0e7837392c66cc878297df6e55ac467c3812a1b70c9f3b1c3484aa5464b431a9518bb2896100d872a"
+    },
+    "lib/bridges/bridge_boot.dart": {
+      "md5": "4b9bf9e241df6afc9a04147308602eb1",
+      "sha512": "0537699bdaf6e6c274d28bca98325901c76c0431b55fd3694fd828dd032702793f634f03a7acd67519d697013e024b3112e8c4d4e475eddc60903a34ae6d91d5"
+    },
+    "lib/bridges/bridge_core.dart": {
+      "md5": "cba5d92d8845bbebafd32731e7ab88bc",
+      "sha512": "ac7b5dce92cab97e4e7614c9832e97ec05f4cbbd82e2d75a4db636b0df3e452243a5bd65b48a673026d3a8e2545c78dd2f782bd8a03a55334c7d4c35fc0b2c7b"
+    },
+    "lib/bridges/bridge_kernel.dart": {
+      "md5": "e85f7ba4ac7ac9d86a573918993f25e6",
+      "sha512": "b9cf1209ecb554c7f9a2f793219f1f0979a867ca07b33e8348ab7ccdd405a5e3fd372d19f8a54e4200237eb5b9feb427a09efa85416898a70ee1f112e51451a9"
+    },
+    "lib/bridges/bridge_logic.dart": {
+      "md5": "fcf3389b779e633797e8cb05cea8d0c1",
+      "sha512": "8b4e37d9cf11c847c76feccada790341ca21163a5f0033fe5b36651828390302ad9a6b6ffb2f0100eea82a4407cf428e2c4c68a2c92211880a770f42ccead13e"
+    },
+    "lib/bridges/bridge_surface.dart": {
+      "md5": "89248af26ad1515d7613a710ef9e2263",
+      "sha512": "44c86609c9189e26733075d3a5fcd07cd6c99a76f6055539bad7756506d8e091379dfd6945bbd9eb899cf261c94fafac62be598a7fa72c1bccd2231f6eec1e3a"
+    },
+    "lib/core/database/dao.dart": {
+      "md5": "12727d1fbe0e816b66e39b7f718fbb06",
+      "sha512": "954b68993ace40de6a91d8a1d3e1f94eb3093e628798ab60f8cd10db2d0f17b8c457f418bd96946c5e3901dc8ee5e253042074f8b300910a2111a27984668f20"
+    },
+    "lib/core/database/db.dart": {
+      "md5": "1b49c5e0eaf5fcbc2868e7784390f886",
+      "sha512": "9122084188903bb1bdb1058dfbf6e77f34604b9493150b067dbd3ff59b866f19bfbaaf11fb9e501b91e035987f62f21a1ffc912e77e117ba5d3183d40ad4e1a2"
+    },
+    "lib/core/database/entities.dart": {
+      "md5": "c8d2b01d20140d6adea3225358f399a7",
+      "sha512": "6bd839a557f056716f3f558d1a72de6ba2bfac6566b91e81a069ebdecf45bccd3cd7468447fcae020935a2fea16c0c3536f6a03b2f096347b0fd0316ca4ee0dc"
+    },
+    "lib/core/memory/cache_keys.dart": {
+      "md5": "9b037c1a7287d16af3163b8a87ca5f36",
+      "sha512": "633db2c864431bd11abc83faca8e953a5f1dea1647de41bfe288a70d26ee69a3329ef4c3fc5b17815f16f990966cf06fe9f5c87cef7e812d6aa5d82fecc52910"
+    },
+    "lib/core/memory/lru_cache.dart": {
+      "md5": "cd908d58cb1a15ef868d88ffca6c3ee7",
+      "sha512": "2df28b1ea9edba9cb8c8e2364e8c43b71028db4caaaf4ab459d5c8bc9585dfed1a99cebfea34371178d851f9408663ff400bf58c6cfa5acdc5db6987d3078489"
+    },
+    "lib/core/net/crypto_extra.dart": {
+      "md5": "c53172c8a7e0ee08445d13800e360091",
+      "sha512": "5a681d59420c8a43d34d3b0369190737dbd32bad7598605c0077b4bae48902aba32624cfb9af7dfde4056600ac5d7780ea6b1d06578aa3338126b4ca0dc17857"
+    },
+    "lib/core/net/crypto_rsa.dart": {
+      "md5": "50d701b30f916958eb3b75680118a9b6",
+      "sha512": "54b557667b7171db042d2acbf36c7b3822b8d1487c1da285a35164177ff9efec5282625b872c70d5924f50af254704b0f3665ac45558b85b95deb9ede47437c1"
+    },
+    "lib/core/net/database_bridge.dart": {
+      "md5": "75e97434d2e7cad6c230c8c9bff670f3",
+      "sha512": "274d10c444faca6dc7bc9a7ca45e0c0fdf9d9675e55293733fd59de3d9daba2923b85301602f5d9bba1e7b3210300484827c5083c3a8fba9989a25b723a34c67"
+    },
+    "lib/core/net/endpoints/album_endpoints.dart": {
+      "md5": "981e3dee4cff79581fd1a36760792f94",
+      "sha512": "418df1fab007d6299485d1dec2a89febb7ae27911b09c10dc5286da631f1f575a08ad4c99a8a9b27de652fd359ffe07b1eccd04fd6fa2f1609ef15f876e58ca4"
+    },
+    "lib/core/net/endpoints/artist_endpoints.dart": {
+      "md5": "12a651d4f57757dcd591744af6c3300e",
+      "sha512": "d8600e06c433f56da9a7a969ae7e7b9a5cbd70e8cf14fe23b1fff628c415dbd169ba091c74a9e5c009acb39ba4401ba0af923417264ca729cc1d9079b6df9214"
+    },
+    "lib/core/net/endpoints/auth_endpoints.dart": {
+      "md5": "61b317f2060ee1ed48e29393a729046f",
+      "sha512": "37731c4b64548311f7bc41ca621b6d34d07ac1ba8a88028306cec48e3d466678c0432528994125f0ad21780c10946c1c4466298784e8dea483e443fbae10584d"
+    },
+    "lib/core/net/endpoints/collect_endpoints.dart": {
+      "md5": "3914a8a23b411e3825e2b4988071827c",
+      "sha512": "cc20545cff5ee1076b5d24f510f2167d558ab61b64512fb257c3d083af8e30240fe78bc7bee72d05d8a44c2ddfa365e0428b33182f7cca0981ea044fa1fa6cb5"
+    },
+    "lib/core/net/endpoints/comment_endpoints.dart": {
+      "md5": "03598c8b60b93eb96fd0fbac22891624",
+      "sha512": "7c2d19c3736a93ae9847fc38c793bc2b335de7f7fb3e7f4cb4202bfedf169c6d9962271070a41a6137ae7a9f3f74750dc8d0a64d9d2cc54a505ba910a734774b"
+    },
+    "lib/core/net/endpoints/fm_endpoints.dart": {
+      "md5": "d4d77f62f17ab72a5424c5718f6531fb",
+      "sha512": "5ecf6c8ff4bd1c5d24e3b60b17735d712c4dd89dff74ec55cf0a0feb7cf1f6861fce379c00d4871f211c47ee82c41ba02bac67f4a4545710c32337e8bbd42ae2"
+    },
+    "lib/core/net/endpoints/misc_endpoints.dart": {
+      "md5": "b7686d2df6e26e5c952381df23f15c95",
+      "sha512": "e314af1651c99cbc55bc427c41d8a85cf7090960714c62aad95831822472f5ff55791ba1987f6345bd45461537f2110cff95b8bc91e84aed0a2ff6b57017d600"
+    },
+    "lib/core/net/endpoints/models.dart": {
+      "md5": "af12d97620bd782bf58f7060a19f7b05",
+      "sha512": "ab755b703590396d47e0a411125a0e5674ff66573d2601ef69333f49df8671096a9af3c0ff482625bc81dab43240e15fd08760b39565a5fb777aa786def6c229"
+    },
+    "lib/core/net/endpoints/mv_endpoints.dart": {
+      "md5": "ee0bd84342579d03ddfeab436b3a1e78",
+      "sha512": "d7c3ee3873f9d279fe2167cff0df58902e10ca2e83f00d7ad536dbe1923ffbd30c34f8a1fe3eced6dc917a40b7fdba1454d21b3c6c32c12b386339b9f1e6692c"
+    },
+    "lib/core/net/endpoints/play_endpoints.dart": {
+      "md5": "3be049ae46e5a1106a4f126525d36252",
+      "sha512": "5a5e612cecc394595850cb05e46af583f6d75ed5a02b4c23a8ea7f5381ccf757e2ef74db3fbfa59d228bd2e04f3300a79bb0afcd5f6764fabbfc36e5a156bf5f"
+    },
+    "lib/core/net/endpoints/playlist_endpoints.dart": {
+      "md5": "01e112091576b27b01026f48e8b340fc",
+      "sha512": "3a0891a594ab350e9d97c5b300cb0414b3794a4c0429fe357294a87d730d4fe3f8b10df2f974b7f314d937d429869ad3759f2dd966051f1513a0ab567edc643b"
+    },
+    "lib/core/net/endpoints/playlist_write_endpoints.dart": {
+      "md5": "4b42d3746a206cda40616a90a7c8fe12",
+      "sha512": "5a7c07d153cd357f89b84c9f28c1c012a836b5820372af184b692e692f97c57c4b669a01780cb12b3a3066ebdbf1bfd2256a79c1a6e66fd69cc880d2da320bfa"
+    },
+    "lib/core/net/endpoints/quality_endpoints.dart": {
+      "md5": "3a5a67a0aeb9e7b6e6253fc186f2f8f5",
+      "sha512": "30778f79805658faf2929bc0eca9b35fc619d928485e9f910b74e9b49be2206a89f0bf6baa62841b71e83a74da3bb1c379d4de00d63e8b279139805726681588"
+    },
+    "lib/core/net/endpoints/recommend_endpoints.dart": {
+      "md5": "bfcd59dea8ab7512416b09131b842097",
+      "sha512": "188cf302c8e787a09b1de40a3d8fa0dfa19a1f2c2d615cc45eed391a23f1a77473143475f3a7807f6ee323308fbd2226f71e4fab072d8fb27802c7116d897a66"
+    },
+    "lib/core/net/endpoints/search_endpoints.dart": {
+      "md5": "6de719c8c70ac84a347efe939f06b9b0",
+      "sha512": "a94484c5672e71efa2fb7b646c9c4d11c425d07cee681d0bbd02b73c11d4423346522277c8239675f736b9a39fab944ee87111e0d6843bd364648afbbaefd345"
+    },
+    "lib/core/net/endpoints/search_typed_endpoints.dart": {
+      "md5": "77e52bc591b40a08349034f5136266f7",
+      "sha512": "81d9e87254c57b5a8ca2f4e33874e8dc8fb2b3f2de967f3112e4147590e5e1fbdad142bac059996855d0a1d02a96c82c0f75b6cf3047b9621a7fcaaf1e061410"
+    },
+    "lib/core/net/endpoints/translation_endpoints.dart": {
+      "md5": "b50a0744f8cd1ae3b3d588bfbe361ff9",
+      "sha512": "19a5024a9d1ce4f781bf4d01e00807a851902cee0856962226eccb426dcb6417186857029cca42b908c81392d266b992e7f09ff73bf6057188639e33278b048d"
+    },
+    "lib/core/net/endpoints/translation_models.dart": {
+      "md5": "8d1adc7f8aa2725306c63ac687c3eec2",
+      "sha512": "28916ee0eef4aff8c741b457a89662fa4c79c1d6e2f350e0d2be46e6054708daf53b3498f35ca826926568924cad00070cfe1d0ba3ee2cf6a8ca1daef62c61a5"
+    },
+    "lib/core/net/endpoints/user_endpoints.dart": {
+      "md5": "131f45aba1355bd52dd3e5e4f17d9711",
+      "sha512": "2549183cb84b035e567a974bfabb492075ec27ae7f0b5a86f2c78248d6ac1bbd05923fa916d5964d216cc553b9381d65549c39609c092f2e8f51905e9cfef035"
+    },
+    "lib/core/net/kugou_client.dart": {
+      "md5": "c59bf1be33ad802e6bfbd3b1ee277ac9",
+      "sha512": "bd5c213d398ae0fa4907195bc87971a28ca013450800c396cadb15ba10ddfc7ec77cbb8ededf278d277782d94ae15c0c1a7bce933491684918f75809d90a6282"
+    },
+    "lib/core/net/signing.dart": {
+      "md5": "5befb3ac68d7f57f2d7bb25962147b7b",
+      "sha512": "dab8810021f02005da9eeb132b723f21e9df1dd5d58e3066bc2b97cac4baaea795ecbdbea6c144fbc6cc24e686b7eb793a2135ec8eb3975a807f7149466e6581"
+    },
+    "lib/core/storage/download_store.dart": {
+      "md5": "a0ef9725c21c515360ec1b8126e0c0d0",
+      "sha512": "72feebd9c11662ed1a57d7bf488b5346bb1aface066741fe1977f378e7a4b8a31cd6f4e80d038a5ed85fe7a8e9f7152fce249acd565bf9fd6123a7a81554a478"
+    },
+    "lib/core/storage/paths.dart": {
+      "md5": "ebb5a2cca10c9a4b1253acdf4d20480c",
+      "sha512": "0efb999c6229a9d174bab33222f0c9d4620e2eec5f2adbca45d624ef91289226fda6adbffcfbe45fd05e846b935b71f3d1d18d5af68dad42a9aec736081eb132"
+    },
+    "lib/core/storage/settings_store.dart": {
+      "md5": "12bef1d74d11abd946398e3aacd920c7",
+      "sha512": "89840cacf4173ba8e2ce6d438f0e897a2c66e2e86b5dc38ecba763c6f6f71e756dbea232eeaffeb968f6318e864953c0dc885cd8e286f4feb0cb5611f14641df"
+    },
+    "lib/init/main.dart": {
+      "md5": "8934052404eecef7b0e03686a268d22f",
+      "sha512": "62cd08bd5208af6dbf7e4a0c3e548be3631eb9399574056488bf313bae94281289e7d898d87fbe7126422ae2e743c59ef89715da3d9572d36218b7d132c8e844"
+    },
+    "lib/kernel/kernel.dart": {
+      "md5": "c514d367b0780cbf14218cd95769b7b6",
+      "sha512": "b603425701ae079e7288f07ed9c2d3206ad4ecf1f263c2046f32e5eb0d6c1b5de1b8844a91fe3db2f51f72391bdfdf91ebb84b51734d3e46904044961d2bbed0"
+    },
+    "lib/kernel/sha512.dart": {
+      "md5": "2e3f38fa385e1e4af5fdee54e2f0e91c",
+      "sha512": "da1a6f4bf8c6b90a9f3c141f2b16d0cfd63b60586ff2666a53be835858e9e12446fccdf1b7eb8b13b08456b240c2e872eb0ff2121bd3f37b13f9baad520aff44"
+    },
+    "lib/logic/auth/account_logic.dart": {
+      "md5": "ae62639a362f608602ff6aa5d2501cb7",
+      "sha512": "60c2021d0618449a36b9b1c59b22df64c61f1a922899f8be3c9cc98950f8cdbd8b4577566591a2e8a99b2e0268cfc8ce411af39c5a27bbeb3835ebf936ae9c87"
+    },
+    "lib/logic/auth/auth_logic.dart": {
+      "md5": "5a6ef67037f7b9b8077462ecba9c24e7",
+      "sha512": "00676f9a042c21309114755be368753b8d6168fe30d812a742121c61da813c3704c639bad9cd611c35fb60f4c42d5a979a52e9e736641f67a4eb011bd370f678"
+    },
+    "lib/logic/auth/verification_logic.dart": {
+      "md5": "55404ebb96338a9cddb5cf6f8bca390f",
+      "sha512": "5b4f357632c29b7126b3c7c56b60ac36508ae0e2d4ba43ecd4d5673a1ebaba7d1d18a4f74610f8401281732692e90d91577ff35300038795ad259edf09f3faa7"
+    },
+    "lib/logic/catalog/album_logic.dart": {
+      "md5": "d1e7c75634754a3fb2ede09ef9c8af22",
+      "sha512": "1872cd92559af36b5de3b8da4a65df639ef436be9e816ce3778da1e8029e10a13ce8d0ccb3c632f03cc914e1e778f8f66e54f1006baaa3bd0e836e2b76a389f8"
+    },
+    "lib/logic/catalog/artist_logic.dart": {
+      "md5": "d80a021f85a8b6f9a24c3acdcd92f3bd",
+      "sha512": "9b938653713e277db0859af00d1d54e4a8f2e70e8f9772705269d837ffc5c1efcd62bbf9f1b6574386ba46eaed06ed04bc93244e17e0390e86a0f0ad485b7c70"
+    },
+    "lib/logic/catalog/collect_logic.dart": {
+      "md5": "6a16e89dfc50ae616aebba0b06c654c6",
+      "sha512": "a6dfeefb2ed6f70c900cb325543989d1839a2e0d75a81b43e149436ac7c311cf311fc3d6ed5b5dd319f22785c1b0aadf5304c3eeeeab56e631f119e7e62bfdba"
+    },
+    "lib/logic/catalog/comment_logic.dart": {
+      "md5": "7a0ec0b2a06011179f038c5d07e5345b",
+      "sha512": "31650cd1990a8fac5691d6135758da45082d3015187503d12a13179c6409c2e7e7f71772b1e153d6c28d8de93f61daae78840d62d6823f739204e08afd6b8e74"
+    },
+    "lib/logic/catalog/fm_logic.dart": {
+      "md5": "35d0db42a871552f395221993712af0e",
+      "sha512": "ca283b44423db555f364fd63d22a36a5e6b9bf2c5dcd4d577be04fb96913f1f289c21646182b934f43337d6c8e14ea0619aacb7e9d393156c8975434738591b9"
+    },
+    "lib/logic/catalog/mv_logic.dart": {
+      "md5": "c31fc48612da0ac47e5c7515232259a4",
+      "sha512": "a14afd405be5fa1d00b92ca6e46515e2a2ca874bd653e966351ee3fd30806bc4f694db4f249b4b5833bf5aa954a2f5c1d1653440a9c26db2dfe5cc8a37785a7d"
+    },
+    "lib/logic/catalog/playlist_logic.dart": {
+      "md5": "e9d5c14dbb266344f666d9227a687cec",
+      "sha512": "f0d5fb60cb7f96fad2e04a522b16c88ba451f9e53585a2abd46a7ab92c99d11b7034edb1bdf6590039ba17796d3fad9b1c657099b2ea7a2fd3f730969c35f07b"
+    },
+    "lib/logic/catalog/playlist_write_logic.dart": {
+      "md5": "0fbe95a5bbd1ae590c45d7e710e7acb7",
+      "sha512": "b4c0fc3bee50e8e285783338e80928c2794c85cd7edaf79a92c2d062e50a0d91b568475c28130637a534220e80322c36e99656b571079a51291ff69501afd1e0"
+    },
+    "lib/logic/catalog/rank_logic.dart": {
+      "md5": "02f01cc5840d0d5bfa546848f9177026",
+      "sha512": "77720f1df6a23658893b9a63928471b09e9d958ab1336f887fe8f878a174fb70cf78d89172819c19674020268ea379fa7422a73b35d7055c7e24e72c983a6240"
+    },
+    "lib/logic/catalog/recommend_logic.dart": {
+      "md5": "944fdd11871d90c70a35355d29277052",
+      "sha512": "4d86da20628788430f6c8a6a1d7ce92386a1697435cc88093dad4834edd479434556b7f98ef1924b1f713c87385393a8f2984873848de671748281b6dfbbea86"
+    },
+    "lib/logic/catalog/search_logic.dart": {
+      "md5": "420e77d344807f2d170ef9eb4b49cd8a",
+      "sha512": "a5c092b6ad86680e2692824340005fad242d76345e0192cdb713401ca9207cf8f8ef54149f405de5e88b2cd1e2d88c9672197492d11678f75d591064d61c828f"
+    },
+    "lib/logic/catalog/search_typed_logic.dart": {
+      "md5": "7818b82ce0c8f4c96acc742844aac24e",
+      "sha512": "01f180c8ca78c1e645a87c6b00ce58109c279a9a6db09569a5fa73b8e83f15fb382a6e04ea5bc356b5fb3d37c6385a473358d4b0a852d742a10bfd1630bbed72"
+    },
+    "lib/logic/catalog/user_logic.dart": {
+      "md5": "e17f3b7af3c272487881fe785f3ec244",
+      "sha512": "448c81d5071a32ed680449ce032ef2bcad9c888f3e4509c1dfa527d2b72df8feb8c9ebb85fae5dac3d82b17f9f33379f2f5e45d82ad8e81249edb66a2ea78856"
+    },
+    "lib/logic/download/download_manager.dart": {
+      "md5": "cbfc346ba82e6642e3bc7bc3c5eedeb6",
+      "sha512": "4879ec0825132da6d2c8581670f125e2da5ae61b51633038c703fa457e97e1f973190022e0c62b9c824a167209418efe052acc28b2ec5b6be3d976aae3aa87b0"
+    },
+    "lib/logic/download/download_models.dart": {
+      "md5": "e5b89fc68fd1c6274507722955ac6721",
+      "sha512": "1f2049b88333ca49f078d3286c55bca7f36c361c86986533fbabb867f87a6657c5d944f0fab8c16bb886639c4268e4d520b6968633dc9e5ca4da9f2bf934c87e"
+    },
+    "lib/logic/lyrics/lyrics_logic.dart": {
+      "md5": "20df2a8994eaf5a8f51365502898ea8a",
+      "sha512": "5722940c8b2558198abdd19cd8b7e5c6386b184aab02718684a6eff9852d00012dc2fb2d3dc79de28e46c2c297c7f72b23c35aaa5a7f856a4e44055266537e83"
+    },
+    "lib/logic/lyrics/lyrics_parser.dart": {
+      "md5": "44aab219f8df4ac5be0532f36bfc1fe8",
+      "sha512": "8df4b9b3af36c9693741fd42a28e6083d4c03188a1a35aa3655f2097f31ff04a423088326abdb92a47ae12c7612fbdb0830ab209c9f5afb32f9e9d33961e88ca"
+    },
+    "lib/logic/lyrics/translation_logic.dart": {
+      "md5": "77f3d8ea5061760c3fdcb282c1fdedb5",
+      "sha512": "638bb42ee9947b6ce2711bcb1bd236eb7026fb5af509ac7561f9844f20f681d0a4873a43b768ef6b74799480f96d6ca8923e52370b8be5c8e75620cff0bee910"
+    },
+    "lib/logic/player/history_recorder.dart": {
+      "md5": "a8ba8c63bf2e4e16cd6dcf82a47b1604",
+      "sha512": "316104717935d25aaba8bb044d2240a7f5f7e42ead23609204f93e4409dcd66e88d9408bc3b33d1cccd7f131c002b37a13538b2421fb12b823caaabf0d66d115"
+    },
+    "lib/logic/player/playback_reducer.dart": {
+      "md5": "faf80eb78245bb078ac631abb514bb65",
+      "sha512": "dc28e28efe61a31f8bc5ff32c197524da1472624a9b41bd7c09efd9b1c47c524bb86ad38241302380adcd29ff24025fd7000ea17604e45720177da3c52f95344"
+    },
+    "lib/logic/player/playback_service.dart": {
+      "md5": "d29402905afea72804f975720d9374c6",
+      "sha512": "5556a12fc2cdaba9f571557f5d3d526c164e4b4a928a18e942948855006562fc1283c1e1e9c831c44f4b9c2a00ebb7cbf2dcac8500c2bd4fafe1f28255a3c875"
+    },
+    "lib/logic/player/player_state.dart": {
+      "md5": "7331cf6da4a6f688520e219ed577b180",
+      "sha512": "52112b3021cd82f6acac13e9cc8a17773e3ffae6bae4f62ad52b35f9474cbd7ccc98a09306060b201db1f4d369f61a92b8ebff710d3d6477e7b5b90f0c39d258"
+    },
+    "lib/logic/player/queue_state.dart": {
+      "md5": "e0971fe99b52a66c78f1f3bd21f00fb1",
+      "sha512": "59733f097cb8e5a266ac696532cd7e8ae41496fda19b1b45a17d21a8b62ecb6a90f4b53a782cf6160426b4fa1d1091f7706be4db3d83aa1fd7bb4e9407e2e53b"
+    },
+    "lib/surface/app_root.dart": {
+      "md5": "cb373c6a221191b8012849cc72359d4a",
+      "sha512": "849ce364fcb7ea500013a72d6f9d9cb4e63282812baf171fe9f043cf446c1d90e0878d58eac4deecde7cd83fdf598bb1ac8635715c8314466b6685b151de7c9a"
+    },
+    "lib/surface/assembly.dart": {
+      "md5": "b7caf4480ae1ec2c250e6cafae5e4db6",
+      "sha512": "265b0c2ee7c9e5277e0a564483e17a96f2a2ed75e3bdf14ab9a697669f1800092373213743d6e1b2c08f195c6205d4c2ccbcc01647f6edff102028dee4a7fe36"
+    },
+    "lib/surface/audio/audio_service_bridge.dart": {
+      "md5": "8c0ec37fb52e5a49751ddf0e8a09cca4",
+      "sha512": "91c932e4854f293cd18fd4229597822d9bbd6e588f4f4c7036c25d258881738f4743dd4654921ac2fda9bdc2cf3a6c0d6a9035234c094b1191924cb33fd8c249"
+    },
+    "lib/surface/audio/just_audio_engine.dart": {
+      "md5": "add525df17fd719fee304a9e945d4e11",
+      "sha512": "75ab78228a443d649d225f599ad6908ac1fb1728c8e52736d527d74c003bdf95af2c3887f4673e28b3f4fccad8e877a3336d4708acb9e39de013b0d1a85912b7"
+    },
+    "lib/surface/audio/keep_alive.dart": {
+      "md5": "d54f4bfe1b2b318b3e854d3e0b486a96",
+      "sha512": "7577c426267bbddbb007ba9c2e3650a1bc8fba44c8fa6cb69f8cf4006919c7a3853fe1a4dee58852150ecf79d62e545f5fe3536f89060ef848239553ee23c069"
+    },
+    "lib/surface/deps.dart": {
+      "md5": "5a675b5983b07dbe58054dda2d4d39a7",
+      "sha512": "984d542fa1121814c99507382370a5efed2a54065d097b5635ff80275f5574684c881e46ba4cd3783fb388b7ab16b130cce9c2f544199d7fe3dd37bf21506af2"
+    },
+    "lib/surface/l10n/l10n_helper.dart": {
+      "md5": "a14a9a99ea04cd659109a29146f557d3",
+      "sha512": "dad4a65cbd43722481e0eed3e04eb4d8aaa9ed256b64cd6f31173f05ff30a6469d764569e9f25dffcb46b4e9e9eed6299ce1a6ed748aa35af13eb0e976a6706e"
+    },
+    "lib/surface/modules.dart": {
+      "md5": "2d44f657ed7496ba40ae15726b2e4288",
+      "sha512": "7aa0d069c5dfb0931ea840d457255f057bccd7e86a17f17a8362f90f2241ad4daf57288a9feb5194eb4e306ff57f398a087e61debacf4aaadbf8e23fa759b7ff"
+    },
+    "lib/surface/nav_state.dart": {
+      "md5": "46a325212609a2ba06afa2e47a88b629",
+      "sha512": "43d43510a67e0e37644267259f9e1a8f6940047632484390b01fb76612d59717a81515a7668eba8424cfff468fde4dcc7eb1e9055a63807f7b0121948a1586dd"
+    },
+    "lib/surface/pages/album_page.dart": {
+      "md5": "2c3616f85b8a31ee32fe10c4698486ad",
+      "sha512": "a73da695264dcf4e6d6a72df6e5982046b2099388d0025a3a8af75429b1530960f399b382eace272d02234255d10e762205130597532ab1543cb17e6bdb5c16d"
+    },
+    "lib/surface/pages/artist_page.dart": {
+      "md5": "c3883517c4765e094572658cc28b6f78",
+      "sha512": "d53e68d9a3fb16d708a37a0ddc98186b6adecb76bbcc58ff470b7aaf4936c27f54c50a7936cc48a3e137595fb3957a744188727ee3b1c1bbb895a28325a861a1"
+    },
+    "lib/surface/pages/comment_page.dart": {
+      "md5": "212306fa966956a1bb24917a0ea97fe4",
+      "sha512": "6d2e360b2474f9fbb60460044ff6515b39a876fe64c7a3257c0e6160b1beab5d3b7f69f00ebcfb2d44d77bd8106f28d31de4aa282fa85f520aed61e8ce7a2eae"
+    },
+    "lib/surface/pages/home_page.dart": {
+      "md5": "178405802a0cc8ab13e889958057afc5",
+      "sha512": "1ea696c441aa920ab35a96e45945cbbb269ee87b9a86f514a7e5c4c02c05c29f7cd57a87dcba58fb993ea46801e33a498137612401f7cc4634f1ac676c7ad50e"
+    },
+    "lib/surface/pages/library_page.dart": {
+      "md5": "050ac4f3c02b7feacea35b1dd526c338",
+      "sha512": "9ff0ddca89dd4297e78584730288a7698bb504153ef2ea0497321d224460493447e0069097d520d78334a122f51c49f7dbc07cfefa0f499ed203133c1aaf0d84"
+    },
+    "lib/surface/pages/lyrics_page.dart": {
+      "md5": "816e4b256de5ea79dca012d12df5841b",
+      "sha512": "9ef2c2457e79580a0f04e046ef1777090d1456b0c7e0a7f4d2c3ac3c018c609b7a8226e539fef55ac019a48b5f03a82b62096dca195d5e05f4cc1e759032b76a"
+    },
+    "lib/surface/pages/mv_page.dart": {
+      "md5": "2400c09beb0aaa7e951f7da7362b0853",
+      "sha512": "a1ad6ae122a79416867a16e1ea086a9e20c15402fe3c8b123f9f9d7939c449f7eb0bcfcb418deb5d9a9f98b1022bd2bd475aa6da2ab2bf5d31d658fa9a135a86"
+    },
+    "lib/surface/pages/player_page.dart": {
+      "md5": "bb1a5863075ae457cd337bcf25162ed0",
+      "sha512": "4934102d995036016d283a2eeedbf543b905af66515070b35846ecb4ec6fbf5c96b0ad8a9badaa5f4666de8b77a1f7f4280a79b00eb36e1a2d6ff700a2a22a93"
+    },
+    "lib/surface/pages/playlist_page.dart": {
+      "md5": "c40bae1433803760964d1c7d5e3d29cc",
+      "sha512": "9ce7a01179d3a2dc794ecbf5ca75eba893bb9640c64302daa5834fc1e647db35fad2703a485733b4cdc66eeaad245706e3c59e5881d08a72ec075eec6d9d6e74"
+    },
+    "lib/surface/pages/search_page.dart": {
+      "md5": "76ef61b24fc55ae0ca4fe55e60728167",
+      "sha512": "3b0db1a6187add2c2d6a7081bd192606b106c806fdf6319a81d55c60f0279e348e2cacc98d943555c90a81334c2b9800bf2d9299e8240b559bbbbf82838f73a2"
+    },
+    "lib/surface/pages/settings_page.dart": {
+      "md5": "5668e092d09f9b6e2e5cb247f672fe40",
+      "sha512": "55fa160fe0f07202cf922f8e7a0bec1073deca44aed4e2eb4aa278f0845a5aa07390718c8dac7671493cdf425c91369c8105ab7cdb62045d56a7ef032cb2a429"
+    },
+    "lib/surface/player_controller.dart": {
+      "md5": "d5f635dc9b4b2013ae04048ac2b992c1",
+      "sha512": "0066a039cfea0b159399fee1a0815bb24ec5ce8482766347c2d451aa95322705419f34a6cbb87ff97818a8af2e4fe4d0c168bcabffa807ab94ad3174c881dcc0"
+    },
+    "lib/surface/registry.dart": {
+      "md5": "7fd00de7fc028773e274f648914f3875",
+      "sha512": "ee91954a28d759bbc251651459da9d97cd726079459fcea35970a7e1154b44051e23921053907e6f3733989bb648be59bf2858838a89916006326a484380bd0f"
+    },
+    "lib/surface/theme/color_extract.dart": {
+      "md5": "6c184976a68f5cdbcb6190bd9f3db9c5",
+      "sha512": "bb10957a19e3f5e5a78e1572f94d1b8624dda93cdd6620fafe26babb249bd9edc36134a7bd13e7e2a7ad9ec3dab1725806db64d3e7ca113f58c11fae887a69f1"
+    },
+    "lib/surface/theme/dynamic_theme.dart": {
+      "md5": "6cf738d596f4d6f2c9bcc9b657629643",
+      "sha512": "0d5595ebe62b90db95492f7afd4e374e7b5da08ad5c55dcbcd0ed7b80fbe8e233472997b53e92cd26c5a5f88c61ccf782b566aab5c6d0657cb8cb805d2014ef9"
+    },
+    "lib/surface/theme/tn_motion.dart": {
+      "md5": "3d2552cdf541979ffdeb125d54d260f3",
+      "sha512": "92373c2bc80cedc4edc92cccee53a2d95e3940c02c612d33b22e3ec298e97dc7a730625211bfd687965de18e83cf28b8b5404178145a57da218ebd1e34c06cac"
+    },
+    "lib/surface/theme/tn_shader_warmup.dart": {
+      "md5": "64d0a7e72fbae83a336b4cbd8d871685",
+      "sha512": "92120b2e6ace0bb158c23b143c6d89ff06300ceb398888237c2c8bea03b9ca901294db994df2932bb5b1bc993eeafc0d9c398651bd8238f729a7567065e09c4a"
+    },
+    "lib/surface/theme/tn_theme.dart": {
+      "md5": "9741c1b9bb775e454705df30cb690589",
+      "sha512": "5f043d8b83d4f1c7effe3fc75674b80458f7c18b687278b4b5ed61c68bf6037b9db70154f3878f727896592568a91f875a58528dd93f595153c0a8e240494378"
+    },
+    "lib/surface/widgets/common.dart": {
+      "md5": "4cfe205b7c50940ddf777d93382a2d6a",
+      "sha512": "f38c45cb3f67a855d6042b2725223e83120d9fb02890daa309a04f070c949d6dc230d00ad93e18dc0869ff0e664543a15366c548db948809c8f9ec0d6ddb73e6"
+    },
+    "lib/surface/widgets/common_widgets.dart": {
+      "md5": "377b4717b1aebe151aef6bd8ba41133e",
+      "sha512": "7db95f052eee3b4e90fe36bf02ad4fefe2e4cabda914bab46e827fb788165acc8727d48d81b41973baded84b52fff109f0e262b9a1e40fc603ab555fdb8af507"
+    },
+    "lib/surface/widgets/cover_color_bridge.dart": {
+      "md5": "13e8157a3f067001f98e75ddc1be12bd",
+      "sha512": "33288202db2af11505d8072b63cb10ea5fde67a71b3f65e45db754891fc391fb78e6f2a13f444dd32e751517c9eb7edd4059439aae08a7b81ed0a59a755512cc"
+    },
+    "lib/surface/widgets/favorite_button.dart": {
+      "md5": "262ac17ffc7cc7bd7df9b85b581108f5",
+      "sha512": "ba7d7c99e8989211a6cc537ba19b09b767e7003e71f544500d13492a5b2e5eecddf10659326f0a45d1e62d9d1ab5b4fce1a47102b2e0fe6cf4b0be97ca79a848"
+    },
+    "lib/surface/widgets/fm_mode_button.dart": {
+      "md5": "fb24d710ea6aad36a594df0087d588ef",
+      "sha512": "a911a3b076d2c1e637fbaff7ae0184e8e8f27956b989410e497dfdb12b66976db71d8f615689923cae2eaaebacdc220815d9d4b95540ae102086f2c5e380e53c"
+    },
+    "lib/surface/widgets/qr_painter.dart": {
+      "md5": "a05f3f7e591aa54d13e10a45610571b5",
+      "sha512": "6a12e339f6b9cb06da68260e0e04da4aabece4e5dd499d702e50fe224269fce5ae48edd86b3f956545712f299c7f3d75409cd1cbcee9b190614ec5134fe063d1"
+    },
+    "lib/surface/widgets/qr_view.dart": {
+      "md5": "cf1ce2d6366e2a993b2ec19373c6b628",
+      "sha512": "e36fd989cdd279e7c5d3d698748fbe83e2e59f0534081cb3a7b1b351621339f6742466a416b06a04d49ede66b1554b57273cb8670c556c242520058c009c88e6"
+    },
+    "lib/surface/widgets/quality_sheet.dart": {
+      "md5": "ba3145a6fb8de8e7dfd82a40684f959a",
+      "sha512": "b754e8e68dc0737725f397a6919f305c584703614c792f482004cce9f2f9db906830726ed12d8e839f29284b9c9210394bc175ff013a8359a564a1233ad230b3"
+    },
+    "lib/surface/widgets/tn_app_bar.dart": {
+      "md5": "d66f9e98aff6b286fd481949b9595146",
+      "sha512": "6982ae694ec064b00ca3d77c7707ce2363a7a72b982090f125840007f4b995a85fd6e3f7b11744fcb261a8e0263137c0a298b816bee103e1f791f36b38c10ee1"
+    }
+  }
+}

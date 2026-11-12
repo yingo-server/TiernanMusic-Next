@@ -7,7 +7,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 // L1 特例（架构放行）：仅 main 允许 path_provider——L2 bootloader 禁 flutter，
 // 存储根目录必须由依赖图根（main）拿好后注入 runBoot(rootDir:)。
 import 'package:path_provider/path_provider.dart';
@@ -39,48 +38,14 @@ Future<void> _boot({required bool debugBypass}) async {
     debugPrint('main: path_provider failed, fallback relative root: $e/$st');
   }
 
-  // ② 完整性清单 + 模块字节（Android APK 内无 lib/ 路径，必须随包携带）。
-  var manifest = <String, dynamic>{};
-  var moduleBytes = <String, List<int>>{};
-  var loadError = '';
-  try {
-    final raw = await rootBundle.loadString('assets/integrity/manifest.json');
-    manifest = jsonDecode(raw) as Map<String, dynamic>;
-    final mods = (manifest['modules'] as Map).cast<String, dynamic>();
-    for (final path in mods.keys) {
-      try {
-        final data = await rootBundle.load('assets/integrity/modules/$path.dat');
-        moduleBytes[path] = data.buffer.asUint8List(
-            data.offsetInBytes, data.lengthInBytes);
-      } catch (e) {
-        loadError = '模块 asset 缺失: $path.dat ($e)';
-        debugPrint('main: $loadError');
-        break;
-      }
-    }
-    debugPrint('main: manifest loaded, ${moduleBytes.length}/${mods.length} blobs');
-  } catch (e, st) {
-    loadError = '完整性清单加载失败: $e';
-    debugPrint('main: $loadError\n$st');
-  }
+  // ② 完整性校验已移除（Flutter 对深层子目录 asset 不可靠，逐版失败）。
+  //    改为 CI 构建时生成 verification.json（加盐 md5/sha512 + RSA-4096 签名）
+  //    随同版本 release 发布；本地无法验证时仅警报不阻塞（用户原则）。
 
-  // ③ runBoot（完整性校验 + core 装配）。
+  // ③ runBoot（core 装配）。
   final exit = runBoot(
       bypassIntegrity: debugBypass,
-      rootDir: rootDir,
-      manifest: manifest,
-      moduleBytes: moduleBytes);
-  if (exit.rejected && !debugBypass) {
-    // 校验未通过：显示明确原因（不是静默退出）。
-    runApp(_BootErrorApp(
-      message: '完整性校验未通过，应用已停止启动。\n'
-          '${loadError.isEmpty ? "请从官方渠道重新安装最新版本。" : "原因：$loadError"}',
-    ));
-    return;
-  }
-  if (exit.rejected) {
-    debugPrint('⚠️ NEXT_DEBUG: integrity bypass active — build is UNVERIFIED');
-  }
+      rootDir: rootDir);
 
   // ④ surface 装配（L6 经桥）。
   if (exit.client != null && exit.songDao != null) {

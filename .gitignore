@@ -4,3 +4,4 @@ build/
 *.iml
 .idea/
 assets/integrity/modules/
+docs/VERIFICATION_PRIVATE_KEY.pem

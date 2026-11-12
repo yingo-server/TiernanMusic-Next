@@ -4,7 +4,7 @@ library;
 
 import '../kernel/kernel.dart' as k;
 
-export '../kernel/kernel.dart' show IntegrityVerifier, Kernel, KernelContext, Log;
+export '../kernel/kernel.dart' show Kernel, KernelContext, Log;
 
 class BootBridge {
   BootBridge._();
@@ -18,17 +18,7 @@ class BootBridge {
       rethrow;
     }
   }
-
-  static bool verifyIntegrity(dynamic manifest,
-      {bool bypass = false, Map<String, List<int>>? moduleBytes}) {
-    try {
-      return k.IntegrityVerifier.verify(manifest,
-          bypass: bypass, moduleBytes: moduleBytes);
-    } catch (e, st) {
-      k.Log.e('bridge_boot', 'verify failed', e, st);
-      return false;
-    }
-  }
+  // verifyIntegrity 已删除（运行期完整性校验移除，见 bootloader.dart 头注释）。
 }
 
 class BootResult {
