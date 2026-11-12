@@ -240,6 +240,12 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: actions/download-artifact@v4
         with: { path: dist, merge-multiple: true }
+      - name: flatten release assets
+        run: |
+          # upload-artifact 多行 path 会保留相对目录层级；把 APK 与清单聚到 dist 根。
+          find dist -name '*.apk' -exec mv {} dist/ \; 2>/dev/null || true
+          find dist -name 'verification.json' -exec mv {} dist/ \; 2>/dev/null || true
+          ls -la dist/ | head -10
       - name: prepare changelog + tag
         env:
           VER: ${{ needs.analyze-test.outputs.version }}
