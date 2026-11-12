@@ -416,10 +416,37 @@ class _PlayerPageBody extends ConsumerWidget {
                       const Icon(Icons.volume_up, size: 20),
                     ]),
                   ),
-                  // 倍速控件暂未提供：PlayerController / AudioEngine 均无
-                  // setSpeed 方法（契约见 player_controller.dart），按「不伪造
-                  // 能力」原则跳过；待引擎扩展 setSpeed 后在此补 0.5/1.0/1.5/2.0
-                  // 四档 chip，调 ctl.setSpeed(v)。
+                  // 倍速入口：labelSmall 徽标 + bottom sheet 四档 ChoiceChip
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: TnDims.padXL),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        TnPressable(
+                          onTap: () => _showSpeedSheet(context, ref),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: tnPadM, vertical: tnPadXS),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                  color: Theme.of(context).colorScheme.outline),
+                            ),
+                            child: Text(
+                              '${snap.speed.toStringAsFixed(1)}x',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                      color:
+                                          Theme.of(context).colorScheme.primary),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: tnPadS),
                   if (p.lastError.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.all(tnPadS),

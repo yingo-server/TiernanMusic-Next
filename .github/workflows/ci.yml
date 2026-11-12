@@ -50,6 +50,10 @@ jobs:
         if: always()
         run: dart run tool/smoke_check.dart 2>&1 | tee /tmp/smoke.log
         continue-on-error: true
+      - name: feature reachability (pure Dart)
+        if: always()
+        run: dart run tool/feature_reachability_test.dart 2>&1 | tee /tmp/reach.log
+        continue-on-error: true
       - name: generate isar code
         if: always()
         run: dart run build_runner build --delete-conflicting-outputs
@@ -82,6 +86,8 @@ jobs:
           grep -q "^VIOLATION\|^FAIL" /tmp/smoke.log && V=fail
           grep -q "FIELD-TRUTH-OK" /tmp/field_truth.log || V=fail
           grep -q "FIELD-TRUTH-FAIL" /tmp/field_truth.log && V=fail
+          grep -q "FEATURE-REACHABILITY-OK" /tmp/reach.log || V=fail
+          grep -q "FEATURE-REACHABILITY-FAIL" /tmp/reach.log && V=fail
           echo "verdict=$V" >> $GITHUB_OUTPUT
           test "$V" = ok
 

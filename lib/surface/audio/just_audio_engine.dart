@@ -224,6 +224,7 @@ class JustAudioEngine implements AudioEngine {
   }
 
   /// 倍速 0.5 ~ 2.0（越界截断）。
+  @override
   Future<void> setSpeed(double speed) async {
     try {
       var s = speed.isNaN ? 1.0 : speed;

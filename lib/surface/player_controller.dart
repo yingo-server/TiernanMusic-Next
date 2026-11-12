@@ -7,7 +7,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../bridges/bridge_core.dart' show SongBrief;
+import '../bridges/bridge_core.dart' show SongBrief, KeyValueSettings;
 import '../bridges/bridge_logic.dart' show Log;
 import '../bridges/bridge_logic.dart'
     show PlaySource, QueueState, PlayerState, PlayerStatus, PlayMode,
@@ -41,6 +41,8 @@ abstract class AudioEngine {
   Future<void> stop();
   /// 音量 0.0 ~ 1.0。
   Future<void> setVolume(double volume);
+  /// 倍速 0.5 ~ 2.0（越界由实现方 clamp）。
+  Future<void> setSpeed(double speed);
   /// 引擎释放（页面/队列销毁时调用）。
   Future<void> dispose();
 }
@@ -67,6 +69,10 @@ class NullAudioEngine implements AudioEngine {
   @override
   Future<void> setVolume(double volume) async =>
       _d('NullAudioEngine.setVolume $volume');
+
+  @override
+  Future<void> setSpeed(double speed) async =>
+      _d('NullAudioEngine.setSpeed $speed (no-op)');
 
   @override
   Future<void> dispose() async => _d('NullAudioEngine.dispose');
@@ -96,16 +102,21 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
     required PlaySourceResolver resolver,
     AudioEngine? engine,
     String quality = '128',
+    KeyValueSettings? settings,
   })  : _resolver = resolver,
         _engine = engine ?? NullAudioEngine(),
         _quality = quality,
+        _settings = settings,
+        _speed = (settings?.getDouble('preferred_speed') ?? 1.0).clamp(0.5, 2.0),
         super(const PlayerSnapshot()) {
-    _d('init engine=${_engine.runtimeType} quality=$_quality');
+    _d('init engine=${_engine.runtimeType} quality=$_quality speed=$_speed');
   }
 
   final PlaySourceResolver _resolver;
   final AudioEngine _engine;
   final String _quality;
+  final KeyValueSettings? _settings;
+  double _speed = 1.0;
   Timer? _ticker;
 
   // ── 引擎事件入口（批5-A：JustAudioEngine onAction 回调落点） ──
@@ -238,6 +249,34 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
       await _engine.setVolume(volume);
     } catch (e, st) {
       _e('setVolume failed $volume', e, st);
+    }
+  }
+
+  /// 当前倍速（0.5~2.0，默认 1.0）。speed 属 UI 偏好而非播放队列状态，
+  /// 不入 PlayerState，以 getter 形式暴露（快照外独立维度）。
+  double get speed => _speed;
+
+  /// 倍速 0.5~2.0：越界 clamp + Log.w 留痕；经引擎 setSpeed 生效，
+  /// 并持久化到 KeyValueSettings('preferred_speed')（经 bridge_core 门面）。
+  Future<void> setSpeed(double speed) async {
+    try {
+      var s = speed.isNaN ? 1.0 : speed;
+      if (s < 0.5 || s > 2.0) {
+        try {
+          Log.w(_tag, 'setSpeed out of range $speed, clamped to 0.5~2.0');
+        } catch (_) {}
+        s = s.clamp(0.5, 2.0);
+      }
+      _speed = s;
+      await _engine.setSpeed(s);
+      try {
+        _settings?.setDouble('preferred_speed', s);
+      } catch (e, st) {
+        _e('persist preferred_speed failed $s', e, st);
+      }
+      _d('setSpeed $s');
+    } catch (e, st) {
+      _e('setSpeed failed $speed', e, st);
     }
   }
 

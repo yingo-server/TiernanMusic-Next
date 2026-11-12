@@ -118,6 +118,30 @@ class KeyValueSettings {
     }
   }
 
+  // ─── 浮点（倍速等 UI 偏好；内部按 num 存取） ───
+
+  double? getDouble(String key) {
+    try {
+      _ensureLoaded();
+      final v = _cache[key];
+      return v is double ? v : (v is num ? v.toDouble() : (v is String ? double.tryParse(v) : null));
+    } catch (e, st) {
+      Log.e('kvsettings', 'getDouble($key) failed', e, st);
+      return null;
+    }
+  }
+
+  bool setDouble(String key, double value) {
+    try {
+      _ensureLoaded();
+      _cache[key] = value;
+      return _flush();
+    } catch (e, st) {
+      Log.e('kvsettings', 'setDouble($key) failed', e, st);
+      return false;
+    }
+  }
+
   // ─── 删除 / 清空 ───
 
   bool remove(String key) {
