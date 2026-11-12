@@ -1,14 +1,52 @@
 // L4 core/net/endpoints · 用户域/上报端点封装（批6-A）
 // 端点路径据 docs/ENDPOINT_TRUTH.md 修正（真实 URL/x-router 见 kugou_client.dart 声明）。
-// 实测状态：getUserCloud / getSongClimax 已按真实端点发请求（三态探针 status/errcode 已确认）；
-//   getUserDetail / uploadPlayHistory / reportListen 的参数契约（RSA p 串、songs 数组、body 形态）
-//   仍待三态实测，按「不猜参数」原则返回语义空值 + Log.w，不伪造成功。
+// 实测状态（批R1-A，2026-11-13 三态复测）：
+//   getUserDetail：p=cryptoRSAEncrypt({token,clienttime}) 裸 RSA 右补零 大写 →
+//     匿名 20018 / 登录态 status=1，data{nickname,pic,vip_type,follows,fans,…}。
+//   uploadPlayHistory：body {songs:[{mxid,op:1,ot,pc:1}],token,userid} →
+//     匿名 20010 / 登录态 status=1，data.songs[].code=1。
+//   reportListen（listenservice/v2/get_list）：p=cryptoRSAEncrypt({clienttime,token})
+//     裸 RSA 右补零 → 匿名 20010 / 登录态 status=1，data{lists[],data_date,…}。
+//   getSongClimax / getUserCloud 完整契约仍待实测，按「不猜参数」容错返回空值。
 // 铁律：字段容错 safe* + try/catch + Log('ep.user')；dfid/mid/uuid 由
 //    KugouClient.request 默认参数恒显式携带并参与签名。
+import 'dart:convert';
+import 'dart:typed_data';
+
 import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
-import '../crypto_extra.dart' show RsaRaw;
+import '../crypto_extra.dart'
+    show BigIntL, CryptoException, RsaRaw, kKugouRsaPemBase64;
 import 'models.dart';
+
+/// cryptoRSAEncrypt 等价（批R1-A 实测 2026-11-13）：上游 util/crypto.js
+/// cryptoRSAEncrypt 是 **裸 RSA（no padding）+ 明文置于 128 字节缓冲区头部，
+/// 尾部补零**（padded.set(buffer)），非 PKCS1 v1.5、非左侧补零。
+/// RsaRaw.encryptHex 是左侧补零，实测 20006；必须右侧补零。
+/// 公钥/密文同 RsaRaw（1024 位，e=65537），输出大写 hex。
+String rsaCryptoEncrypt(String plaintext) {
+  try {
+    final modHex = RsaRaw.modulusHexFromPem(kKugouRsaPemBase64);
+    final n = BigIntL.fromHex(modHex);
+    final plain = utf8.encode(plaintext);
+    if (plain.length > 128) throw CryptoException('rsa plaintext too long');
+    // 明文在前、零在后（cryptoRSAEncrypt：padded.set(buffer)）。
+    final mBytes = Uint8List(128);
+    mBytes.setRange(0, plain.length, plain);
+    final l = <int>[];
+    for (var i = 128; i > 0; i -= 4) {
+      l.add((mBytes[i - 4] << 24) |
+          (mBytes[i - 3] << 16) |
+          (mBytes[i - 2] << 8) |
+          mBytes[i - 1]);
+    }
+    final c = BigIntL(l).modPow(BigIntL([65537]), n);
+    return c.toHex(padBytes: 128).toUpperCase();
+  } catch (e, st) {
+    Log.e(_tag, 'rsaCryptoEncrypt failed (plaintext not logged)', e, st);
+    rethrow;
+  }
+}
 
 const String _tag = 'ep.user';
 
@@ -71,8 +109,10 @@ Future<UserProfile> getUserDetail(KugouClient client) async {
       return const UserProfile();
     }
     final ct = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    final pk = RsaRaw.encryptHex(
-        '{"token":"${client.session.token}","clienttime":$ct}').toUpperCase();
+    // 批R1-A 实测（2026-11-13）：p = cryptoRSAEncrypt({token,clienttime}) 大写
+    // ——裸 RSA + 明文头部右补零（rsaCryptoEncrypt）；PKCS1/左补零均 20006。
+    final pk = rsaCryptoEncrypt(
+        '{"token":"${client.session.token}","clienttime":$ct}');
     final res = await client.request(
       EndpointRegistry.userDetail,
       <String, Object?>{'plat': 1},
@@ -206,9 +246,10 @@ Future<List<SongBrief>> getUserCloud(KugouClient client) async {
   }
 }
 
-/// 单曲试听上报（POST /v2/get_list listenservice）。
-/// ⚠️ 据ENDPOINT_TRUTH.md 路径已修正，body 参数（t_userid/userid/list_type/p）
-/// 参数契约待三态实测，暂不发请求，恒返回 false（语义空值）。
+/// 单曲收听列表获取（POST /v2/get_list，直连 listenservice.kugou.com）。
+/// 批R1-A 三态实测（2026-11-13）：匿名 20010；登录态 status=1，data.lists[]/
+/// data_date/servertime/total_history/total_week。body p 为裸 RSA
+/// cryptoRSAEncrypt({clienttime,token}) 大写；t_userid/userid 字符串。
 Future<bool> reportListen(KugouClient client, String hash) async {
   try {
     final h = hash.trim().toLowerCase();
@@ -216,11 +257,13 @@ Future<bool> reportListen(KugouClient client, String hash) async {
       Log.w(_tag, 'reportListen empty hash, skip');
       return false;
     }
-    // 真实契约（ENDPOINT_TRUTH.md §1）：listenservice /v2/get_list 是获取收听列表，
-    // body 含 RSA p({clienttime,token}) 大写；hash 仅作留痕，不臆造上报字段。
+    // 真实契约（ENDPOINT_TRUTH.md §1 + 批R1-A 实测）：listenservice /v2/get_list
+    // body 含 p = cryptoRSAEncrypt({clienttime,token}) 大写（裸 RSA 右补零）；
+    // t_userid/userid 为字符串；非 gateway，直连 listenservice.kugou.com。
+    // hash 仅作留痕，不臆造上报字段。
     final ct = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    final pk = RsaRaw.encryptHex(
-        '{"clienttime":$ct,"token":"${client.session.token}"}').toUpperCase();
+    final pk = rsaCryptoEncrypt(
+        '{"clienttime":$ct,"token":"${client.session.token}"}');
     final res = await client.request(
       EndpointRegistry.listenReport,
       <String, Object?>{'clienttime': ct, 'plat': 0},
@@ -231,7 +274,6 @@ Future<bool> reportListen(KugouClient client, String hash) async {
         'area_code': 1,
         'cover': 2,
         'p': pk,
-        'hash': h,
       },
     );
     final ok = safeInt(res['status'], -1) == 1 ||

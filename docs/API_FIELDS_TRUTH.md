@@ -643,3 +643,99 @@
   - VIP 账号完整加/删往返已实测通过并删除测试数据，无脏数据。
 - 结论：`collectSongByHash/cancelCollectByHash` 改为「找 name=='我喜欢' 的 listid → 写/删歌单」；
   本地镜像仍由 CollectLogic 维护（防重锁 + 登录守卫），网络成功后才更新。
+
+## §R1-A · API 返回字段再实测（网络层盲区，2026-11-13 三态复测）
+
+探针：`.test_creds/r1a_probe.py`（+ r1a_engine.py），留样 `r1a_out.json` /
+`r1a_stage1_out.json` / `r1a_stage3_out.json` / `r1a_delete_out.json`。
+三态 = 匿名 / nonvip(uid 2461028533) / vip(uid 1666835066)。
+
+### R1-A-1 · userDetail（POST /v3/get_my_info + x-router usercenter.kugou.com）
+- **关键契约修正（映射错误，已改码）**：`p = cryptoRSAEncrypt({token,clienttime}) 大写`。
+  上游 util/crypto.js `cryptoRSAEncrypt` 是**裸 RSA（no padding）+ 明文置于 128 字节
+  缓冲区头部、尾部补零**（`padded.set(buffer)` 后裸模幂）；此前用 RsaRaw.encryptHex
+  （左补零）/PKCS1 均实测 20006 err signature。**p 的明文 JSON 键序为
+  {clienttime,token}（listen）/{token,clienttime}（userDetail）——即上游 JS 对象字面量
+  顺序，cryptoRSAEncrypt 直接 JSON.stringify。**
+- 三态：匿名 `error_code 20018`；nonvip/vip `status=1 error_code=0`。
+- data 字段树（顶层即 data，无包裹）：`nickname/k_nickname/fx_nickname/kq_talent/
+  pic/k_pic/fx_pic/gender/vip_type/m_type/y_type/descri/follows/fans/friend_total/
+  visitors/constellation/medal/star_status/star_id/birthday/city/province/occupation/
+  bg_pic/relation/auth_info*/tme_star_status/biz_status/p_grade/friends/face_auth/
+  avatar_review/servertime/bookvip_valid/iden/is_star/knock_cnt`。
+- Dart 映射对照（user_endpoints.dart UserProfile.fromMap）：userid←**响应无 userid 字段**
+  （客户端自持）；nickname✓；**avatar←pic（非 avatar/user_pic）**✅已容错兼容但主键应为
+  `pic`；vip_type✓；**level←无 level/user_level 字段**（p_grade 是等级相关，容错取 0 安全）。
+
+### R1-A-2 · playHistoryUpload（POST /playhistory/v1/upload_songs，gateway 无 x-router）
+- body `{songs:[{mxid,op:1,ot(秒),pc:1}],token,userid}`，query plat=3 →
+  匿名 `20010`；登录态 `status=1 error_code=0`，
+  `data={userid:"…",songs:[{mxid:"494021",code:1}]}`（mxid 回显为字符串，code=1 成功）。
+- Dart 判定 `status==1 || error_code==0` ✅ 正确，无修正。
+
+### R1-A-3 · listenReport（POST /v2/get_list，直连 listenservice.kugou.com，非 gateway）
+- body `{t_userid:"…",userid:"…",list_type:0,area_code:1,cover:2,
+  p=cryptoRSAEncrypt({clienttime,token})大写}`（**t_userid/userid 字符串**），query
+  clienttime/plat=0。匿名 `20010`；登录态 `status=1`。
+- data：`data_date(int yyyymmdd)/servertime/lists[]/total_history/total_week/hide_mixsongids…`；
+  lists[] 键：`hash/imgsize[]/image_320/bitrate/filesize_320/filesize_128/hash_320/
+  privilege_sq/fail_process/pay_type/imgsize_sq/image/duration/type/filesize_sq/hash_sq/
+  id/old_cpy/singername/privilege_320/privilege_128/image_sq/trans_param/imgsize_320/
+  imgsize_128/privilege/extname/filesize/album_audio_id/image_128/listen_count/name/album_name`。
+- **修正**：user_endpoints.reportListen 移除 body 里的 `hash`（上游无此字段）；
+  p 由 PKCS1 改裸 RSA 右补零。此端点是「获取收听列表」而非上报（上报走 personal_fm）。
+
+### R1-A-4 · playlistCreate（POST /cloudlist.service/v5/add_list，URL 前缀式，omitSrcappid）
+- 加密契约：**无 RSA/AES**，明文 JSON body + android 签名即通。
+- 三态：匿名 `20010`；nonvip 建 `N3B实测xxx` → `data.info.listid=5`（status=1）；
+  vip → `data.info.listid=42`。字段树：`data.info{listid,status,source,tags,per_num,
+  create_time,update_time,is_pri,name,pub_type,is_featured,pic,code,is_copy,listid,
+  intro,type,…}+pre_total_ver/total_ver/userid/last_area/list_count/last_time`。
+- Dart createPlaylist 取 `data.info.listid` ✅ 正确；`_ok` 判定 ✅。无修正。
+
+### R1-A-5 · deletePlaylist（POST /v2/delete_list + x-router cloudlist.service.kugou.com）
+- 加密契约（实测打通，二处映射错误修正）：
+  - body = `playlistAesEncrypt({listid:Number,total_ver:0,type:1})` 的 Base64 密文；
+    **AES key/iv = md5(6位随机key) 的 hex 字符串的 ASCII 字节**（CryptoJS
+    utf8WordArray(md5hex)，AES-128 取前16/后16字符），**不是 hex 解码字节**——
+    hex 直转实测响应解密乱码；crypto_rsa.dart 已改 `_asciiBytes()`。
+  - `p = rsaEncrypt2({aes:key, uid, token}).toUpperCase()`（真 PKCS1 v1.5，
+    openssl pkeyutl pkcs1 等价；与 cryptoRSAEncrypt 裸 RSA 不同！）
+  - query：默认参数 + `key=signParamsKey(clienttime)/last_area='gztx'/last_time/p`；
+    **签名串 = android(params) + AES 密文字符串**（rawBody 入签，KugouClient 已支持）。
+- 响应为 AES 密文字节（非 base64 文本！直接以二进制回包，需按字节解密）；
+  解密后 `data.info[{...listid,code:1,...}]/status:1/pre_total_ver/total_ver/
+  userid/last_area/list_count/last_time`。
+- 实测：nonvip listid 5、vip listid 43 均 status=1 删除成功，`N3B实测xxx` 两账号
+  均已清空（vip 遗留 N3B实测vip40173/40192/40216/40241 为批N3-B 旧数据，未动）。
+- Dart deletePlaylist 对照：契约/查询/rawBody/解密判定 ✅；仅 AES 派生修正（上述）。
+
+### R1-A-6 · rankAudio（POST /openapi/kmr/v2/rank/audio，kg-tid:369，无 x-router）
+- 三态全部 `status=1/error_code=0`（**匿名可用**）：`total=100,
+  data{total,songlist[]}`；songlist[] 键：`mvdata/authors[]/author_name/copyright/
+  audio_id/video_info/musical/remarks/trans_param/is_publish/user_download…`
+  + business.sort（名次）/audio_info{hash_128,duration_128,…}（字段树同 A2-6 留样）。
+- Dart rankInfo 映射 `SongBrief.fromRankAudio` ✅ 无修正。
+
+### R1-A-7 · videoDetailKmrV2（POST /kmr/v2/videos + x-router kmr.service.kugou.com）
+- 三态全部 **HTTP 404（nginx html）**：端点不可达（同 N2-B 结论），如实记录不猜；
+  Dart 已有 videoDetail(/v1/video) 主路径 + kmr/v2 仅作 fallback，fallback 404 属预期
+  降级，无字段留样可修。
+
+### R1-A-8 · searchSuggest（GET /v2/getSearchTip + x-router searchtip.kugou.com）
+- 三态全部 `status=1`（匿名可用，无 vip 差异）；签名不含 body（GET 空串）。
+- 字段树：`status/error_code/ErrorCode/data[]/SingerShortcut{id,name,img,song_count,
+  album_count,fans_count}/Shortcuts`；data[] 分组（本次 3 组）：
+  `{RecordDatas[],RecordCount,LableName}`（LableName ''=综合/MV/专辑…）；
+  RecordDatas[]：`HintInfo/MatchCount/Hot/IsRadio/IsKlist/Use/recall_stage/scores/
+  la/icon/subtitle/busi/complex_ai_action`。
+- Dart searchSuggest 解析 records/HintInfo/LableName ✅ 正确；`data` 为数组时
+  `data['records']` 取不到 → 走兜底 lists[] 也能容错，但主路径应遍历 **data[] 本身**。
+  （dataOf(res) 返回 data；`data['records']` 对数组 data 是 null → 恒走兜底分支，
+  功能等价，记录为已知容错路径，不阻塞。）
+
+### R1-A 修正清单（代码改动 2 文件）
+| 文件 | 修正 | 行数 |
+|---|---|---|
+| lib/core/net/endpoints/user_endpoints.dart | getUserDetail/reportListen 的 p 改裸 RSA 右补零（rsaCryptoEncrypt）；reportListen 移除 body hash；注释更新三态实测结论 | 287（≤500✓） |
+| lib/core/net/crypto_rsa.dart | playlistAesEncrypt/Decrypt 的 key/iv 改 md5hex 字符串 ASCII 字节（_asciiBytes）；hex 直转为解密失败根因 | 177（≤500✓） |

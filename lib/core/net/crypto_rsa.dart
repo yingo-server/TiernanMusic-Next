@@ -107,12 +107,14 @@ PlaylistAesResult playlistAesEncrypt(Map<String, Object?> data,
     final key = String.fromCharCodes(
         List<int>.generate(6, (_) => _randLower.codeUnitAt(r.nextInt(_randLower.length))));
     final digest = md5Hex(key);
+    // 批R1-A 实测（2026-11-13）：上游 CryptoJS utf8WordArray(md5hex 字符串)
+    // → key/iv 是 **md5 hex 字符串的 ASCII 字节**（AES-128 取前/后 16 字符），
+    // 不是 hex 解码后的 16 字节（hex 直转实测响应解不开）。
     final encKey = digest.substring(0, 16);
     final iv = digest.substring(16, 32);
     final plain = utf8.encode(jsonEncode(data));
-    // md5 派生的 32 hex 字符即 16 字节 key/iv（hex 直转字节）。
-    final cipher = AesCbc.encrypt(Uint8List.fromList(plain),
-        _hexToBytes(encKey), _hexToBytes(iv));
+    final cipher = AesCbc.encrypt(
+        Uint8List.fromList(plain), _asciiBytes(encKey), _asciiBytes(iv));
     return PlaylistAesResult(key, _base64EncodePadded(cipher));
   } catch (e, st) {
     Log.e(_tag, 'playlistAesEncrypt failed', e, st);
@@ -120,14 +122,15 @@ PlaylistAesResult playlistAesEncrypt(Map<String, Object?> data,
   }
 }
 
-/// playlistAesDecrypt：同 key/iv 派生，Base64 输入，返回解密文本（JSON 由调用方解析）。
+/// playlistAesDecrypt：同 key/iv 派生（md5 hex 字符串 ASCII 字节，见
+/// playlistAesEncrypt 批R1-A 实测注），Base64 输入，返回解密文本。
 String playlistAesDecrypt(String cipherBase64, String key) {
   try {
     final digest = md5Hex(key);
     final encKey = digest.substring(0, 16);
     final iv = digest.substring(16, 32);
     final out = AesCbc.decrypt(_b64ToBytes(cipherBase64),
-        _hexToBytes(encKey), _hexToBytes(iv));
+        _asciiBytes(encKey), _asciiBytes(iv));
     return utf8.decode(out, allowMalformed: true);
   } catch (e, st) {
     Log.e(_tag, 'playlistAesDecrypt failed', e, st);
@@ -135,14 +138,16 @@ String playlistAesDecrypt(String cipherBase64, String key) {
   }
 }
 
-Uint8List _hexToBytes(String hex) {
-  if (hex.length != 32) throw CryptoException('bad key/iv hex len ${hex.length}');
-  final out = Uint8List(16);
-  for (var i = 0; i < 16; i++) {
-    out[i] = int.parse(hex.substring(i * 2, i * 2 + 2), radix: 16);
+/// 16 字符 hex 子串 → 其 ASCII 字节（CryptoJS Utf8.parse 语义）。
+Uint8List _asciiBytes(String s) {
+  final out = Uint8List(s.length);
+  for (var i = 0; i < s.length; i++) {
+    out[i] = s.codeUnitAt(i) & 0xff;
   }
   return out;
 }
+
+// _hexToBytes 已删（批R1-A：AES key/iv 为 md5hex 字符串 ASCII 字节，非 hex 解码）。
 
 Uint8List _b64ToBytes(String s) {
   final clean = s.replaceAll(RegExp(r'[^A-Za-z0-9+/]'), '');
