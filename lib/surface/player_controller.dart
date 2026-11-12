@@ -7,7 +7,8 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../bridges/bridge_core.dart' show SongBrief, KeyValueSettings;
+import '../bridges/bridge_core.dart'
+    show SongBrief, KeyValueSettings, StoragePaths;
 import '../bridges/bridge_logic.dart' show Log;
 import '../bridges/bridge_logic.dart'
     show PlaySource, QueueState, PlayerState, PlayerStatus, PlayMode,
@@ -27,6 +28,33 @@ void _e(String msg, Object? err, StackTrace? st) {
   try {
     Log.e(_tag, msg, err, st);
   } catch (_) {}
+}
+
+/// 倍速偏好存储门面（经 bridge_core 暴露的 KeyValueSettings）。
+/// 注入优先；未注入时懒取 StoragePaths.I 单例（bootloader 已装配），
+/// 任何失败都 Log 留痕并返回 null（不静默吞、不阻断播放）。
+KeyValueSettings? _fallbackSettings;
+
+KeyValueSettings? _settingsOf(KeyValueSettings? injected) {
+  try {
+    final s = injected ?? _fallbackSettings ??= KeyValueSettings(StoragePaths.I);
+    return s;
+  } catch (e, st) {
+    _e('resolve KeyValueSettings failed', e, st);
+    return null;
+  }
+}
+
+/// 从 KeyValueSettings 恢复倍速（键 preferred_speed，失败留痕降级 1.0）。
+/// getDouble 兼容历史字符串值与数值，越界 clamp。
+double _readSpeed(KeyValueSettings? injected) {
+  try {
+    final v = _settingsOf(injected)?.getDouble('preferred_speed') ?? 1.0;
+    return v.isNaN ? 1.0 : v.clamp(0.5, 2.0);
+  } catch (e, st) {
+    _e('read preferred_speed failed', e, st);
+    return 1.0;
+  }
 }
 
 // ── 播放引擎抽象（批5 用 just_audio 实现 JustAudioEngine） ──
@@ -85,20 +113,29 @@ class PlayerSnapshot {
   const PlayerSnapshot({
     this.queue = const QueueState(),
     this.player = const PlayerState(),
-    this.speed = 1.0,
   });
 
   final QueueState queue;
   final PlayerState player;
 
-  /// 倍速（0.5~2.0，UI 偏好维度；默认 1.0）。
-  final double speed;
+  /// 倍速（0.5~2.0；唯一真源为 L5 PlayerState.speed，默认 1.0）。
+  double get speed => player.speed;
 
-  PlayerSnapshot copyWith({QueueState? queue, PlayerState? player, double? speed}) =>
-      PlayerSnapshot(
-          queue: queue ?? this.queue,
-          player: player ?? this.player,
-          speed: speed ?? this.speed);
+  PlayerSnapshot copyWith({
+    QueueState? queue,
+    PlayerState? player,
+    double? speed,
+  }) {
+    try {
+      final nextPlayer = player ??
+          (speed == null ? this.player : this.player.copyWith(speed: speed));
+      return PlayerSnapshot(
+          queue: queue ?? this.queue, player: nextPlayer);
+    } catch (e, st) {
+      Log.e(_tag, 'PlayerSnapshot.copyWith failed', e, st);
+      return this;
+    }
+  }
 }
 
 // ── 控制器 ──
@@ -117,16 +154,15 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
         _engine = engine ?? NullAudioEngine(),
         _quality = quality,
         _settings = settings,
-        _speed = (settings?.getDouble('preferred_speed') ?? 1.0).clamp(0.5, 2.0),
-        super(const PlayerSnapshot()) {
-    _d('init engine=${_engine.runtimeType} quality=$_quality speed=$_speed');
+        super(PlayerSnapshot(
+            player: PlayerState(speed: _readSpeed(settings)))) {
+    _d('init engine=${_engine.runtimeType} quality=$_quality speed=${state.speed}');
   }
 
   final PlaySourceResolver _resolver;
   final AudioEngine _engine;
   final String _quality;
   final KeyValueSettings? _settings;
-  double _speed = 1.0;
   Timer? _ticker;
 
   // ── 引擎事件入口（批5-A：JustAudioEngine onAction 回调落点） ──
@@ -252,23 +288,20 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
     }
   }
 
-  /// 倍速 0.5~2.0：越界 clamp + Log.w 留痕；经引擎 setSpeed 生效，
-  /// 并持久化到 KeyValueSettings('preferred_speed')（经 bridge_core 门面）。
-  /// speed 属 UI 偏好不入 PlayerState，以 getter 暴露（snap.speed）。
+  /// 倍速 0.5~2.0：越界 clamp + Log.w 留痕；经 reducer 写入
+  /// PlayerState.speed（唯一真源）、引擎 setSpeed 生效，并持久化
+  /// KeyValueSettings('preferred_speed')（经 bridge_core 门面）。
   Future<void> setSpeed(double speed) async {
     try {
       var s = speed.isNaN ? 1.0 : speed;
       if (s < 0.5 || s > 2.0) {
-        try {
-          Log.w(_tag, 'setSpeed out of range $speed, clamped to 0.5~2.0');
-        } catch (_) {}
+        Log.w(_tag, 'setSpeed out of range $speed, clamped to 0.5~2.0');
         s = s.clamp(0.5, 2.0);
       }
-      _speed = s;
       _dispatch(SetSpeed(s));
       await _engine.setSpeed(s);
       try {
-        _settings?.setDouble('preferred_speed', s);
+        _settingsOf(_settings)?.setDouble('preferred_speed', s);
       } catch (e, st) {
         _e('persist preferred_speed failed $s', e, st);
       }
@@ -288,8 +321,8 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
     }
   }
 
-  /// 当前倍速（0.5~2.0，默认 1.0，含 preferred_speed 恢复值）。
-  double get speed => _speed;
+  /// 当前倍速（唯一真源：PlayerState.speed，默认 1.0）。
+  double get speed => state.speed;
 
   // ── 内部：起播当前曲 ──
 
@@ -361,7 +394,7 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
   void _dispatch(PlaybackAction action) {
     try {
       final player = playbackReducer(state.player, action);
-      state = state.copyWith(player: player, speed: _speed);
+      state = state.copyWith(player: player);
       _d('dispatch ${action.runtimeType}');
     } catch (e, st) {
       _e('dispatch ${action.runtimeType} failed', e, st);

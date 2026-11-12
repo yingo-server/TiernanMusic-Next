@@ -211,6 +211,7 @@ class JustAudioEngine implements AudioEngine {
   }
 
   /// 音量 0.0 ~ 1.0（越界截断）。
+  @override
   Future<void> setVolume(double volume) async {
     try {
       var v = volume.isNaN ? 1.0 : volume;

@@ -214,25 +214,24 @@ class _PlayerPageBody extends ConsumerWidget {
   }
 
   /// 弹出倍速选择（0.5/1.0/1.5/2.0，ChoiceChip 选中态）。
-  void _showSpeedSheet(BuildContext context, WidgetRef ref) {
+  void _showSpeedSheet(BuildContext context) {
     try {
       const speeds = <double>[0.5, 1.0, 1.5, 2.0];
       showModalBottomSheet<void>(
-        context: context,
-        showDragHandle: true,
+        context: context, showDragHandle: true,
         builder: (ctx) => SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(tnPadL),
-            child: Wrap(
+            child: Consumer(builder: (ctx, r, _) => Wrap(
               spacing: tnPadS,
               children: <Widget>[
                 for (final s in speeds)
                   ChoiceChip(
                     label: Text('${s.toStringAsFixed(1)}x'),
-                    selected: s == ref.read(playerProvider.notifier).speed,
+                    selected: s == r.watch(playerProvider).speed,
                     onSelected: (_) {
                       try {
-                        ref.read(playerProvider.notifier).setSpeed(s);
+                        r.read(playerProvider.notifier).setSpeed(s);
                       } catch (e, st) {
                         Log.e(_tag, 'setSpeed failed $s', e, st);
                       }
@@ -240,7 +239,7 @@ class _PlayerPageBody extends ConsumerWidget {
                     },
                   ),
               ],
-            ),
+            )),
           ),
         ),
       );
@@ -459,7 +458,7 @@ class _PlayerPageBody extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
                         TnPressable(
-                          onTap: () => _showSpeedSheet(context, ref),
+                          onTap: () => _showSpeedSheet(context),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: tnPadM, vertical: tnPadXS),
@@ -468,8 +467,7 @@ class _PlayerPageBody extends ConsumerWidget {
                               border: Border.all(
                                   color: Theme.of(context).colorScheme.outline),
                             ),
-                            child: Text(
-                              '${snap.speed.toStringAsFixed(1)}x',
+                            child: Text('${snap.speed.toStringAsFixed(1)}x',
                               style: Theme.of(context)
                                   .textTheme
                                   .labelSmall
