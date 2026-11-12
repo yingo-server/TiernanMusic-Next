@@ -6,13 +6,16 @@
 //     encryptKey=md5(key)[0..16)，iv=md5(key)[16..32)；AES-128-CBC PKCS7；
 //     输出 Base64(ciphertext)。
 //   - playlistAesDecrypt({str,key})：同 key/iv 派生，Base64 输入。
-// 原则：纯 Dart，零第三方库；复用 crypto_extra.dart 的 AesCbc/BigIntL/RsaRaw。
+// 原则：纯 Dart，零第三方库；复用 crypto_aes/crypto_bigint/crypto_rsa_raw 的
+// AesCbc/BigIntL/RsaRaw（原 crypto_extra.dart 已拆分为分片，R2-A）。
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
 import '../../bridges/bridge_kernel.dart' show Log;
-import 'crypto_extra.dart' show AesCbc, BigIntL, RsaRaw, CryptoException;
+import 'crypto_aes.dart' show AesCbc, CryptoException;
+import 'crypto_bigint.dart' show BigIntL;
+import 'crypto_rsa_raw.dart' show RsaRaw;
 import 'signing.dart' show md5Hex;
 
 const String _tag = 'net.crypto.playlist';

@@ -133,15 +133,19 @@ PlayerState playbackReducer(PlayerState state, PlaybackAction action) {
       );
     }
     if (action is Progress) {
+      // loading 态的陈旧进度（上一曲残流）不得写入新曲状态：换歌瞬间
+      // 旧流 chunk 会把 positionMs 覆盖回大值。loading/非 playing 一律忽略。
+      if (state.status != PlayerStatus.playing) return state;
       return state.copyWith(
-        status: state.status == PlayerStatus.playing ? PlayerStatus.playing : state.status,
+        status: PlayerStatus.playing,
         positionMs: action.positionMs >= 0 ? action.positionMs : null,
         durationMs: action.durationMs >= 0 ? action.durationMs : null,
         bufferMs: action.bufferMs >= 0 ? action.bufferMs : null,
       );
     }
     if (action is Completed) {
-      return state.copyWith(status: PlayerStatus.completed);
+      // 自然播完成功，不应残留上一次的错误文案（UI 依据 lastError 展示）。
+      return state.copyWith(status: PlayerStatus.completed, clearError: true);
     }
     if (action is ErrorAction) {
       return state.copyWith(

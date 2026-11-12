@@ -1,5 +1,4 @@
 // L6 surface/pages · 歌单页模块（SurfaceModule 热插拔）
-// TODO(批10-B): 收敛到 TnDims / TnColors 设计令牌表。
 // recommend 网格（封面+名字）+ 点击进歌单 tracks（Navigator.push 简单页）+ 本地镜像 listLocal tab。
 import 'package:flutter/material.dart';
 

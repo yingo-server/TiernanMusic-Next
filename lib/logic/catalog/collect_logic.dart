@@ -7,7 +7,13 @@ import 'dart:convert';
 
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' as ep
-    show CollectResult, cancelCollectByHash, collectSongByHash, getFavoriteCount;
+    show
+        CollectResult,
+        cancelCollectByHash,
+        collectSongByHash,
+        favoriteListId,
+        getFavoriteCount,
+        playlistTracks;
 import '../../bridges/bridge_core.dart' show SongBrief;
 import '../../bridges/bridge_core.dart' show KeyValueSettings, KugouClient;
 
@@ -150,7 +156,10 @@ class CollectLogic {
       } else {
         _favorites.add(h);
       }
-      _count = r.count > 0 ? r.count : _favorites.length;
+      // 计数校准：端点 count 可能是占位值（collectSongByHash 成功恒返回 1、
+      // cancelCollectByHash 恒返回 0），不可直接覆盖镜像条数——否则多曲收藏
+      // 后计数被打回 1。仅当服务端计数 ≥ 镜像条数时采信服务端。
+      _count = r.count >= _favorites.length ? r.count : _favorites.length;
       final flushed = _flush();
       _notify();
       Log.d(_tag, 'toggle ok hash=$h cancel=$wasCollected '
@@ -163,6 +172,8 @@ class CollectLogic {
   }
 
   /// 用服务端收藏计数校准本地计数（不覆盖镜像内容；失败保留原计数）。
+  /// 且首次进入（镜像为空）时从「我喜欢」歌单回填 hash 列表——
+  /// 镜像只在 toggle 时写，全新安装/换设备登录后本地恒空，UI 显示 0 条。
   Future<int> refreshCount() async {
     try {
       final n = await ep.getFavoriteCount(_client);
@@ -170,11 +181,43 @@ class CollectLogic {
         _count = n;
         _notify();
       }
+      // 首次进入回填：本地镜像空但服务端有收藏 → 拉一次曲目页补镜像。
+      if (_favorites.isEmpty && n > 0) {
+        final filled = await _backfillFromServer();
+        if (filled > 0) {
+          _count = _favorites.length;
+          _flush();
+          _notify();
+        }
+      }
       Log.d(_tag, 'refreshCount server=$n count=$_count');
       return _count;
     } catch (e, st) {
       Log.e(_tag, 'refreshCount failed', e, st);
       return _count;
+    }
+  }
+
+  /// 从「我喜欢」歌单（经 _favoriteListId 的公共入口：先拿 listid 再拉曲目）
+  /// 回填镜像。失败静默返回 0（保持镜像空，不伪造数据）。
+  Future<int> _backfillFromServer() async {
+    try {
+      final listid = await ep.favoriteListId(_client);
+      if (listid == null || listid.isEmpty) return 0;
+      final tp = await ep.playlistTracks(_client, listid, 1, 100);
+      var added = 0;
+      for (final s in tp.items) {
+        final h = _norm(s.hash);
+        if (h.isNotEmpty && !_favorites.contains(h)) {
+          _favorites.add(h);
+          added++;
+        }
+      }
+      Log.d(_tag, 'backfill favorites from server added=$added total=${_favorites.length}');
+      return added;
+    } catch (e, st) {
+      Log.e(_tag, '_backfillFromServer failed', e, st);
+      return 0;
     }
   }
 

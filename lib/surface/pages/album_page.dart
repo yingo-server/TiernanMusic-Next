@@ -1,5 +1,4 @@
 // L6 surface/pages · 专辑页模块（功能对齐批4-B，主会话实现）
-// TODO(批10-B): 收敛到 TnDims / TnColors 设计令牌表。
 // 装配：SurfaceRegistry.install(buildAlbumModule(...))；TnAppBar 统一顶栏。
 // 铁律：只 import flutter + ../bridges/ + 本层；每方法 try/catch+Log。
 import 'package:flutter/material.dart';

@@ -1,20 +1,23 @@
 // L6 surface/pages · 播放页模块（SurfaceModule 热插拔，无 navEntry——非 tab）
-// MiniBar 全局悬浮于底部导航上方；点击展开全屏播放页（大封面/Slider seek/上一首/下一首/
-// 播放模式/音量）。状态消费 riverpod PlayerSnapshot provider。
+// MiniBar 全局悬浮于底部导航上方（已拆至 widgets/mini_bar.dart）；
+// 点击展开全屏播放页（大封面/Slider seek/上一首/下一首/播放模式/音量）。
+// 倍速选择 sheet 已拆至 widgets/player_speed_sheet.dart。
+// 状态消费 riverpod PlayerSnapshot provider。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bridges/bridge_logic.dart'
-    show SearchLogic, PlayerState, PlayerStatus, PlayMode, Log, LogicFacade,
+    show PlayerStatus, PlayMode, Log, LogicFacade,
         CollectLogic;
 import '../player_controller.dart'
     show PlayerController, playerProvider;
 import '../../bridges/bridge_core.dart'
-    show AudioQuality, toPref, fromPref;
+    show AudioQuality;
 import '../registry.dart';
-import '../theme/tn_motion.dart' show TnMotionStaggered, TnPageRoute, TnPressable;
+import '../theme/tn_motion.dart' show TnPressable;
 import '../widgets/common_widgets.dart' show CoverImage;
 import '../widgets/favorite_button.dart' show FavoriteButton;
+import '../widgets/player_speed_sheet.dart' show showPlayerSpeedSheet;
 import '../widgets/quality_sheet.dart' show QualitySheet;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 import '../theme/tn_theme.dart'
@@ -67,106 +70,11 @@ class PlayerPageModule implements SurfaceModule {
       );
 }
 
-// ── MiniBar：全局悬浮迷你播放条（宿主把本组件叠在底部导航上方） ──
-
-class MiniBar extends ConsumerWidget {
-  const MiniBar({super.key, this.onExpand});
-
-  final void Function(BuildContext)? onExpand;
-
-  void _defaultExpand(BuildContext ctx) {
-    try {
-      Navigator.of(ctx).push(MaterialPageRoute<void>(
-          builder: (_) => const _PlayerPageBody(), fullscreenDialog: true));
-    } catch (e, st) {
-      Log.e(_tag, 'miniBar expand failed', e, st);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    try {
-      final snap = ref.watch(playerProvider);
-      final p = snap.player;
-      final song = p.current;
-      if (song == null || p.status == PlayerStatus.idle) {
-        return const SizedBox.shrink(); // 无当前曲不悬浮
-      }
-      final ctl = ref.read(playerProvider.notifier);
-      return Material(
-        elevation: 8,
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: SizedBox(
-          height: TnDims.barH,
-          child: Row(children: <Widget>[
-            Expanded(
-              child: InkWell(
-                onTap: () {
-                  try {
-                    (onExpand ?? _defaultExpand)(context);
-                  } catch (e, st) {
-                    Log.e(_tag, 'miniBar tap crashed', e, st);
-                  }
-                },
-                child: Row(children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.all(tnPadS),
-                    child: CoverImage(url: song.albumName.isEmpty ? null : null),
-                  ),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(song.name.isEmpty ? song.hash : song.name,
-                            maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w600)),
-                        Text(song.singer,
-                            maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: Theme.of(context).hintColor)),
-                      ],
-                    ),
-                  ),
-                ]),
-              ),
-            ),
-            IconButton(
-              icon: Icon(p.isPlaying ? Icons.pause : Icons.play_arrow),
-              onPressed: () {
-                try {
-                  ctl.toggle();
-                } catch (e, st) {
-                  Log.e(_tag, 'miniBar toggle crashed', e, st);
-                }
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.skip_next),
-              onPressed: () {
-                try {
-                  ctl.next();
-                } catch (e, st) {
-                  Log.e(_tag, 'miniBar next crashed', e, st);
-                }
-              },
-            ),
-          ]),
-        ),
-      );
-    } catch (e, st) {
-      Log.e(_tag, 'miniBar build crashed', e, st);
-      return const SizedBox.shrink();
-    }
-  }
-}
-
 // ── 全屏播放页 ──
 
-class _PlayerPageBody extends ConsumerWidget {
-  const _PlayerPageBody({
+class PlayerPageBody extends ConsumerWidget {
+  const PlayerPageBody({
+    super.key,
     this.collect,
     this.onQualitySelected,
     this.onOpenComments,
@@ -213,36 +121,10 @@ class _PlayerPageBody extends ConsumerWidget {
     }
   }
 
-  /// 弹出倍速选择（0.5/1.0/1.5/2.0，ChoiceChip 选中态）。
+  /// 弹出倍速选择（拆至 widgets/player_speed_sheet.dart，业务零改动）。
   void _showSpeedSheet(BuildContext context) {
     try {
-      const speeds = <double>[0.5, 1.0, 1.5, 2.0];
-      showModalBottomSheet<void>(
-        context: context, showDragHandle: true,
-        builder: (ctx) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(tnPadL),
-            child: Consumer(builder: (ctx, r, _) => Wrap(
-              spacing: tnPadS,
-              children: <Widget>[
-                for (final s in speeds)
-                  ChoiceChip(
-                    label: Text('${s.toStringAsFixed(1)}x'),
-                    selected: s == r.watch(playerProvider).speed,
-                    onSelected: (_) {
-                      try {
-                        r.read(playerProvider.notifier).setSpeed(s);
-                      } catch (e, st) {
-                        Log.e(_tag, 'setSpeed failed $s', e, st);
-                      }
-                      Navigator.of(ctx).pop();
-                    },
-                  ),
-              ],
-            )),
-          ),
-        ),
-      );
+      showPlayerSpeedSheet(context);
     } catch (e, st) {
       Log.e(_tag, 'showSpeedSheet failed', e, st);
     }

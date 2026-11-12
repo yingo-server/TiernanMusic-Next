@@ -137,7 +137,15 @@ class QueueState {
   QueueState append(SongBrief song) {
     try {
       final list = List<SongBrief>.of(items)..add(song);
-      final ni = index < 0 ? 0 : index;
+      // index 越界（历史状态残留）时钳位：未播放过指向新追加项，越界指向尾部。
+      int ni;
+      if (index < 0) {
+        ni = list.length - 1;
+      } else if (index >= list.length) {
+        ni = list.length - 1;
+      } else {
+        ni = index;
+      }
       return _with(list, ni);
     } catch (e, st) {
       Log.e(_tag, 'append failed', e, st);
@@ -181,8 +189,14 @@ class QueueState {
       final list = List<SongBrief>.of(items)..removeAt(i);
       if (list.isEmpty) return _with(list, -1);
       var ni = index;
-      if (i < index) ni = index - 1;
-      else if (i == index) ni = index >= list.length ? list.length - 1 : index;
+      if (i < index) {
+        ni = index - 1;
+      } else if (i == index) {
+        // 语义「删当前曲则指向下一首」：删除后原 index 位置即原下一首；
+        // 仅当删的是队尾才回退到新的尾部。原实现 index 未变，导致
+        // 删当前曲后索引指向被删曲的后一首（跳歌）。
+        ni = index >= list.length ? list.length - 1 : index;
+      }
       return _with(list, ni);
     } catch (e, st) {
       Log.e(_tag, 'removeAt failed', e, st);

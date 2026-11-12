@@ -1,5 +1,4 @@
 // L6 surface/pages · MV 页模块（批1-B · GAP_ANALYSIS #16）
-// TODO(批10-B): 收敛到 TnDims / TnColors 设计令牌表。
 // 装配方式（不动 modules.dart / assembly.dart，由主代理接线）：
 //   final mvLogic = MvLogic(client: ..., cache: ...);          // boot 装配
 //   SurfaceRegistry.install(buildMvModule(
@@ -9,8 +8,9 @@
 //   go_router 注册 route '/mv'（模块无 navEntry，非 tab）。
 // 视频播放壳：本页为占位实现——封面点击 + 清晰度 chips + 外部播放器意图
 // （platform url_launcher 不在本批白名单，经回调注入 onExternalPlay）。
-// TODO(批5+): 视频播放壳后续接入（video_player 属依赖例外白名单需评估，
-//   或按 ARCHITECTURE.md 自实现 ≤500 行播放壳），保持包体不引新依赖。
+// TODO(批5+): 视频播放壳后续接入（不扩功能、不引依赖）——本页视频播放壳属新功能，
+//   集中此一条：video_player 属依赖例外白名单需评估，或按 ARCHITECTURE.md 自实现
+//   ≤500 行播放壳；封面点击/清晰度 chips/外部播放器意图回调 onExternalPlay 保持现状。
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart'
@@ -220,8 +220,7 @@ class _MvPageBodyState extends State<_MvPageBody> {
                   onRefresh: _load,
                   child: ListView(
                     children: <Widget>[
-                      // 封面占位壳：点击触发取 URL + 外部播放器意图。
-                      // TODO(批5+): 替换为内嵌视频播放壳（保持包体，暂不引依赖）。
+                      // 封面占位壳：点击触发取 URL + 外部播放器意图（内嵌播放壳见文件头 TODO(批5+)）。
                       AspectRatio(
                         aspectRatio: 16 / 9,
                         child: Stack(children: <Widget>[
@@ -229,6 +228,7 @@ class _MvPageBodyState extends State<_MvPageBody> {
                             child: CoverImage(url: _brief?.coverUrl),
                           ),
                           Positioned.fill(
+                            // M3 语义例外：InkWell 水波纹需 Material 透明承载层（非取色语义），保留裸值。
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(

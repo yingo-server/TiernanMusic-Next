@@ -92,7 +92,7 @@ export '../core/net/endpoints/artist_endpoints.dart'
         kArtistDetailPath,
         kArtistListPath;
 export '../core/net/endpoints/collect_endpoints.dart'
-    show cancelCollectByHash, collectSongByHash, getFavoriteCount;
+    show cancelCollectByHash, collectSongByHash, favoriteListId, getFavoriteCount;
 export '../core/net/endpoints/fm_endpoints.dart'
     show getFmPlay, getFmSongs;
 export '../core/net/endpoints/mv_endpoints.dart'

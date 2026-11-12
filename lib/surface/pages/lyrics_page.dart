@@ -81,7 +81,9 @@ class _LyricsPageState extends State<LyricsPage> {
     _loadLyrics();
     // 200ms 轮询 positionMs：够顺滑且不重负载；PlayerController 流可用后可换订阅。
     // 自定义时长说明：轮询频率非动效时长，不属 TnMotion 三档，保留裸值。
-    _ticker = Timer.periodic(const Duration(milliseconds: 200), (_) {
+    _ticker = Timer.periodic(
+      // 业务轮询节奏（200ms）：positionMs 轮询频率非动效时长，不属 TnMotion 三档，保留裸值。
+      const Duration(milliseconds: 200), (_) {
       if (!mounted) return;
       try {
         final pos = widget.deps.positionMsProvider();
@@ -197,6 +199,7 @@ class _LyricsPageState extends State<LyricsPage> {
       Expanded(
         child: ListView.builder(
       controller: _scroll,
+      // M3 语义例外：歌词滚动留白是布局数值（列表上下呼吸区），非设计令牌间距语义，保留裸值。
       padding: const EdgeInsets.symmetric(vertical: 100, horizontal: 24),
       itemCount: _parsed.lines.length,
       itemBuilder: (context, i) {

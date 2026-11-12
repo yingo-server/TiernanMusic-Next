@@ -107,7 +107,7 @@ Future<CollectResult> collectSongByHash(
       Log.w(_tag, 'collectSongByHash empty hash');
       return const CollectResult();
     }
-    final listid = await _favoriteListId(client);
+    final listid = await favoriteListId(client);
     if (listid == null) {
       Log.w(_tag, 'collectSongByHash no 我喜欢 playlist hash=$h');
       return const CollectResult(ok: false, needsLogin: true);
@@ -144,7 +144,7 @@ Future<CollectResult> cancelCollectByHash(
       Log.w(_tag, 'cancelCollectByHash empty hash');
       return const CollectResult();
     }
-    final listid = await _favoriteListId(client);
+    final listid = await favoriteListId(client);
     if (listid == null) {
       Log.w(_tag, 'cancelCollectByHash no 我喜欢 playlist hash=$h');
       return const CollectResult(ok: false, needsLogin: true);
@@ -161,7 +161,8 @@ Future<CollectResult> cancelCollectByHash(
 
 /// 查找「我喜欢」歌单 listid（跳过 listid=1「默认收藏」概念版）。
 /// 登录态缺失时 getUserPlaylists 返回空 → null。
-Future<String?> _favoriteListId(KugouClient client) async {
+/// 公开导出供 logic 层（collect_logic 首次进入回填镜像）使用。
+Future<String?> favoriteListId(KugouClient client) async {
   try {
     if (client.session.userid.isEmpty) return null;
     final lists = await getUserPlaylists(client, page: 1, pageSize: 100);

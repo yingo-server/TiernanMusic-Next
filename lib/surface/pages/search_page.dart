@@ -101,7 +101,9 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
     try {
       _debounce?.cancel();
       if (kw.trim().isEmpty) { setState(() => _suggests = const <SearchSuggestItem>[]); return; }
-      _debounce = Timer(const Duration(milliseconds: 300), () async {
+      _debounce = Timer(
+          // 业务防抖节奏（300ms）：搜索输入防抖非动效时长，不属 TnMotion 三档，保留裸值。
+          const Duration(milliseconds: 300), () async {
         try {
           final list = await widget.search.suggestions(kw);
           if (!mounted) return;

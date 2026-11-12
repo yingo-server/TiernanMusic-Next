@@ -109,7 +109,9 @@ class PlaybackService {
       final rec = _store.getByHash(hash);
       if (rec != null && rec.complete) {
         final path = _store.absolutePathOf(rec);
-        if (path != null) {
+        // 边界防御：索引 complete 但实体文件已被清理时必须回退在线，否则
+        // engine 拿到悬空路径直接报错且无降级。
+        if (path != null && File(path).existsSync()) {
           Log.d(_tag, 'resolvePlaySource local hit $hash (${rec.quality})');
           return PlaySource(localPath: path, quality: rec.quality);
         }

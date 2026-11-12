@@ -121,13 +121,18 @@ class PlaylistLogic {
     try {
       final ok = await addSongsToPlaylist(_client, playlistId, songs);
       if (ok) {
-        // 歌单内容变更：失效该 id 的 tracks 缓存，下次拉取最新。
+        // 歌单内容变更：失效该 id 的 tracks 分页缓存 + detail 缓存（detail
+        // 内含歌曲总数 count，不失效则 UI 首页显示旧总数）。按精确特殊 id
+        // 匹配（数字 id 编码后与原文一致；同时匹配 detail 的 'id' 参数）。
+        final encId = Uri.encodeQueryComponent(playlistId.trim());
         _cache.invalidateWhere((k) {
           final info = parseKey('$k');
           return info.valid &&
               info.namespace == _ns &&
-              info.path.contains('get_other_list_file_nofilt') &&
-              info.query.contains('${Uri.encodeQueryComponent(playlistId)}');
+              (info.path.contains('get_other_list_file_nofilt') ||
+                  info.path.contains('get_list_info')) &&
+              (info.query.contains('specialid=$encId') ||
+                  info.query.contains('id=$encId'));
         });
         Log.d(_tag, 'addSongsToKugouPlaylist ok id=$playlistId n=${songs.length}');
       }

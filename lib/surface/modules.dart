@@ -6,7 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../bridges/bridge_core.dart' show AudioQuality;
 import '../bridges/bridge_logic.dart'
     show SearchLogic, PlaylistLogic, Log, CollectLogic, SearchTypedLogic;
-import 'pages/player_page.dart' show PlayerPageModule, MiniBar;
+import 'pages/player_page.dart' show PlayerPageModule;
+import 'widgets/mini_bar.dart' show MiniBar;
 import 'pages/playlist_page.dart' show PlaylistPageModule;
 import 'pages/search_page.dart' show SearchPageModule;
 import 'audio/audio_service_bridge.dart' show initAudioService;
@@ -16,7 +17,7 @@ import 'player_controller.dart'
         playerControllerProvider;
 import 'registry.dart' show SurfaceModule, SurfaceRegistry;
 
-export 'pages/player_page.dart' show MiniBar;
+export 'widgets/mini_bar.dart' show MiniBar;
 export '../bridges/bridge_logic.dart' show PlaybackService;
 
 /// Surface 层装配依赖（由 bootloader 注入，surface 不 import logic 内部/装配代码）。

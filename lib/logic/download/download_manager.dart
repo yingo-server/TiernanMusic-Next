@@ -122,6 +122,12 @@ class DownloadManager {
         final job = _running[h];
         job?.abort = true; // 下载循环自检退出；收尾在 _runOne
         Log.d(_tag, 'pause requested running $h');
+        // _runOne 异常路径（_Aborted 被 _runOne 外层 catch 捕获）会把任务
+        // 置 failed；此处预置 paused 意图，_runOne 结束后校正见 _runOne 的
+        // aborted 分支。这里立即 emit paused 让 UI 不悬挂在「下载中」。
+        t.status = DownloadStatus.paused;
+        t.error = null;
+        _emit(t);
       }
     } catch (e, st) {
       Log.e(_tag, 'pause $h failed', e, st);
@@ -158,6 +164,15 @@ class DownloadManager {
       }
       _tasks.remove(h);
       _order.remove(h);
+      // .dlpart 残留清理：任务已移除，无运行体再写它（running 已等 done）。
+      // 尽力删除，失败留痕不阻断。
+      try {
+        final dir = await _storeDir();
+        final part = File('$dir${Platform.pathSeparator}$h.dlpart');
+        if (part.existsSync()) part.deleteSync();
+      } catch (e, st) {
+        Log.w(_tag, 'cancel cleanup .dlpart $h failed ERR=$e ST=$st');
+      }
       Log.d(_tag, 'cancelled $h');
       _emit(null);
     } catch (e, st) {
@@ -255,6 +270,9 @@ class DownloadManager {
           await _downloadUrl(task, job, url, src.extName);
           lastErr = null;
           break;
+        } on _Aborted {
+          // pause/cancel 主动中断不是 URL 失败：不得降级备用链、不得置 failed。
+          return _mark(task, DownloadStatus.paused, null);
         } catch (e) {
           lastErr = e;
           Log.w(_tag, 'chunked download $hash via $url failed ERR=$e');
@@ -266,6 +284,8 @@ class DownloadManager {
       }
       if (job.abort) return _mark(task, DownloadStatus.paused, null);
       await _finishCommit(task, src.extName);
+    } on _Aborted {
+      return _mark(task, DownloadStatus.paused, null);
     } catch (e, st) {
       Log.e(_tag, '_runOne $hash failed', e, st);
       task.error = '$e';
@@ -281,6 +301,7 @@ class DownloadManager {
       ..connectionTimeout = const Duration(seconds: 15);
     IOSink? sink;
     File? part;
+    var lastEmitted = 0;
     try {
       final req = await http.getUrl(Uri.parse(url));
       req.headers.set('Range', 'bytes=0-');
@@ -297,11 +318,18 @@ class DownloadManager {
         if (job.abort) break;
         sink.add(chunk);
         task.bytesDownloaded += chunk.length;
-        _emit(task); // 每 chunk 触发进度回调
+        // 进度节流：每累计 ≥256KB 或下载完成才 emit，避免每 chunk 回调
+        // 风暴（大文件 → 上万次 UI rebuild）。
+        final bytes = task.bytesDownloaded;
+        if (bytes - lastEmitted >= 256 * 1024) {
+          lastEmitted = bytes;
+          _emit(task);
+        }
       }
       await sink.flush();
       await sink.close();
       sink = null;
+      _emit(task); // 终态进度（含未达 256KB 阈值的小文件）
       if (job.abort) {
         _cleanupPart(part);
         throw const _Aborted();
@@ -311,7 +339,13 @@ class DownloadManager {
       Log.e(_tag, '_downloadUrl ${task.hash} failed', e, st);
       rethrow;
     } finally {
-      await sink?.close();
+      // 只 close 尚未关闭的 sink；正常路径已 close 置 null，防 double-close
+      // 抛 StateException 被误吞为下载失败。
+      try {
+        await sink?.close();
+      } catch (e) {
+        Log.w(_tag, 'sink close on error path ${task.hash} ERR=$e');
+      }
       http.close();
     }
   }
