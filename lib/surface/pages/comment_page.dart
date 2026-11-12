@@ -1,10 +1,10 @@
-// L6 surface/pages · 评论页模块（GAP #14，批1-A）
-// TODO(批10-B): 收敛到 TnDims / TnColors 设计令牌表。
+// L6 surface/pages · 评论页模块（GAP #14，批1-A）· Material Design 3
+// 已收敛到 TnDims / Theme.colorScheme 令牌：4dp 网格、圆角 12、M3 卡片/Chip/滚动物理。
 // 无 navEntry——从播放页/歌单页 Navigator.push 进入。
 // 装配说明：本模块不由 modules.dart/assembly.dart 默认装配，
 // 由装配处执行 SurfaceRegistry.install(buildCommentModule(logic:..., mixSongIdProvider:...))。
 // 工厂函数 buildCommentModule 在本文件底部（deps 注入 CommentLogic + mixSongId 提供者）。
-// 铁律：surface 只 import flutter/miuix + bridges + 本层；每函数 try/catch + Log。
+// 铁律：surface 只 import flutter/material + bridges + 本层；每函数 try/catch + Log。
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_logic.dart'

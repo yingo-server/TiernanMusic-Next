@@ -2,7 +2,8 @@
 // 由 modules.dart（批4-B）汇总注册：SurfaceRegistry.install(buildLyricsPageModule(...))。
 // 嵌入播放页第二页签或独立路由；行级高亮 + 居中滚动（TnMotion.normal）+ KRC 逐字高亮。
 // positionMs 来源：注入 positionMsProvider（批4-B PlayerController 提供，本文件只定义接口）。
-// 铁律：只 import flutter/miuix/riverpod/bridge_logic/bridge_core/本层；try/catch + Log('surface.lyrics')。
+// 铁律：只 import flutter/material/riverpod/bridge_logic/bridge_core/本层；try/catch + Log('surface.lyrics')。
+// M3：歌词高亮取 scheme.primary / 非高亮 onSurfaceVariant；滚动与动效取 TnMotion*（M3 版）。
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -10,7 +11,7 @@ import 'package:flutter/material.dart';
 import '../../bridges/bridge_logic.dart' show LyricsLogic, parseLyrics, applyOffset, findLineIndex, LyricParseResult, LrcLine, KrcWord, Log, TranslationLogic, DisplayLine, LogicFacade;
 import '../../bridges/bridge_core.dart' show SongBrief, LyricsDisplayMode;
 import '../registry.dart';
-import '../theme/tn_theme.dart';
+import '../theme/tn_theme.dart' show TnDims, TnMotion, TnText;
 
 const String _tag = 'surface.lyrics';
 

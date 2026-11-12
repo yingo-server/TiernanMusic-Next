@@ -1,16 +1,16 @@
-// L6 surface/pages · 曲库模块（buildLibraryModule）
+// L6 surface/pages · 曲库模块（buildLibraryModule）· Material Design 3
 // 由 modules.dart（批4-B）汇总注册：SurfaceRegistry.install(buildLibraryModule(...))。
 // 三个 tab：本地曲库（SongDao.list）/ 最近播放（注入 historyRecent 回调）/ 下载管理（DownloadManager）。
-// 铁律：只 import flutter/miuix/riverpod/bridge_logic/bridge_core/本层；try/catch + Log('surface.library')。
+// 铁律：只 import flutter/material/riverpod/bridge_logic/bridge_core/本层；try/catch + Log('surface.library')。
+// M3：二级 TabBar 挂 TnAppBar.bottom；颜色取 Theme.of(context).colorScheme；间距/圆角走 TnDims。
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_miuix/miuix.dart';
 
 import '../../bridges/bridge_core.dart';
 import '../../bridges/bridge_logic.dart';
 import '../registry.dart';
-import '../theme/tn_theme.dart';
+import '../theme/tn_theme.dart' show TnDims, TnText, tnPadL;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.library';
@@ -108,7 +108,7 @@ class _LibraryPageState extends State<LibraryPage>
       body: Column(
         children: [
           Material(
-            color: MiuixTheme.of(context).colors.background,
+            color: Theme.of(context).colorScheme.surface,
             child: TabBar(
               controller: _tabs,
               tabs: const [
