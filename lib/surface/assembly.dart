@@ -5,7 +5,8 @@
 //
 // 层纪律：只 import flutter_riverpod / ../bridges/* / 本层文件。
 // 铁律：每个装配步骤 try/catch + Log('surface.assembly')。
-import 'package:flutter/material.dart' show MaterialPageRoute;
+import 'package:flutter/material.dart' show MaterialPageRoute, Navigator;
+import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 
 import 'deps.dart' show SurfaceDeps;
