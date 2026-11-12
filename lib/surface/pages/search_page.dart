@@ -1,4 +1,10 @@
 // L6 surface/pages · 搜索页模块（SurfaceModule 热插拔）
+// 批M2-A：按 Google M3 控件规范重写 UI 层，业务/回调/函数签名/文案零改动。
+//   · Scaffold(M3 surface) + TnAppBar(M3 TopAppBar) + M3 TabBar；
+//   · Card(elevation=1 / surfaceTintColor=scheme.surfaceTint / margin=zero)；
+//     FilterChip 用 M3 默认形状；进度全改 LinearProgressIndicator；
+//   · 空态用 M3 文本层级 titleMedium/bodyMedium；交错入场保留 TnMotionStaggered；
+//   · 颜色只取 Theme.of(context).colorScheme，禁硬编码色，无裸动效 Duration。
 // 搜索框 onChanged 防抖 300ms 调 suggestions + hotSearch 空态；
 // 提交调 search(keyword, page)，列表滚动到底自动翻页；
 // 点击结果经注入的 PlayerController 回调 playSong(SongBrief)。
@@ -11,8 +17,9 @@ import '../../bridges/bridge_logic.dart'
 import '../../bridges/bridge_core.dart' show SongBrief, SearchType;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
+import '../theme/tn_motion.dart' show TnMotionStaggered;
+import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadL;
 import '../widgets/common_widgets.dart' show SongTile;
-import '../theme/tn_theme.dart' show TnDims, tnPadM, tnPadS, tnPadL;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 
 const String _tag = 'surface.search';
@@ -229,13 +236,19 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
   @override
   Widget build(BuildContext context) {
     try {
+      final cs = Theme.of(context).colorScheme;
+      final tt = Theme.of(context).textTheme;
       return Scaffold(
+        backgroundColor: cs.surface,
         appBar: TnAppBar(
           title: '搜索',
           bottom: widget.typed == null
               ? null
               : TabBar(
                   isScrollable: true,
+                  indicatorColor: cs.primary,
+                  labelColor: cs.primary,
+                  unselectedLabelColor: cs.onSurfaceVariant,
                   tabs: <Widget>[
                     for (final label in _kTypeLabels) Tab(text: label),
                   ],
@@ -257,39 +270,81 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
         ),
         body: Column(children: <Widget>[
           Padding(
-            padding: const EdgeInsets.fromLTRB(tnPadM, tnPadS, tnPadM, TnDims.padXS),
+            padding: const EdgeInsets.fromLTRB(tnPadL, tnPadS, tnPadL, tnPadS),
             child: TextField(
               controller: _kwCtrl,
               onChanged: _onChanged,
               onSubmitted: _submit,
               textInputAction: TextInputAction.search,
+              style: tt.bodyMedium?.copyWith(color: cs.onSurface),
               decoration: InputDecoration(
                 hintText: '搜歌曲 / 歌手 / 专辑',
-                prefixIcon: const Icon(Icons.search),
+                hintStyle: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                prefixIcon: Icon(Icons.search, color: cs.onSurfaceVariant),
                 suffixIcon: _kwCtrl.text.isEmpty
                     ? null
                     : IconButton(
-                        icon: const Icon(Icons.clear),
+                        icon: Icon(Icons.clear, color: cs.onSurfaceVariant),
                         onPressed: () {
-                          _kwCtrl.clear();
-                          _onChanged('');
+                          try {
+                            _kwCtrl.clear();
+                            _onChanged('');
+                          } catch (e, st) {
+                            Log.e(_tag, 'clear failed', e, st);
+                          }
                         },
                       ),
-                border: const OutlineInputBorder(),
-                isDense: true,
+                filled: true,
+                fillColor: cs.surfaceContainerHighest,
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: tnPadL, vertical: tnPadS),
+                border: OutlineInputBorder(
+                    borderRadius: TnDims.rLBorder,
+                    borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: TnDims.rLBorder,
+                    borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(
+                    borderRadius: TnDims.rLBorder,
+                    borderSide: BorderSide(color: cs.primary, width: 2)),
               ),
             ),
           ),
-          ..._suggests.map((s) => ListTile(
-                dense: true,
-                leading: const Icon(Icons.trending_up, size: TnDims.iconS),
-                title: Text(s.keyword, maxLines: 1, overflow: TextOverflow.ellipsis),
-                onTap: () {
-                  _kwCtrl.text = s.keyword;
-                  _submit(s.keyword);
-                },
-              )),
-          const Divider(height: 1),
+          // 联想词：FilterChip 用 M3 默认形状（不覆盖 shape / side / 状态色），
+          // 点击仍走原 _submit 链路，文案 s.keyword 零改动。
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: tnPadL),
+            child: Wrap(
+              spacing: tnPadS, runSpacing: tnPadS,
+              children: <Widget>[
+                for (final s in _suggests)
+                  Builder(builder: (ctx) {
+                    try {
+                      final chipCs = Theme.of(ctx).colorScheme;
+                      return FilterChip(
+                        selected: false,
+                        avatar: Icon(Icons.trending_up,
+                            size: TnDims.iconS, color: chipCs.primary),
+                        label: Text(s.keyword, maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        onSelected: (_) {
+                          try {
+                            _kwCtrl.text = s.keyword;
+                            _submit(s.keyword);
+                          } catch (e, st) {
+                            Log.e(_tag, 'suggest tap failed', e, st);
+                          }
+                        },
+                      );
+                    } catch (e, st) {
+                      Log.e(_tag, 'suggest chip build failed', e, st);
+                      return const SizedBox.shrink();
+                    }
+                  }),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: cs.outlineVariant),
           Expanded(child: _buildBody()),
         ]),
       );
@@ -301,65 +356,134 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
 
   Widget _buildBody() {
     try {
-      // 空态：热搜榜
+      final cs = Theme.of(context).colorScheme;
+      final tt = Theme.of(context).textTheme;
+      // 空态：热搜榜（M3 Card + 标准密度 ListTile + 文本层级）。
       if (_committedKw.isEmpty) {
         if (_hot.isEmpty) {
-          return const Center(child: Text('暂无热搜'));
+          return Center(child: Text('暂无热搜',
+              style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)));
         }
         return ListView.builder(
           controller: _scrollCtrl,
           itemCount: _hot.length,
           itemBuilder: (ctx, i) {
-            final h = _hot[i];
-            return ListTile(
-              dense: true,
-              leading: Text('${i + 1}',
-                  style: TextStyle(
-                      color: i < 3 ? Colors.red : Theme.of(ctx).hintColor,
-                      fontWeight: FontWeight.bold)),
-              title: Text(h.keyword, maxLines: 1, overflow: TextOverflow.ellipsis),
-              onTap: () {
-                _kwCtrl.text = h.keyword;
-                _submit(h.keyword);
-              },
-            );
+            try {
+              final h = _hot[i];
+              final hotCs = Theme.of(ctx).colorScheme;
+              final hotTt = Theme.of(ctx).textTheme;
+              return TnMotionStaggered(
+                index: i,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      tnPadL, 0, tnPadL, tnPadS),
+                  child: Card(
+                    margin: EdgeInsets.zero,
+                    elevation: 1,
+                    surfaceTintColor: hotCs.surfaceTint,
+                    color: hotCs.surfaceContainer,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: TnDims.rMBorder),
+                    clipBehavior: Clip.antiAlias,
+                    child: ListTile(
+                      leading: Text('${i + 1}',
+                          style: hotTt.titleMedium?.copyWith(
+                              color: i < 3
+                                  ? hotCs.primary
+                                  : hotCs.onSurfaceVariant,
+                              fontWeight: FontWeight.bold)),
+                      title: Text(h.keyword, maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: hotTt.bodyMedium
+                              ?.copyWith(color: hotCs.onSurface)),
+                      onTap: () {
+                        try {
+                          _kwCtrl.text = h.keyword;
+                          _submit(h.keyword);
+                        } catch (e, st) {
+                          Log.e(_tag, 'hot tap failed', e, st);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              );
+            } catch (e, st) {
+              Log.e(_tag, 'hot tile build failed', e, st);
+              return const SizedBox.shrink();
+            }
           },
         );
       }
-      // 搜索中首屏
+      // 搜索中首屏：M3 线性进度。
       if (_searching && _results.isEmpty) {
-        return const Center(child: CircularProgressIndicator());
+        return Padding(
+          padding: const EdgeInsets.all(tnPadL),
+          child: LinearProgressIndicator(
+            color: cs.primary,
+            backgroundColor: cs.surfaceContainerHighest,
+          ),
+        );
       }
-      // 无结果
+      // 无结果：M3 文本层级 titleMedium + onSurfaceVariant 图标。
       if (_results.isEmpty) {
         return Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-          const Icon(Icons.search_off, size: 48),
+          Icon(Icons.search_off, size: 48, color: cs.onSurfaceVariant),
           const SizedBox(height: tnPadS),
-          Text('没有找到「$_committedKw」相关结果'),
+          Text('没有找到「$_committedKw」相关结果',
+              style: tt.titleMedium?.copyWith(color: cs.onSurface)),
         ]));
       }
-      // 结果列表 + 分页加载
+      // 结果列表 + 分页加载（TnMotionStaggered 交错入场，M3 官方时长/曲线）。
       final count = _results.length + 1;
       return ListView.builder(
         controller: _scrollCtrl,
         itemCount: count,
         itemBuilder: (ctx, i) {
-          if (i == _results.length) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: tnPadL),
-              child: Center(
-                child: _loadingMore || _searching
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('上拉加载更多'),
+          try {
+            if (i == _results.length) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: tnPadL),
+                child: Center(
+                  child: _loadingMore || _searching
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: tnPadL),
+                          child: LinearProgressIndicator(
+                            color: cs.primary,
+                            backgroundColor: cs.surfaceContainerHighest,
+                          ),
+                        )
+                      : Text('上拉加载更多',
+                          style: tt.bodyMedium
+                              ?.copyWith(color: cs.onSurfaceVariant)),
+                ),
+              );
+            }
+            final d = _results[i];
+            return TnMotionStaggered(
+              index: i,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    tnPadL, 0, tnPadL, tnPadS),
+                child: Card(
+                  margin: EdgeInsets.zero,
+                  elevation: 1,
+                  surfaceTintColor: cs.surfaceTint,
+                  color: cs.surfaceContainer,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: TnDims.rMBorder),
+                  clipBehavior: Clip.antiAlias,
+                  child: SongTile(
+                      song: d.song, onPlay: (s) => _play(d), index: i + 1),
+                ),
               ),
             );
+          } catch (e, st) {
+            Log.e(_tag, 'result tile build failed', e, st);
+            return const SizedBox.shrink();
           }
-          final d = _results[i];
-          return SongTile(song: d.song, onPlay: (s) => _play(d), index: i + 1);
         },
       );
     } catch (e, st) {
