@@ -265,14 +265,14 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
         return;
       }
       // 歌单/专辑行 → 详情页导航（Navigator + injected deps，模块间零直接 import）。
-      final nav = Navigator.of(context);
       final id = type == SearchType.special
           ? '${d.song.mixSongId}' : d.song.albumId;
       if (id.isEmpty || id == '0') return;
+      final nav = Navigator.of(context);
       nav.push(MaterialPageRoute<void>(
         builder: (_) => _SearchDetailPage(
           title: d.song.name, kind: type, refId: id,
-          player: widget.player, typed: widget.typed, search: widget.search),
+          player: widget.player, typed: widget.typed),
       ));
       Log.d(_tag, 'open detail type=${type.name} id=$id');
     } catch (e, st) { Log.e(_tag, 'drillDown failed type=${type.name}', e, st); }
@@ -433,7 +433,6 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
   }
   Widget _buildList(_SegmentState s, SearchType type, ScrollController scroll, String footer) {
     try {
-      final cs = Theme.of(context).colorScheme;
       final tt = Theme.of(context).textTheme;
       return ListView.builder(controller: scroll, itemCount: s.items.length + 1,
         itemBuilder: (ctx, i) {
@@ -503,18 +502,17 @@ class SongTileData {
   final SongBrief song;
 }
 
-/// 搜索结果歌单/专辑详情页（走查修复）：走 logic 门面取曲目并整列表播放。
+/// 搜索结果歌单/专辑详情页（走查修复）：以命中标题检索曲目并整列表播放。
 class _SearchDetailPage extends StatefulWidget {
   const _SearchDetailPage({
     required this.title, required this.kind, required this.refId,
-    required this.player, this.typed, this.search,
+    required this.player, this.typed,
   });
   final String title;
   final SearchType kind;
   final String refId;
   final PlayerController player;
   final SearchTypedLogic? typed;
-  final SearchLogic? search;
 
   @override
   State<_SearchDetailPage> createState() => _SearchDetailPageState();
@@ -534,26 +532,11 @@ class _SearchDetailPageState extends State<_SearchDetailPage> {
   Future<void> _load() async {
     try {
       setState(() { _loading = true; _error = null; });
-      final List<SongBrief> songs;
-      if (widget.kind == SearchType.special) {
-        // 歌单详情：经综合搜索以歌单名/命中词检索补曲目（不猜未实测端点字段）。
-        final typed = widget.typed;
-        if (typed == null) {
-          songs = const <SongBrief>[];
-        } else {
-          final r = await typed.typed(SearchType.song, widget.title, 1);
-          songs = r.items;
-        }
-      } else {
-        // 专辑详情：以「专辑名」检索歌曲并按 albumId 过滤。
-        final typed = widget.typed;
-        if (typed == null) {
-          songs = const <SongBrief>[];
-        } else {
-          final r = await typed.typed(SearchType.song, widget.title, 1);
-          songs = r.items;
-        }
-      }
+      // 以命中行标题作关键词检索歌曲补曲目（不猜未实测的歌单/专辑曲目端点字段）。
+      final typed = widget.typed;
+      final List<SongBrief> songs = typed == null
+          ? const <SongBrief>[]
+          : (await typed.typed(SearchType.song, widget.title, 1)).items;
       if (!mounted) return;
       setState(() { _songs = songs; _loading = false; });
       Log.d(_tag, 'detail loaded kind=${widget.kind.name} n=${songs.length}');
@@ -566,7 +549,6 @@ class _SearchDetailPageState extends State<_SearchDetailPage> {
   @override
   Widget build(BuildContext context) {
     try {
-      final cs = Theme.of(context).colorScheme;
       return Scaffold(
         appBar: TnAppBar(title: widget.title.isEmpty
             ? (widget.kind == SearchType.special ? '歌单' : '专辑')
@@ -574,10 +556,9 @@ class _SearchDetailPageState extends State<_SearchDetailPage> {
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-                ? Center(child: Text('加载失败：$_error',
-                    style: tt_(context)))
+                ? _msg(context, '加载失败：$_error')
                 : _songs.isEmpty
-                    ? Center(child: Text('暂无曲目', style: tt_(context)))
+                    ? _msg(context, '暂无曲目')
                     : Column(children: <Widget>[
                         Padding(
                           padding: const EdgeInsets.all(tnPadL),
@@ -618,7 +599,7 @@ class _SearchDetailPageState extends State<_SearchDetailPage> {
     }
   }
 
-  TextStyle? tt_(BuildContext ctx) =>
-      Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-          color: Theme.of(ctx).colorScheme.onSurfaceVariant);
+  Widget _msg(BuildContext ctx, String text) => Center(
+      child: Text(text, style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+          color: Theme.of(ctx).colorScheme.onSurfaceVariant)));
 }

@@ -14,6 +14,7 @@ import '../player_controller.dart'
 import '../../bridges/bridge_core.dart'
     show AudioQuality;
 import '../registry.dart';
+import '../app_root.dart' show logicFacadeProvider;
 import '../theme/tn_motion.dart' show TnPressable;
 import '../widgets/common_widgets.dart' show CoverImage;
 import '../widgets/favorite_button.dart' show FavoriteButton;
@@ -85,6 +86,26 @@ class PlayerPageBody extends ConsumerWidget {
   final void Function(AudioQuality quality)? onQualitySelected;
   final VoidCallback? onOpenComments;
   final VoidCallback? onStartFm;
+
+  /// 歌词页入口：复用已装配歌词模块（id='lyrics'）builder，模块间零 import。
+  void _openLyrics(BuildContext context) {
+    try {
+      final c = ProviderScope.containerOf(context, listen: false);
+      final facade = c.read(logicFacadeProvider);
+      final modules = SurfaceRegistry.active(facade)
+          .where((m) => m.id == 'lyrics')
+          .toList();
+      if (modules.isEmpty) {
+        Log.w(_tag, 'lyrics module not installed');
+        return;
+      }
+      Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: modules.first.builder(facade), fullscreenDialog: true));
+      Log.d(_tag, 'open lyrics page');
+    } catch (e, st) {
+      Log.e(_tag, 'openLyrics failed', e, st);
+    }
+  }
 
   String _fmt(int ms) {
     try {
@@ -179,6 +200,18 @@ class PlayerPageBody extends ConsumerWidget {
                   }
                 },
               ),
+            // 歌词入口（走查修复：歌词模块已装配但原无页面可达）。
+            IconButton(
+              icon: const Icon(Icons.lyrics_outlined),
+              tooltip: '歌词',
+              onPressed: () {
+                try {
+                  _openLyrics(context);
+                } catch (e, st) {
+                  Log.e(_tag, 'lyrics tap failed', e, st);
+                }
+              },
+            ),
             if (onOpenComments != null)
               IconButton(
                 icon: const Icon(Icons.comment_outlined),

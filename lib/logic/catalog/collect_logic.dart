@@ -86,6 +86,20 @@ class CollectLogic {
     }
   }
 
+  /// 换号时清空本地镜像并重读持久层（多账号隔离：避免上一账号收藏串号显示）。
+  /// 重读后由 refreshCount / 服务端回填新账号收藏（写入仍只在 toggle 时发生）。
+  void resetLocalMirror() {
+    try {
+      _favorites.clear();
+      _count = 0;
+      _load();
+      _notify();
+      Log.d(_tag, 'resetLocalMirror size=${_favorites.length}');
+    } catch (e, st) {
+      Log.e(_tag, 'resetLocalMirror failed', e, st);
+    }
+  }
+
   /// 收藏/取消切换。
   /// - 未登录：直接返回 needsLogin=true，不写镜像、不发请求、不进防重锁；
   /// - 空 hash：返回默认失败结果；

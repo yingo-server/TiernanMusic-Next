@@ -199,10 +199,20 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
           try {
             for (final invalidate in <void Function()>[
               () => search.invalidatePrefix(userid: deps.client.session.userid),
+              () => searchTypedLogic.invalidatePrefix(userid: deps.client.session.userid),
               () => playlist.invalidatePrefix(userid: deps.client.session.userid),
               () => rank.invalidatePrefix(userid: deps.client.session.userid),
               () => commentLogic.invalidatePrefix(userid: deps.client.session.userid),
               () => mvLogic.invalidatePrefix(userid: deps.client.session.userid),
+              () => recommendLogic.invalidatePrefix(userid: deps.client.session.userid),
+              () => artistLogic.invalidatePrefix(userid: deps.client.session.userid),
+              () => albumLogic.invalidatePrefix(userid: deps.client.session.userid),
+              () => fmLogic.invalidatePrefix(userid: deps.client.session.userid),
+              () => userLogic.invalidatePrefix(userid: deps.client.session.userid),
+              () => translationLogic.invalidatePrefix(userid: deps.client.session.userid),
+              // 收藏镜像按键值存储无用户前缀：换号时清内存镜像并重载（换号后
+              // refreshCount 回填服务端收藏，避免上一账号收藏串号显示）。
+              () => collectLogic.resetLocalMirror(),
             ]) {
               invalidate();
             }
