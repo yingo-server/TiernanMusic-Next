@@ -57,8 +57,7 @@ SliderThemeData tnSliderTheme(BuildContext context) {
     disabledInactiveTrackColor: cs.onSurface.withValues(alpha: 0.12),
     disabledThumbColor: cs.onSurface.withValues(alpha: 0.38),
     thumbColor: cs.primary,
-    overlayColor:
-        WidgetStateProperty.all<Color?>(cs.primary.withValues(alpha: 0.12)),
+    overlayColor: cs.primary.withValues(alpha: 0.12),
     valueIndicatorColor: cs.primary,
     valueIndicatorTextStyle: Theme.of(context)
         .textTheme
