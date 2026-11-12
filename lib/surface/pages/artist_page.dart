@@ -23,23 +23,31 @@ import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadM, tnPadL, tnRadiusM;
 const String _tag = 'surface.artist_page';
 const int _pageSize = 30;
 
-/// 歌手页模块工厂（deps 注入：ArtistLogic + artistId 提供者 + 播放回调）。
+/// 歌手页模块工厂（deps 注入：ArtistLogic + artistId 提供者 + 播放回调 + 打开专辑回调）。
 SurfaceModule buildArtistModule({
   required ArtistLogic logic,
   required String? Function() currentArtistId,
   required void Function(SongBrief) onPlay,
+  void Function(AlbumBrief album)? onOpenAlbum,
 }) => ArtistPageModule(
-      logic: logic, currentArtistId: currentArtistId, onPlay: onPlay);
+      logic: logic,
+      currentArtistId: currentArtistId,
+      onPlay: onPlay,
+      onOpenAlbum: onOpenAlbum);
 
 class ArtistPageModule implements SurfaceModule {
   ArtistPageModule({
     required this.logic,
     required this.currentArtistId,
     required this.onPlay,
+    this.onOpenAlbum,
   });
   final ArtistLogic logic;
   final String? Function() currentArtistId;
   final void Function(SongBrief) onPlay;
+
+  /// 打开专辑页回调（由装配层注入；模块间零直接 import）。
+  final void Function(AlbumBrief album)? onOpenAlbum;
 
   @override
   String get id => 'artist';
@@ -54,6 +62,7 @@ class ArtistPageModule implements SurfaceModule {
         logic: logic,
         artistId: currentArtistId()?.trim() ?? '',
         onPlay: onPlay,
+        onOpenAlbum: onOpenAlbum,
       );
 }
 
@@ -62,10 +71,14 @@ class _ArtistPageBody extends StatefulWidget {
     required this.logic,
     required this.artistId,
     required this.onPlay,
+    this.onOpenAlbum,
   });
   final ArtistLogic logic;
   final String artistId;
   final void Function(SongBrief) onPlay;
+
+  /// 打开专辑页回调（装配层注入）。
+  final void Function(AlbumBrief album)? onOpenAlbum;
 
   @override
   State<_ArtistPageBody> createState() => _ArtistPageBodyState();
@@ -177,7 +190,12 @@ class _ArtistPageBodyState extends State<_ArtistPageBody> {
 
   void _openAlbum(AlbumBrief album) {
     try {
-      // 专辑页由批4-B 接线；本模块不 import 其他页面模块（热插拔纪律）。
+      final cb = widget.onOpenAlbum;
+      if (cb != null) {
+        cb(album);
+        return;
+      }
+      // 未注入回调（装配缺失）时给出可读提示，不静默无响应。
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('专辑 ${album.name.isEmpty ? album.id : album.name}')));
     } catch (e, st) {

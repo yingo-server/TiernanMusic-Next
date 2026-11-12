@@ -5,6 +5,7 @@
 //
 // 层纪律：只 import flutter_riverpod / ../bridges/* / 本层文件。
 // 铁律：每个装配步骤 try/catch + Log('surface.assembly')。
+import 'package:flutter/material.dart' show MaterialPageRoute;
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 
 import 'deps.dart' show SurfaceDeps;
@@ -55,7 +56,8 @@ import 'pages/settings_page.dart' show SettingsPageModule, SettingsDeps;
 import 'pages/comment_page.dart' show buildCommentModule;
 import 'pages/mv_page.dart' show buildMvModule;
 import 'pages/artist_page.dart' show buildArtistModule;
-import 'pages/album_page.dart' show buildAlbumModule;
+import 'pages/album_page.dart' show buildAlbumModule, AlbumPage;
+import 'nav_state.dart' show SurfaceNavState;
 import 'pages/home_page.dart' show buildHomeModule;
 import 'player_controller.dart'
     show PlayerController, AudioEngine, NullAudioEngine;
@@ -135,6 +137,8 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
   // 步骤 1：缓存实例集中创建（各域独立 LruCache，不复用同一实例）。
   final searchCache = _newCache<String, SearchResult>(128, 'search');
   final playlistCache = _newCache<String, dynamic>(64, 'playlist');
+  // 导航参数共享 holder（歌手/专辑等二级页参数；模块间零直接 import）。
+  final navState = SurfaceNavState();
   final rankCache = _newCache<String, dynamic>(64, 'rank');
   final lyricCache = _newCache<String, LyricResult>(32, 'lyrics');
 
@@ -371,15 +375,36 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
   _step('ArtistModule', () {
     modules.add(buildArtistModule(
       logic: artistLogic,
-      currentArtistId: () => null,
+      currentArtistId: () => navState.artistId,
       onPlay: controller.playSong,
+      // 装配层同层接线：写 navState 后用 Navigator 打开专辑页（模块间零 import）。
+      onOpenAlbum: (album) {
+        try {
+          navState.setAlbum(album.id);
+          final ctx = WidgetsBinding.instance.rootElement?.context;
+          if (ctx == null) {
+            Log.w('surface.assembly', 'open album skipped: no context');
+            return;
+          }
+          final nav = Navigator.of(ctx, rootNavigator: false);
+          nav.push(MaterialPageRoute<void>(
+            builder: (_) => AlbumPage(
+              logic: albumLogic,
+              albumId: album.id,
+              onPlay: controller.playSong,
+            ),
+          ));
+        } catch (e, st) {
+          Log.e('surface.assembly', 'open album failed', e, st);
+        }
+      },
     ));
     return true;
   });
   _step('AlbumModule', () {
     modules.add(buildAlbumModule(
       logic: albumLogic,
-      currentAlbumId: () => null,
+      currentAlbumId: () => navState.albumId,
       onPlay: controller.playSong,
     ));
     return true;
