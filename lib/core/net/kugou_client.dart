@@ -19,8 +19,11 @@ class Endpoint {
     // kmr 系端点需要 kg-tid 头（出处 PARITY_NOTES.md：kmr/audio/mv KG-TID:38、
     // kmr/v2/albums KG-TID:255——本端点注册表需支持透传）。
     this.tid,
-    // 批N3-B 实测：srcappid 入签 → cloudlist 系端点 20006，默认不注入。
+    // 批N3-B 实测：srcappid 入签 → cloudlist 系端点 20006。
+    // 批05 复测（2026-11-14）：搜索端点同样 20006；不带 srcappid 则 status=1。
+    // 故默认**不注入**，仅显式声明的端点开启。
     this.omitSrcappid = false,
+    this.includeSrcappid = false,
   });
   final String id;
   final String path;
@@ -35,6 +38,9 @@ class Endpoint {
   /// （add_list/delete_list/delete_songs/get_all_list）返回 error_code 20006。
   /// 置 true 则默认参数不注入 srcappid。
   final bool omitSrcappid;
+
+  /// 是否显式注入 srcappid（默认 false：实测带它 20006）。
+  final bool includeSrcappid;
 }
 
 enum SignType { android, web, register, none }
@@ -389,9 +395,9 @@ class KugouClient {
         ..putIfAbsent('uuid', () => '-')
         ..putIfAbsent('appid', () => KugouSign.appid)
         ..putIfAbsent('clientver', () => KugouSign.clientver);
-      // 批N3-B 实测（A6）：srcappid 参与签名 → cloudlist 系端点全线
-      // error_code 20006；不带 srcappid 则 status=1。omitSrcappid 端点不注入。
-      if (!ep.omitSrcappid) {
+      // 实测（A6 + 批05 复测）：srcappid 参与签名会让搜索/cloudlist 等
+      // 端点返回 20006；不带则 status=1。默认不注入，仅 includeSrcappid 开启。
+      if (ep.includeSrcappid) {
         p.putIfAbsent('srcappid', () => KugouSign.srcappid);
       }
       p..putIfAbsent('mid', () => session.mid.isEmpty ? '0' : session.mid)

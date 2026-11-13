@@ -1,0 +1,179 @@
+[
+  {
+    "endpoint": "play_url_v5",
+    "state": "anonymous",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/v5/url",
+    "paramKeys": [
+      "hash",
+      "quality"
+    ],
+    "ok": true,
+    "ms": 1267,
+    "captured": {
+      "status": 0,
+      "priv_status": 0,
+      "errcode": 31833,
+      "urls": 0,
+      "backupUrls": 0,
+      "host": "",
+      "extName": "",
+      "bitRate": 0,
+      "timeLengthSec": 0,
+      "isFreePart": false
+    }
+  },
+  {
+    "endpoint": "search_song",
+    "state": "anonymous",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/v3/search/song",
+    "paramKeys": [
+      "keyword",
+      "page",
+      "pagesize"
+    ],
+    "ok": true,
+    "ms": 283,
+    "captured": {
+      "total": 480,
+      "items": 10,
+      "firstHash": "1f7e7659b9fff4fb6f71562a61bbc25f",
+      "firstName": "周杰伦 - 发如雪",
+      "firstSinger": "周杰伦",
+      "firstMixSongId": 32029513
+    }
+  },
+  {
+    "endpoint": "search_suggest",
+    "state": "anonymous",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/v2/getSearchTip",
+    "paramKeys": [
+      "keyword"
+    ],
+    "ok": true,
+    "ms": 539,
+    "captured": {
+      "items": 40,
+      "first": "周杰伦"
+    }
+  },
+  {
+    "endpoint": "search_hot",
+    "state": "anonymous",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/api/v3/search/hot_tab",
+    "paramKeys": [],
+    "ok": true,
+    "ms": 184,
+    "captured": {
+      "items": 270,
+      "first": "慌啥子嘛"
+    }
+  },
+  {
+    "endpoint": "daily_recommend",
+    "state": "anonymous",
+    "method": "POST",
+    "domain": "gateway.kugou.com",
+    "path": "/everyday_song_recommend",
+    "paramKeys": [],
+    "ok": true,
+    "ms": 179,
+    "captured": {
+      "items": 0,
+      "firstHash": null
+    }
+  },
+  {
+    "endpoint": "rank_list",
+    "state": "anonymous",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/ocean/v6/rank/list",
+    "paramKeys": [],
+    "ok": true,
+    "ms": 363,
+    "captured": {
+      "items": 56,
+      "first": "Instance of 'RankBrief'"
+    }
+  },
+  {
+    "endpoint": "user_detail",
+    "state": "anonymous",
+    "method": "POST",
+    "domain": "gateway.kugou.com",
+    "path": "/v3/get_my_info",
+    "paramKeys": [],
+    "ok": true,
+    "ms": 4,
+    "captured": {
+      "nickname": null,
+      "vipType": 0,
+      "avatar": null
+    }
+  },
+  {
+    "endpoint": "favorite_count",
+    "state": "anonymous",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/count/v1/audio/mget_collect",
+    "paramKeys": [
+      "mixsongids"
+    ],
+    "ok": true,
+    "ms": 126,
+    "captured": {
+      "count": 0
+    }
+  },
+  {
+    "endpoint": "song_climax",
+    "state": "anonymous",
+    "method": "GET",
+    "domain": "expendablekmrcdn.kugou.com",
+    "path": "/v1/audio_climax/audio",
+    "paramKeys": [
+      "hash"
+    ],
+    "ok": true,
+    "ms": 325,
+    "captured": {
+      "hasResult": false
+    }
+  },
+  {
+    "endpoint": "user_cloud",
+    "state": "anonymous",
+    "method": "POST",
+    "domain": "gateway.kugou.com",
+    "path": "/v1/user_cloud",
+    "paramKeys": [],
+    "ok": true,
+    "ms": 6,
+    "captured": {
+      "items": 0
+    }
+  },
+  {
+    "endpoint": "fm_play",
+    "state": "anonymous",
+    "method": "POST",
+    "domain": "gateway.kugou.com",
+    "path": "/v1/fm/play",
+    "paramKeys": [],
+    "ok": true,
+    "ms": 105,
+    "captured": {
+      "items": 0,
+      "firstHash": null
+    }
+  }
+]
