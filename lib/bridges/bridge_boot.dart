@@ -134,6 +134,9 @@ void setRunBootImpl(
   }
 }
 
+/// 零副作用安装自检（register.dart 用）：桥已持有真实 impl 则为 true。
+bool get bootBridgeReady => _runBootImpl != null;
+
 dynamic runBootImpl(
     {bool bypassIntegrity = false,
     String? rootDir,

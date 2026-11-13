@@ -1,11 +1,27 @@
-// L2 bootloader 级 · 启动注册入口（仅供 L1 装配根触发一次安装）。
-//
+// L2 bootloader 级 · 启动注册入口（L1 装配根触发一次安装）。
 // 存在原因：bootloader 的桥注册函数需被显式调用（Dart 顶层变量惰性初始化，
-// 顶层 final 无人读取时永不执行）；按六五原则 L1 只经桥触达 L2，
-// 故这里提供 L1 → L2 的最小装配入口，业务调用仍全部经 bridge_boot。
+// 顶层 final 无人读取时永不执行）。业务调用仍全部经 bridge_boot。
+// 批07-A：安装 + 零副作用自检（bridge_boot.bootBridgeReady 只读 getter）。
 import 'bootloader.dart' show installBootBridge;
+import '../bridges/bridge_boot.dart' show bootBridgeReady;
 
-/// 由 L1（init）调用一次：把启动实现安装进 bridge_boot。
+class _BootBridgeInstallState {
+  _BootBridgeInstallState._();
+  static bool installed = false;
+}
+
+bool get bootBridgeInstalled =>
+    _BootBridgeInstallState.installed && bootBridgeReady;
+
 void registerBootloader() {
-  installBootBridge();
+  if (_BootBridgeInstallState.installed) return;
+  try {
+    installBootBridge();
+  } catch (e, st) {
+    throw StateError('boot bridge install failed: $e\n$st');
+  }
+  if (!bootBridgeReady) {
+    throw StateError('boot bridge install failed: impl not registered');
+  }
+  _BootBridgeInstallState.installed = true;
 }
