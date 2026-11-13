@@ -8,7 +8,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart'
-    show SongDao, SongRecord, PlayHistoryEntry, SongBrief;
+    show SongDao, SongRecord, PlayHistoryEntry, SongBrief, UserProfile;
 import '../../bridges/bridge_logic.dart'
     show
         DownloadManager, DownloadEvent, DownloadTask, DownloadStatus, Log,
@@ -17,6 +17,7 @@ import '../registry.dart';
 import '../theme/tn_motion.dart' show TnMotionStaggered;
 import '../theme/tn_theme.dart' show TnDims, TnText, tnPadL;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
+import 'library_header.dart' show LibraryAccountCard;
 
 const String _tag = 'surface.library';
 
@@ -27,6 +28,9 @@ class LibraryDeps {
     required this.historyRecent,
     required this.downloads,
     required this.onPlay,
+    this.profile,
+    this.favoriteCount,
+    this.onOpenSettings,
   });
 
   /// 本地曲库数据源。
@@ -40,6 +44,15 @@ class LibraryDeps {
 
   /// 点击歌曲的播放回调（批4-B PlayerController 提供）。
   final void Function(SongBrief song) onPlay;
+
+  /// 账号档案（可选；未注入时账号卡显示未登录）。
+  final Future<UserProfile> Function()? profile;
+
+  /// 我喜欢数量（可选）。
+  final Future<int> Function()? favoriteCount;
+
+  /// 打开设置（更多菜单）。
+  final void Function()? onOpenSettings;
 }
 
 /// 曲库页模块：id='library'，底部导航入口「曲库」。
@@ -109,9 +122,14 @@ class _LibraryPageState extends State<LibraryPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const TnAppBar(title: '曲库'),
+      appBar: const TnAppBar(title: '音乐库'),
       body: Column(
         children: [
+          LibraryAccountCard(
+            profile: widget.deps.profile?.call(),
+            favoriteCount: widget.deps.favoriteCount?.call(),
+            onOpenSettings: widget.deps.onOpenSettings,
+          ),
           Material(
             color: Theme.of(context).colorScheme.surface,
             child: TabBar(

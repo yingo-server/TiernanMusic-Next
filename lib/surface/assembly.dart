@@ -260,6 +260,16 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         historyRecent: ({int limit = 50}) => deps.historyDao.recent(limit: limit),
         downloads: downloads,
         onPlay: (song) => controllerRef?.playSong(song),
+        profile: userLogic.profile,
+        favoriteCount: collectLogic.refreshCount,
+        onOpenSettings: () {
+          try {
+            homeTabRequest.value = 'settings';
+            Log.d(_tag, 'library → settings tab');
+          } catch (e, st) {
+            Log.e(_tag, 'library open settings failed', e, st);
+          }
+        },
       ),
     ));
     return true;

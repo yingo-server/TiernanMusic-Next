@@ -186,44 +186,19 @@ class PlayerPageBody extends ConsumerWidget {
       final song = p.current;
       return Scaffold(
         appBar: TnAppBar(
-          title: '正在播放',
+          title: '',
+          leading: IconButton(
+            icon: const Icon(Icons.keyboard_arrow_down),
+            tooltip: '收起',
+            onPressed: () {
+              try {
+                Navigator.of(context).maybePop();
+              } catch (e, st) {
+                Log.e(_tag, 'collapse failed', e, st);
+              }
+            },
+          ),
           actions: <Widget>[
-            if (onStartFm != null)
-              IconButton(
-                icon: const Icon(Icons.radio),
-                tooltip: '个人 FM',
-                onPressed: () {
-                  try {
-                    onStartFm!();
-                  } catch (e, st) {
-                    Log.e(_tag, 'start fm failed', e, st);
-                  }
-                },
-              ),
-            // 歌词入口（走查修复：歌词模块已装配但原无页面可达）。
-            IconButton(
-              icon: const Icon(Icons.lyrics_outlined),
-              tooltip: '歌词',
-              onPressed: () {
-                try {
-                  _openLyrics(context);
-                } catch (e, st) {
-                  Log.e(_tag, 'lyrics tap failed', e, st);
-                }
-              },
-            ),
-            if (onOpenComments != null)
-              IconButton(
-                icon: const Icon(Icons.comment_outlined),
-                tooltip: '评论',
-                onPressed: onOpenComments,
-              ),
-            if (onQualitySelected != null)
-              IconButton(
-                icon: const Icon(Icons.high_quality_outlined),
-                tooltip: '音质',
-                onPressed: () => _showQualitySheet(context),
-              ),
             if (collect != null)
               FavoriteButton(
                 isCollected: collect!.isCollected(song?.hash ?? ''),
@@ -238,16 +213,42 @@ class PlayerPageBody extends ConsumerWidget {
                   }
                 },
               ),
-            IconButton(
-              icon: Icon(_modeIcon(snap.queue.mode)),
-              tooltip: '播放模式：${snap.queue.mode.name}',
-              onPressed: () {
+            PopupMenuButton<String>(
+              tooltip: '更多',
+              icon: const Icon(Icons.more_vert),
+              onSelected: (v) {
                 try {
-                  ctl.setMode(_nextMode(snap.queue.mode));
+                  switch (v) {
+                    case 'quality':
+                      _showQualitySheet(context);
+                      break;
+                    case 'fm':
+                      onStartFm?.call();
+                      break;
+                    case 'comments':
+                      onOpenComments?.call();
+                      break;
+                    case 'lyrics':
+                      _openLyrics(context);
+                      break;
+                  }
                 } catch (e, st) {
-                  Log.e(_tag, 'setMode crashed', e, st);
+                  Log.e(_tag, 'menu $v failed', e, st);
                 }
               },
+              itemBuilder: (ctx) => <PopupMenuEntry<String>>[
+                if (onQualitySelected != null)
+                  const PopupMenuItem<String>(
+                      value: 'quality', child: Text('音质')),
+                if (onStartFm != null)
+                  const PopupMenuItem<String>(
+                      value: 'fm', child: Text('个人 FM')),
+                if (onOpenComments != null)
+                  const PopupMenuItem<String>(
+                      value: 'comments', child: Text('评论')),
+                const PopupMenuItem<String>(
+                    value: 'lyrics', child: Text('歌词')),
+              ],
             ),
           ],
         ),
@@ -260,8 +261,13 @@ class PlayerPageBody extends ConsumerWidget {
                   Center(
                     child: TnPressable(
                       onTap: () {},
-                      child: CoverImage(
-                        url: null, size: const Size(240, 240)), // SongBrief 无封面 url
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(TnDims.rXL),
+                        child: CoverImage(
+                          url: song.cover.isEmpty ? null : song.cover,
+                          size: const Size(280, 280),
+                        ),
+                      ),
                     ),
                   ),
                   const Spacer(),
@@ -306,6 +312,22 @@ class PlayerPageBody extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
                       IconButton(
+                        icon: const Icon(Icons.shuffle),
+                        tooltip: '随机播放',
+                        color: snap.queue.mode == PlayMode.shuffle
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
+                        onPressed: () {
+                          try {
+                            ctl.setMode(snap.queue.mode == PlayMode.shuffle
+                                ? PlayMode.sequence
+                                : PlayMode.shuffle);
+                          } catch (e, st) {
+                            Log.e(_tag, 'shuffle toggle failed', e, st);
+                          }
+                        },
+                      ),
+                      IconButton(
                         iconSize: 40,
                         icon: const Icon(Icons.skip_previous),
                         onPressed: () {
@@ -341,6 +363,17 @@ class PlayerPageBody extends ConsumerWidget {
                             ctl.next();
                           } catch (e, st) {
                             Log.e(_tag, 'next crashed', e, st);
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(_modeIcon(snap.queue.mode)),
+                        tooltip: '播放模式：${snap.queue.mode.name}',
+                        onPressed: () {
+                          try {
+                            ctl.setMode(_nextMode(snap.queue.mode));
+                          } catch (e, st) {
+                            Log.e(_tag, 'mode toggle failed', e, st);
                           }
                         },
                       ),
