@@ -19,6 +19,7 @@ class SongBrief {
     this.fileSize = 0,
     this.albumId = '',
     this.albumName = '',
+    this.cover = '',
     this.isVip = false,
   });
 
@@ -32,6 +33,10 @@ class SongBrief {
   final int fileSize;
   final String albumId;
   final String albumName;
+
+  /// 封面图 URL（最佳努力映射：Image/album_cover/cover 等键）。
+  /// 为空时 UI 显示占位图标，不伪造封面。
+  final String cover;
   final bool isVip; // musicpack_advance==1
 
   factory SongBrief.fromSearchList(Map<String, dynamic> m) {
@@ -50,6 +55,9 @@ class SongBrief {
         fileSize: safeInt(m['FileSize']),
         albumId: safeStr(m['AlbumID']),
         albumName: safeStr(m['AlbumName']),
+        // 封面：搜索列表常见键 Image；同时容错 img/cover。
+        cover: safeStr(m['Image'],
+            safeStr(m['img'], safeStr(m['cover'], m['AlbumImage'] ?? ''))),
         // 批N1-A 实测（A1-1）：musicpack_advance 在 trans_param 内。
         isVip: safeBool(m['musicpack_advance'],
             safeBool(m['trans_param'] is Map
@@ -209,6 +217,9 @@ class SongBrief {
         albumId: safeStr(m['album_id'], safeStr(m['AlbumID'])),
         albumName: safeStr(m['album_name'],
             safeStr(m['AlbumName'], albumNameFallback)),
+        cover: safeStr(m['album_cover'],
+            safeStr(m['album_img'],
+                safeStr(m['Image'], safeStr(m['img'], m['cover'] ?? '')))),
         // 批N3-C 实测：audio_group/author 的 musicpack_advance 在 trans_param
         // 内（顶层无 musicpack_advance）——补 trans_param 兜底。
         isVip: safeBool(m['musicpack_advance'],
@@ -227,7 +238,7 @@ class SongBrief {
         'mixSongId': mixSongId, 'albumAudioId': albumAudioId,
         'durationSec': durationSec, 'bitrate': bitrate,
         'fileSize': fileSize, 'albumId': albumId,
-        'albumName': albumName, 'isVip': isVip,
+        'albumName': albumName, 'cover': cover, 'isVip': isVip,
       };
 
   @override

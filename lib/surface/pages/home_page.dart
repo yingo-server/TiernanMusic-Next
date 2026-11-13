@@ -22,6 +22,10 @@ import '../registry.dart';
 import '../theme/tn_motion.dart' show TnMotionStaggered;
 import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadL;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
+import '../widgets/m3/m3_section_header.dart' show M3SectionHeader;
+import '../widgets/m3/m3_skeleton.dart' show M3ListSkeleton;
+import '../widgets/m3/m3_state_views.dart' show M3EmptyState;
+import 'home_detail_sheets.dart' show showPlaylistTracksSheet, showRankTracksSheet;
 
 const String _tag = 'surface.home';
 
@@ -183,13 +187,21 @@ class _HomePageBody extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                             borderRadius: TnDims.rMBorder),
                         clipBehavior: Clip.antiAlias,
-                        child: Padding(
-                          padding: const EdgeInsets.all(tnPadS),
-                          child: Center(child: Text(items[ri].name, maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: tt.bodyMedium
-                                  ?.copyWith(color: cs.onSurface))),
+                        child: InkWell(
+                          onTap: () => _safe(
+                              () => showRankTracksSheet(
+                                  context, rank, items[ri], onPlay),
+                              'open rank ${items[ri].rankId}'),
+                          child: Padding(
+                            padding: const EdgeInsets.all(tnPadS),
+                            child: Center(
+                                child: Text(items[ri].name,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: tt.bodyMedium
+                                        ?.copyWith(color: cs.onSurface))),
+                          ),
                         ),
                       ),
                     ),
@@ -255,7 +267,12 @@ class _HomePageBody extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                           borderRadius: TnDims.rMBorder),
                       clipBehavior: Clip.antiAlias,
-                      child: SizedBox(width: TnDims.coverS, child: Column(
+                      child: InkWell(
+                        onTap: () => _safe(
+                            () => showPlaylistTracksSheet(
+                                context, playlist, p, onPlay),
+                            'open playlist ${p.id}'),
+                        child: SizedBox(width: TnDims.coverS, child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Expanded(
@@ -284,7 +301,7 @@ class _HomePageBody extends StatelessWidget {
                                 style: Theme.of(ctx).textTheme.bodyMedium
                                     ?.copyWith(color: cs.onSurface)),
                           ),
-                        ])),
+                        ]))),
                     ),
                   );
                 },
@@ -343,19 +360,14 @@ class _SearchEntry extends StatelessWidget {
     }
   }
 }
-/// 区块标题：M3 文本层级 titleMedium + onSurface。
+/// 区块标题：委托 M3SectionHeader（大标题 + 可选右侧操作）。
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.title);
   final String title;
   @override
   Widget build(BuildContext context) {
     try {
-      final cs = Theme.of(context).colorScheme;
-      return Padding(
-          padding: const EdgeInsets.fromLTRB(tnPadL, tnPadL, tnPadL, tnPadS),
-          child: Text(title,
-              style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold, color: cs.onSurface)));
+      return M3SectionHeader(title: title);
     } catch (e, st) {
       Log.e(_tag, 'sectionTitle build failed', e, st);
       return const SizedBox.shrink();
@@ -377,13 +389,9 @@ class _FutureBlock<T> extends StatelessWidget {
         builder: (ctx, snap) {
           try {
             if (snap.connectionState != ConnectionState.done) {
-              final cs = Theme.of(ctx).colorScheme;
-              return Padding(
-                padding: const EdgeInsets.all(tnPadL),
-                child: LinearProgressIndicator(
-                  color: cs.primary,
-                  backgroundColor: cs.surfaceContainerHighest,
-                ),
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: tnPadS),
+                child: M3ListSkeleton(rows: 4),
               );
             }
             if (snap.hasError) {
@@ -414,12 +422,9 @@ Widget _placeholder(String msg) {
     return Builder(builder: (context) {
       try {
         final theme = Theme.of(context);
-        return Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: tnPadL, vertical: tnPadS),
-          child: Text(msg,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        return M3EmptyState(
+          icon: Icons.inbox_outlined,
+          title: msg,
         );
       } catch (e, st) {
         Log.e(_tag, 'placeholder inner build failed', e, st);

@@ -12,7 +12,8 @@ import '../../bridges/bridge_logic.dart' show Log;
 const String _tag = 'surface.tn_theme';
 
 // ── 品牌色（M3 seedColor）──
-const Color tnPrimary = Color(0xFF7C4DFF); // 音乐紫
+const Color tnPrimary = Color(0xFF7FD3E8); // 浅蓝（截图基线）
+const Color tnBrandPurple = Color(0xFF7C4DFF); // 旧品牌紫（兼容保留）
 const Color tnPrimaryAlt = Color(0xFF3D5AFE); // 备选主色（蓝）
 const Color tnOnPrimary = Color(0xFFFFFFFF);
 
@@ -164,6 +165,23 @@ ThemeData _m3Theme(Brightness brightness, {bool pitchBlack = false}) {
       seedColor: tnPrimary,
       brightness: brightness,
     );
+    // 截图基线：暗色近黑底 + 卡片分层（#0E0F12 / #1C1D21 / #25272C）。
+    final ColorScheme darkBase = brightness == Brightness.dark
+        ? seed.copyWith(
+            surface: const Color(0xFF0E0F12),
+            onSurface: const Color(0xFFEDEFF2),
+            onSurfaceVariant: const Color(0xFFA9AFB8),
+            surfaceContainerLowest: const Color(0xFF0A0B0D),
+            surfaceContainerLow: const Color(0xFF141519),
+            surfaceContainer: const Color(0xFF1C1D21),
+            surfaceContainerHigh: const Color(0xFF25272C),
+            surfaceContainerHighest: const Color(0xFF2E3137),
+            primary: const Color(0xFF7FD3E8),
+            onPrimary: const Color(0xFF00232B),
+            secondary: const Color(0xFF4DB6C9),
+            tertiary: const Color(0xFFF2A25C),
+          )
+        : seed;
     final ColorScheme scheme = pitchBlack
         ? seed.copyWith(
             surface: TnColors.pitchBlack,
@@ -175,7 +193,7 @@ ThemeData _m3Theme(Brightness brightness, {bool pitchBlack = false}) {
             surfaceContainerHigh: TnColors.pitchBlack,
             surfaceContainerHighest: TnColors.pitchBlack,
           )
-        : seed;
+        : darkBase;
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
