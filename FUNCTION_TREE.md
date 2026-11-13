@@ -398,3 +398,43 @@ dart run tool/feature_reachability_test.dart   # FEATURE-REACHABILITY-OK
 ---
 
 *文档结束 · 生成于 CI `bbe8cf2` / LTS `v26.11.13.05` 后，按当前代码逐控件核对*
+
+## 13. R2 新增交互（M3 重构后）
+
+### 13.1 播放队列弹层（`widgets/queue_sheet.dart`）
+| 控件 | 动作 | 条件 |
+|---|---|---|
+| 队列项 | `ctl.playAt(i)` 跳转播放 | 当前曲高亮（`graphic_eq` 图标 + 主色底） |
+| `IconButton(close)`「从队列移除」 | `ctl.removeFromQueue(i)` | 删当前曲时索引自动修正到下一首 |
+| 入口 | 播放页 ⋮ 菜单「播放队列」/ 封面上滑（velocity < -220） | 队列空显示 M3EmptyState |
+
+### 13.2 歌曲操作弹层（`widgets/song_actions_sheet.dart`）
+| 控件 | 动作 |
+|---|---|
+| 「下一首播放」 | `ctl.insertNext(song)`（队列当前曲之后插入） |
+| 「收藏 / 取消收藏」 | `collectLogic.toggle(hash, mixSongId)` |
+| 「下载」 | `downloads.enqueue(song, quality)` |
+| 「歌曲信息」 | 展示 hash / mixsongid / album_audio_id / 时长 / bitrate |
+
+> 入口：首页「每日推荐」行尾 ⋮；歌单曲目弹层行尾 ⋮。
+
+### 13.3 歌单曲目弹层（`widgets/playlist_tracks_sheet.dart`）
+通用实现，首页推荐歌单与音乐库「我的歌单」共用：封面 + 名称 + 曲目数 + 曲目列表（骨架屏 → 错误重试 → 空态三态），点击播放，行尾 ⋮ 打开歌曲操作弹层。
+
+### 13.4 存储诊断页（`pages/storage_diag_page.dart`）
+| 区块 | 数据源 |
+|---|---|
+| 本地曲库 | `SongDao.list()` 计数 |
+| 下载任务 | `DownloadManager.listTasks()` 计数 |
+| 我的歌单 | `PlaylistWriteLogic.myPlaylists()`（登录态才有） |
+| 歌单条目 | 点击打开通用歌单曲目弹层（`PlaylistLogic.tracks`） |
+
+入口：音乐库 → 「存储诊断」。
+
+### 13.5 音乐库账号卡（`pages/library_header.dart`）
+头像（`UserProfile.avatar`）/ 昵称 / `ID: userid` / 「我喜欢」计数（`CollectLogic.refreshCount`）/ ⋮ → 设置 tab。
+
+### 13.6 搜索页（`pages/search_home_view.dart`）
+搜索历史（`KeyValueSettings` 持久化，10 条，可单删/清空）+ 热门分类 chips（来自热搜分组 `SearchSuggestItem.type`）+ 热门搜索列表（Top3 主色）。
+
+---

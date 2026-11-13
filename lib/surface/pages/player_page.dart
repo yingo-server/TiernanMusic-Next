@@ -231,6 +231,9 @@ class PlayerPageBody extends ConsumerWidget {
                     case 'lyrics':
                       _openLyrics(context);
                       break;
+                    case 'queue':
+                      showQueueSheet(context);
+                      break;
                   }
                 } catch (e, st) {
                   Log.e(_tag, 'menu $v failed', e, st);
@@ -248,6 +251,8 @@ class PlayerPageBody extends ConsumerWidget {
                       value: 'comments', child: Text('评论')),
                 const PopupMenuItem<String>(
                     value: 'lyrics', child: Text('歌词')),
+                const PopupMenuItem<String>(
+                    value: 'queue', child: Text('播放队列')),
               ],
             ),
           ],
@@ -259,8 +264,15 @@ class PlayerPageBody extends ConsumerWidget {
                   const Spacer(),
                   // 大封面点按反馈（TnPressable，TnMotion.fast 缩放回弹）
                   Center(
-                    child: TnPressable(
-                      onTap: () {},
+                    child: GestureDetector(
+                      onVerticalDragEnd: (d) {
+                        try {
+                          final v = d.primaryVelocity ?? 0;
+                          if (v < -220) showQueueSheet(context);
+                        } catch (e, st) {
+                          Log.e(_tag, 'swipe queue failed', e, st);
+                        }
+                      },
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(TnDims.rXL),
                         child: CoverImage(
@@ -268,8 +280,8 @@ class PlayerPageBody extends ConsumerWidget {
                           size: const Size(280, 280),
                         ),
                       ),
+                      ),
                     ),
-                  ),
                   const Spacer(),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: TnDims.padXL),

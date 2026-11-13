@@ -262,6 +262,29 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         onPlay: (song) => controllerRef?.playSong(song),
         profile: userLogic.profile,
         favoriteCount: collectLogic.refreshCount,
+        myPlaylists: playlistWriteLogic.myPlaylists,
+        playlistTracks: (id) async =>
+            (await playlist.tracks(id, 1)).items,
+        onSongAction: (song) {
+          try {
+            final ctx = appNavigatorKey.currentContext;
+            if (ctx == null) {
+              Log.w(_tag, 'song action skipped: no navigator context');
+              return;
+            }
+            showSongActionsSheet(
+              ctx,
+              song,
+              onPlayNext: () => controllerRef?.insertNext(song),
+              onCollect: () => collectLogic.toggle(
+                  song.hash, song.mixSongId, song: song),
+              collected: collectLogic.isCollected(song.hash),
+              onDownload: () => downloads.enqueue(song, quality),
+            );
+          } catch (e, st) {
+            Log.e(_tag, 'song action sheet failed', e, st);
+          }
+        },
         onOpenSettings: () {
           try {
             homeTabRequest.value = 'settings';
@@ -386,6 +409,26 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
       search: search,
       playlist: playlist,
       onPlay: (song) => controllerRef?.playSong(song),
+      onSongAction: (song) {
+        try {
+          final ctx = appNavigatorKey.currentContext;
+          if (ctx == null) {
+            Log.w(_tag, 'home song action skipped: no navigator context');
+            return;
+          }
+          showSongActionsSheet(
+            ctx,
+            song,
+            onPlayNext: () => controllerRef?.insertNext(song),
+            onCollect: () =>
+                collectLogic.toggle(song.hash, song.mixSongId, song: song),
+            collected: collectLogic.isCollected(song.hash),
+            onDownload: () => downloads.enqueue(song, quality),
+          );
+        } catch (e, st) {
+          Log.e(_tag, 'home song action failed', e, st);
+        }
+      },
       onOpenSearch: () {
         try {
           // 首页搜索入口 → 请求切到搜索 tab（app_root.homeTabRequest 消费）。

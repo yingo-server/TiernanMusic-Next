@@ -8,7 +8,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart'
-    show SongDao, SongRecord, PlayHistoryEntry, SongBrief, UserProfile;
+    show SongDao, SongRecord, PlayHistoryEntry, SongBrief, UserProfile, PlaylistBrief;
 import '../../bridges/bridge_logic.dart'
     show
         DownloadManager, DownloadEvent, DownloadTask, DownloadStatus, Log,
@@ -18,6 +18,7 @@ import '../theme/tn_motion.dart' show TnMotionStaggered;
 import '../theme/tn_theme.dart' show TnDims, TnText, tnPadL;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 import 'library_header.dart' show LibraryAccountCard;
+import 'storage_diag_page.dart' show StorageDiagPage, StorageDiagDeps;
 
 const String _tag = 'surface.library';
 
@@ -31,6 +32,9 @@ class LibraryDeps {
     this.profile,
     this.favoriteCount,
     this.onOpenSettings,
+    this.myPlaylists,
+    this.playlistTracks,
+    this.onSongAction,
   });
 
   /// 本地曲库数据源。
@@ -53,6 +57,15 @@ class LibraryDeps {
 
   /// 打开设置（更多菜单）。
   final void Function()? onOpenSettings;
+
+  /// 我的歌单（可选；登录态才有）。
+  final Future<List<PlaylistBrief>> Function()? myPlaylists;
+
+  /// 歌单曲目（可选；存储诊断页用）。
+  final Future<List<SongBrief>> Function(String playlistId)? playlistTracks;
+
+  /// 歌曲更多操作（下一首播放/收藏/下载）。
+  final void Function(SongBrief)? onSongAction;
 }
 
 /// 曲库页模块：id='library'，底部导航入口「曲库」。
@@ -140,6 +153,30 @@ class _LibraryPageState extends State<LibraryPage>
                 Tab(text: '下载管理'),
               ],
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.storage_outlined),
+            title: const Text('存储诊断'),
+            subtitle: const Text('本地曲库 / 下载任务 / 我的歌单'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              try {
+                Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => StorageDiagPage(
+                    deps: StorageDiagDeps(
+                      songDao: widget.deps.songDao,
+                      downloads: widget.deps.downloads,
+                      myPlaylists: widget.deps.myPlaylists,
+                      playlistTracks: widget.deps.playlistTracks,
+                      onPlay: widget.deps.onPlay,
+                      onSongAction: widget.deps.onSongAction,
+                    ),
+                  ),
+                ));
+              } catch (e, st) {
+                Log.e(_tag, 'open storage diag failed', e, st);
+              }
+            },
           ),
           Expanded(
             child: TabBarView(

@@ -226,6 +226,47 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
 
   // ── 队列控制 ──
 
+  /// 跳转到队列第 i 首（播放队列 sheet 用）。
+  Future<void> playAt(int index) async {
+    try {
+      final items = state.queue.items;
+      if (index < 0 || index >= items.length) {
+        _d('playAt out of range i=$index len=${items.length}');
+        return;
+      }
+      await playAll(items, index);
+    } catch (e, st) {
+      _e('playAt failed $index', e, st);
+    }
+  }
+
+  /// 从队列移除第 i 首（移除当前曲时保持播放态，由引擎继续推进）。
+  void removeFromQueue(int index) {
+    try {
+      final items = state.queue.items;
+      if (index < 0 || index >= items.length) {
+        _d('removeFromQueue out of range i=$index len=${items.length}');
+        return;
+      }
+      final q = state.queue.removeAt(index);
+      state = state.copyWith(queue: q);
+      _d('removeFromQueue i=$index left=${q.items.length}');
+    } catch (e, st) {
+      _e('removeFromQueue failed $index', e, st);
+    }
+  }
+
+  /// 插入到下一首播放（歌单/收藏「下一首播放」用）。
+  void insertNext(SongBrief song) {
+    try {
+      final q = state.queue.insert(song);
+      state = state.copyWith(queue: q);
+      _d('insertNext ${song.hash} len=${q.items.length}');
+    } catch (e, st) {
+      _e('insertNext failed', e, st);
+    }
+  }
+
   Future<void> next() async {
     try {
       final q = state.queue.next();

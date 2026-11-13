@@ -37,6 +37,7 @@ SurfaceModule buildHomeModule({
   required PlaylistLogic playlist,
   required void Function(SongBrief) onPlay,
   required void Function() onOpenSearch,
+  void Function(SongBrief)? onSongAction,
 }) =>
     HomePageModule(
       recommend: recommend,
@@ -45,6 +46,7 @@ SurfaceModule buildHomeModule({
       playlist: playlist,
       onPlay: onPlay,
       onOpenSearch: onOpenSearch,
+      onSongAction: onSongAction,
     );
 /// 首页模块。
 class HomePageModule implements SurfaceModule {
@@ -67,6 +69,7 @@ class HomePageModule implements SurfaceModule {
   final PlaylistLogic _playlist;
   final void Function(SongBrief) _onPlay;
   final void Function() _onOpenSearch;
+  final void Function(SongBrief)? _onSongAction;
   @override
   String get id => 'home';
   @override
@@ -78,19 +81,21 @@ class HomePageModule implements SurfaceModule {
   @override
   WidgetBuilder builder(LogicFacade logic) => (ctx) => _HomePageBody(
       recommend: _recommend, rank: _rank, search: _search,
-      playlist: _playlist, onPlay: _onPlay, onOpenSearch: _onOpenSearch);
+      playlist: _playlist, onPlay: _onPlay, onOpenSearch: _onOpenSearch,
+      onSongAction: _onSongAction);
 }
 class _HomePageBody extends StatelessWidget {
   const _HomePageBody({
     required this.recommend, required this.rank, required this.search,
     required this.playlist, required this.onPlay,
-    required this.onOpenSearch});
+    required this.onOpenSearch, this.onSongAction});
   final RecommendLogic recommend;
   final RankLogic rank;
   final SearchLogic search;
   final PlaylistLogic playlist;
   final void Function(SongBrief) onPlay;
   final void Function() onOpenSearch;
+  final void Function(SongBrief)? onSongAction;
   void _safe(void Function() f, String what) {
     try {
       f();
@@ -150,7 +155,20 @@ class _HomePageBody extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: tt.bodySmall
                                 ?.copyWith(color: cs.onSurfaceVariant)),
-                        trailing: Icon(Icons.play_arrow, color: cs.primary),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Icon(Icons.play_arrow, color: cs.primary),
+                            if (onSongAction != null)
+                              IconButton(
+                                tooltip: '更多',
+                                icon: const Icon(Icons.more_vert, size: 20),
+                                onPressed: () => _safe(
+                                    () => onSongAction!(items[i]),
+                                    'daily song action'),
+                              ),
+                          ],
+                        ),
                         onTap: () => _safe(() => onPlay(items[i]), 'daily play'),
                       ),
                     ),

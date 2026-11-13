@@ -29,6 +29,19 @@ class PlaylistWriteLogic {
   /// 独立实例）。写操作成功后 +1；后续写请求携带（端点默认 0 兼容）。
   final Map<String, int> _listVerCache = <String, int>{};
 
+  /// 我的歌单（登录态；未登录返回空列表）。
+  /// 端点：getUserPlaylists（/v7/get_all_list 系，query plat/userid/token）。
+  Future<List<PlaylistBrief>> myPlaylists({int page = 1, int pageSize = 30}) async {
+    try {
+      final list = await getUserPlaylists(_client, page: page, pageSize: pageSize);
+      Log.d(_tag, 'myPlaylists n=${list.length}');
+      return list;
+    } catch (e, st) {
+      Log.e(_tag, 'myPlaylists failed', e, st);
+      return const <PlaylistBrief>[];
+    }
+  }
+
   /// 写成功后失效本地镜像缓存（清镜像 + 通知回调）。
   Future<void> _invalidate(String listid) async {
     try {
