@@ -50,6 +50,7 @@ L1_EXTRA = ('package:flutter/material.dart', 'package:flutter/services.dart',
             'package:path_provider/path_provider.dart')
 L6_EXTRA = ('package:flutter', 'package:flutter_riverpod',
             'package:riverpod', 'package:just_audio',
+            'package:video_player',  # MV inline player shell (batch R2)
             'package:audio_service', 'package:path_provider',
             'package:flutter_localizations')
 # L4 core 数据库域必需的 isar（存储/数据库四域之一）

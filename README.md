@@ -22,7 +22,7 @@ L1 init       main 入口/完整性校验触发
 2. 桥函数统一 try/catch + Log 留痕，失败不静默吞。
 3. core/net/endpoints/ 每端点一模块 + EndpointRegistry 声明式配置，改 API 不动调用方。
 4. 零源仓库代码复用；酷狗 API 知识仅来自 docs/KUGOU_API.md。
-5. 依赖纪律：SDK 可实现（≤500行/文件）不引库；例外仅 miuix/riverpod/just_audio/audio_service/isar/path_provider。
+5. 依赖纪律：SDK 可实现（≤500行/文件）不引库；例外仅 miuix/riverpod/just_audio/audio_service/isar/path_provider/video_player（MV 内嵌播放壳）。
 6. L6 热插拔：页面/组件为 SurfaceModule，注册表一行增删，模块间零直接 import。
 
 ## 快速开始
