@@ -113,6 +113,7 @@ jobs:
           grep -qE "All tests (passed|passed!)|tests passed" /tmp/test.log || V=fail
           grep -q "VIOLATION" /tmp/layer.log && V=fail
           grep -q "REAL-ERRORS" /tmp/analyze_gate.log && V=fail
+          grep -q "Traceback" /tmp/analyze_gate.log && V=fail
           grep -q "analyze_gate ok" /tmp/analyze_gate.log || V=fail
           grep -q "^VIOLATION\|^FAIL" /tmp/smoke.log && V=fail
           grep -q "FIELD-TRUTH-OK" /tmp/field_truth.log || V=fail

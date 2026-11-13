@@ -22,7 +22,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DART = "/opt/dart/bin/dart"
+DART = "/opt/dart/bin/dart" if os.path.isfile("/opt/dart/bin/dart") else "dart"
 
 DECL_RE = re.compile(
     r"^\s*(?:abstract\s+|final\s+|base\s+|sealed\s+|mixin\s+)*"
