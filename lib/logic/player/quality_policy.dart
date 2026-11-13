@@ -113,15 +113,16 @@ PlayDecision decide(QualityAttempt a) {
       Log.d(kTag, 'decide: play quality=${a.quality}');
       return PlayDecision.play;
     }
-    // 2) status==2 且无 url：需要验证（风控/验证流程），不降级、不冒充成功。
-    if (a.status == 2 && !a.hasUrl) {
-      Log.w(kTag, 'decide: needVerify quality=${a.quality}');
-      return PlayDecision.needVerify;
-    }
-    // 3) 明确 priv_status==0：无权限（VIP 档未授权），不得冒充成功。
+    // 2) 明确 priv_status==0：无权限（VIP 档未授权）——必须先于 needVerify，
+    //    否则非VIP对VIP曲（status=2 + priv=0）会被误判成「需验证」。
     if (a.privKnown && a.privStatus == 0) {
       Log.w(kTag, 'decide: noPrivilege quality=${a.quality}');
       return PlayDecision.noPrivilege;
+    }
+    // 3) status==2 且无 url：需要验证（风控/验证流程），不降级、不冒充成功。
+    if (a.status == 2 && !a.hasUrl) {
+      Log.w(kTag, 'decide: needVerify quality=${a.quality}');
+      return PlayDecision.needVerify;
     }
     // 正常但无 url：降档重试。
     if (a.status == 1 && !a.hasUrl) {

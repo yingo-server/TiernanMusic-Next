@@ -62,6 +62,10 @@ jobs:
         if: always()
         run: dart run tool/boot_contract_test.dart 2>&1 | tee /tmp/boot_contract.log
         continue-on-error: true
+      - name: resolve contract (pure Dart)
+        if: always()
+        run: dart run tool/resolve_contract_test.dart 2>&1 | tee /tmp/resolve_contract.log
+        continue-on-error: true
       - name: play contract (pure Dart)
         if: always()
         run: dart run tool/play_contract_test.dart 2>&1 | tee /tmp/play_contract.log
@@ -131,6 +135,8 @@ jobs:
           grep -q "FEATURE-REACHABILITY-FAIL" /tmp/reach.log && V=fail
           grep -q "boot contract self-check" /tmp/boot_contract.log || V=fail
           grep -q "0 failed" /tmp/boot_contract.log || V=fail
+          grep -q "resolve contract self-check" /tmp/resolve_contract.log || V=fail
+          grep -q "0 failed" /tmp/resolve_contract.log || V=fail
           grep -q "play contract self-check" /tmp/play_contract.log || V=fail
           grep -q "0 failed" /tmp/play_contract.log || V=fail
           grep -q "download contract self-check" /tmp/download_contract.log || V=fail

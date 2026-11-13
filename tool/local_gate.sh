@@ -47,6 +47,11 @@ echo "== play contract (three-state verdict + quality ladder) =="
   echo FAIL-play-contract; exit 1; }
 echo PASS-play-contract
 
+echo "== resolve contract (three-state + prefetch) =="
+/opt/dart/bin/dart run tool/resolve_contract_test.dart 2>&1 | tail -1 | grep -q "0 failed" || {
+  echo FAIL-resolve-contract; exit 1; }
+echo PASS-resolve-contract
+
 echo "== download contract =="
 /opt/dart/bin/dart run tool/download_contract_test.dart 2>&1 | tail -1 | grep -q "0 failed" || {
   echo FAIL-download-contract; exit 1; }
