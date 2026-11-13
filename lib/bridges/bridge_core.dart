@@ -19,8 +19,9 @@ export '../core/memory/cache_keys.dart'
 // L6 surface 装配所需（app_root 组装 logic 单例时的构造参数类型）
 export '../core/net/kugou_client.dart' show KugouClient, KugouSession, KugouApiException, EndpointRegistry;
 export '../core/storage/settings_store.dart' show KeyValueSettings;
-export '../core/net/database_bridge.dart' show openDatabase;
-export '../core/net/endpoints/models.dart' show SearchResult, LyricResult;
+export '../core/net/database_opener.dart' show openDatabase; // DatabaseOpener（审计B F-08：原 database_bridge.dart，非五桥，去 bridge 命名）
+export '../core/net/endpoints/models.dart' show SearchResult, LyricResult; // 审计B F-03：此行与上方 models.dart 的 export 重复同一符号，为兼容既有 importer 保留；合并前先确认 22 importer 无独立依赖此行
+
 // ── 评论域端点模型（批1-A：logic/surface 经此引用 CommentItem/CommentPage） ──
 export '../core/net/endpoints/comment_endpoints.dart'
     show CommentItem, CommentPage;
@@ -109,6 +110,8 @@ export '../core/net/endpoints/user_endpoints.dart'
         reportListen,
         uploadPlayHistory;
 // 评论端点函数（logic 层经 core 桥取用，批7 收敛补齐）
+// 审计B F-03：comment_endpoints 经 bridge_core 与 bridge_logic 双桥出口；此为 core 出口，
+// 与 bridge_logic 的出口存在重复符号。按六五规则双桥唯一通道要求暂保留本行，后续统一收敛至单一出口。
 export '../core/net/endpoints/comment_endpoints.dart'
     show getMusicComments, getCommentFloor, getCommentCount;
 

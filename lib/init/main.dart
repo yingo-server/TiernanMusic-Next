@@ -1,19 +1,18 @@
 // L1 init 级 · 启动入口
 // TiernanMusicNext: 六层五桥架构。init 层职责：
-// 1. 从 rootBundle 预加载完整性清单与模块字节（Android APK 内无 lib/ 文件系统路径）
-// 2. 经 bridge_boot.runBoot() 触发 L2 bootloader（完整性校验 + 依赖装配）
+// 1. 经 path_provider 拿存储根目录（L1 特例，注入 runBoot(rootDir:)）
+// 2. 显式 registerBootloader() 后经 bridge_boot.runBoot() 触发 L2 bootloader
+//    （kernel + core 依赖装配；无运行期完整性校验）
 // 3. 经 bridge_surface.installServices → bootstrapApp 完成装配与 runApp
 // 失败处理：任何启动期异常都渲染可见错误页（不再静默退出，避免"闪退"观感）。
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 // L1 特例（架构放行）：仅 main 允许 path_provider——L2 bootloader 禁 flutter，
 // 存储根目录必须由依赖图根（main）拿好后注入 runBoot(rootDir:)。
 import 'package:path_provider/path_provider.dart';
 
 import '../bridges/bridge_boot.dart' show BootOutcome, runBoot;
-// L1 装配根触发 L2 自注册（bootloader.dart 的注册语句需文件被加载才执行；
-// 见 lib/bootloader/register.dart 头注释）。这是 L1→L2 的最小装配例外，
+// L1 装配根触发 L2 显式注册（bootloader.dart 的 installBootBridge() 需被调用
+// 才完成注册；见 lib/bootloader/register.dart 头注释）。这是 L1→L2 的最小装配例外，
 // 业务调用仍全部经 bridge_boot。
 import '../bootloader/register.dart' show registerBootloader;
 import '../bridges/bridge_surface.dart'
@@ -42,12 +41,9 @@ Future<void> _boot({required bool debugBypass}) async {
     debugPrint('main: path_provider failed, fallback relative root: $e/$st');
   }
 
-  // ② 完整性校验已移除（Flutter 对深层子目录 asset 不可靠，逐版失败）。
-  //    改为 CI 构建时生成 verification.json（加盐 md5/sha512 + RSA-4096 签名）
-  //    随同版本 release 发布；本地无法验证时仅警报不阻塞（用户原则）。
-
-  // ③ runBoot（core 装配）。返回类型化的 BootOutcome（见 bridge_boot）：
-  //    init 层只认 BootOutcome 形状 + deps 具名键，不再对 dynamic 做 .client 探测。
+  // ③ runBoot（kernel + core 装配，无运行期完整性校验）。返回类型化的
+  //    BootOutcome（见 bridge_boot）：init 层只认 BootOutcome 形状 + deps
+  //    具名键，不再对 dynamic 做 .client 探测。
   registerBootloader();
   final Object? raw = runBoot(
       bypassIntegrity: debugBypass,
@@ -95,8 +91,7 @@ Future<void> _boot({required bool debugBypass}) async {
   bootstrapApp(outcome.dep('__raw'));
 }
 
-/// 启动失败可见页（miuix 风格全屏报错，替代静默退出/闪退观感）。
-/// M3 全屏报错（替代静默退出/闪退观感）。
+/// 启动失败可见页（M3 全屏报错，替代静默退出/闪退观感）。
 class _BootErrorApp extends StatelessWidget {
   const _BootErrorApp({required this.message});
   final String message;

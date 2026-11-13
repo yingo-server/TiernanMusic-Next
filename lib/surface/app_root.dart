@@ -16,6 +16,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../bridges/bridge_core.dart' show KugouClient, SongDao;
 import '../bridges/bridge_logic.dart';
 import 'assembly.dart' as asm;
+import 'providers.dart'
+    show appNavigatorKey, homeTabRequest, localeRevision, logicFacadeProvider;
 import 'deps.dart' show SurfaceDeps;
 import 'player_controller.dart' show AudioEngine;
 import 'audio/keep_alive.dart';
@@ -31,16 +33,9 @@ import 'theme/tn_shader_warmup.dart' show TnShaderWarmup;
 
 export 'deps.dart' show SurfaceDeps;
 
-/// 全局 Navigator key：assembly 的二级页跳转（专辑/歌手）无需 BuildContext。
-final GlobalKey<NavigatorState> appNavigatorKey =
-    GlobalKey<NavigatorState>();
-
-/// 首页 tab 切换请求（装配层 onOpenSearch 等回调写入；_HomeShellState 消费）。
-/// 值 = 目标模块 id（如 'search'）；_HomeShellState 收到后定位对应 tab。
-final ValueNotifier<String?> homeTabRequest = ValueNotifier<String?>(null);
-
-/// 语言/区域变更重建信号（设置页切语言后 ++，AppRoot 重建 MaterialApp 生效）。
-final ValueNotifier<int> localeRevision = ValueNotifier<int>(0);
+// 批04-A（环B破除）：appNavigatorKey / homeTabRequest / localeRevision /
+// logicFacadeProvider 已抽至 providers.dart（assembly 不再 import app_root）。
+// 本文件经 providers.dart 引用这些符号，行为不变。
 
 // ───────────────────────── 装配 ─────────────────────────
 
@@ -86,7 +81,7 @@ final Provider<DownloadManager> downloadManagerProvider =
     Provider((ref) => ref.watch(assemblyProvider)!.downloads);
 
 /// logic 能力门面（registry.SurfaceModule.enabled/builder 拿这个）
-final Provider<LogicFacade> logicFacadeProvider = Provider((_) => const LogicFacade());
+// 批04-A：logicFacadeProvider 已抽至 providers.dart。
 
 // 主题模式唯一状态源见 theme/theme_state.dart（app_root 与 settings_page 共用；
 // 此前两处各自声明同名 themeModeProvider 且互不 import，导致切主题对渲染零影响）。

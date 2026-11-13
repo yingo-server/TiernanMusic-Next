@@ -49,7 +49,8 @@ import 'pages/lyrics_page.dart' show LyricsPageModule, LyricsDeps;
 import 'pages/settings_page.dart' show SettingsPageModule, SettingsDeps;
 import 'pages/comment_page.dart' show buildCommentModule;
 import 'pages/mv_page.dart' show buildMvModule;
-import 'app_root.dart' show appNavigatorKey, homeTabRequest, localeRevision;
+import 'providers.dart'
+    show appNavigatorKey, homeTabRequest, localeRevision; // 批04-A 环B破除
 import 'pages/artist_page.dart' show buildArtistModule;
 import 'pages/album_page.dart' show buildAlbumModule, AlbumPage;
 import 'nav_state.dart' show SurfaceNavState;
@@ -82,8 +83,7 @@ class AssemblyResult {
     required this.moduleIds,
     required this.clearLyricCache,
   });
-
-  final SearchLogic search;
+  final l SearchLogic search;
   final PlaylistLogic playlist;
   final RankLogic rank;
   final AuthLogic auth;

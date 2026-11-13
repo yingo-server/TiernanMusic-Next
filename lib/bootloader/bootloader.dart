@@ -1,12 +1,12 @@
-// L2 bootloader 级 · 启动序列与完整性校验触发点
-// 职责：按序装配 L3 kernel 模块 → 校验模块清单（加盐 SHA-512 + Ed25519 签名）
-// → 输出 BootResult。init 层是唯一调用方（经 bridge_boot 的 runBoot）。
+// L2 bootloader 级 · 启动序列装配
+// 职责：按序装配 L3 kernel 模块 → core 单例装配 → 会话恢复 → 输出 BootResult。
+// init 层是唯一调用方（经 bridge_boot 的 runBoot）。
 // 批7-A：L2 只经桥取 kernel/core/logic 能力（kernel 能力后续经 bridge_kernel）。
-//   _registerRunBoot：文件加载即把 Bootstrap.run 注册进 bridge_boot，
-//   init/main.dart 调 runBoot(...) → 转回 Bootstrap.run（桥不反向 import L2）。
+// 注册机制：运行期完整性校验已删除，防篡改由 CI 构建期（verification.json）承担；
+//   Bootstrap.run 不再消费 manifest/moduleBytes，无任何运行期校验逻辑。
+//   注册由显式函数 installBootBridge() 完成（见文件底部），由 L1 经
+//   lib/bootloader/register.dart 的 registerBootloader() 调用一次。
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
 import '../bridges/bridge_boot.dart' as bb;
 import '../bridges/bridge_boot.dart' show KernelContext, Log;
@@ -16,6 +16,7 @@ import '../bridges/bridge_logic.dart' as lg;
 /// init 层拿到的启动结果。
 /// 批5-B：成功路径装配的 core 单例随结果上交，由 main（L1 依赖根，白名单）
 /// 构造 SurfaceDeps 并调 surface.installServices —— L2 不得 import L6。
+/// init 层经 bridge_boot.BootOutcome.fromAny 把本类型归一化为类型化 BootOutcome。
 class BootResult {
   const BootResult({
     required this.rejected,
@@ -48,26 +49,20 @@ class BootResult {
 class Bootstrap {
   Bootstrap._();
 
-  /// 启动序列：签名清单校验 → kernel 装配 → core 单例装配 → 会话恢复。
+  /// 启动序列：kernel 装配 → core 单例装配 → 会话恢复。
   ///
   /// [rootDir]：存储根目录。TODO(时序说明)：L2 是纯 dart:io 层、禁 flutter，
   /// 无法调 path_provider。约定由 main（L1 特例，允许 import path_provider）
   /// 在 runApp 前先 `getApplicationSupportDirectory()` 拿目录，再传进本参数
   /// （见 init/main.dart）。未传时用 `.` 相对根兜底（仅 debug 可跑通）。
-  /// [manifest]/[moduleBytes]：由 L1（init）从 rootBundle 预加载传入——Android APK
-  /// 内没有 lib/ 文件系统路径，完整性校验必须比对随包携带的模块字节
-  /// （构建期由 tool/gen_manifest.dart 复制进 assets/integrity/modules/）。
-  /// 未传时退回文件系统读取（桌面/调试）。
-  static BootResult run(
-      {bool bypassIntegrity = false,
-      String? rootDir,
-      dynamic manifest,
-      Map<String, List<int>>? moduleBytes}) {
+  /// 注：无 manifest/moduleBytes 参数——运行期完整性校验已删除，
+  /// 防篡改由 CI 构建期 verification.json（加盐 md5/sha512 + RSA-4096 签名）
+  /// 承担；init 层的 runBoot 调用点也不再传这些实参。
+  static BootResult run({bool bypassIntegrity = false, String? rootDir}) {
     Log.d('boot', 'bootstrap run (bypass=$bypassIntegrity)');
-    // 运行期完整性校验已删除（Flutter 对深层子目录 asset 不可靠，逐版失败）。
-    // 防篡改改由 CI 构建期承担：tool/gen_verification.dart 生成加盐 md5/sha512
-    // + RSA-4096 签名的 verification.json，随同版本 release 发布（每版一份）。
-    // [manifest]/[moduleBytes] 参数保留以兼容 init 调用签名，但不再消费。
+    // 无运行期完整性校验。防篡改由 CI 构建期承担：tool/gen_verification.dart
+    // 生成加盐 md5/sha512 + RSA-4096 签名的 verification.json，
+    // 随同版本 release 发布（每版一份）。
     final kernel = bb.BootBridge.assemble();
     try {
       final coreSet = _assembleCore(rootDir: rootDir);
@@ -128,37 +123,20 @@ class Bootstrap {
       'auth': auth,
     };
   }
-
-  static dynamic _loadManifest() {
-    // 构建期由 tool/gen_manifest.dart 生成 assets/integrity/manifest.json
-    try {
-      return jsonDecode(
-          File('assets/integrity/manifest.json').readAsStringSync());
-    } catch (e, st) {
-      Log.e('boot', 'manifest load failed', e, st);
-      return null;
-    }
-  }
 }
 
-/// 由 surface 桥注入根组件构建器；L2 不得直接 import L6。
-/// （批7-A 注：此 hook 已无赋值方，保留仅为向后兼容，下批可删。）
-typedef WidgetBuilderHook = Object Function(BootResult result);
-WidgetBuilderHook bootstrapWidgetHook = (r) =>
-    throw UnimplementedError('surface bridge not installed');
-
 // 批7-A：启动序列注册到 bridge_boot（L1 init 只经 runBoot 调本方法）。
-// 注意：Dart 顶层变量惰性初始化，顶层 final 无人读取时永不执行；
-// 故改为显式安装函数，由 L1 经 lib/bootloader/register.dart 调用一次。
+// 注册为显式安装函数 installBootBridge()：Dart 顶层变量惰性初始化，顶层
+// final 无人读取时永不执行，故弃用「文件加载即注册」方式，由 L1 经
+// lib/bootloader/register.dart 的 registerBootloader() 调用一次。
+// 注：manifest/moduleBytes 形参仅因 bridge_boot 的注册函数类型要求而保留
+// （bridge_boot 不可改），本闭包零消费、不转发给 Bootstrap.run；
+// init 调用点已不传这些实参。
 void installBootBridge() {
   bb.setRunBootImpl(
       ({bool bypassIntegrity = false,
         String? rootDir,
         dynamic manifest,
         Map<String, List<int>>? moduleBytes}) =>
-          Bootstrap.run(
-              bypassIntegrity: bypassIntegrity,
-              rootDir: rootDir,
-              manifest: manifest,
-              moduleBytes: moduleBytes));
+          Bootstrap.run(bypassIntegrity: bypassIntegrity, rootDir: rootDir));
 }
