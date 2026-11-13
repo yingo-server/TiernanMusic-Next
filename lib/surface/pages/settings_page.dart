@@ -10,6 +10,7 @@ import '../../bridges/bridge_logic.dart';
 import '../l10n/l10n_helper.dart' show TnStrings;
 import '../registry.dart';
 import '../theme/theme_state.dart' show themeModeProvider;
+import '../widgets/m3/m3_section_header.dart' show M3SectionHeader;
 import '../theme/tn_theme.dart';
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 import '../widgets/settings_qr_dialog.dart'
@@ -150,7 +151,10 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: const TnAppBar(title: '设置'),
       body: ListView(
         children: [
-          // ── 账号 ──
+          const M3SectionHeader(
+            title: '账号',
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+          ),
           ListTile(
             leading: Icon(_loggedIn ? Icons.account_circle : Icons.login),
             title: Text(_loggedIn ? '已登录：$_userid' : '未登录（酷狗账号）'),
@@ -193,6 +197,10 @@ class _SettingsPageState extends State<SettingsPage> {
               subtitle: Text(widget.deps.verificationState!(), style: t.aux),
             ),
           const Divider(height: 1),
+          const M3SectionHeader(
+            title: '外观',
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+          ),
           Consumer(builder: (context, ref, _) {
             final mode = ref.watch(themeModeProvider);
             return ListTile(
@@ -241,6 +249,10 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const Divider(height: 1),
           // ── 缓存 ──
+          const M3SectionHeader(
+            title: '播放与存储',
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+          ),
           ListTile(
             leading: const Icon(Icons.cleaning_services),
             title: const Text('清理歌词缓存'),
@@ -249,6 +261,10 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const Divider(height: 1),
           // ── 关于 ──
+          const M3SectionHeader(
+            title: '关于',
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+          ),
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('关于'),
