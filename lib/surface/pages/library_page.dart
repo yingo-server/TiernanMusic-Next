@@ -18,6 +18,8 @@ import '../theme/tn_motion.dart' show TnMotionStaggered;
 import '../theme/tn_theme.dart' show TnDims, TnText, tnPadL;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 import 'library_header.dart' show LibraryAccountCard;
+import 'library_my_playlists.dart' show LibraryMyPlaylists;
+import '../widgets/playlist_tracks_sheet.dart' show showPlaylistTracksSheet;
 import 'storage_diag_page.dart' show StorageDiagPage, StorageDiagDeps;
 
 const String _tag = 'surface.library';
@@ -143,6 +145,8 @@ class _LibraryPageState extends State<LibraryPage>
             favoriteCount: widget.deps.favoriteCount?.call(),
             onOpenSettings: widget.deps.onOpenSettings,
           ),
+          if (widget.deps.myPlaylists != null)
+            LibraryMyPlaylists(deps: widget.deps),
           Material(
             color: Theme.of(context).colorScheme.surface,
             child: TabBar(
