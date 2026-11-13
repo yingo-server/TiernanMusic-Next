@@ -24,7 +24,8 @@ String read(String p) => File(p).readAsStringSync();
 bool has(String s, String needle) => s.contains(needle);
 
 void main() {
-  final client = read('lib/core/net/kugou_client.dart');
+  // 端点注册表已拆到独立文件（批R2：kugou_client 拆出 endpoint_registry）。
+  final client = read('lib/core/net/endpoint_registry.dart');
   final endpoints = RegExp(r'static const (\w+) = Endpoint\(')
       .allMatches(client)
       .map((m) => m.group(1)!)
