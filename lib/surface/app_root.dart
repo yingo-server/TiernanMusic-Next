@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../bridges/bridge_core.dart' show KugouClient, SongDao;
 import '../bridges/bridge_logic.dart';
 import 'assembly.dart' as asm;
+import 'assembly_result.dart' show AssemblyResult;
 import 'providers.dart'
     show appNavigatorKey, homeTabRequest, localeRevision, logicFacadeProvider;
 import 'deps.dart' show SurfaceDeps;
@@ -52,8 +53,8 @@ final Provider<SongDao> songDaoProvider =
     Provider((ref) => ref.watch(depsProvider).songDao);
 
 // 批5-B：logic 单例不再在此 new，统一由 assembly.assembleAll 装配（见下）。
-final Provider<asm.AssemblyResult?> assemblyProvider =
-    Provider<asm.AssemblyResult?>((ref) => null);
+final Provider<AssemblyResult?> assemblyProvider =
+    Provider<AssemblyResult?>((ref) => null);
 
 /// 批5-B：logic 单例统一读装配结果（未装配时抛错暴露装配顺序问题）。
 final Provider<SearchLogic> searchLogicProvider =
@@ -102,7 +103,7 @@ Future<void> installServices(
 }
 
 SurfaceDeps? _pendingDeps;
-asm.AssemblyResult? _pendingAssembly;
+AssemblyResult? _pendingAssembly;
 
 // ───────────────────────── 启动入口（L1 特例调用点） ─────────────────────────
 
@@ -386,18 +387,26 @@ class _HomeShellState extends State<_HomeShell> {
     }
   }
 
+  /// navEntry.icon 字符串 → Material 图标（与各模块 navEntry 的 icon 字面量对齐：
+  /// search / home / library_music / queue_music / settings …）。
   IconData _iconOf(String name) {
     switch (name) {
       case 'search':
         return Icons.search;
+      case 'home':
+        return Icons.home;
       case 'library':
+      case 'library_music':
       case 'playlist':
         return Icons.library_music;
+      case 'queue_music':
+        return Icons.queue_music;
       case 'rank':
         return Icons.leaderboard;
       case 'download':
         return Icons.download;
       case 'settings':
+        return Icons.settings;
       case 'me':
         return Icons.person;
       default:

@@ -13,7 +13,11 @@ import 'pages/search_page.dart' show SearchPageModule;
 import 'audio/audio_service_bridge.dart' show initAudioService;
 import 'audio/just_audio_engine.dart' show JustAudioEngine;
 import 'player_controller.dart'
-    show PlayerController, PlaySourceResolver, playerProvider,
+    show
+        PlayerController,
+        PlaySourceResolver,
+        AudioEngine,
+        playerProvider,
         playerControllerProvider;
 import 'registry.dart' show SurfaceModule, SurfaceRegistry;
 
@@ -27,6 +31,7 @@ class ModuleDeps {
     required this.playlist,
     required this.resolver,
     this.quality = '128',
+    this.engine,
     this.collect,
     this.onQualitySelected,
     this.onOpenComments,
@@ -46,6 +51,10 @@ class ModuleDeps {
   /// 目标音质（128/320/flac …），传给 resolver。
   final String quality;
 
+  /// 音频引擎（可选注入）。为 null 时本层自建 JustAudioEngine（正常出声）；
+  /// 注入 NullAudioEngine 等替身时用于无音频环境（此时不初始化通知栏）。
+  final AudioEngine? engine;
+
   /// 收藏门面（可选）。
   final CollectLogic? collect;
 
@@ -62,6 +71,12 @@ class ModuleDeps {
   final SearchTypedLogic? searchTyped;
 }
 
+/// 已装配的唯一播放控制器实例（assembly 复用，禁止再建第二个）。
+PlayerController? _installedController;
+
+/// 本层装配出的播放控制器（未装配时为 null）。
+PlayerController? get installedPlayerController => _installedController;
+
 /// 构建默认模块集 + 装配全局 PlayerController provider override（异步：
 /// audio_service 初始化为可选能力，await 失败不阻断）。
 /// 用法（boot 处）：本函数内部已把全部默认模块逐个
@@ -75,23 +90,28 @@ class ModuleDeps {
 /// ```
 Future<List<SurfaceModule>> defaultModules(ModuleDeps deps) async {
   try {
-    // 播放控制器：唯一实例，经两个 provider 暴露（boot 处 override）。
+    // 播放控制器：**全局唯一实例**（批08 修复：此前 assembly 与本层各建一个，
+    // 导致列表播放走静音 NullAudioEngine、播放页走另一实例 → 状态分裂且无声）。
     // 引擎回调需引用尚未构造完的 controller，用可空引用间接接通。
     PlayerController? controllerRef;
-    final engine = JustAudioEngine(
-        onAction: (a) => controllerRef?.handleEngineAction(a));
+    final injected = deps.engine;
+    final AudioEngine engine = injected ??
+        JustAudioEngine(onAction: (a) => controllerRef?.handleEngineAction(a));
     final controller = PlayerController(
       resolver: deps.resolver,
       engine: engine,
       quality: deps.quality,
     );
     controllerRef = controller;
+    _installedController = controller;
 
-    // 通知栏桥（可选能力）：失败不阻断模块装配。
-    try {
-      await initAudioService(engine.rawPlayer);
-    } catch (e, st) {
-      Log.w('surface.modules', 'audioService init skipped: $e $st');
+    // 通知栏桥（可选能力）：仅 JustAudioEngine 有底层 player；失败不阻断装配。
+    if (engine is JustAudioEngine) {
+      try {
+        await initAudioService(engine.rawPlayer);
+      } catch (e, st) {
+        Log.w('surface.modules', 'audioService init skipped: $e $st');
+      }
     }
     final overrides = <Override>[
       playerProvider.overrideWith((ref) => controller),

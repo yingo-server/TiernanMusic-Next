@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 
+import 'assembly_result.dart' show AssemblyResult;
 import 'deps.dart' show SurfaceDeps;
 import 'registry.dart' show SurfaceRegistry;
 import '../bridges/bridge_core.dart'
@@ -61,54 +62,6 @@ import 'theme/tn_motion.dart' show TnPageRoute;
 
 const String _tag = 'surface.assembly';
 
-class AssemblyResult {
-  AssemblyResult({
-    required this.search,
-    required this.playlist,
-    required this.rank,
-    required this.auth,
-    required this.lyrics,
-    required this.playback,
-    required this.history,
-    required this.downloads,
-    required this.recommend,
-    required this.artist,
-    required this.fm,
-    required this.searchTyped,
-    required this.playlistWrite,
-    required this.verification,
-    required this.user,
-    required this.controller,
-    required this.providerOverrides,
-    required this.moduleIds,
-    required this.clearLyricCache,
-  });
-  final l SearchLogic search;
-  final PlaylistLogic playlist;
-  final RankLogic rank;
-  final AuthLogic auth;
-  final LyricsLogic lyrics;
-  final PlaybackService playback;
-  final HistoryRecorder history;
-  final DownloadManager downloads;
-  final RecommendLogic recommend;
-  final ArtistLogic artist;
-  final FmLogic fm;
-
-  final SearchTypedLogic searchTyped;
-  final PlaylistWriteLogic playlistWrite;
-  final VerificationLogic verification;
-  final UserLogic user;
-
-  final PlayerController controller;
-
-  final List<Override> providerOverrides;
-
-  final List<String> moduleIds;
-
-  final void Function() clearLyricCache;
-}
-
 Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     {AudioEngine? engine, String quality = '128'}) async {
   final searchCache = _newCache<String, SearchResult>(128, 'search');
@@ -133,18 +86,15 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         client: deps.client, paths: deps.pathsOrI, cache: lyricCache,
       ))!;
   final playback = _step('PlaybackService', () => PlaybackService(
-        client: deps.client,
-        songDao: deps.songDao,
-        downloadStore: deps.downloadStore,
-      ))!;
+      client: deps.client,
+      songDao: deps.songDao,
+      downloadStore: deps.downloadStore))!;
   final history = _step('HistoryRecorder', () => HistoryRecorder(
-        historyDao: deps.historyDao, songDao: deps.songDao,
-      ))!;
+      historyDao: deps.historyDao, songDao: deps.songDao))!;
   final downloads = _step('DownloadManager', () => DownloadManager(
-        playbackService: playback,
-        songDao: deps.songDao,
-        downloadStore: deps.downloadStore,
-      ))!;
+      playbackService: playback,
+      songDao: deps.songDao,
+      downloadStore: deps.downloadStore))!;
 
   final commentCache = _newCache<String, CommentPage>(64, 'comment');
   final commentLogic = _step('CommentLogic', () => CommentLogic(
@@ -160,8 +110,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         isLoggedIn: () => auth.session.userid.isNotEmpty,
       ))!;
   final translationLogic = _step('TranslationLogic', () => TranslationLogic())!;
-  // 多账号切换时的缓存失效器收集器：先声明空列表，各 logic 声明后逐个 add，
-  // 避免闭包前向引用未声明的 final 局部变量（Dart 编译期禁止）。
+  // 多账号失效器收集器：先声明空列表再逐个 add（避免闭包前向引用未声明变量）。
   final accountInvalidators = <void Function()>[];
   accountInvalidators.add(
       () => search.invalidatePrefix(userid: deps.client.session.userid));
@@ -177,32 +126,26 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
   accountInvalidators.add(() => translationLogic.invalidatePrefix(
       userid: deps.client.session.userid));
   final accountLogic = _step('AccountLogic', () => AccountLogic(
-        dao: AccountDao(),
-        client: deps.client,
-        settings: deps.settings,
-        onAccountChanged: () {
-          try {
-            for (final invalidate in accountInvalidators) {
-              invalidate();
-            }
-            Log.d(_tag, 'account caches invalidated');
-          } catch (e, st) {
-            Log.e(_tag, 'account cache invalidation failed', e, st);
+      dao: AccountDao(),
+      client: deps.client,
+      settings: deps.settings,
+      onAccountChanged: () {
+        try {
+          for (final invalidate in accountInvalidators) {
+            invalidate();
           }
-        },
-      ))!;
+          Log.d(_tag, 'account caches invalidated');
+        } catch (e, st) {
+          Log.e(_tag, 'account cache invalidation failed', e, st);
+        }
+      }))!;
   final recommendLogic = _step('RecommendLogic', () => RecommendLogic(
       client: deps.client, cache: _newCache<String, dynamic>(64, 'recommend')))!;
   final artistLogic = _step('ArtistLogic', () => ArtistLogic(
-        client: deps.client,
-        cache: _newCache<String, dynamic>(64, 'artist'),
-      ))!;
+      client: deps.client, cache: _newCache<String, dynamic>(64, 'artist')))!;
   final albumLogic = _step('AlbumLogic', () => AlbumLogic(
-        client: deps.client,
-        cache: _newCache<String, dynamic>(64, 'album'),
-      ))!;
+      client: deps.client, cache: _newCache<String, dynamic>(64, 'album')))!;
   final fmLogic = _step('FmLogic', () => FmLogic(
-        client: deps.client,
       client: deps.client, cache: _newCache<String, dynamic>(32, 'fm')))!;
   final userLogic = _step('UserLogic', () => UserLogic(
       client: deps.client, cache: _newCache<String, dynamic>(32, 'user')))!;
@@ -222,34 +165,32 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
   accountInvalidators.add(() => searchTypedLogic.invalidatePrefix(
       userid: deps.client.session.userid));
   final playlistWriteLogic = _step('PlaylistWriteLogic', () => PlaylistWriteLogic(
-        client: deps.client,
-        playlistDao: deps.playlistDao,
-        onChanged: () {
-          try {
-            playlist.invalidatePrefix(userid: deps.client.session.userid);
-          } catch (e, st) {
-            Log.e(_tag, 'playlist cache invalidation failed', e, st);
-          }
-        },
-      ))!;
+      client: deps.client,
+      playlistDao: deps.playlistDao,
+      onChanged: () {
+        try {
+          playlist.invalidatePrefix(userid: deps.client.session.userid);
+        } catch (e, st) {
+          Log.e(_tag, 'playlist cache invalidation failed', e, st);
+        }
+      }))!;
   final verificationLogic = _step('VerificationLogic', () => VerificationLogic(
-        client: deps.client,
-        settings: deps.settings,
-      ))!;
+      client: deps.client, settings: deps.settings))!;
 
-  final controller = _step('PlayerController', () => PlayerController(
-        resolver: playback.resolvePlaySource,
-        engine: engine ?? NullAudioEngine(),
-        quality: quality,
-      ))!;
+  // 播放控制器：**唯一实例由 modules.dart 创建**（批08：此前此处另建一份，
+  // 且 main 未传 engine → NullAudioEngine 静音，导致列表播放无声且状态分裂）。
+  // 这里只持有引用，供 library/lyrics/FM 等本层回调复用。
+  PlayerController? controllerRef;
 
   final modules = <dynamic>[];
+  // defaultModules 内部已逐个 install（批07-C 契约），此处只取回已装配清单。
   final built = _step('defaultModules', () => mod.defaultModules(
         mod.ModuleDeps(
           search: search,
           playlist: playlist,
           resolver: playback.resolvePlaySource,
           quality: quality,
+          engine: engine,
           collect: collectLogic,
           searchTyped: searchTypedLogic,
           onQualitySelected: (q) {
@@ -287,7 +228,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
             // 播放页 FM 入口：同 SettingsDeps 组合语义。
             try {
               fmLogic.start().then((batch) {
-                if (batch.isNotEmpty) controller.playAll(batch, 0);
+                if (batch.isNotEmpty) controllerRef?.playAll(batch, 0);
               });
             } catch (e, st) {
               Log.e(_tag, 'onStartFm failed', e, st);
@@ -295,7 +236,21 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
           },
         ),
       ))!;
-  modules.addAll(await built);
+  // 已由 modules.dart 内部 install（install 语义单一来源），此处仅汇总 moduleIds。
+  final defaultInstalled = await built;
+  final controller = mod.installedPlayerController;
+  if (controller == null) {
+    Log.e(_tag, 'player controller not installed (唯一实例缺失)');
+    throw StateError('surface.assembleAll: player controller missing');
+  }
+  controllerRef = controller;
+  final defaultIds = defaultInstalled.map((m) => m.id).toSet();
+  if (defaultInstalled.isEmpty) {
+    // modules.dart 兜底返回空列表：装配失败必须显式暴露，禁止静默少 tab。
+    Log.e(_tag, 'defaultModules returned empty (装配失败)');
+    throw StateError('surface.defaultModules failed: no modules installed');
+  }
+  modules.addAll(defaultInstalled);
 
   _step('LibraryDeps', () {
     modules.add(LibraryPageModule(
@@ -303,7 +258,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         songDao: deps.songDao,
         historyRecent: ({int limit = 50}) => deps.historyDao.recent(limit: limit),
         downloads: downloads,
-        onPlay: controller.playSong,
+        onPlay: (song) => controllerRef?.playSong(song),
       ),
     ));
     return true;
@@ -312,8 +267,8 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     modules.add(LyricsPageModule(
       deps: LyricsDeps(
         lyrics: lyrics,
-        currentSong: () => controller.state.queue.current,
-        positionMsProvider: () => controller.state.player.positionMs,
+        currentSong: () => controllerRef?.state.queue.current,
+        positionMsProvider: () => controllerRef?.state.player.positionMs,
         translation: translationLogic,
       ),
     ));
@@ -341,7 +296,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         onStartFm: () {
           // 个人 FM：FmLogic.start() 取首批 → 非空批次整体入队从 0 播放。
           fmLogic.start().then((batch) {
-            if (batch.isNotEmpty) controller.playAll(batch, 0);
+            if (batch.isNotEmpty) controllerRef?.playAll(batch, 0);
           });
         },
         verificationState: () => verificationLogic.state.name,
@@ -361,7 +316,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     modules.add(buildCommentModule(
       logic: commentLogic,
       mixSongIdProvider: () =>
-          controller.state.queue.current?.mixSongId ?? 0,
+          controllerRef?.state.queue.current?.mixSongId ?? 0,
     ));
     return true;
   });
@@ -381,7 +336,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     modules.add(buildArtistModule(
       logic: artistLogic,
       currentArtistId: () => navState.artistId,
-      onPlay: controller.playSong,
+      onPlay: (song) => controllerRef?.playSong(song),
       // 装配层同层接线：写 navState 后用 Navigator 打开专辑页（模块间零 import）。
       onOpenAlbum: (album) {
         try {
@@ -394,7 +349,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
           nav.push(TnPageRoute<void>(AlbumPage(
               logic: albumLogic,
               albumId: album.id,
-              onPlay: controller.playSong,
+              onPlay: (song) => controllerRef?.playSong(song),
             )));
         } catch (e, st) {
           Log.e('surface.assembly', 'open album failed', e, st);
@@ -407,7 +362,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     modules.add(buildAlbumModule(
       logic: albumLogic,
       currentAlbumId: () => navState.albumId,
-      onPlay: controller.playSong,
+      onPlay: (song) => controllerRef?.playSong(song),
     ));
     return true;
   });
@@ -419,7 +374,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
       rank: rank,
       search: search,
       playlist: playlist,
-      onPlay: controller.playSong,
+      onPlay: (song) => controllerRef?.playSong(song),
       onOpenSearch: () {
         try {
           // 首页搜索入口 → 请求切到搜索 tab（app_root.homeTabRequest 消费）。
@@ -433,12 +388,17 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
     return true;
   });
 
-  // 步骤 5：SurfaceRegistry.install 全部模块（重复 id 热替换语义）。
+  // 步骤 5：SurfaceRegistry.install 本层新增模块（重复 id 热替换语义）。
+  // defaultModules 返回的 search/playlist/player 已由 modules.dart 内部 install，
+  // 此处跳过（避免二次 install 触发 replace 分支清掉模块私有 overrides）。
   final ids = <String>[];
   for (final m in modules) {
     try {
-      SurfaceRegistry.install(m as dynamic);
-      ids.add((m as dynamic).id as String);
+      final id = (m as dynamic).id as String;
+      if (!defaultIds.contains(id)) {
+        SurfaceRegistry.install(m as dynamic);
+      }
+      ids.add(id);
     } catch (e, st) {
       Log.e(_tag, 'install module failed', e, st);
     }

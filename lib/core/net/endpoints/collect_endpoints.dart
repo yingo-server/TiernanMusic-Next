@@ -1,8 +1,13 @@
-// L4 core/net/endpoints · 收藏域端点封装（批9-B · 真实请求 + 本地镜像占位）
-// 出处：ENDPOINT_TRUTH.md §1/§5（favorite_count.js → GET /count/v1/audio/mget_collect）；
-//   PARITY_NOTES.md / FEATURE_PARITY.md（登录守卫、写操作防重）。
-// ⚠️ collect / cancel_collect：上游无歌曲收藏独立端点（ENDPOINT_TRUTH §5 明确），
-//   保持本地占位，不伪造网络成功、不臆造 URL。
+// L4 core/net/endpoints · 收藏域端点封装（批9-B + 批N3-B 实测接线）
+// 实测锚点：docs/API_FIELDS_TRUTH.md §「收藏真实契约」（2026-11-12 三态实测）：
+// - 收藏 = 写入「我喜欢」歌单：/v7/get_all_list 返回 listid=1「默认收藏」
+//   （**已弃用概念版，不用**）、listid=2「我喜欢」（真正收藏）。
+// - 加歌：POST /v6/add_song + x-router cloudlist.service.kugou.com
+//   （由 playlist_write_endpoints.addSongsToPlaylist 唯一封装）。
+// - 删歌：POST /v4/delete_songs + 同 router，body data:[{fileid}]；
+//   **fileid 不是 hash**（来自 add 回执 / 歌单曲目 fileid）。
+// - 收藏计数：GET /count/v1/audio/mget_collect → data.list[]{mixsongid,count}
+//   （该端点尚无 API_FIELDS_TRUTH.md 实测章节，字段按容错读取并标注「待实测」）。
 // 登录守卫只由 logic 层做，端点层不判（needsLogin 恒 false）。
 // 铁律：字段容错；每函数 try/catch + Log('ep.collect')；
 //   dfid/mid/uuid 恒显式携带并参与签名；只连酷狗官方 gateway 域名。
@@ -62,15 +67,14 @@ Map<String, Object?> _baseParams(KugouClient client) {
   }
 }
 
-/// 收藏总数容错提取：data.count / total / favorite_count / 顶层同键，
-/// 再退化到 data.lists|list|info 数组长度（字段缺失不崩）。
+/// 收藏总数容错提取（**待实测**：favorite_count 尚无 API_FIELDS_TRUTH.md
+/// 实测章节）。仅保留通用 count/total 键与数组长度退化；不臆造
+/// favorite_count/collect_count/song_count 等未留样字段。
 int _countOf(Map<String, dynamic> res) {
   try {
     final data = dataOf(res);
     for (final v in <Object?>[
-      data['favorite_count'], data['collect_count'], data['song_count'],
-      data['count'], data['total'], res['favorite_count'], res['count'],
-      res['total'],
+      data['count'], data['total'], res['count'], res['total'],
     ]) {
       final n = safeInt(v, -1);
       if (n >= 0) return n;
@@ -83,10 +87,11 @@ int _countOf(Map<String, dynamic> res) {
   }
 }
 
-/// 收藏歌曲（上游无此端点，本地镜像为准，不伪造网络成功）。
-/// 真实收藏：把歌曲加入「我喜欢」歌单（不是已弃用的「默认收藏」概念版）。
-/// 实测 2026-11-12：/v7/get_all_list 返回 listid=1「默认收藏」(弃用)、
-/// listid=2「我喜欢」(真正的收藏，count=484)；cloudlist 系须 omitSrcappid。
+/// 收藏歌曲：把歌曲加入「我喜欢」歌单（真正收藏；listid=1「默认收藏」弃用）。
+/// 实测 2026-11-12（API_FIELDS_TRUTH.md §收藏真实契约）：/v7/get_all_list
+/// 返回 listid=1「默认收藏」(弃用)、listid=2「我喜欢」(真正的收藏，count=484)；
+/// 加歌走 POST /v6/add_song + x-router cloudlist.service.kugou.com
+/// （唯一封装：playlist_write_endpoints.addSongsToPlaylist）。
 /// 链路：getUserPlaylists 找 name=='我喜欢' 的 listid → v6/add_song 写入。
 /// 歌单字段来自 SongBrief（hash/name/albumAudioId/mixSongId/durationSec 等），
 /// 缺字段用 0/空串占位（多参不缺参），不猜上游字段。
@@ -132,8 +137,11 @@ Future<CollectResult> collectSongByHash(
   }
 }
 
-/// 取消收藏：从「我喜欢」歌单删除（fileid = album_audio_id，实测契约）。
-/// 形参沿用 hash 兼容旧调用，albumAudioId 传入时优先作为 fileIds。
+/// 取消收藏：从「我喜欢」歌单删除。
+/// 实测契约（API_FIELDS_TRUTH.md §收藏真实契约）：POST /v4/delete_songs +
+/// x-router cloudlist.service.kugou.com，body data:[{fileid,number:1}]；
+/// **fileid 不是 hash**（来自 add 回执 / 歌单曲目 fileid，本项目用
+/// album_audio_id 口径），故缺 albumAudioId 时不臆造 fileid → 失败返回。
 Future<CollectResult> cancelCollectByHash(
   KugouClient client,
   String hash, {
@@ -150,8 +158,14 @@ Future<CollectResult> cancelCollectByHash(
       Log.w(_tag, 'cancelCollectByHash no 我喜欢 playlist hash=$h');
       return const CollectResult(ok: false, needsLogin: true);
     }
-    final ok = await removeSongsFromPlaylist(
-        client, listid, <String>[albumAudioId.isEmpty ? h : albumAudioId]);    Log.d(_tag, 'cancelCollectByHash via 我喜欢 listid=$listid ok=$ok');
+    final fid = albumAudioId.trim();
+    if (fid.isEmpty || int.tryParse(fid) == null || int.tryParse(fid) == 0) {
+      // fileid 必须来自 add 回执/歌单曲目，hash 无效 → 不发无锚点删除请求。
+      Log.w(_tag, 'cancelCollectByHash no valid fileid (hash 无效) hash=$h');
+      return const CollectResult(ok: false);
+    }
+    final ok = await removeSongsFromPlaylist(client, listid, <String>[fid]);
+    Log.d(_tag, 'cancelCollectByHash via 我喜欢 listid=$listid ok=$ok');
     return CollectResult(ok: ok, count: 0);
   } catch (e, st) {
     Log.e(_tag, 'cancelCollectByHash failed hash=$hash', e, st);
@@ -185,11 +199,13 @@ Future<String?> favoriteListId(KugouClient client) async {
 }
 
 /// 收藏计数（GET /count/v1/audio/mget_collect，ENDPOINT_TRUTH.md §1/§5
-/// favorite_count.js：query mixsongids（逗号分隔）+ 默认参数，android 签名；
-/// 响应 body.data 为 mixsongid→收藏数映射）。失败返回 0 且必 Log 留痕。
+/// favorite_count.js：query mixsongids（逗号分隔）+ 默认参数，android 签名）。
+/// 批N3-A 实测锚点：响应 `data.list[]{mixsongid,count,count_text}`（数组，
+/// 不是 mixsongid→count 映射）→ 取 data.list[].count 求和。
+/// ⚠ 待实测：该端点在 API_FIELDS_TRUTH.md 尚无实测章节（锚点仅存于
+/// tool/field_truth_test.dart），故**不设 status==1 门槛**，只按 data.list[]
+/// 层级容错计数；失败返回 0 且必 Log 留痕。
 /// 注：函数签名固定无 ids 入参，mixsongids 以空串占位并 Log.w（多参不缺参）。
-/// 批N3-A 实测（A5-5）：GET /count/v1/audio/mget_collect 匿名可读，
-/// 响应 `data.list[]{mixsongid,count,count_text}`，不是 mixsongid→count 映射。
 Future<int> getFavoriteCount(KugouClient client,
     {String mixSongIds = ''}) async {
   try {

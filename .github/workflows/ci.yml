@@ -65,10 +65,17 @@ jobs:
       - name: generate isar code
         if: always()
         run: dart run build_runner build --delete-conflicting-outputs
+      - name: dart syntax (fast gate, no SDK deps)
+        id: syntax
+        if: always()
+        run: dart format --output=none lib tool 2>&1 | tee /tmp/syntax.log
+        continue-on-error: true
       - name: analyze
         id: analyze
         if: always()
-        run: flutter analyze --no-pub 2>&1 | tee /tmp/analyze.log
+        run: |
+          set -o pipefail
+          flutter analyze --no-pub 2>&1 | tee /tmp/analyze.log
         continue-on-error: true
       - name: field truth (pure Dart anchors)
         if: always()
@@ -83,11 +90,21 @@ jobs:
         if: always()
         run: python3 tool/layer_audit.py 2>&1 | tee /tmp/layer.log
         continue-on-error: true
+      - name: analyze gate (project-type errors)
+        if: always()
+        run: python3 tool/analyze_gate.py 2>&1 | tee /tmp/analyze_gate.log
+        continue-on-error: true
       - name: verdict
         id: verdict
         if: always()
         run: |
           V=ok
+          # 语法闸：dart format 解析失败即语法错（不依赖 flutter SDK）
+          test "${{ steps.syntax.outcome }}" = success || V=fail
+          grep -q "Could not format" /tmp/syntax.log && V=fail
+          # analyze 必须真通过：退出码经 pipefail 传递；此前 continue-on-error
+          # 掩盖了 analyze 崩溃与「无问题」无法区分的漏洞（批08 发现）。
+          test "${{ steps.analyze.outcome }}" = success || V=fail
           grep -qE "error •|^\s*error" /tmp/analyze.log && V=fail
           # 批05-A: warning 仅计数可见，不参与 fail 门禁
           W=$(grep -cE "warning •|^\s*warning" /tmp/analyze.log || true)
@@ -95,6 +112,8 @@ jobs:
           echo "warnings=$W" >> $GITHUB_OUTPUT
           grep -qE "All tests (passed|passed!)|tests passed" /tmp/test.log || V=fail
           grep -q "VIOLATION" /tmp/layer.log && V=fail
+          grep -q "REAL-ERRORS" /tmp/analyze_gate.log && V=fail
+          grep -q "analyze_gate ok" /tmp/analyze_gate.log || V=fail
           grep -q "^VIOLATION\|^FAIL" /tmp/smoke.log && V=fail
           grep -q "FIELD-TRUTH-OK" /tmp/field_truth.log || V=fail
           grep -q "FIELD-TRUTH-FAIL" /tmp/field_truth.log && V=fail

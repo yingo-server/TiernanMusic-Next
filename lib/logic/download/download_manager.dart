@@ -17,7 +17,9 @@ import '../../bridges/bridge_kernel.dart' show Log;
 import '../player/playback_service.dart';
 import 'download_models.dart';
 import 'download_job.dart';
-import '../../bridges/bridge_core.dart' show DownloadRecord, DownloadStore, SongBrief, SongDao, SongRecord;
+import 'download_paths.dart';
+import 'download_commit.dart';
+import '../../bridges/bridge_core.dart' show DownloadStore, SongBrief, SongDao;
 
 const String _tag = 'logic.download';
 
@@ -37,6 +39,13 @@ class DownloadManager {
   final SongDao _songDao;
   final DownloadStore _store;
   final int _maxConcurrent;
+
+  /// 提交收尾器（.dlpart → 正式文件 + 曲库建档）。
+  late final DownloadCommitter _committer = DownloadCommitter(
+    store: _store,
+    songDao: _songDao,
+    mark: _mark,
+  );
 
   /// 入队顺序的任务表（hash → task）。
   final Map<String, DownloadTask> _tasks = {};
@@ -164,20 +173,29 @@ class DownloadManager {
       if (job != null) {
         job.abort = true;
         job.cancelled = true; // 收尾不得再 emit 已取消任务的 paused 幽灵事件
-        // 等待运行体退出（有上限，避免调用方悬挂）。
-        await job.done.future.timeout(const Duration(seconds: 10),
-            onTimeout: () {});
       }
+      // 先移出任务表并通知 UI：运行体收尾期间其状态变更不再 emit（_emit 守卫）。
       _tasks.remove(h);
       _order.remove(h);
-      // .dlpart 残留清理：任务已移除，无运行体再写它（running 已等 done）。
-      // 尽力删除，失败留痕不阻断。
-      try {
-        final dir = await _storeDir();
-        final part = File('$dir${Platform.pathSeparator}$h.dlpart');
-        if (part.existsSync()) part.deleteSync();
-      } catch (e, st) {
-        Log.w(_tag, 'cancel cleanup .dlpart $h failed ERR=$e ST=$st');
+      _emit(null);
+      if (job != null) {
+        // 等待运行体退出（有上限，避免调用方悬挂）。只有运行体真正退出后
+        // 才删 .dlpart：运行体退出前删分片，会出现「运行体仍持 task 并写
+        // .dlpart，manager 已删」的竞态，留下残留分片。
+        var timedOut = false;
+        await job.done.future.timeout(const Duration(seconds: 10),
+            onTimeout: () {
+          timedOut = true;
+        });
+        if (timedOut) {
+          // 超时：运行体尚未退出，改为等它真正退出后再删（避免与写分片竞态）。
+          job.done.future.whenComplete(() => _cleanupPartByHash(h));
+        } else {
+          _cleanupPartByHash(h);
+        }
+      } else {
+        // 未在运行（pending/paused/failed）：无运行体写分片，直接清残留。
+        _cleanupPartByHash(h);
       }
       Log.d(_tag, 'cancelled $h');
       _emit(null);
@@ -238,7 +256,8 @@ class DownloadManager {
         _runOne(next, job).catchError((Object e) {
           Log.e(_tag, 'runOne uncaught ${next.hash}', e, StackTrace.current);
         }).whenComplete(() {
-          _running.remove(next.hash);
+          // 只有仍是本 job 时才移除，避免覆盖后的句柄被误删（pause→resume 竞态）。
+          if (identical(_running[next.hash], job)) _running.remove(next.hash);
           job.done.complete();
           _pump();
         });
@@ -250,6 +269,9 @@ class DownloadManager {
 
   DownloadTask? _nextPending() {
     for (final h in _order) {
+      // 同 hash 旧运行体仍在收尾时不得再启动一个（pause→resume 竞态：
+      // 两个运行体共写同一 .dlpart，且会覆盖 _running 句柄）。
+      if (_running.containsKey(h)) continue;
       final t = _tasks[h];
       if (t != null && t.status == DownloadStatus.pending) return t;
     }
@@ -280,19 +302,21 @@ class DownloadManager {
           // pause/cancel 主动中断不是 URL 失败：不得降级备用链、不得置 failed。
           return _markAborted(task, job);
         } catch (e) {
+          if (job.abort) return _markAborted(task, job);
           lastErr = e;
           Log.w(_tag, 'chunked download $hash via $url failed ERR=$e');
         }
       }
+      if (job.abort) return _markAborted(task, job);
       if (lastErr != null) {
         task.error = '$lastErr';
         return _mark(task, DownloadStatus.failed, task.error);
       }
-      if (job.abort) return _markAborted(task, job);
-      await _finishCommit(task, src.extName);
+      await _finishCommit(task, src.extName, job);
     } on DownloadAborted {
       return _markAborted(task, job);
     } catch (e, st) {
+      if (job.abort) return _markAborted(task, job);
       Log.e(_tag, '_runOne $hash failed', e, st);
       task.error = '$e';
       _mark(task, DownloadStatus.failed, task.error);
@@ -341,12 +365,20 @@ class DownloadManager {
         throw const DownloadAborted();
       }
     } catch (e, st) {
+      // 先关闭 sink 再删分片：否则删除时 sink 仍持有文件句柄（顺序错乱），
+      // 且 finally 会对同一 sink 二次 close。
+      await _closeSink(task, sink);
+      sink = null;
       _cleanupPart(part);
-      Log.e(_tag, '_downloadUrl ${task.hash} failed', e, st);
+      if (e is DownloadAborted) {
+        Log.d(_tag, '_downloadUrl ${task.hash} aborted');
+      } else {
+        Log.e(_tag, '_downloadUrl ${task.hash} failed', e, st);
+      }
       rethrow;
     } finally {
-      // 只 close 尚未关闭的 sink；正常路径已 close 置 null，防 double-close
-      // 抛 StateException 被误吞为下载失败。
+      // 只 close 尚未关闭的 sink；正常路径与异常路径已 close 置 null，
+      // 防 double-close 抛 StateError 被误吞为下载失败。
       try {
         await sink?.close();
       } catch (e) {
@@ -356,70 +388,26 @@ class DownloadManager {
     }
   }
 
-  /// 收尾提交：.dlpart 读回 bytes → DownloadStore.commitDownload（rename
-  /// + 索引由 core 层完成）→ SongDao 建档/补 localPath。
-  Future<void> _finishCommit(DownloadTask task, String extName) async {
-    final hash = task.hash;
+  /// 安全关闭 sink（幂等，异常不外抛）。
+  Future<void> _closeSink(DownloadTask task, IOSink? sink) async {
     try {
-      final part =
-          File('${await _storeDir()}${Platform.pathSeparator}$hash.dlpart');
-      if (!part.existsSync()) {
-        task.error = 'part file missing';
-        _mark(task, DownloadStatus.failed, task.error);
-        return;
-      }
-      final data = await part.readAsBytes();
-      final fileName = _buildFileName(task.song, extName);
-      final rec = _store.commitDownload(
-        hash: hash,
-        fileName: fileName,
-        data: data,
-        quality: task.quality,
-      );
-      _cleanupPart(part);
-      if (rec == null) {
-        task.error = 'commitDownload failed';
-        _mark(task, DownloadStatus.failed, task.error);
-        return;
-      }
-      final localPath = _store.absolutePathOf(rec);
-      await _upsertSong(task.song, rec, localPath);
-      task.bytesDownloaded = rec.bytes;
-      task.bytesTotal = rec.bytes;
-      _mark(task, DownloadStatus.done, null);
-    } catch (e, st) {
-      Log.e(_tag, '_finishCommit $hash failed', e, st);
-      task.error = '$e';
-      _mark(task, DownloadStatus.failed, task.error);
+      await sink?.close();
+    } catch (e) {
+      Log.w(_tag, 'sink close ${task.hash} ERR=$e');
     }
   }
 
-  /// SongDao 同步：存在补 localPath/quality，否则新建 SongRecord。
-  Future<void> _upsertSong(
-      SongBrief song, DownloadRecord rec, String? localPath) async {
+  /// 收尾提交（委托 DownloadCommitter）；提交期间到达的 cancel/pause
+  /// 由 committer 负责不落盘，此处只补中断状态标记。
+  Future<void> _finishCommit(
+      DownloadTask task, String extName, RunningJob job) async {
     try {
-      final existing = await _songDao.getByHash(rec.hash);
-      if (existing != null) {
-        existing.localPath = localPath ?? existing.localPath;
-        existing.quality = rec.quality;
-        await _songDao.put(existing);
-      } else {
-        final s = SongRecord()
-          ..hash = rec.hash
-          ..fileName = rec.fileName
-          ..singerName = song.singer
-          ..albumName = song.albumName
-          ..durationMs = song.durationSec * 1000
-          ..mixSongId = '${song.mixSongId}'
-          ..albumAudioId = '${song.albumAudioId}'
-          ..quality = rec.quality
-          ..localPath = localPath
-          ..addedAt = DateTime.now().millisecondsSinceEpoch;
-        await _songDao.put(s);
-      }
-      Log.d(_tag, 'song db synced ${rec.hash} -> ${rec.fileName}');
+      await _committer.commit(task, extName, job);
+      if (job.abort) _markAborted(task, job);
     } catch (e, st) {
-      Log.e(_tag, '_upsertSong ${rec.hash} failed', e, st);
+      Log.e(_tag, '_finishCommit ${task.hash} failed', e, st);
+      task.error = '$e';
+      _mark(task, DownloadStatus.failed, task.error);
     }
   }
 
@@ -427,8 +415,13 @@ class DownloadManager {
   /// 不得再 emit 该任务的 paused 幽灵事件（否则 UI 收到已取消任务的状态变更）。
   void _markAborted(DownloadTask task, RunningJob job) {
     try {
-      if (!shouldEmitPausedOnAbort(cancelled: job.cancelled)) {
-        Log.d(_tag, '${task.hash} aborted (cancelled, no emit)');
+      // 已被 resume 重新排队的任务：旧运行体收尾不得把状态改回 paused
+      // （否则任务卡在 paused 且不会重新调度）。
+      final resumed = task.status == DownloadStatus.pending;
+      if (!shouldMarkPausedOnAbort(
+          cancelled: job.cancelled, alreadyResumed: resumed)) {
+        Log.d(_tag, '${task.hash} aborted (cancelled=${job.cancelled} '
+            'resumed=$resumed, no mark)');
         return;
       }
       _mark(task, DownloadStatus.paused, null);
@@ -452,7 +445,10 @@ class DownloadManager {
     try {
       final cb = onTask;
       if (cb == null) return;
-      cb(DownloadEvent(task: task, tasks: listTasks()));
+      // 已移出任务表的任务（如 cancel 后旧运行体收尾）不再作为事件主体发出，
+      // 避免 UI 收到幽灵任务事件；仅保留快照刷新。
+      final cur = (task != null && _tasks[task.hash] != task) ? null : task;
+      cb(DownloadEvent(task: cur, tasks: listTasks()));
     } catch (e, st) {
       Log.e(_tag, '_emit failed', e, st);
     }
@@ -462,34 +458,24 @@ class DownloadManager {
     // R3-C #4：直接取 DownloadStore.targetDir（downloads 目录绝对路径），
     // 不再从索引第一条记录猜目录；空索引也不再退化系统临时目录。
     try {
-      final dir = _store.targetDir;
-      if (dir.isNotEmpty) return dir;
-      Log.w(_tag, '_storeDir empty targetDir, fallback temp');
+      return resolveStoreDir(_store.targetDir);
     } catch (e, st) {
       Log.e(_tag, '_storeDir failed', e, st);
-    }
-    return Directory.systemTemp.path;
-  }
-
-  String _buildFileName(SongBrief song, String ext) {
-    try {
-      final raw =
-          song.singer.isEmpty ? song.name : '${song.singer} - ${song.name}';
-      final cleaned = raw.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
-      final name = cleaned.isEmpty ? song.hash : cleaned;
-      final e = ext.trim().isEmpty ? 'mp3' : ext.trim().toLowerCase();
-      return '$name.$e';
-    } catch (e, st) {
-      Log.e(_tag, '_buildFileName failed', e, st);
-      return '${song.hash}.mp3';
+      return Directory.systemTemp.path;
     }
   }
 
-  void _cleanupPart(File? part) {
+  void _cleanupPart(File? part) => cleanupPartFile(part);
+
+  /// 删除某 hash 的 .dlpart 分片（同 hash 正在运行时不删，避免删掉在写分片）。
+  void _cleanupPartByHash(String hash) {
     try {
-      if (part != null && part.existsSync()) part.deleteSync();
+      if (_running.containsKey(hash)) return;
+      final dir = resolveStoreDir(_store.targetDir);
+      final part = File('$dir${Platform.pathSeparator}$hash.dlpart');
+      if (part.existsSync()) part.deleteSync();
     } catch (e, st) {
-      Log.e(_tag, '_cleanupPart failed', e, st);
+      Log.w(_tag, 'cleanup .dlpart $hash failed ERR=$e ST=$st');
     }
   }
 }

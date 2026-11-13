@@ -3,6 +3,10 @@
 // - comment/music：参数走 QUERY 不是 body；顶层即 list（无 data 包层容错）
 // - comment/floor：mcomment/v1/hot_replylist（楼层/热评回复）
 // - comment/count：web 签名（WEB_SALT）+ sum.comment.service x-router
+// ⚠ docs/API_FIELDS_TRUTH.md **无评论域实测章节**（该文档 A5 编号属 MV 域）。
+//   本文件字段锚点 = 批N3-A 探针留样（tool/field_truth_test.dart
+//   'N3-A comment/collect/FM field truth' 组）；待 API_FIELDS_TRUTH.md 补章节。
+//   凡未在锚点留样中的键一律按容错读取，不作成功门槛。
 import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart';
@@ -32,6 +36,10 @@ class CommentItem {
   final int floor; // 楼层号（floo / floor，缺失 0）
   final String replyTo; // 被回复者昵称（reply_name，空=顶层）
 
+  /// 批N3-A 实测锚点（A5-1）：评论项键 = id/content/addtime/reply_num/
+  /// like{count,haslike,likenum}/user_name/user_pic/user_id；
+  /// **无 nickname/avatar/floo/time 键** → 下述多键仅容错兜底（缺失即 0/空），
+  /// 不作成功门槛；楼层号/被回复者键在 API_FIELDS_TRUTH.md 无实测章节（待实测）。
   factory CommentItem.fromMap(Map<String, dynamic> m) {
     try {
       return CommentItem(
@@ -41,12 +49,14 @@ class CommentItem {
             m['user_name'] ?? ''),
         avatar: safeStr(m['avatar'] ?? m['uheadurl'] ?? m['headurl'] ??
             m['user_pic'] ?? ''),
-        // 批N3-A 实测（A5-1）：like 是对象 {count,haslike,...}，无顶层标量。
+        // 实测：like 是对象 {count,haslike,...}，无顶层标量 → 取 like.count。
         likeCount: safeInt(m['like'] is Map
             ? (m['like']['count'] ?? m['like']['likenum'])
             : (m['like'] ?? m['praisecount'] ?? m['like_count'])),
         // addtime 是格式化字符串（非时间戳），timeMs 保留兼容，字符串不猜解析。
         timeMs: safeInt(m['time'] ?? m['createtime'] ?? m['create_time']),
+        // ⚠ 待实测：楼层号/被回复者键在 API_FIELDS_TRUTH.md 无实测章节，
+        // 仅容错读取（缺失即 0/空），不作成功门槛。
         floor: safeInt(m['floo'] ?? m['floor'] ?? m['floor_num']),
         replyTo: safeStr(m['reply_name'] ?? m['toname'] ?? ''),
       );
@@ -96,9 +106,11 @@ List<Map<String, dynamic>> _commentListOf(Map<String, dynamic> res) {
     final data = dataOf(res);
     if (data.isEmpty) {
       // 顶层即 list（PARITY_NOTES：comment/music 顶层 list ✅）
-      return listOf(res);
+      // 注意：listOf 只吃 List；顶层键 list/listinfos/info 必须单独取，
+      // 直接传 Map 恒空列表（列表恒空 → 评论页空白）。
+      return listOf(res['list'] ?? res['listinfos'] ?? res['info']);
     }
-    return listOf(data['list'] ?? data['listinfos'] ?? data['info'] ?? res);
+    return listOf(data['list'] ?? data['listinfos'] ?? data['info']);
   } catch (e, st) {
     Log.e(_tag, '_commentListOf failed', e, st);
     return const <Map<String, dynamic>>[];
@@ -162,6 +174,9 @@ Future<CommentPage> getMusicComments(
 }
 
 /// 楼中楼/热评回复列表（commentFloor：GET hot_replylist）。
+/// 批N3-A 实测锚点（A5-2）：**楼层键是 `tid`**（不是 commentid）。
+/// ⚠ 待实测：childrenid/mixsongid 的正确口径（歌曲 id vs 评论 id）在
+///   API_FIELDS_TRUTH.md 无实测章节，按最小参数集随传，不作成功门槛。
 Future<List<CommentItem>> getCommentFloor(
     KugouClient client, String commentId, int page,
     {int pageSize = 20}) async {
@@ -172,8 +187,6 @@ Future<List<CommentItem>> getCommentFloor(
     }
     final res = await client.request(EndpointRegistry.commentFloor,
         <String, Object?>{
-      // 批N3-A 实测（A5-2）：键是 tid（不是 commentid）；childrenid/mixsongid
-      // 歌曲态 = mixsongid（调用方传歌曲 id），此处按最小参数集保持兼容。
       'tid': commentId,
       'childrenid': commentId,
       'mixsongid': commentId,
@@ -191,25 +204,29 @@ Future<List<CommentItem>> getCommentFloor(
 }
 
 /// 评论总数（commentCount：GET，web 签名，x-router sum.comment.service）。
-/// 批N3-A 实测（A5-3）：必须传 FileHash 且响应按键取值；
-/// 传 mixsongid/childrenid 恒 0。mixSongId 参数保留兼容旧调用（作为 childrenid）。
+/// 批N3-A 实测锚点（A5-3）：**必须传 FileHash**，响应以 hash 键取值；
+/// 传 mixsongid/childrenid 恒 0（实测），故无 fileHash 时直接返回 0，
+/// 不发无锚点请求、不臆造响应层级（键名大小写两路容错）。
+/// mixSongId 形参保留兼容旧调用（不参与取值）。
 Future<int> getCommentCount(KugouClient client, int mixSongId,
     {String fileHash = ''}) async {
   try {
-    if (mixSongId <= 0 && fileHash.isEmpty) {
-      Log.w(_tag, 'getCommentCount invalid args');
+    final hash = fileHash.trim();
+    if (hash.isEmpty) {
+      // 实测：mixsongid 恒 0 → 无 FileHash 即无有效总数，如实返回 0。
+      Log.w(_tag, 'getCommentCount no fileHash (mixsongid 实测恒 0) '
+          'mix=$mixSongId');
       return 0;
     }
     final res = await client.request(EndpointRegistry.commentCount,
         <String, Object?>{
       'code': kCommentCode,
-      if (fileHash.isNotEmpty) 'hash': fileHash,
-      if (fileHash.isEmpty) 'mixsongid': mixSongId,
+      'hash': hash,
     });
-    final n = fileHash.isNotEmpty
-        ? safeInt(res[fileHash] ?? res[fileHash.toUpperCase()] ?? 0)
-        : safeInt(dataOf(res)['count'] ?? res['count'] ?? 0);
-    Log.d(_tag, 'getCommentCount hash=${fileHash.isNotEmpty} count=$n');
+    // 实测：响应顶层以 hash 键取值（大小写两路容错）。
+    final n = safeInt(res[hash] ?? res[hash.toUpperCase()] ??
+        res[hash.toLowerCase()] ?? 0);
+    Log.d(_tag, 'getCommentCount hash=$hash count=$n');
     return n;
   } catch (e, st) {
     Log.e(_tag, 'getCommentCount failed mix=$mixSongId', e, st);

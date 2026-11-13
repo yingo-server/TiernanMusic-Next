@@ -31,3 +31,12 @@ class DownloadAborted implements Exception {
 /// cancel（cancelled=true）→ 任务已移出任务表，不得再 emit 其 paused 幽灵事件；
 /// pause（cancelled=false）→ 仍须 emit paused，UI 才不会悬挂在「下载中」。
 bool shouldEmitPausedOnAbort({required bool cancelled}) => !cancelled;
+
+/// 中断后是否仍应把任务置为 paused 并 emit：
+/// cancelled=true → 否（cancel 幽灵事件）；
+/// alreadyResumed=true → 否（用户已 resume，旧运行体收尾不得把状态改回 paused）。
+bool shouldMarkPausedOnAbort({
+  required bool cancelled,
+  required bool alreadyResumed,
+}) =>
+    shouldEmitPausedOnAbort(cancelled: cancelled) && !alreadyResumed;
