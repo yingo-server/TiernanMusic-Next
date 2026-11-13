@@ -268,7 +268,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
       deps: LyricsDeps(
         lyrics: lyrics,
         currentSong: () => controllerRef?.state.queue.current,
-        positionMsProvider: () => controllerRef?.state.player.positionMs,
+        positionMsProvider: () => controllerRef?.state.player.positionMs ?? 0,
         translation: translationLogic,
       ),
     ));

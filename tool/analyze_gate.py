@@ -74,12 +74,15 @@ def main() -> int:
     out = proc.stdout + proc.stderr
     real = []
     noise = 0
+    # 本地无 Flutter SDK：语义类错误（return_of_invalid_type 等）在此环境下
+    # 会被 flutter 类型缺失的连带错误彻底淹没，无法可靠区分；这类错误由 CI
+    # 的 flutter analyze（完整 SDK）把关。本地只抓「缺失名属于项目内类型」
+    # 这一类可机械判定的真错误。
     for line in out.splitlines():
         if " error - " not in line and not line.strip().startswith("error -"):
             continue
         m = MISSING_RE.search(line)
         if m is None:
-            # 无主标识符（如 "Classes can only extend other classes"）→ flutter 缺失连带噪音
             noise += 1
             continue
         if m.group(1) in types:

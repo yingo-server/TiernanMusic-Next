@@ -14,7 +14,7 @@ import '../player_controller.dart'
 import '../../bridges/bridge_core.dart'
     show AudioQuality;
 import '../registry.dart';
-import '../app_root.dart' show logicFacadeProvider;
+import '../providers.dart' show logicFacadeProvider;
 import '../theme/tn_motion.dart' show TnPressable;
 import '../widgets/common_widgets.dart' show CoverImage;
 import '../widgets/favorite_button.dart' show FavoriteButton;
