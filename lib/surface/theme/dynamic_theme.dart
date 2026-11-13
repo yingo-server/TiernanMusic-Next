@@ -2,13 +2,13 @@
 // GAP #19 封面取色/动态主题的状态容器：持有当前 ThemePalette?，
 // 由封面 RGBA 字节经 extractDominant → fromSeed 更新，clear() 回落品牌紫。
 //
-// ── 收敛期目标（功能批次统一收敛阶段执行，本批不改桥）──
-// 本能力当前为 L6 surface 内部状态，仅在 surface 层内被 widgets/pages 消费；
-// 待 lib/bridges/bridge_surface.dart 补齐后，dynamicThemeProvider / ThemePalette
-// 「经 bridge_surface 暴露给上层」，桥侧逐函数 try/catch + Log 留痕，只做转发
-// 与错误翻译；在此之前不新增跨更高层 import，不改 bridge_logic / bridge_core。
+// ⚠ 接线现状（诚实标注，审计B P2-1）：当前版本本链路未接线——
+// 原封面取色桥 cover_color_bridge.dart 已删除，dynamicThemeProvider
+// 暂无任何 UI 消费方。能力保留供后续封面字节接入；本文件为纯 L6 内部
+// 状态容器（riverpod StateNotifier + 纯 Dart 算法），非死循环、非运行期
+// 依赖，未接线不影响应用运行。
 //
-// 装配契约（主会话执行，本批不改 player_page.dart / app_root.dart）：
+// 后续接线说明（供装配层参考，本批不改 player_page.dart / app_root.dart）：
 //   ref.watch(dynamicThemeProvider) → ThemePalette?（null = 沿用 tnLight/DarkThemeData）
 //   ref.read(dynamicThemeProvider.notifier).setDark(mode == 2) ← themeModeProvider
 //   封面字节接线由装配层直接调 dynamicThemeProvider.updateFromImageBytes

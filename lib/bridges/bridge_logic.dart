@@ -1,6 +1,7 @@
-// 五桥 · bridge_logic：L5 logic 暴露给 L6 surface 的能力门面（含 Log）。
-// 铁律：本文件只 export（外加一个纯占位 LogicFacade），不写业务逻辑。
-// 每个被 export 的 logic 模块自身负责 try/catch + Log 留痕。
+// 五桥 · bridge_logic：L5 logic 暴露给 L6 surface 的能力门面（export 通道）。
+// 铁律：本文件只 export（外加类型标记 LogicFacade），不写业务逻辑。
+// 本桥本身不承担日志职责：它以 export 为唯一通道，跨层调用的
+// try/catch + Log 留痕由调用方（surface 层）负责。
 library;
 
 import '../kernel/kernel.dart' show Log;
@@ -108,11 +109,13 @@ export '../logic/catalog/user_logic.dart' show UserLogic, kUserCacheSchemaVer;
 
 /// logic 能力门面：surface 只拿这个，不 import logic 内部模块。
 /// 具体能力类经上方 export 直接可用；此类仅承载跨域摘要与装配状态。
+/// 审计B P2-2：本类仅作类型标记（surface 装配/SurfaceModule.enabled、
+/// builder 依赖此类型存在），不可当业务门面调用——
+/// playbackSummary 零调用、恒返回占位 'idle'，不承载任何业务逻辑。
 class LogicFacade {
   const LogicFacade();
 
-  /// 查询当前播放状态描述（占位：批3 装配后接 PlaybackService）。
-  /// 批10-A：桥门面方法统一 try/catch 捕获 + Log 留痕，失败返回降级值不静默吞。
+  /// 占位方法，禁止作为业务门面调用（见类注释）。
   String playbackSummary() {
     try {
       return 'idle';
@@ -123,43 +126,3 @@ class LogicFacade {
   }
 }
 
-// ── 通用桥能力包装（批10-A 收口）：铁律 2「桥承担日志系统任务」落地 ──
-// 上层（surface）经桥调用 logic 写操作/能力时，统一在此 try/catch 捕获
-// 并 Log 留痕，禁止静默吞错。不改变任何业务行为。
-
-/// 桥连通性探针：恒返回 true；异常（理论上不可达）时 Log.e 留痕并返回 false。
-bool logicPing() {
-  try {
-    Log.d('bridge_logic', 'ping');
-    return true;
-  } catch (e, st) {
-    Log.e('bridge_logic', 'ping failed', e, st);
-    return false;
-  }
-}
-
-/// 同步 logic 能力包装：body 内为上层请求的 logic 纯计算/查询。
-/// 成功 Log.d 留痕并返回结果；失败 Log.e 留痕并返回空串（不抛出、不静默）。
-String logicCall(String op, String Function() body) {
-  try {
-    final r = body();
-    Log.d('bridge_logic', '$op ok');
-    return r;
-  } catch (e, st) {
-    Log.e('bridge_logic', '$op failed', e, st);
-    return '';
-  }
-}
-
-/// 异步 logic 写操作包装：body 内为上层请求的 logic 写操作（下发播放/收藏/下载等）。
-/// 成功 Log.d 留痕并返回 true；失败 Log.e 留痕并返回 false（不抛出、不静默）。
-Future<bool> logicWrite(String op, Future<void> Function() body) async {
-  try {
-    await body();
-    Log.d('bridge_logic', '$op ok');
-    return true;
-  } catch (e, st) {
-    Log.e('bridge_logic', '$op failed', e, st);
-    return false;
-  }
-}

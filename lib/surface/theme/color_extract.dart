@@ -1,5 +1,10 @@
 // L6 surface/theme · 封面主色提取 + 动态调色板（纯 Dart 自实现，零第三方包）
 // GAP #19 封面取色/动态主题：RGBA8888 字节 → 32 级色桶直方图 → 主色 → HSL 调色板。
+//
+// ⚠ 接线现状（诚实标注，审计B P2-1）：extractDominant / fromSeed 当前版本
+// 未被任何 UI 消费方调用（原封面取色桥 cover_color_bridge.dart 已删除）。
+// 本文件为纯算法实现（零外部依赖：仅 dart:math + flutter Color 类型），
+// 能力保留供后续封面字节接入；非死循环、非运行期依赖，未接线不影响应用运行。
 // 分层：仅本 surface 文件 import package:flutter/material.dart（取 Color 类型）；
 //       Log 沿用既有惯例经 bridge_logic（L5⇅L6 桥导出 kernel.Log）取得，
 //       不 import core/logic/kernel 内部文件，不新增跨更高层依赖。
