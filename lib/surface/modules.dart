@@ -1,6 +1,6 @@
 // L6 surface · 模块统一装配出口（defaultModules）
-// 三个功能模块页在此以工厂注入依赖并返回列表；
-// bootloader / surface 桥逐个 SurfaceRegistry.install，即热插拔接入。
+// 三个功能模块页在此以工厂注入依赖，并统一经 SurfaceRegistry.install 装配；
+// 重复 id 覆盖替换（幂等），宿主不硬编码页面列表，即热插拔接入。
 // 模块间零直接 import：共享依赖只经本工厂参数与 riverpod provider。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../bridges/bridge_core.dart' show AudioQuality;
@@ -64,10 +64,14 @@ class ModuleDeps {
 
 /// 构建默认模块集 + 装配全局 PlayerController provider override（异步：
 /// audio_service 初始化为可选能力，await 失败不阻断）。
-/// 用法（boot 处）：
+/// 用法（boot 处）：本函数内部已把全部默认模块逐个
+/// SurfaceRegistry.install（重复 id 覆盖替换，幂等），返回的列表仅供宿主
+/// 检查/构建路由；宿主不得把页面类硬编码进 app_root，统一取 registry 的
+/// active() / navEntries() / providerOverrides。
 /// ```dart
 /// final deps = ModuleDeps(search: s, playlist: p, resolver: playback.resolvePlaySource);
-/// for (final m in defaultModules(deps)) SurfaceRegistry.install(m);
+/// final modules = await defaultModules(deps); // 已装配完毕
+/// // ProviderScope 的 overrides 取 SurfaceRegistry.providerOverrides
 /// ```
 Future<List<SurfaceModule>> defaultModules(ModuleDeps deps) async {
   try {
@@ -95,7 +99,9 @@ Future<List<SurfaceModule>> defaultModules(ModuleDeps deps) async {
     ];
     SurfaceRegistry.setOverrides(overrides);
 
-    return <SurfaceModule>[
+    // 三个页面模块全部经 SurfaceRegistry 装配：重复 id 覆盖替换（幂等）。
+    // 返回列表仅供宿主检查/构建路由，宿主不得把页面类硬编码到 app_root。
+    final modules = <SurfaceModule>[
       SearchPageModule(
           search: deps.search,
           player: controller,
@@ -109,6 +115,15 @@ Future<List<SurfaceModule>> defaultModules(ModuleDeps deps) async {
         onStartFm: deps.onStartFm,
       ),
     ];
+    for (final module in modules) {
+      try {
+        SurfaceRegistry.install(module);
+      } catch (e, st) {
+        // 单个模块装配失败不影响其余模块；install 自身亦带兜底。
+        Log.e('surface.modules', 'install ${module.id} failed', e, st);
+      }
+    }
+    return List<SurfaceModule>.unmodifiable(modules);
   } catch (e, st) {
     // 不 import kernel（层纪律），异常信息由桥层 Log 兜底留痕。
     Log.e('surface.modules', 'defaultModules failed', e, st);

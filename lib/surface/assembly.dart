@@ -245,7 +245,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
 
   final modules = <dynamic>[];
   final built = _step('defaultModules', () => mod.defaultModules(
-        mod.SurfaceDeps(
+        mod.ModuleDeps(
           search: search,
           playlist: playlist,
           resolver: playback.resolvePlaySource,

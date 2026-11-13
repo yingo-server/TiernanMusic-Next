@@ -93,7 +93,12 @@ Future<List<SongBrief>> rankInfo(KugouClient client, int rankId,
   }
 }
 
-/// 歌词搜索（lyrics.kugou.com/v1/search，不签名）：candidates[]。
+/// 歌词搜索（lyrics.kugou.com/v1/search）：顶层 candidates[]。
+/// 批N2-C §A3-2 / 批N2-A §A3-3 实测：响应「顶层即数据」，**非**
+/// {status:1,data:{...}} 包层，candidates[] 直接在顶层；成功语义 status=200
+/// （errcode=200 / info=OK），**不是** 网关通用 status=1。
+/// 批N2-A §A3-3 已推翻旧「不签名」记载：须 android 签名 + dfid 头
+/// （由 KugouClient 的端点声明负责，本文件不改声明）。
 /// duration 为毫秒；返回候选项（id+accesskey 供 /download 使用）。
 Future<List<LyricResult>> lyricSearch(
   KugouClient client, {
@@ -121,8 +126,22 @@ Future<List<LyricResult>> lyricSearch(
       'appid': KugouSign.appid,
       'clientver': KugouSign.clientver,
     });
+    // 批N2-A §A3-3 / 批N2-C §A3-2 实测：成功语义在「响应顶层」
+    // status=200（errcode=200、info=OK），**不是** 网关通用 status=1；
+    // 404=未命中也返回结构，须按失败处理，不把错误体当候选解析。
+    final status = safeInt(res['status'], safeInt(res['errcode'], -1));
+    if (status != 200) {
+      Log.w(_tag, 'lyricSearch not ok hash=$h status=$status '
+          'errcode=${res['errcode']} info=${res['info']}');
+      return const <LyricResult>[];
+    }
+    // 批N2-C §A3-2 实测：candidates[] 在顶层（无 data 包层），
+    // data.candidates 仅作历史包层容错，不作主路径。
+    final candidates = listOf(res['candidates']);
     final out = <LyricResult>[];
-    for (final c in listOf(res['candidates'] ?? dataOf(res)['candidates'])) {
+    for (final c in candidates.isEmpty
+        ? listOf(dataOf(res)['candidates'])
+        : candidates) {
       out.add(LyricResult(
         id: safeInt(c['id']),
         accessKey: safeStr(c['accesskey']),
@@ -130,9 +149,7 @@ Future<List<LyricResult>> lyricSearch(
         durationMs: safeInt(c['duration']),
       ));
     }
-    // 批N2-A 实测（A3-3）：成功语义 status=200（errcode=200），非 1。
-    Log.d(_tag,
-        'lyricSearch hash=$h status=${res['status']} got=${out.length}');
+    Log.d(_tag, 'lyricSearch hash=$h status=$status got=${out.length}');
     return out;
   } catch (e, st) {
     Log.e(_tag, 'lyricSearch failed hash=$hash', e, st);

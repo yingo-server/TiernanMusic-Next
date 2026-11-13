@@ -1,13 +1,17 @@
 // L4 core/net/endpoints · 用户域/上报端点封装（批6-A）
 // 端点路径据 docs/ENDPOINT_TRUTH.md 修正（真实 URL/x-router 见 kugou_client.dart 声明）。
-// 实测状态（批R1-A，2026-11-13 三态复测）：
-//   getUserDetail：p=cryptoRSAEncrypt({token,clienttime}) 裸 RSA 右补零 大写 →
-//     匿名 20018 / 登录态 status=1，data{nickname,pic,vip_type,follows,fans,…}。
-//   uploadPlayHistory：body {songs:[{mxid,op:1,ot,pc:1}],token,userid} →
-//     匿名 20010 / 登录态 status=1，data.songs[].code=1。
-//   reportListen（listenservice/v2/get_list）：p=cryptoRSAEncrypt({clienttime,token})
-//     裸 RSA 右补零 → 匿名 20010 / 登录态 status=1，data{lists[],data_date,…}。
-//   getSongClimax / getUserCloud 完整契约仍待实测，按「不猜参数」容错返回空值。
+// 实测状态（API_FIELDS_TRUTH.md §R1-A，2026-11-13 三态复测；批07-B 成功语义复核）：
+//   getUserDetail §R1-A-1：p=cryptoRSAEncrypt({token,clienttime}) 裸 RSA 右补零 →
+//     匿名 error_code=20018 / 登录态顶层 status=1 error_code=0；
+//     **data 顶层即档案字段、无 {data:{…}} 包裹**（nickname/pic/vip_type/…）。
+//   uploadPlayHistory §R1-A-2：body {songs:[{mxid,op:1,ot,pc:1}],token,userid} →
+//     匿名 20010 / 登录态 status=1 error_code=0，data.songs[].code=1；
+//     顶层 status==1 判定经实测正确（成功码在顶层，非 data.status）。
+//   reportListen §R1-A-3（listenservice/v2/get_list）：p 裸 RSA 右补零 →
+//     匿名 20010 / 登录态顶层 status=1；data 仅 lists[]/data_date/…，
+//     **data 内无 status 字段**，成功码在顶层（非 data.status 层级）。
+//   getSongClimax / getUserCloud：§R1-A 明示完整契约仍待实测、API_FIELDS_TRUTH
+//     无对应实测章节，按「不猜成功码/参数」容错返回空值。
 // 铁律：字段容错 safe* + try/catch + Log('ep.user')；dfid/mid/uuid 由
 //    KugouClient.request 默认参数恒显式携带并参与签名。
 import 'dart:convert';
@@ -123,8 +127,19 @@ Future<UserProfile> getUserDetail(KugouClient client) async {
         'userid': client.session.userid,
       },
     );
+    // API_FIELDS_TRUTH.md §R1-A-1 实测：成功码在「响应顶层」
+    // status=1 / error_code=0（匿名 error_code=20018）；data 为**平铺**
+    // 档案字段（nickname/pic/vip_type/…），无 {data:{profile}} 再包一层，
+    // 且响应内**无 userid 字段**（客户端自持）。失败时不得把顶层
+    // status/error_code 当档案映射（旧 d.isEmpty ? res : d 层级混淆）。
+    if (safeInt(res['status'], -1) != 1 ||
+        safeInt(res['error_code'], 0) != 0) {
+      Log.w(_tag, 'getUserDetail not ok status=${res['status']} '
+          'error_code=${res['error_code']}');
+      return const UserProfile();
+    }
     final d = dataOf(res);
-    final p = UserProfile.fromMap(d.isEmpty ? res : d);
+    final p = UserProfile.fromMap(d);
     Log.d(_tag, 'getUserDetail uid=${p.userid} nick=${p.nickname}');
     return p;
   } catch (e, st) {
