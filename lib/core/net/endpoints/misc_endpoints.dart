@@ -17,9 +17,9 @@ const List<int> kKrcXorKey = <int>[
 ];
 
 /// krc 解码：输入 base64 内容；contenttype!=0（lrc）时仅 base64 解码。
-/// 批N2-A 实测（A3-5，晴天样曲逐字节验证）：b64 解码后前 4 字节魔数="krc1"
-/// （6b726331）跳过 → 异或 16 字节循环密钥 → zlib inflate → utf8。
-/// 失败返回 ''，不抛出。
+/// 批N2-A §A3-5 实测（晴天样曲逐字节验证）：b64 解码后前 4 字节魔数="krc1"
+/// （6b726331）跳过 → 异或 16 字节循环密钥 → zlib inflate → utf8；
+/// 本地解码无 HTTP 成功码/响应层级（成功即非空明文，失败返回 ''，不抛出）。
 String krcDecode(String base64Content, {bool isKrc = true}) {
   try {
     final raw = base64.decode(base64Content.trim());
@@ -135,13 +135,11 @@ Future<List<LyricResult>> lyricSearch(
           'errcode=${res['errcode']} info=${res['info']}');
       return const <LyricResult>[];
     }
-    // 批N2-C §A3-2 实测：candidates[] 在顶层（无 data 包层），
-    // data.candidates 仅作历史包层容错，不作主路径。
-    final candidates = listOf(res['candidates']);
+    // 批N2-C §A3-2 / 批N2-A §A3-3 实测：candidates[] 在**响应顶层**
+    // （顶层即数据、无 {data:{…}} 包层）；移除与实测不符的
+    // data.candidates 包层猜测，不再保留该兜底层级。
     final out = <LyricResult>[];
-    for (final c in candidates.isEmpty
-        ? listOf(dataOf(res)['candidates'])
-        : candidates) {
+    for (final c in listOf(res['candidates'])) {
       out.add(LyricResult(
         id: safeInt(c['id']),
         accessKey: safeStr(c['accesskey']),
@@ -157,9 +155,11 @@ Future<List<LyricResult>> lyricSearch(
   }
 }
 
-/// 歌词下载（lyrics.kugou.com/download，批N2-A 实测需 android 签名+dfid 头）：
-/// content(base64) + contenttype。成功语义 status=200；_source="bss"、
-/// charset（krc 空串/lrc "utf8"）为实测键，暂不映射。
+/// 歌词下载（lyrics.kugou.com/download，经 gateway + x-router，批N2-A §A3-4
+/// / 批N2-C §A3-2 实测需 android 签名+dfid 头）：
+/// **响应顶层即数据**（status/info/error_code/fmt/contenttype/content/…），
+/// 无 data 包层；成功语义 status=200（info=OK、error_code=0），**不是** 1。
+/// _source="bss"、charset（krc 空串/lrc "utf8"）为实测键，暂不映射。
 /// contenttype==0 → krc 加密内容，自动走 krcDecode；非 0 → 直接 base64 解码。
 /// 返回的 LyricResult.content 为解密后的纯文本。
 Future<LyricResult> lyricDownload(

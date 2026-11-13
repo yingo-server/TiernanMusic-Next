@@ -262,7 +262,8 @@ class _AppRootState extends State<AppRoot> {
   }
 }
 
-/// 底部导航壳：按 SurfaceRegistry.active 排 navEntry 模块。
+/// 底部导航壳：nav 模块 100% 取自 SurfaceRegistry.active(logic) 的 navEntry，
+/// 宿主不持有任何硬编码页面 id 列表；tab 集合完全由 registry.install 的模块决定（批08-A 复核）。
 class _HomeShell extends StatefulWidget {
   const _HomeShell();
   @override

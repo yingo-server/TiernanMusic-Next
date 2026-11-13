@@ -16,6 +16,7 @@ import 'dart:io';
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../player/playback_service.dart';
 import 'download_models.dart';
+import 'download_job.dart';
 import '../../bridges/bridge_core.dart' show DownloadRecord, DownloadStore, SongBrief, SongDao, SongRecord;
 
 const String _tag = 'logic.download';
@@ -42,7 +43,7 @@ class DownloadManager {
   final List<String> _order = [];
 
   /// 运行中的分块下载 Future（hash → 运行 future），用于 pause/cancel 中断。
-  final Map<String, _RunningJob> _running = {};
+  final Map<String, RunningJob> _running = {};
 
   /// 任务变更回调（UI 经桥订阅；回调内异常由 _emit 捕获）。
   void Function(DownloadEvent event)? onTask;
@@ -122,7 +123,7 @@ class DownloadManager {
         final job = _running[h];
         job?.abort = true; // 下载循环自检退出；收尾在 _runOne
         Log.d(_tag, 'pause requested running $h');
-        // _runOne 异常路径（_Aborted 被 _runOne 外层 catch 捕获）会把任务
+        // _runOne 异常路径（DownloadAborted 被 _runOne 外层 catch 捕获）会把任务
         // 置 failed；此处预置 paused 意图，_runOne 结束后校正见 _runOne 的
         // aborted 分支。这里立即 emit paused 让 UI 不悬挂在「下载中」。
         t.status = DownloadStatus.paused;
@@ -156,10 +157,15 @@ class DownloadManager {
     try {
       final t = _tasks[h];
       if (t == null) return;
-      if (t.status == DownloadStatus.running) {
-        _running[h]?.abort = true;
+      // 按运行句柄（而非 status）判定：pause() 会把 status 预置成 paused，
+      // 但运行体可能仍在收尾；必须等它彻底退出再删 .dlpart，否则旧体
+      // 可能在清理之后再写临时文件，留下残留。
+      final job = _running[h];
+      if (job != null) {
+        job.abort = true;
+        job.cancelled = true; // 收尾不得再 emit 已取消任务的 paused 幽灵事件
         // 等待运行体退出（有上限，避免调用方悬挂）。
-        await _running[h]?.done.future.timeout(const Duration(seconds: 10),
+        await job.done.future.timeout(const Duration(seconds: 10),
             onTimeout: () {});
       }
       _tasks.remove(h);
@@ -224,7 +230,7 @@ class DownloadManager {
       while (_running.length < _maxConcurrent) {
         final next = _nextPending();
         if (next == null) return;
-        final job = _RunningJob();
+        final job = RunningJob();
         _running[next.hash] = job;
         next.status = DownloadStatus.running;
         Log.d(_tag, 'start ${next.hash} (running=${_running.length})');
@@ -252,11 +258,11 @@ class DownloadManager {
 
   // ─── 单任务执行 ───
 
-  Future<void> _runOne(DownloadTask task, _RunningJob job) async {
+  Future<void> _runOne(DownloadTask task, RunningJob job) async {
     final hash = task.hash;
     try {
       final src = await _playback.resolvePlaySource(task.song, task.quality);
-      if (job.abort) return _mark(task, DownloadStatus.paused, null);
+      if (job.abort) return _markAborted(task, job);
       if (src.error != null || src.urls.isEmpty) {
         task.error = 'resolve: ${src.error?.name ?? 'notFound'}';
         return _mark(task, DownloadStatus.failed, task.error);
@@ -265,14 +271,14 @@ class DownloadManager {
       final candidates = <String>[...src.urls, ...src.backupUrls];
       Object? lastErr;
       for (final url in candidates) {
-        if (job.abort) return _mark(task, DownloadStatus.paused, null);
+        if (job.abort) return _markAborted(task, job);
         try {
           await _downloadUrl(task, job, url, src.extName);
           lastErr = null;
           break;
-        } on _Aborted {
+        } on DownloadAborted {
           // pause/cancel 主动中断不是 URL 失败：不得降级备用链、不得置 failed。
-          return _mark(task, DownloadStatus.paused, null);
+          return _markAborted(task, job);
         } catch (e) {
           lastErr = e;
           Log.w(_tag, 'chunked download $hash via $url failed ERR=$e');
@@ -282,10 +288,10 @@ class DownloadManager {
         task.error = '$lastErr';
         return _mark(task, DownloadStatus.failed, task.error);
       }
-      if (job.abort) return _mark(task, DownloadStatus.paused, null);
+      if (job.abort) return _markAborted(task, job);
       await _finishCommit(task, src.extName);
-    } on _Aborted {
-      return _mark(task, DownloadStatus.paused, null);
+    } on DownloadAborted {
+      return _markAborted(task, job);
     } catch (e, st) {
       Log.e(_tag, '_runOne $hash failed', e, st);
       task.error = '$e';
@@ -295,7 +301,7 @@ class DownloadManager {
 
   /// 分块下载单个 URL：写 <hash>.dlpart 临时文件，每 chunk 刷新进度并 emit。
   Future<void> _downloadUrl(
-      DownloadTask task, _RunningJob job, String url, String extName) async {
+      DownloadTask task, RunningJob job, String url, String extName) async {
     final http = HttpClient()
       ..userAgent = 'TiernanMusicNext'
       ..connectionTimeout = const Duration(seconds: 15);
@@ -332,7 +338,7 @@ class DownloadManager {
       _emit(task); // 终态进度（含未达 256KB 阈值的小文件）
       if (job.abort) {
         _cleanupPart(part);
-        throw const _Aborted();
+        throw const DownloadAborted();
       }
     } catch (e, st) {
       _cleanupPart(part);
@@ -417,6 +423,20 @@ class DownloadManager {
     }
   }
 
+  /// 中断收尾：pause → 置 paused 并 emit；cancel → 任务已移出任务表，
+  /// 不得再 emit 该任务的 paused 幽灵事件（否则 UI 收到已取消任务的状态变更）。
+  void _markAborted(DownloadTask task, RunningJob job) {
+    try {
+      if (!shouldEmitPausedOnAbort(cancelled: job.cancelled)) {
+        Log.d(_tag, '${task.hash} aborted (cancelled, no emit)');
+        return;
+      }
+      _mark(task, DownloadStatus.paused, null);
+    } catch (e, st) {
+      Log.e(_tag, '_markAborted ${task.hash} failed', e, st);
+    }
+  }
+
   void _mark(DownloadTask task, DownloadStatus s, String? err) {
     try {
       task.status = s;
@@ -472,16 +492,4 @@ class DownloadManager {
       Log.e(_tag, '_cleanupPart failed', e, st);
     }
   }
-}
-
-/// 运行中任务句柄：abort 标志由 pause/cancel 设置，下载循环每 chunk 自检。
-class _RunningJob {
-  bool abort = false; // pause/cancel 置位，下载循环每 chunk 自检
-  final done = Completer<void>();
-}
-
-class _Aborted implements Exception {
-  const _Aborted();
-  @override
-  String toString() => 'aborted';
 }
