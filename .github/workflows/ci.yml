@@ -19,6 +19,10 @@ on:
         description: 'debug build (integrity bypass allowed)'
         type: boolean
         default: false
+      stable:
+        description: '发布正式版（仅人工显式开启）'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -301,5 +305,5 @@ jobs:
             dist/*.apk
             dist/verification.json
           body_path: ${{ env.body }}
-          prerelease: ${{ github.event.inputs.debug == 'true' }}
+          prerelease: ${{ github.event.inputs.stable != 'true' }}
           draft: false
