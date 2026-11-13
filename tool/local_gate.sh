@@ -42,6 +42,11 @@ echo "== boot contract =="
   echo FAIL-boot-contract; exit 1; }
 echo PASS-boot-contract
 
+echo "== play contract (three-state verdict + quality ladder) =="
+/opt/dart/bin/dart run tool/play_contract_test.dart 2>&1 | tail -1 | grep -q "0 failed" || {
+  echo FAIL-play-contract; exit 1; }
+echo PASS-play-contract
+
 echo "== download contract =="
 /opt/dart/bin/dart run tool/download_contract_test.dart 2>&1 | tail -1 | grep -q "0 failed" || {
   echo FAIL-download-contract; exit 1; }
