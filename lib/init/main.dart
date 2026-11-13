@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 // 存储根目录必须由依赖图根（main）拿好后注入 runBoot(rootDir:)。
 import 'package:path_provider/path_provider.dart';
 
-import '../bridges/bridge_boot.dart' show runBoot;
+import '../bridges/bridge_boot.dart' show BootOutcome, runBoot;
 // L1 装配根触发 L2 自注册（bootloader.dart 的注册语句需文件被加载才执行；
 // 见 lib/bootloader/register.dart 头注释）。这是 L1→L2 的最小装配例外，
 // 业务调用仍全部经 bridge_boot。
@@ -46,33 +46,37 @@ Future<void> _boot({required bool debugBypass}) async {
   //    改为 CI 构建时生成 verification.json（加盐 md5/sha512 + RSA-4096 签名）
   //    随同版本 release 发布；本地无法验证时仅警报不阻塞（用户原则）。
 
-  // ③ runBoot（core 装配）。失败时返回 Map{rejected,error,detail}（见 bridge_boot）。
+  // ③ runBoot（core 装配）。返回类型化的 BootOutcome（见 bridge_boot）：
+  //    init 层只认 BootOutcome 形状 + deps 具名键，不再对 dynamic 做 .client 探测。
   registerBootloader();
-  final exit = runBoot(
+  final Object? raw = runBoot(
       bypassIntegrity: debugBypass,
       rootDir: rootDir);
+  final BootOutcome outcome =
+      raw is BootOutcome ? raw : BootOutcome.fromAny(raw);
 
-  if (exit is Map) {
-    // 启动失败（桥兜底形状）：显示真实原因，不静默退出。
-    final reason = '${exit['error'] ?? 'boot failed'}'
-        '\n${exit['detail'] ?? ''}'.trim();
+  if (outcome.rejected) {
+    // 启动失败（桥归一化形状）：显示真实原因，不静默退出。
+    final reason = '${outcome.error.isEmpty ? 'boot failed' : outcome.error}'
+        '\n${outcome.detail}'.trim();
     debugPrint('main: boot failure: $reason');
     runApp(_BootErrorApp(message: '启动失败：$reason'));
     return;
   }
 
-  // ④ surface 装配（L6 经桥）。
-  if (exit.client != null && exit.songDao != null) {
+  // ④ surface 装配（L6 经桥）：仅按 deps 具名键取值（Map 形状），零 duck typing。
+  final deps = outcome.deps;
+  if (deps['client'] != null && deps['songDao'] != null) {
     try {
       await installServices(
         deps: SurfaceDeps(
-          client: exit.client!,
-          songDao: exit.songDao!,
-          playlistDao: exit.playlistDao!,
-          historyDao: exit.historyDao!,
-          downloadStore: exit.downloadStore!,
-          settings: exit.settings!,
-          paths: exit.paths,
+          client: outcome.dep('client'),
+          songDao: outcome.dep('songDao'),
+          playlistDao: outcome.dep('playlistDao'),
+          historyDao: outcome.dep('historyDao'),
+          downloadStore: outcome.dep('downloadStore'),
+          settings: outcome.dep('settings'),
+          paths: outcome.dep('paths'),
         ),
       );
     } catch (e, st) {
@@ -86,8 +90,9 @@ Future<void> _boot({required bool debugBypass}) async {
     return;
   }
 
-  // ⑤ runApp（bridge_surface 内部完成）。
-  bootstrapApp(exit);
+  // ⑤ runApp（bridge_surface 内部完成）。把归一化前的原始 L2 结果原样交回
+  //    既有 bootstrapApp，保持其桥业务逻辑不变（不在本次改动范围）。
+  bootstrapApp(outcome.dep('__raw'));
 }
 
 /// 启动失败可见页（miuix 风格全屏报错，替代静默退出/闪退观感）。
