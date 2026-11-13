@@ -1,10 +1,4 @@
-// L3 kernel 级 · 生命周期编排、模块注册表、盐值校验执行、日志
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io' show File, Platform;
-
-import 'sha512.dart' show Sha512;
-export 'sha512.dart' show Sha512;
+// L3 kernel 级 · 生命周期编排、模块注册表、日志
 
 // ─── 日志（桥接层唯一日志出口，所有桥函数经此留痕） ───
 
@@ -24,18 +18,7 @@ class Log {
     // ignore: avoid_print
     print(line);
   }
-
-  static List<String> snapshot() => List.unmodifiable(_buf);
 }
-
-void debugWarn(String msg) => Log.w('boot', msg);
-
-// ─── 完整性校验 ───
-
-
-
-/// 加盐 SHA-512：sha512(salt || bytes)。
-/// 自实现 SHA-512（独立文件 sha512.dart，kernel 与 tool 共用）。
 
 class KernelContext {
   const KernelContext({required this.modules});

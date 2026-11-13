@@ -55,6 +55,3 @@ KernelContext assembleKernel() {
     return const KernelContext(modules: {});
   }
 }
-
-// verifyIntegrity / sha512Hex / verifySignature 已删除
-// （运行期完整性校验移除；防篡改改由 CI 构建期 gen_verification.dart 承担）。

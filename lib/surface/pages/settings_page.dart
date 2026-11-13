@@ -15,43 +15,16 @@ import '../widgets/tn_app_bar.dart' show TnAppBar;
 import '../widgets/settings_qr_dialog.dart'
     show QrLoginDialog, AccountSection;
 
+import 'settings_deps.dart' show SettingsDeps;
+
+// 批03-C 环A破除：SettingsDeps 定义迁至 settings_deps.dart；此处继续 export，
+// 保持 assembly 从 settings_page.dart 取类型的 import 不变。
+export 'settings_deps.dart' show SettingsDeps;
+
 const String _tag = 'surface.settings';
 const String kAppVersion = '26.11.10.1';
 
-// 主题模式唯一状态源见 ../theme/theme_state.dart（0=跟随系统 1=亮 2=暗 3=纯黑）。
-// 此前本页与 app_root 各声明一个同名 provider 且互不 import → 切换主题对渲染零影响。
-
-  /// 设置页依赖：全部经工厂注入（批8-B 追加 collect/onStartFm/verificationState 可选字段）。
-class SettingsDeps {
-  const SettingsDeps({
-    required this.auth,
-    required this.lyrics,
-    required this.clearLyricCache,
-    required this.lyricHashes,
-    this.onLocaleChanged,
-    this.accounts,
-    this.collect,
-    this.onStartFm,
-    this.verificationState,
-  });
-  final AuthLogic auth;
-  /// 多账号门面（可选；为空时设置页不显示账号管理卡片）。
-  final AccountLogic? accounts;
-  /// 收藏门面（可选；为空时收藏计数不显示）。
-  final CollectLogic? collect;
-  /// 歌词域（逐曲 clearFileCache 用）。
-  final LyricsLogic lyrics;
-  /// 缓存清理：逐曲 clearFileCache(hash) + LruCache.clear（由装配处组合）。
-  final void Function() clearLyricCache;
-  /// 曲库 hash 列表（用于逐曲清缓存；可直接给空实现退化）。
-  final List<String> Function() lyricHashes;
-  /// 语言切换回调（State 持有选中码；''=跟随系统，zh / zh_Hant / en）。
-  final void Function(String code)? onLocaleChanged;
-  /// 个人 FM 入口回调（可选；装配处接 FmLogic.start + controller.playAll）。
-  final void Function()? onStartFm;
-  /// 验证状态快照（可选；为空时不显示验证状态入口）。
-  final String Function()? verificationState;
-}/// 设置页模块：id='settings'，底部导航入口「设置」。
+/// 设置页模块：id='settings'，底部导航入口「设置」。
 class SettingsPageModule extends SurfaceModule {
   SettingsPageModule({required this.deps});
 
