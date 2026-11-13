@@ -102,9 +102,10 @@ jobs:
           # 语法闸：dart format 解析失败即语法错（不依赖 flutter SDK）
           test "${{ steps.syntax.outcome }}" = success || V=fail
           grep -q "Could not format" /tmp/syntax.log && V=fail
-          # analyze 必须真通过：退出码经 pipefail 传递；此前 continue-on-error
-          # 掩盖了 analyze 崩溃与「无问题」无法区分的漏洞（批08 发现）。
-          test "${{ steps.analyze.outcome }}" = success || V=fail
+          # analyze 必须真的跑过（有汇总行）+ 无 error；warning/info 不参与门禁。
+          # 不可用 steps.analyze.outcome：flutter analyze 只要有 warning 就 exit 1，
+          # 与批05-A「warning 仅计数」决策冲突，会造成本轮这种假红。
+          grep -qE "issues found|No issues found" /tmp/analyze.log || V=fail
           grep -qE "error •|^\s*error" /tmp/analyze.log && V=fail
           # 批05-A: warning 仅计数可见，不参与 fail 门禁
           W=$(grep -cE "warning •|^\s*warning" /tmp/analyze.log || true)
