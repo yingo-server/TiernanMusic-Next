@@ -191,6 +191,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
           resolver: playback.resolvePlaySource,
           quality: quality,
           engine: engine,
+          settings: deps.settings,
           collect: collectLogic,
           searchTyped: searchTypedLogic,
           onQualitySelected: (q) {

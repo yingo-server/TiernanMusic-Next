@@ -3,7 +3,7 @@
 // 重复 id 覆盖替换（幂等），宿主不硬编码页面列表，即热插拔接入。
 // 模块间零直接 import：共享依赖只经本工厂参数与 riverpod provider。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../bridges/bridge_core.dart' show AudioQuality;
+import '../bridges/bridge_core.dart' show AudioQuality, KeyValueSettings;
 import '../bridges/bridge_logic.dart'
     show SearchLogic, PlaylistLogic, Log, CollectLogic, SearchTypedLogic;
 import 'pages/player_page.dart' show PlayerPageModule;
@@ -32,6 +32,7 @@ class ModuleDeps {
     required this.resolver,
     this.quality = '128',
     this.engine,
+    this.settings,
     this.collect,
     this.onQualitySelected,
     this.onOpenComments,
@@ -50,6 +51,9 @@ class ModuleDeps {
 
   /// 目标音质（128/320/flac …），传给 resolver。
   final String quality;
+
+  /// 键值设置（可选注入；搜索历史/播放偏好持久化用）。
+  final KeyValueSettings? settings;
 
   /// 音频引擎（可选注入）。为 null 时本层自建 JustAudioEngine（正常出声）；
   /// 注入 NullAudioEngine 等替身时用于无音频环境（此时不初始化通知栏）。
@@ -125,7 +129,8 @@ Future<List<SurfaceModule>> defaultModules(ModuleDeps deps) async {
       SearchPageModule(
           search: deps.search,
           player: controller,
-          typed: deps.searchTyped),
+          typed: deps.searchTyped,
+          settings: deps.settings),
       PlaylistPageModule(playlist: deps.playlist, player: controller),
       PlayerPageModule(
         controller: controller,
