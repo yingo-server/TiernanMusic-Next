@@ -21,6 +21,9 @@ export '../core/memory/cache_keys.dart'
 // L6 surface 装配所需（app_root 组装 logic 单例时的构造参数类型）
 export '../core/net/kugou_client.dart' show KugouClient, KugouSession, KugouApiException, EndpointRegistry;
 export '../core/storage/settings_store.dart' show KeyValueSettings;
+
+// ── 封面取色（动态主题）：只取字节，解码在 surface ──
+export '../core/net/cover_color.dart' show fetchCoverBytes;
 export '../core/net/database_opener.dart' show openDatabase; // DatabaseOpener（审计B F-08：原 database_bridge.dart，非五桥，去 bridge 命名）
 export '../core/net/endpoints/models.dart' show SearchResult, LyricResult; // 审计B F-03：此行与上方 models.dart 的 export 重复同一符号，为兼容既有 importer 保留；合并前先确认 22 importer 无独立依赖此行
 

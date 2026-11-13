@@ -7,6 +7,8 @@
 //   由 M1-B 的 MaterialApp(theme: / darkTheme: / themeMode:) 直接接入。
 import 'package:flutter/material.dart';
 
+import 'color_extract.dart' show ThemePalette;
+
 import '../../bridges/bridge_logic.dart' show Log;
 
 const String _tag = 'surface.tn_theme';
@@ -146,6 +148,17 @@ ThemeData tnDarkThemeData() => _m3Theme(Brightness.dark);
 ThemeData tnLightTheme() => tnLightThemeData();
 ThemeData tnDarkTheme() => tnDarkThemeData();
 
+/// 动态调色板主题（封面取色结果；palette 为 null 时等同默认主题）。
+ThemeData tnThemeWithPalette(ThemePalette? palette, {required bool dark}) {
+  try {
+    return _m3Theme(dark ? Brightness.dark : Brightness.light,
+        palette: palette);
+  } catch (e, st) {
+    Log.e(_tag, 'tnThemeWithPalette failed', e, st);
+    return dark ? tnDarkThemeData() : tnLightThemeData();
+  }
+}
+
 /// M3 纯黑模式（AMOLED）：surface 家族全黑 + 保留品牌紫 primary。
 /// 基于暗色 seed 生成，失败 Log 留痕并回退暗色主题，不静默吞。
 ThemeData tnPitchBlackThemeData() {
@@ -159,7 +172,8 @@ ThemeData tnPitchBlackThemeData() {
 
 /// 三态共用实现：ColorScheme.fromSeed 是唯一色彩真源；
 /// ThemeData(useMaterial3:true) + Typography.material2021() + M3 组件主题。
-ThemeData _m3Theme(Brightness brightness, {bool pitchBlack = false}) {
+ThemeData _m3Theme(Brightness brightness,
+    {bool pitchBlack = false, ThemePalette? palette}) {
   try {
     final ColorScheme seed = ColorScheme.fromSeed(
       seedColor: tnPrimary,
@@ -182,8 +196,16 @@ ThemeData _m3Theme(Brightness brightness, {bool pitchBlack = false}) {
             tertiary: const Color(0xFFF2A25C),
           )
         : seed;
+    // 动态调色板覆盖（封面取色）：仅当已取色时生效。
+    final ColorScheme seeded = palette == null
+        ? seed
+        : seed.copyWith(
+            primary: palette.primary,
+            onPrimary: palette.onPrimary,
+            primaryContainer: palette.primaryContainer,
+          );
     final ColorScheme scheme = pitchBlack
-        ? seed.copyWith(
+        ? seeded.copyWith(
             surface: TnColors.pitchBlack,
             onSurface: TnColors.pitchOn,
             onSurfaceVariant: TnColors.pitchOn.withValues(alpha: 0.72),
@@ -193,7 +215,11 @@ ThemeData _m3Theme(Brightness brightness, {bool pitchBlack = false}) {
             surfaceContainerHigh: TnColors.pitchBlack,
             surfaceContainerHighest: TnColors.pitchBlack,
           )
-        : darkBase;
+        : (palette == null ? darkBase : darkBase.copyWith(
+            primary: palette.primary,
+            onPrimary: palette.onPrimary,
+            primaryContainer: palette.primaryContainer,
+          ));
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,

@@ -29,7 +29,9 @@ import 'widgets/common_m3.dart' show ErrorRetryBox;
 import 'widgets/mini_bar.dart' show MiniBar;
 import 'l10n/l10n_helper.dart' show TnStrings;
 import 'theme/theme_state.dart' show themeModeProvider, settingsProvider;
-import 'theme/tn_theme.dart';
+import 'theme/dynamic_theme.dart' show dynamicThemeProvider, ThemePalette;
+import 'theme/cover_palette.dart' show applyCoverPalette;
+import 'theme/tn_theme.dart' show tnThemeWithPalette;
 import 'theme/tn_shader_warmup.dart' show TnShaderWarmup;
 
 export 'deps.dart' show SurfaceDeps;
@@ -155,6 +157,8 @@ class AppRoot extends StatefulWidget {
 }
 
 class _AppRootState extends State<AppRoot> {
+  String _lastCover = '';
+  bool _lastDark = false;
   KeepAliveCoordinator? _keepAlive;
 
   @override
@@ -211,6 +215,18 @@ class _AppRootState extends State<AppRoot> {
     try {
       return Consumer(builder: (context, ref, _) {
         final mode = ref.watch(themeModeProvider);
+        // 动态主题：当前曲封面变化 → 取色 → 调色板（失败静默回落默认主题）。
+        final palette = ref.watch(dynamicThemeProvider);
+        final dark = mode == 2 || mode == 3;
+        final cover = ref.watch(playerProvider).player.current?.cover ?? '';
+        if (cover.isNotEmpty && cover != _lastCover) {
+          _lastCover = cover;
+          applyCoverPalette(ref, cover, dark: dark);
+        }
+        if (dark != _lastDark) {
+          _lastDark = dark;
+          ref.read(dynamicThemeProvider.notifier).setDark(dark);
+        }
         // 语言切换重建信号：设置页 _pickLocale 后 ++，此处 ValueListenableBuilder
         // 重建 MaterialApp 使 locale: TnStrings.appLocale() 立即生效（免重启）。
         return ValueListenableBuilder<int>(
@@ -222,7 +238,7 @@ class _AppRootState extends State<AppRoot> {
               // ignore: avoid_print
               print('surface.app_root: locale rebuild log failed: $e');
             }
-            return _buildMaterialApp(mode);
+            return _buildMaterialApp(mode, palette);
           },
         );
       });
@@ -232,14 +248,15 @@ class _AppRootState extends State<AppRoot> {
     }
   }
 
-  Widget _buildMaterialApp(int mode) {
+  Widget _buildMaterialApp(int mode, ThemePalette? palette) {
     try {
       return MaterialApp(
           navigatorKey: appNavigatorKey,
           title: 'TiernanMusicNext',
-          theme: tnLightThemeData(),
-          darkTheme:
-              mode == 3 ? tnPitchBlackThemeData() : tnDarkThemeData(),
+          theme: tnThemeWithPalette(palette, dark: false),
+          darkTheme: mode == 3
+              ? tnPitchBlackThemeData()
+              : tnThemeWithPalette(palette, dark: true),
           themeMode: switch (mode) {
             1 => ThemeMode.light,
             2 => ThemeMode.dark,
