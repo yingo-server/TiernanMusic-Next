@@ -32,7 +32,7 @@ import 'theme/theme_state.dart' show themeModeProvider, settingsProvider;
 import 'theme/dynamic_theme.dart' show dynamicThemeProvider, ThemePalette;
 import 'theme/cover_palette.dart' show applyCoverPalette;
 import 'theme/tn_theme.dart'
-    show tnThemeWithPalette, tnPitchBlackThemeData, tnPadL, tnPadS;
+    show tnThemeWithPalette, tnPitchBlackThemeData, tnPadL, tnPadS, TnText;
 import 'theme/tn_shader_warmup.dart' show TnShaderWarmup;
 
 export 'deps.dart' show SurfaceDeps;

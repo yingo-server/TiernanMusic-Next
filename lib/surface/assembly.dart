@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 
 import 'assembly_result.dart' show AssemblyResult;
+import 'widgets/song_actions_sheet.dart' show showSongActionsSheet;
 import 'deps.dart' show SurfaceDeps;
 import 'registry.dart' show SurfaceRegistry;
 import '../bridges/bridge_core.dart'

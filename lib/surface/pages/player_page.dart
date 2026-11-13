@@ -20,6 +20,7 @@ import '../widgets/common_widgets.dart' show CoverImage;
 import '../widgets/favorite_button.dart' show FavoriteButton;
 import '../widgets/player_speed_sheet.dart' show showPlayerSpeedSheet;
 import '../widgets/quality_sheet.dart' show QualitySheet;
+import '../widgets/queue_sheet.dart' show showQueueSheet;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 import '../theme/tn_theme.dart'
     show TnDims, tnPadS, tnPadM, tnPadL;
