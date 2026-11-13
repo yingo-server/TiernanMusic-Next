@@ -5,7 +5,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../bridges/bridge_core.dart' show AudioQuality, KeyValueSettings;
 import '../bridges/bridge_logic.dart'
-    show SearchLogic, PlaylistLogic, Log, CollectLogic, SearchTypedLogic;
+    show SearchLogic, PlaylistLogic, Log, CollectLogic, SearchTypedLogic,
+        PrefetchEngine;
 import 'pages/player_page.dart' show PlayerPageModule;
 import 'widgets/mini_bar.dart' show MiniBar;
 import 'pages/playlist_page.dart' show PlaylistPageModule;
@@ -101,10 +102,13 @@ Future<List<SurfaceModule>> defaultModules(ModuleDeps deps) async {
     final injected = deps.engine;
     final AudioEngine engine = injected ??
         JustAudioEngine(onAction: (a) => controllerRef?.handleEngineAction(a));
+    // 预读引擎：队列变化时预热后续曲目播放源（网络层缓存命中即秒开）。
+    final prefetch = PrefetchEngine();
     final controller = PlayerController(
       resolver: deps.resolver,
       engine: engine,
       quality: deps.quality,
+      prefetch: prefetch,
     );
     controllerRef = controller;
     _installedController = controller;

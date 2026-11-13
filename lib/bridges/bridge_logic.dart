@@ -10,6 +10,7 @@ import '../kernel/kernel.dart' show Log;
 export '../logic/player/playback_service.dart'
     show PlaybackService, PlaySource, PlaybackError, PlaybackException;
 export '../logic/player/history_recorder.dart' show HistoryRecorder;
+export '../logic/player/prefetch_engine.dart' show PrefetchEngine;
 
 // ── 播放队列状态机 / 播放器状态 / reducer（批2-A） ──
 export '../logic/player/queue_state.dart' show PlayMode, QueueState;

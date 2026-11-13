@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bridges/bridge_core.dart'
     show SongBrief, KeyValueSettings, StoragePaths;
-import '../bridges/bridge_logic.dart' show Log;
+import '../bridges/bridge_logic.dart' show Log, PrefetchEngine;
 import '../bridges/bridge_logic.dart'
     show PlaySource, QueueState, PlayerState, PlayerStatus, PlayMode,
         PlaybackAction, StartLoad, Playing, Paused, Progress, Completed,
@@ -162,19 +162,32 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
     AudioEngine? engine,
     String quality = '128',
     KeyValueSettings? settings,
+    PrefetchEngine? prefetch,
   })  : _resolver = resolver,
+        _prefetch = prefetch,
         _engine = engine ?? NullAudioEngine(),
         _quality = quality,
         _settings = settings,
         super(PlayerSnapshot(
             player: PlayerState(speed: _readSpeed(settings)))) {
     _d('init engine=${_engine.runtimeType} quality=$_quality speed=${state.speed}');
+    // 预读回调：只解析播放源（不落盘），命中缓存时播放更快。
+    _prefetch?.attach((hash, q) async {
+      try {
+        await _resolver(SongBrief(hash: hash), q);
+      } catch (e, st) {
+        _e('prefetch resolve failed $hash', e, st);
+      }
+    });
   }
 
   final PlaySourceResolver _resolver;
   final AudioEngine _engine;
   final String _quality;
   final KeyValueSettings? _settings;
+
+  /// 预读引擎（可选）：队列变化时预热后续曲目的播放源。
+  final PrefetchEngine? _prefetch;
   Timer? _ticker;
 
   // ── 引擎事件入口（批5-A：JustAudioEngine onAction 回调落点） ──
@@ -216,6 +229,15 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
   Future<void> playAll(List<SongBrief> songs, int start) async {
     try {
       _d('playAll n=${songs.length} start=$start');
+      // 预读：当前队列后续曲目（hash 维度；近的先算）。
+      try {
+        _prefetch?.updateUpcoming(
+          <String>[for (final s in songs) s.hash],
+          start,
+        );
+      } catch (e, st) {
+        _e('prefetch updateUpcoming failed', e, st);
+      }
       final q = state.queue.replaceQueue(songs, start);
       state = state.copyWith(queue: q);
       await _startCurrent();

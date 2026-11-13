@@ -102,7 +102,16 @@ class Bootstrap {
             Log.e('boot', 'db open failed (async)', e, st)));
 
     // 3) core 单例 + AuthLogic 单例（每步 try/catch 由 run 外层兜底留痕）。
-    final client = core.KugouClient(core.KugouSession());
+    // 客户端带 L2 磁盘缓存 + 单飞合并（批R2）：
+    // 缓存目录 = StoragePaths.I.cache()；播放地址类端点已在端点表标 cacheable=false。
+    final client = core.KugouClient(
+      core.KugouSession(),
+      cache: core.ResourceCache(
+        rootDir: core.StoragePaths.I.cache(),
+        namespace: 'net',
+      ),
+      inflight: core.InFlight<Map<String, dynamic>>(),
+    );
     final auth =
         lg.AuthLogic(client: client, settings: core.KeyValueSettings(paths));
     try {

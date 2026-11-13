@@ -3,6 +3,10 @@
 // 本桥以 export 为通道，跨层调用方自带 try/catch+Log（审计B P2-2：
 // 批10-A 遗留的 corePing/coreCall/coreWrite 占位包装零调用，已删除）。
 export '../core/storage/paths.dart' show StoragePaths;
+
+// ── 网络层缓存/并发合并（批R2）：L2 磁盘缓存 + 单飞 ──
+export '../core/storage/resource_cache.dart' show ResourceCache;
+export '../core/net/inflight.dart' show InFlight, InFlightStats;
 export '../core/storage/download_store.dart' show DownloadRecord, DownloadStore;
 export '../core/database/dao.dart'
     show SongDao, PlaylistDao, HistoryDao, SortKey, SortOrder;

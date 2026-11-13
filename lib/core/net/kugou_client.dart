@@ -24,7 +24,8 @@ class KugouSession {
 
 /// 端点注册表：所有端点在此声明，改 API 只改这里。
 class KugouClient {
-  KugouClient(this.session, {ResourceCache? cache, InFlight? inflight})
+  KugouClient(this.session,
+      {ResourceCache? cache, InFlight<Map<String, dynamic>>? inflight})
       : _cache = cache,
         _inflight = inflight;
   final KugouSession session;
@@ -33,7 +34,7 @@ class KugouClient {
   final ResourceCache? _cache;
 
   /// 并发合并（可选；null = 不合并）。
-  final InFlight? _inflight;
+  final InFlight<Map<String, dynamic>>? _inflight;
   HttpClient? _http;
   HttpClient get _h => _http ??= HttpClient()
     ..userAgent = KugouSign.defaultUa
