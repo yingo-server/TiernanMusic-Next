@@ -348,34 +348,37 @@ TnAppBar「{歌手名}」
 
 ---
 
-## 11. 未接线 / 占位清单（诚实标注，不写成已完成）
+## 11. 未接线 / 占位清单（R2 更新）
 
-| 项 | 位置 | 现状 |
-|---|---|---|
-| 首页榜单速览卡片 | `home_page.dart:216` | 无 onTap，纯展示，榜单详情未接线 |
-| 首页推荐歌单卡片 | `home_page.dart:315` | 无 onTap，未跳歌单详情 |
-| 首页热搜 ActionChip | `home_page.dart:247` | 仅 `onOpenSearch()`，**关键词丢失**（半接线） |
-| 歌单/专辑详情 refId | `search_detail_page.dart` | 传入未用，以「标题重搜」代替真实曲目接口 |
-| MiniBar 封面 | `mini_bar.dart:50` | `CoverImage(url: … ? null : null)` 恒 null → 永远占位图标 |
-| MV 播放 | `mv_page.dart:255/293` | 外部播放器意图占位，无内嵌播放壳；`onExternalPlay` 未注入则无响应 |
-| MV 收藏 | `mv_page.dart:223` | `onToggleFavorite` / `isFavorite` 可空注入，未装配时点击无效果 |
-| 播放页大封面 | `player_page.dart:296` | `onTap: () {}` 空回调，仅动效 |
-| 音质当前档 | `player_page.dart` `_showQualitySheet` | `selected` 硬编码 `q128`，不读真实偏好 |
-| 评论点赞 / 热词 Chip | `comment_page.dart` | 纯展示，无点击事件 |
-| 楼中楼 | `comment_page.dart:388` | 回复项 `onTapFloor: () {}`；无分页加载 / 刷新 |
-| 评论发表 / 回复 | `comment_page.dart` | 无输入入口，只读浏览 |
-| 歌词行 seek | `lyrics_page.dart` | 无点击跳转，仅自动滚动 + 逐字着色 |
-| 专辑页相似歌单 / 下拉刷新 | `album_page.dart:166` | 横滑项无 onTap；页面无刷新入口 |
-| 设置「我的收藏」/「验证状态」/「关于」 | `settings_page.dart` | 纯展示，无 onTap |
-| 二维码刷新 | `settings_qr_dialog.dart` | 仅过期自动重建，无手动按钮；提示建议重启 App |
-| 动态主题取色 | `theme/dynamic_theme.dart` + `color_extract.dart` | ⚠️ **整链路未接线**：`cover_color_bridge.dart` 已删，`dynamicThemeProvider` 无 UI 消费方；纯 L6 内部状态容器，不影响运行 |
-| 通知栏桥 | `audio/audio_service_bridge.dart` | ⚠️ 系统事件 seek/next/prev 未接队列控制；封面 artUrl 未接（SongBrief 无封面字段映射）；lifecycle 由宿主负责 |
-| 高潮片段 / 云盘 / 评论计数路径 | `user_endpoints.dart` / `comment_endpoints.dart` | ⚠️ `API_FIELDS_TRUTH.md` 无实测章节 → 容错读取 + 注释「待实测」，不臆造 status 门槛 |
-| 启动失败页 / 无模块页 | `app_root.dart` `_BootErrorApp` / `_ScaffoldMessage` | 无重试按钮，用户只能重启（可接 `ErrorRetryBox`） |
+### 11.1 已补齐（此前未接线 → 现已接通）
 
-> 这些不是"缺陷隐瞒"，而是**按实测驱动原则**主动留白：契约未实测就不伪造成功，能力未接线就不假称可用。
+| 项 | 现状 |
+|---|---|
+| MV 播放 | ✅ 内嵌 `MvPlayerShell`（video_player），清晰度 chips 切换真实 CDN 链路；外部播放器回调降级为可选 |
+| 动态主题 | ✅ `core/net/cover_color.dart` 取字节 → surface `dart:ui` 解码 → `extractDominant` → `dynamicThemeProvider` → `tnThemeWithPalette` |
+| 播放队列 | ✅ `queue_sheet.dart`（跳转/移除/当前曲高亮），入口：播放页 ⋮ 菜单 / 封面上滑 |
+| 歌曲操作 | ✅ `song_actions_sheet.dart`（下一首播放/收藏/下载/歌曲信息） |
+| 存储诊断 | ✅ `storage_diag_page.dart`（本地曲库/下载任务/我的歌单 + 歌单曲目） |
+| 我的歌单 | ✅ `PlaylistWriteLogic.myPlaylists()` → 音乐库横滑卡片区 |
+| 封面 | ✅ `SongBrief.cover` 字段 + MiniBar/播放页/歌单弹层真实渲染 |
+| 首页卡片 | ✅ 榜单卡/歌单卡可点（真实曲目弹层） |
+| 搜索历史 | ✅ `KeyValueSettings` 持久化（10 条，可单删/清空） |
+| 预读 | ✅ `PrefetchEngine` 接入 `PlayerController.playAll`（队列后续曲目预热播放源） |
+| 三级缓存 | ✅ L1 `LruCache` + L2 `ResourceCache`（磁盘，200MB/7 天）+ 单飞 `InFlight`；客户端 `request()` 自动命中（播放地址类端点 `cacheable=false`） |
 
----
+### 11.2 仍未接线（如实标注）
+
+| 项 | 现状 |
+|---|---|
+| 评论发表 / 回复输入 | ❌ 无输入入口（只读浏览）；且上游返回 `Access Deny`（WAF） |
+| 评论点赞 / 热词 | ❌ 纯展示，无点击事件 |
+| 每日推荐 | ❌ 上游返回 `error_code=200103`，端点未修正（UI 按空态显示） |
+| 高潮片段 / 云盘 / MV 明细 | ❌ 本次实测均为空，标注「待补测」 |
+| 歌词行点击 seek | ❌ 仅自动滚动 + 逐字着色 |
+| 音质当前档回显 | ⚠️ 播放页弹层仍硬编码 `q128`，未读真实偏好 |
+| 二维码会话热生效 | ⚠️ 提示「建议重启 App」 |
+| 通知栏系统事件 | ⚠️ seek/next/prev 未接队列控制；封面 artUrl 未接 |
+| 存储清理项 | ⚠️ 诊断页只读统计，尚无「一键清缓存/清下载」 |
 
 ## 12. 核对方式（如何复现本功能树）
 

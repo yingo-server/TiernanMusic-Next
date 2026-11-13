@@ -18,6 +18,7 @@ import '../../bridges/bridge_core.dart'
 import '../../bridges/bridge_logic.dart'
     show MvLogic, Log, LogicFacade;
 import '../registry.dart';
+import 'mv_player_shell.dart' show MvPlayerShell;
 import '../widgets/tn_app_bar.dart' show TnAppBar, TnPagePadding;
 import '../widgets/common_widgets.dart' show CoverImage;
 
@@ -102,6 +103,7 @@ class _MvPageBodyState extends State<_MvPageBody> {
   List<MvQuality> _qualities = const <MvQuality>[];
   String? _selectedQualityId;
   MvPlayResult? _playResult;
+  String? _inlineUrl;
   bool _loading = false;
   bool _favorite = false;
 
@@ -162,7 +164,8 @@ class _MvPageBodyState extends State<_MvPageBody> {
         }
         return;
       }
-      // 占位壳：主链交给外部播放器意图回调；video_player 接入后替换。
+      // 内嵌播放：优先内嵌壳；未注入外部回调时不再依赖外部播放器。
+      setState(() => _inlineUrl = r.urls.first);
       widget.onExternalPlay?.call(r.urls.first);
     } catch (e, st) {
       Log.e(_tag, '_play failed', e, st);
@@ -249,6 +252,10 @@ class _MvPageBodyState extends State<_MvPageBody> {
                         ]),
                       ),
                       const SizedBox(height: 12),
+                      if (_inlineUrl != null && _inlineUrl!.isNotEmpty) ...<Widget>[
+                        MvPlayerShell(url: _inlineUrl!),
+                        const SizedBox(height: 12),
+                      ],
                       if (_brief != null) ...<Widget>[
                         Text(_brief!.name,
                             style: Theme.of(context)
@@ -293,7 +300,7 @@ class _MvPageBodyState extends State<_MvPageBody> {
                       FilledButton.icon(
                         onPressed: _loading ? null : _play,
                         icon: const Icon(Icons.play_arrow),
-                        label: const Text('播放（外部播放器占位）'),
+                        label: const Text('播放'),
                       ),
                     ],
                   ),
