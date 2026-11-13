@@ -31,7 +31,8 @@ import 'l10n/l10n_helper.dart' show TnStrings;
 import 'theme/theme_state.dart' show themeModeProvider, settingsProvider;
 import 'theme/dynamic_theme.dart' show dynamicThemeProvider, ThemePalette;
 import 'theme/cover_palette.dart' show applyCoverPalette;
-import 'theme/tn_theme.dart' show tnThemeWithPalette;
+import 'theme/tn_theme.dart'
+    show tnThemeWithPalette, tnPitchBlackThemeData, tnPadL, tnPadS;
 import 'theme/tn_shader_warmup.dart' show TnShaderWarmup;
 
 export 'deps.dart' show SurfaceDeps;
@@ -368,7 +369,7 @@ class _HomeShellState extends State<_HomeShell> {
         body: Column(children: [
           Container(
             alignment: Alignment.centerLeft,
-              padding: const EdgeInsets.fromLTRB(tnPadL, tnPadL, tnPadL, tnPadS),
+              padding: EdgeInsets.fromLTRB(tnPadL, tnPadL, tnPadL, tnPadS),
             child: Text(entries[_index].label, style: TnText.of(context).title),
           ),
           Expanded(child: _ModuleView(module: modules[_index])),

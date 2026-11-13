@@ -60,7 +60,7 @@ class CacheMetrics {
       c.hits++;
       if (bytes > 0) c.bytesStored += bytes;
     } catch (e, st) {
-      Log.e('CacheMetrics.hit failed: $e\n$st');
+      Log.e('CacheMetrics.hit', 'failed: $e\n$st', e, st);
     }
   }
 
@@ -69,7 +69,7 @@ class CacheMetrics {
     try {
       _of(_normalize(ns)).misses++;
     } catch (e, st) {
-      Log.e('CacheMetrics.miss failed: $e\n$st');
+      Log.e('CacheMetrics.miss', 'failed: $e\n$st', e, st);
     }
   }
 
@@ -80,7 +80,7 @@ class CacheMetrics {
       c.stores++;
       if (bytes > 0) c.bytesStored += bytes;
     } catch (e, st) {
-      Log.e('CacheMetrics.store failed: $e\n$st');
+      Log.e('CacheMetrics.store', 'failed: $e\n$st', e, st);
     }
   }
 
@@ -91,7 +91,7 @@ class CacheMetrics {
       c.evictions++;
       if (bytes > 0) c.bytesStored -= bytes;
     } catch (e, st) {
-      Log.e('CacheMetrics.evict failed: $e\n$st');
+      Log.e('CacheMetrics.evict', 'failed: $e\n$st', e, st);
     }
   }
 
@@ -100,7 +100,7 @@ class CacheMetrics {
     try {
       _of(_normalize(ns)).errors++;
     } catch (e, st) {
-      Log.e('CacheMetrics.error failed: $e\n$st');
+      Log.e('CacheMetrics.error', 'failed: $e\n$st', e, st);
     }
   }
 
@@ -126,7 +126,7 @@ class CacheMetrics {
         bytesStored: c?.bytesStored ?? 0,
       );
     } catch (e, st) {
-      Log.e('CacheMetrics.snapshot failed: $e\n$st');
+      Log.e('CacheMetrics.snapshot', 'failed: $e\n$st', e, st);
       return CacheMetricsSnapshot(namespace: defaultNs, hits: 0, misses: 0,
           stores: 0, evictions: 0, errors: 0, bytesStored: 0);
     }
@@ -141,7 +141,7 @@ class CacheMetrics {
         _counters.remove(_normalize(ns));
       }
     } catch (e, st) {
-      Log.e('CacheMetrics.reset failed: $e\n$st');
+      Log.e('CacheMetrics.reset', 'failed: $e\n$st', e, st);
     }
   }
 
@@ -159,7 +159,7 @@ class CacheMetrics {
       }
       return Map.unmodifiable(out);
     } catch (e, st) {
-      Log.e('CacheMetrics.all failed: $e\n$st');
+      Log.e('CacheMetrics.all', 'failed: $e\n$st', e, st);
       return const {};
     }
   }
