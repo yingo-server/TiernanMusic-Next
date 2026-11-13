@@ -20,14 +20,23 @@ const String _tag = 'logic.auth';
 enum QrLoginStatus { expired, waitScan, waitConfirm, success }
 
 class QrLoginState {
-  const QrLoginState({required this.status, this.qrcode = '', this.key = ''});
+  const QrLoginState({
+    required this.status,
+    this.qrcode = '',
+    this.key = '',
+    this.qrImageB64 = '',
+  });
   final QrLoginStatus status;
 
-  /// createQrLogin 返回的二维码内容（qrcode_txt，UI 侧渲染成 QR 图）。
+  /// createQrLogin 返回的二维码内容（备用：官方扫码 URL 前缀，UI 可编码成 QR）。
   final String qrcode;
 
   /// 轮询 key（pollQrLogin 入参）。
   final String key;
+
+  /// 实测 2026-11-13：/v2/qrcode 返回 data.qrcode_img（PNG base64，已含 key），
+  /// UI 优先直接显示该官方图，避免自编码 QR 内容错误导致扫码失败。
+  final String qrImageB64;
 }
 
 /// login_token 续期结果：token 是否有效更新。
@@ -61,10 +70,12 @@ class AuthLogic {
   /// 申请二维码：loginQrKey（web 签名，§3.8 login_qr_key.js）。
   /// 参数 appid=1014(web)/1001(移动)、type=1、plat=4、qrcode_txt、srcappid=2919。
   /// 返回 {qrcode, key}；qrcode 供 UI 渲染，key 供 pollQrLogin 轮询。
-  Future<QrLoginState> createQrLogin({String appid = '1014'}) async {
+  Future<QrLoginState> createQrLogin({String appid = '1001'}) async {
     try {
-      final qrcodeTxt = 'https://h5.kugou.com/queue/index.html'
-          '?appid=${Uri.encodeComponent(appid)}';
+      // 上游 login_qr_key.js：qrcode_txt 是 h5 扫码页 URL（appid 与 check 一致），
+      // 后端返回的 data.qrcode 是轮询 key；二维码内容须含该 key 才可扫码。
+      final qrcodeTxt = 'https://h5.kugou.com/apps/loginQRCode/html/index.html'
+          '?appid=${Uri.encodeComponent(appid)}&';
       final res = await _client.request(
         EndpointRegistry.loginQrKey,
         <String, Object?>{
@@ -82,10 +93,15 @@ class AuthLogic {
         Log.w(_tag, 'createQrLogin empty key status=${res['status']}');
         throw KugouApiException(0, 'empty qrcode key');
       }
-      Log.d(_tag, 'createQrLogin ok keyLen=${key.length} appid=$appid');
-      // qrcode 内容用 key 对应的扫码地址（官方 qrcode_txt 语义）。
+      // 官方返回 qrcode_img（"data:image/png;base64,..."）：去掉 scheme 前缀留纯 base64。
+      final img = '${map['qrcode_img'] ?? ''}';
+      final b64 = img.contains('base64,') ? img.split('base64,').last : img;
+      Log.d(_tag, 'createQrLogin ok keyLen=${key.length} imgLen=${b64.length}');
       return QrLoginState(
-          status: QrLoginStatus.waitScan, qrcode: qrcodeTxt, key: key);
+          status: QrLoginStatus.waitScan,
+          qrcode: qrcodeTxt + key,
+          key: key,
+          qrImageB64: b64);
     } catch (e, st) {
       Log.e(_tag, 'createQrLogin failed', e, st);
       rethrow;
@@ -102,9 +118,12 @@ class AuthLogic {
       }
       final res = await _client.request(
         EndpointRegistry.loginQrCheck,
-        <String, Object?>{'plat': '4', 'appid': '1014', 'qrcode': key},
+        <String, Object?>{'plat': '4', 'appid': '1001', 'qrcode': key},
       );
-      final status = int.tryParse('${res['status']}') ?? 1;
+      // 实测 2026-11-13：顶层 status=1 是业务成功码；登录状态在 data.status。
+      final data = res['data'];
+      final map = data is Map<String, dynamic> ? data : <String, dynamic>{};
+      final status = int.tryParse('${map['status'] ?? 1}') ?? 1;
       switch (status) {
         case 0:
           Log.d(_tag, 'pollQrLogin expired keyLen=${key.length}');
@@ -113,8 +132,6 @@ class AuthLogic {
           Log.d(_tag, 'pollQrLogin waitConfirm');
           return const QrLoginState(status: QrLoginStatus.waitConfirm);
         case 4:
-          final data = res['data'];
-          final map = data is Map<String, dynamic> ? data : <String, dynamic>{};
           final token = '${map['token'] ?? ''}';
           final userid = '${map['userid'] ?? ''}';
           if (token.isEmpty || userid.isEmpty) {

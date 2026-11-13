@@ -733,6 +733,56 @@ void main() {
   eq('artistAudios dataOf 平铺回空 Map(设计语义)',
       dataOf(flatData).isEmpty, true);
 
+  // ══ 批2-C · 端点声明/取数路径窄复核锚点（2026-11-13）══
+  group('batch2-C endpoint narrow recheck');
+  // §A2-2：/v3/get_list_info 的 data 是数组；dataOf() 只收 Map（旧详情恒空根因）。
+  final detailArr = <String, dynamic>{
+    'status': 1,
+    'data': [
+      <String, dynamic>{
+        'global_collection_id': 'collection_1_486950678_2255477_0',
+        'name': '跑步必听｜超燃英文歌',
+        'pic': 'http://imge.kugou.com/x.jpg',
+        'count': 23,
+        'tags': '英语,兴奋,运动',
+        'list_create_username': '薛予安',
+        'list_ver': 9,
+      },
+    ],
+  };
+  eq('A2-2 data[] 数组取首项', listOf(detailArr['data']).length, 1);
+  eq('A2-2 dataOf 对数组 data 回空 Map(旧 bug 根因)',
+      dataOf(detailArr).isEmpty, true);
+  eq('A2-2 name(实测键 name)',
+      safeStr(listOf(detailArr['data']).first['name']), '跑步必听｜超燃英文歌');
+  eq('A2-2 无 playcount 键(playCount 如实 0)',
+      listOf(detailArr['data']).first.containsKey('playcount'), false);
+  // §R1-A-8：searchSuggest 的 data 是数组分组，data['records'] 恒 null。
+  final suggestArr = <String, dynamic>{
+    'status': 1,
+    'data': [
+      <String, dynamic>{
+        'LableName': '',
+        'RecordCount': 1,
+        'RecordDatas': [
+          <String, dynamic>{'HintInfo': '晴天', 'MatchCount': 10},
+        ],
+      },
+    ],
+  };
+  final sugGroups = listOf(suggestArr['data']);
+  eq('R1-A-8 data[] 数组分组', sugGroups.length, 1);
+  eq('R1-A-8 词条在 RecordDatas[].HintInfo',
+      safeStr(listOf(sugGroups.first['RecordDatas']).first['HintInfo']), '晴天');
+  eq('R1-A-8 dataOf 对数组 data 回空 Map',
+      dataOf(suggestArr).isEmpty, true);
+  // §A3-1（批N2-A）：非 VIP 带 key 的失败形态顶层 error_code=35104。
+  final play35104 = <String, dynamic>{
+    'status': 0, 'error_code': 35104, 'error': 'Hash not found',
+  };
+  eq('A3-1 35104 失败形态取 error_code',
+      safeInt(play35104['errcode'] ?? play35104['error_code']), 35104);
+
   // ══ 批N3-B · A6 用户域歌单写锚点（原 main 收尾后独立函数）══
   n3b_playlist_write_truth();
 

@@ -114,7 +114,9 @@ Future<PlayResult> getPlayUrlV5(
     final result = PlayResult(
       status: status,
       privStatus: priv,
-      errcode: safeInt(res['errcode']),
+      // docs/API_FIELDS_TRUTH.md §A3-1（批N2-A）：非 VIP 带 key 的失败形态
+      // 顶层是 error_code=35104（Hash not found），旧写法只取 errcode → 丢码。
+      errcode: safeInt(res['errcode'] ?? res['error_code']),
       error: safeStr(res['error']),
       urls: urls,
       backupUrls: backups,

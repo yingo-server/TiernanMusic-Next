@@ -2,6 +2,7 @@
 // 仅移动代码：文案/回调/轮询逻辑零改动；每函数 try/catch+Log 留痕。
 // 铁律：只 import flutter/riverpod/bridge_logic/bridge_core/本层。
 import 'dart:async';
+import 'dart:convert' show base64Decode;
 
 import 'package:flutter/material.dart';
 
@@ -98,9 +99,16 @@ class _QrLoginDialogState extends State<QrLoginDialog> {
             height: 200,
             color: kQrBackgroundColor,
             alignment: Alignment.center,
-            child: _state.qrcode.isEmpty
-                ? const Text('生成中…')
-                : QrView(data: _state.qrcode),
+            child: _state.qrImageB64.isNotEmpty
+                ? Image.memory(
+                    base64Decode(_state.qrImageB64),
+                    width: 200,
+                    height: 200,
+                    fit: BoxFit.contain,
+                  )
+                : (_state.qrcode.isEmpty
+                    ? const Text('生成中…')
+                    : QrView(data: _state.qrcode)),
             // QR 真渲染（批1-C）：QrView 纯 Dart 编码 + CustomPainter，无第三方包。
           ),
           const SizedBox(height: 12),

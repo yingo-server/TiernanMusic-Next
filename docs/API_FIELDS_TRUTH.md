@@ -739,3 +739,10 @@
 |---|---|---|
 | lib/core/net/endpoints/user_endpoints.dart | getUserDetail/reportListen 的 p 改裸 RSA 右补零（rsaCryptoEncrypt）；reportListen 移除 body hash；注释更新三态实测结论 | 287（≤500✓） |
 | lib/core/net/crypto_rsa.dart | playlistAesEncrypt/Decrypt 的 key/iv 改 md5hex 字符串 ASCII 字节（_asciiBytes）；hex 直转为解密失败根因 | 177（≤500✓） |
+
+## QR 登录实测（2026-11-13，批1-A 遗留点复核）
+
+- /v2/qrcode: data.qrcode(key) + data.qrcode_img(PNG base64 官方二维码图), appid=1001, web 签名, qrcode_txt=官方 h5 URL+&.
+- /v2/get_userinfo_qrcode: 顶层 status=1 是业务成功码; 登录状态在 data.status (1待扫/0过期/2待确认/4成功, token/userid 在 data 内).
+- 旧实现读顶层 status -> 永远 waitScan; 二维码渲染 qrcode_txt 前缀(不含 key) -> 扫码无效. 已修: data.status + 官方 qrcode_img 优先 + qrcode 拼 key 备用.
+- 探针 .test_creds/qr_probe.py 匿名 create->check 实测留样.

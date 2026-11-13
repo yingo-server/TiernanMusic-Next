@@ -65,8 +65,15 @@ Future<List<SearchSuggestItem>> searchSuggest(
     final out = <SearchSuggestItem>[];
     // 批N1-A 实测（A1-2）：data 是数组，每组 {RecordDatas[], RecordCount, LableName}
     //（LableName ''=综合、'MV'、'专辑'…）；词条在 RecordDatas[].HintInfo。
-    if (data['records'] is List) {
-      for (final group in listOf(data['records'])) {
+    // 批2-C 修正（docs/API_FIELDS_TRUTH.md §R1-A-8）：实测 data 是**数组**分组
+    // {RecordDatas[], RecordCount, LableName}；dataOf() 只收 Map，旧写法
+    // data['records'] 对数组 data 恒 null → 主路径失效、联想恒空。
+    // 直接遍历 data[] 本身，包裹形态 data.records[] 保留兜底。
+    final groups = listOf(res['data']).isNotEmpty
+        ? listOf(res['data'])
+        : listOf(data['records']);
+    if (groups.isNotEmpty) {
+      for (final group in groups) {
         if (group is! Map<String, dynamic>) continue;
         final type = safeStr(group['LableName'], 'music');
         for (final item in listOf(group['RecordDatas'])) {

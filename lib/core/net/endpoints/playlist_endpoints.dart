@@ -80,7 +80,14 @@ Future<PlaylistDetail> playlistDetail(
       'token': client.session.token,
     });
     final data = dataOf(res);
-    final list = listOf(data['data'] ?? data['info']);
+    // 批2-C 修正（docs/API_FIELDS_TRUTH.md §A2-2）：/v3/get_list_info 响应
+    // `data` 是**数组**（data[] 首项）；dataOf() 只收 Map，旧写法
+    // data['data'] 恒 null → 详情恒返回空 PlaylistDetail。主路径直接取
+    // res['data'] 数组，旧包裹形态保留兜底。
+    final direct = listOf(res['data']);
+    final list = direct.isNotEmpty
+        ? direct
+        : listOf(data['data'] ?? data['info'] ?? res['info']);
     final first = list.isEmpty ? const <String, dynamic>{} : list.first;
     // tags 兼容 List<String> / List<Map>
     final tags = <String>[];
