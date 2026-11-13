@@ -7,8 +7,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../bridges/bridge_core.dart';
-import '../../bridges/bridge_logic.dart';
+import '../../bridges/bridge_core.dart'
+    show SongDao, SongRecord, PlayHistoryEntry, SongBrief;
+import '../../bridges/bridge_logic.dart'
+    show
+        DownloadManager, DownloadEvent, DownloadTask, DownloadStatus, Log,
+        LogicFacade;
 import '../registry.dart';
 import '../theme/tn_motion.dart' show TnMotionStaggered;
 import '../theme/tn_theme.dart' show TnDims, TnText, tnPadL;

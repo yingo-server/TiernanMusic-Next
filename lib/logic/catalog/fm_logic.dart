@@ -1,6 +1,6 @@
 // L5 logic/catalog · 个人 FM 门面（批4-C · GAP #21，风格照 rank_logic.dart）
 // 装配：boot 处 FmLogic(client:kugouClient, cache:lruCache) 单例，经 bridge_logic
-//   `export FmLogic` 供 L6；FmModeButton.onStart 接 fmLogic.start() +
+//   `export FmLogic` 供 L6；FM 入口由装配层 onStartFm 回调接 fmLogic.start() +
 //   controller.playAll(batch, 0)（空批次降级不切队列）；跳过接 next()，
 //   喜欢/不喜欢接 like/dislike。surface 不 import core 端点、不持有 client。
 // 端点状态：personalFm/fmSongs 均 needs probe（PARITY_NOTES.md §3）→ 恒空批次，

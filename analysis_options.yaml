@@ -1,0 +1,11 @@
+# 批05-A: analysis_options 与 warning 门禁
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    # 历史噪音较多，统一降为 warning，避免 CI error 门禁误爆
+    unused_import: warning
+    undefined_shown_name: warning
+    avoid_print: warning
+
+# unused_import / undefined_shown_name / avoid_print 降为 warning（历史噪音可见但不阻断）。

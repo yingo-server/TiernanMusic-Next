@@ -11,7 +11,7 @@
 // 装配契约（主会话执行，本批不改 player_page.dart / app_root.dart）：
 //   ref.watch(dynamicThemeProvider) → ThemePalette?（null = 沿用 tnLight/DarkThemeData）
 //   ref.read(dynamicThemeProvider.notifier).setDark(mode == 2) ← themeModeProvider
-//   applyCoverToTheme(ref, rgbaBytes, w, h) ← 封面字节接线（cover_color_bridge.dart）
+//   封面字节接线由装配层直接调 dynamicThemeProvider.updateFromImageBytes
 import 'package:flutter_riverpod/flutter_riverpod.dart'
     show StateNotifier, StateNotifierProvider;
 

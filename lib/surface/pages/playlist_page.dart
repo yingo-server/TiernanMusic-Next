@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_logic.dart'
     show
-        PlaylistLogic, PlaylistBrief, PlaylistDetail, TrackPage, Log, LogicFacade;
+        PlaylistLogic, PlaylistBrief, PlaylistDetail, Log, LogicFacade;
 import '../../bridges/bridge_core.dart' show SongBrief, PlaylistMeta;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
 import '../widgets/common_widgets.dart' show CoverImage, SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 import '../theme/tn_motion.dart' show TnMotionStaggered, TnPageRoute;
-import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadM, tnPadL, tnRadiusM;
+import '../theme/tn_theme.dart' show tnPadS, tnPadL;
 
 const String _tag = 'surface.playlist';
 
