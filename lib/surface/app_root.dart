@@ -246,7 +246,7 @@ class _AppRootState extends State<AppRoot> {
       });
     } catch (e, st) {
       Log.e('surface.app_root', 'build crashed', e, st);
-      return const FallbackApp();
+      return const FallbackApp(message: 'TiernanMusicNext 启动异常');
     }
   }
 
@@ -277,7 +277,7 @@ class _AppRootState extends State<AppRoot> {
         );
     } catch (e, st) {
       Log.e('surface.app_root', 'buildMaterialApp crashed', e, st);
-      return const FallbackApp();
+      return const FallbackApp(message: 'TiernanMusicNext 启动异常');
     }
   }
 }

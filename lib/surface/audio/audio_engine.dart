@@ -6,6 +6,9 @@ import '../../bridges/bridge_logic.dart' show Log;
 
 const String _tag = 'surface.audio.engine';
 
+/// 本文件局部日志便捷函数（从 player_controller 拆出后独立保留）。
+void _d(String msg) => Log.d(_tag, msg);
+
 abstract class AudioEngine {
   /// 播放：urlOrPath 为在线直链或本地文件绝对路径。
   Future<void> play(String urlOrPath);
