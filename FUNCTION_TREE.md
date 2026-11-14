@@ -319,7 +319,7 @@ TnAppBar「{歌手名}」
 | —  `ListTile`「我的收藏（N 首）」 | — | ⚠️ 无 onTap（纯展示） | `deps.collect==null` 不显示 |
 | ✅ `ListTile`「个人 FM」 | — | `deps.onStartFm!()` | `onStartFm==null` 不显示 |
 | —  `ListTile`「验证状态」 | `verificationState()` 文本 | ⚠️ 无 onTap（展示） | `verificationState==null` 不显示 |
-| ✅ `SegmentedButton` ×4「系统 / 亮 / 暗 / 纯黑」 | — | `ref.read(themeModeProvider.notifier).set(s.first)` | — |
+| ✅ `SegmentedButton` ×4「系统 / 亮 / 暗 / 纯黑」 | — | `SessionSettings.setThemeMode(s.first)` | — |
 | ✅ `DropdownButton` ×11「跟随系统 / zh / 繁 / en / ja / ko / es / fr / de / pt / ru」 | — | `_pickLocale(v)`：`TnStrings.saveLocale` + `onLocaleChanged` 回调（AppRoot 重建） | — |
 | ✅ `ListTile`「清理歌词缓存」 | 「内存缓存 + 本地歌词文件」 | `_clearCache()`：逐 hash `lyrics.clearFileCache` + `clearLyricCache()` | — |
 | —  `ListTile`「关于」 | `TiernanMusicNext v{kAppVersion}` | 无 onTap | — |
@@ -434,7 +434,7 @@ rg -n "^Future<" lib/core/net/endpoints/
 
 # 3) 六五原则与可达性门禁（CI 同款）
 bash tool/local_gate.sh            # 本地 → FINAL-OK
-python3 tool/layer_audit.py         # PASS strict six-five
+python3 tool/layer_audit.py         # PASS strict seven-six
 dart run tool/feature_reachability_test.dart   # FEATURE-REACHABILITY-OK
 ```
 

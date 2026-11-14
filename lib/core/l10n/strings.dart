@@ -6,7 +6,7 @@
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' show KeyValueSettings, StoragePaths;
 
-const String _tag = 'surface.l10n';
+const String _tag = 'core.l10n';
 
 const Map<String, Map<String, String>> _kCatalog = {
   'zh': {

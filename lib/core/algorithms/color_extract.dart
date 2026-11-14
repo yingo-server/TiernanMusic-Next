@@ -13,7 +13,7 @@ import 'dart:math' as math;
 
 import '../../bridges/bridge_kernel.dart' show Log;
 
-const String _tag = 'surface.color';
+const String _tag = 'core.color';
 
 /// 主色种子（RGB 各 0..255）；[fallback] 为品牌紫 #7C4DFF。
 class ColorSeed {
@@ -23,7 +23,7 @@ class ColorSeed {
   final int g;
   final int b;
 
-  /// 空输入 / 畸形输入 / 异常时的默认紫（对齐 tn_theme.tnPrimary）。
+  /// 空输入 / 畸形输入 / 异常时的默认紫（对齐 Sp 品牌紫）。
   static const ColorSeed fallback = ColorSeed(0x7C, 0x4D, 0xFF);
 
   /// 纯 int ARGB（L7 自行包成 Color(value)）。
@@ -134,7 +134,7 @@ class _Bucket {
 
 /// HSL 明暗推导：primary / onPrimary / primaryContainer / surface 四色。
 /// dark=true：主色提亮、容器与底色压暗；dark=false：主色定在中明度、底色近白。
-/// [dark] 命名参数默认 false（亮色）；主会话按 themeModeProvider 传入。
+/// [dark] 命名参数默认 false（亮色）；由 L7 按主题档位传入。
 ThemePalette fromSeed(ColorSeed seed, {bool dark = false}) {
   try {
     final List<double> hsl =
@@ -162,7 +162,7 @@ ThemePalette fromSeed(ColorSeed seed, {bool dark = false}) {
   }
 }
 
-/// 推导失败时的品牌紫常量表（与 tn_theme.dart 亮暗取值一致）。
+/// 推导失败时的品牌紫常量表（与 Sp 亮暗取值一致）。
 ThemePalette _fallbackPalette(bool dark) => ThemePalette(
       primary: 0xFF7C4DFF,
       onPrimary: 0xFFFFFFFF,

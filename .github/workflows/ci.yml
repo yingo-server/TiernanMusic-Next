@@ -133,7 +133,7 @@ jobs:
           echo "warnings=$W" >> $GITHUB_OUTPUT
           grep -qE "All tests (passed|passed!)|tests passed" /tmp/test.log || V=fail
           grep -q "VIOLATION" /tmp/layer.log && V=fail
-          grep -q "PASS strict six-five" /tmp/layer.log || V=fail
+          grep -q "PASS strict seven-six" /tmp/layer.log || V=fail
           grep -q "REAL-ERRORS" /tmp/analyze_gate.log && V=fail
           grep -q "^FAIL" /tmp/analyze_gate.log && V=fail
           grep -q "Traceback" /tmp/analyze_gate.log && V=fail

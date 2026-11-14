@@ -43,7 +43,7 @@ import 'dart:typed_data';
 
 import '../../bridges/bridge_kernel.dart' show Log;
 
-const String _tag = 'surface.qr';
+const String _tag = 'core.qr';
 
 /// 编码结果：模块矩阵 + 深色判定函数。
 class QrMatrix {

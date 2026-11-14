@@ -1,4 +1,4 @@
-// 五桥 · bridge_logic：L5 logic 暴露给 L6 surface 的能力门面（export 通道）。
+// 六桥 · bridge_logic：L5 logic 暴露给上层的能力门面（export 通道）。
 // 铁律：本文件只 export（外加类型标记 LogicFacade），不写业务逻辑。
 // 本桥本身不承担日志职责：它以 export 为唯一通道，跨层调用的
 // try/catch + Log 留痕由调用方（surface 层）负责。
@@ -77,7 +77,7 @@ export '../logic/lyrics/lyrics_logic.dart' show LyricsLogic;
 export '../logic/lyrics/lyrics_parser.dart'
     show LyricParseResult, LrcLine, KrcWord, parseLyrics, applyOffset, findLineIndex;
 
-// ── kernel 门面（L6 surface 需要统一 Log；registry.dart 已依赖此导出） ──
+// ── kernel 门面（上层统一 Log；session 已依赖此导出） ──
 export '../kernel/kernel.dart' show Log;
 // ── 功能对齐批2 收尾：多账号 / 翻译显示门面 ──
 export '../logic/auth/account_logic.dart' show AccountLogic;

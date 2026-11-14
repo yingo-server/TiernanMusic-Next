@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """layer_audit.py — 76 原则强约束审计（strict seven-six）。
 
-层序 L1 init / L2 bootloader / L3 kernel / L4 core / L5 logic / L6 surface。
+层序 L1 init / L2 bootloader / L3 kernel / L4 core / L5 logic / L6 session / L7 surface。
 五桥唯一存在于 lib/bridges/：bridge_boot / bridge_kernel / bridge_core / bridge_logic / bridge_surface。
 
 允许：同层 import、SDK(dart:*)、五桥中相邻桥、L1 的装配桥(bridge_boot/bridge_surface)

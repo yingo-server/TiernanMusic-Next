@@ -1,6 +1,6 @@
 // api_matrix_probe.dart — 批01-C 契约矩阵骨架（纯 Dart，不 import flutter）。
 // 职责：定义三态枚举 / 探针行数据类 / CSV 写出器；main() 只打印用法与端点清单加载入口。
-// ⚠️ 不发真实请求 —— 网络层实现留给主会话填充（六五规则：网络属 L4 core 域）。
+// ⚠️ 不发真实请求 —— 网络层实现留给主会话填充（76 原则：网络属 L4 core 域）。
 // 凭据来源（不得进仓库、日志脱敏）：.test_creds/cj_vip.txt / cj_nonvip.txt / 匿名。
 // 用法：dart run tool/api_matrix_probe.dart [--out <csv-path>]
 
