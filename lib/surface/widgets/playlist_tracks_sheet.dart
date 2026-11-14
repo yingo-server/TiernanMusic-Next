@@ -5,9 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart' show SongBrief, PlaylistBrief;
 import '../../bridges/bridge_logic.dart' show Log;
-import '../theme/tn_theme.dart' show TnDims;
-import 'm3/m3_skeleton.dart' show M3ListSkeleton;
-import 'm3/m3_state_views.dart' show M3EmptyState, M3ErrorRetry;
+import '../ui/spotify_ui.dart' as sp;
 
 const String _tag = 'surface.playlistSheet';
 
@@ -40,7 +38,7 @@ Future<void> showPlaylistTracksSheet(
             children: <Widget>[
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    TnDims.padL, 0, TnDims.padL, TnDims.padM),
+                    sp.Sp.pagePad, 0, sp.Sp.pagePad, sp.Sp.gapM),
                 child: Row(
                   children: <Widget>[
                     ClipRRect(
@@ -88,18 +86,20 @@ Future<void> showPlaylistTracksSheet(
                   future: future,
                   builder: (ctx3, snap) {
                     if (snap.connectionState != ConnectionState.done) {
-                      return const M3ListSkeleton(rows: 6);
+                      return const sp.SpListSkeleton(rows: 6);
                     }
                     if (snap.hasError) {
-                      return M3ErrorRetry(
+                      return sp.SpStateView(
+                        icon: Icons.error_outline,
                         title: '歌单加载失败',
-                        detail: '${snap.error}',
-                        onRetry: () => Navigator.of(ctx3).pop(),
+                        subtitle: '${snap.error}',
+                        actionLabel: '重试',
+                        onAction: () => Navigator.of(ctx3).pop(),
                       );
                     }
                     final songs = snap.data ?? const <SongBrief>[];
                     if (songs.isEmpty) {
-                      return M3EmptyState(
+                      return sp.SpStateView(
                         icon: Icons.queue_music,
                         title: emptyHint,
                         subtitle: '该歌单没有可播放的歌曲',

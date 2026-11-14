@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart' show SongBrief;
 import '../../bridges/bridge_logic.dart' show Log;
-import '../theme/tn_theme.dart' show TnDims;
+import '../ui/spotify_ui.dart' show Sp;
 
 const String _tag = 'surface.songActions';
 
@@ -35,7 +35,7 @@ Future<void> showSongActionsSheet(
             children: <Widget>[
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    TnDims.padL, 0, TnDims.padL, TnDims.padS),
+                    Sp.pagePad, 0, Sp.pagePad, Sp.gapS),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[

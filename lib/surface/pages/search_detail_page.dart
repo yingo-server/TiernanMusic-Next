@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../bridges/bridge_logic.dart' show SearchTypedLogic, Log;
 import '../../bridges/bridge_core.dart' show SongBrief, SearchType;
 import '../player_controller.dart' show PlayerController;
-import '../theme/tn_theme.dart' show tnPadL;
+import '../ui/spotify_ui.dart' show Sp;
 import '../widgets/common_widgets.dart' show SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 
@@ -70,7 +70,7 @@ class _SearchDetailPageState extends State<SearchDetailPage> {
                     ? _msg(context, '暂无曲目')
                     : Column(children: <Widget>[
                         Padding(
-                          padding: const EdgeInsets.all(tnPadL),
+                          padding: const EdgeInsets.all(Sp.pagePad),
                           child: FilledButton.icon(
                             onPressed: () {
                               try {

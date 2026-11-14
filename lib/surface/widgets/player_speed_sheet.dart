@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bridges/bridge_logic.dart' show Log;
 import '../player_controller.dart' show playerProvider;
-import '../theme/tn_theme.dart' show tnPadL, tnPadS;
+import '../ui/spotify_ui.dart' show Sp;
 
 const String _tag = 'surface.player_speed_sheet';
 
@@ -18,9 +18,9 @@ Future<void> showPlayerSpeedSheet(BuildContext context) async {
       showDragHandle: true,
       builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(tnPadL),
+          padding: const EdgeInsets.all(Sp.pagePad),
           child: Consumer(builder: (ctx, r, _) => Wrap(
-            spacing: tnPadS,
+            spacing: Sp.gapS,
             children: <Widget>[
               for (final s in speeds)
                 ChoiceChip(

@@ -52,24 +52,32 @@ class RankLogic {
   }
 
   /// 榜单详情（data.songs[]/data.list[]）。缓存 path:/ocean/v6/rank/info。
-  Future<List<SongBrief>> rankInfo(int rankId) async {
+  /// 批3-F2：page/pageSize 透传 misc.rankInfo 并纳入缓存键（分页不串页）；
+  /// 旧调用方只传 rankId 时仍走 page=1/pageSize=30，surface 无需改动。
+  Future<List<SongBrief>> rankInfo(int rankId,
+      {int page = 1, int pageSize = 30}) async {
     try {
+      final p = page < 1 ? 1 : page;
+      final ps = pageSize < 1 ? 30 : pageSize;
       final key = buildKey(
         ns: _ns,
         userid: _client.session.userid,
         path: _rankInfoPath,
-        params: <String, Object?>{'rankid': rankId, 'rank_cid': 0},
+        params: <String, Object?>{
+          'rankid': rankId, 'rank_cid': 0, 'page': p, 'pagesize': ps,
+        },
         schemaVer: kRankCacheSchemaVer,
       );
       final hit = _cache.get(key);
       if (hit is List<SongBrief>) {
-        Log.d(_tag, 'rankInfo cache hit rankId=$rankId');
+        Log.d(_tag, 'rankInfo cache hit rankId=$rankId page=$p');
         return hit;
       }
-      final items = await misc.rankInfo(_client, rankId);
+      final items =
+          await misc.rankInfo(_client, rankId, page: p, pageSize: ps);
       // 审查修复：空结果不落缓存（失败不固化）。
       if (items.isNotEmpty) _cache.put(key, items);
-      Log.d(_tag, 'rankInfo rankId=$rankId got=${items.length}');
+      Log.d(_tag, 'rankInfo rankId=$rankId page=$p got=${items.length}');
       return items;
     } catch (e, st) {
       Log.e(_tag, 'rankInfo failed rankId=$rankId', e, st);

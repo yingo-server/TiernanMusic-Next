@@ -6,8 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bridges/bridge_logic.dart' show Log;
 import '../player_controller.dart' show playerProvider;
-import '../theme/tn_theme.dart' show TnDims;
-import 'm3/m3_state_views.dart' show M3EmptyState;
+import '../ui/spotify_ui.dart' as sp;
 
 const String _tag = 'surface.queueSheet';
 
@@ -46,7 +45,7 @@ class _QueueSheet extends ConsumerWidget {
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                  TnDims.padL, 0, TnDims.padL, TnDims.padM),
+                  sp.Sp.pagePad, 0, sp.Sp.pagePad, sp.Sp.gapM),
               child: Row(
                 children: <Widget>[
                   Text('播放队列',
@@ -62,7 +61,7 @@ class _QueueSheet extends ConsumerWidget {
             const Divider(height: 1),
             Expanded(
               child: items.isEmpty
-                  ? const M3EmptyState(
+                  ? const sp.SpStateView(
                       icon: Icons.queue_music,
                       title: '队列为空',
                       subtitle: '去首页或歌单添加歌曲',

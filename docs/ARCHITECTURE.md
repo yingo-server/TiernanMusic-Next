@@ -3,7 +3,7 @@
 ## 六层五桥
 
 ```
-L6 surface  交互/UI (miuix)          ⇅ bridge_surface.dart
+L6 surface  交互/UI (Flutter M3)    ⇅ bridge_surface.dart
 L5 logic    纯后端逻辑（无UI无IO直连）  ⇅ bridge_logic.dart
 L4 core     存储/数据库/内存/网络      ⇅ bridge_core.dart
 L3 kernel   生命周期/注册表/日志/校验   ⇅ bridge_kernel.dart
@@ -16,7 +16,7 @@ L1 init     main 入口/完整性校验触发
 | 桥文件 | 连接 | 职责 |
 |---|---|---|
 | `lib/bridges/bridge_boot.dart` | L1 ⇅ L2 | 装配入口 BootResult / run() 包装 / 完整性校验触发 |
-| `lib/bridges/bridge_kernel.dart` | L2 ⇅ L3 | Log / KernelContext / IntegrityVerifier / Sha512 / Ed25519Verifier |
+| `lib/bridges/bridge_kernel.dart` | L2 ⇅ L3 | Log / KernelContext / Sha512 摘要（运行期 IntegrityVerifier / Ed25519Verifier 已删除，防篡改由 CI 构建期 verification.json 承担） |
 | `lib/bridges/bridge_core.dart` | L3 ⇅ L4 | 四域门面（storage/database/memory/net）+ openDatabase 包装 |
 | `lib/bridges/bridge_logic.dart` | L4 ⇅ L5 | 各 Logic 门面 + createLogicSet / PlayerState 等 |
 | `lib/bridges/bridge_surface.dart` | L5 ⇅ L6 | bootstrapApp / installServices / AppRoot 装配 + LogicFacade 订阅 |
@@ -26,9 +26,9 @@ L1 init     main 入口/完整性校验触发
 铁律：
 1. 跨层只能经桥文件（lib/bridges/），tool/layer_audit.py CI 强制。
 2. 桥函数统一承担日志与异常捕获：每个公开函数 try/catch，失败必留痕（Log.e），不静默吞。
-3. 网络层 core/net/endpoints/ 每端点一 dart 模块 + EndpointRegistry 声明式配置，改 API 不动调用方。
+3. 网络层 core/net/endpoints/ 每端点一 dart 模块 + `core/net/endpoint_registry.dart` 的 `EndpointRegistry` 声明式配置（50 个端点常量，已从 `kugou_client.dart` 拆出以控制文件长度），改 API 不动调用方。
 4. 零源仓库代码复用。酷狗原生 API 知识仅来自 docs/KUGOU_API.md。
-5. 依赖纪律：SDK 可实现（≤500行）不引库；例外仅 miuix/riverpod/just_audio/audio_service/isar/path_provider/video_player（MV 内嵌播放壳）。
+5. 依赖纪律：SDK 可实现（≤500行）不引库；例外清单 `riverpod / just_audio / audio_service / isar / isar_flutter_libs / path_provider / video_player`。`video_player` 为 MV 内嵌播放壳所需，已加入 pubspec 且同时列入 `tool/layer_audit.py` / `tool/smoke_check.dart` 白名单；以 `pubspec.yaml` 为唯一依赖事实源。
 6. UI 层热插拔：L6 surface 按「模块注册表」组织——每个页面/组件模块实现 SurfaceModule 接口（id、路由、Widget builder、依赖的 logic 能力），由 SurfaceRegistry 在启动时装配。模块间零直接 import（只经桥与 riverpod provider 通信），增删/替换模块只改注册表一行，不破坏层审计。
 
 ## 严格收敛后 CI 强约束
@@ -36,16 +36,16 @@ L1 init     main 入口/完整性校验触发
 - 跨层 import 非桥文件 → VIOLATION（init→surface、core→kernel、logic→core、surface→kernel 等一切直连，白名单已全部删除）。
 - 桥文件唯一在 lib/bridges/（五桥固定名），影子 bridges/ 目录含 .dart → VIOLATION。
 - 桥公开函数缺 try/catch+Log 留痕 → VIOLATION（词法扫描）。
-- 第三方包仅 L6 允许（flutter*/miuix/riverpod/just_audio/audio_service/path_provider/video_player），其余层违规。
+- 第三方包仅 L6 允许（flutter*/riverpod/just_audio/audio_service/path_provider/video_player），其余层违规；唯一例外 `L4_EXTRA = ('package:isar/isar.dart',)`（`tool/layer_audit.py` / `tool/smoke_check.dart` 同口径），即 Isar 实体注解在 L4 core/database 合法。
 - 两门禁任一失败即 CI 失败；过渡口径注记已删除，本文档为唯一现行口径。
+- 本地 `tool/local_gate.sh` 为十道门禁（含 `smoke_check` 与 `analyze_gate`；旧「八道」口径废弃），CI `verdict` 逐项对齐。
 
 ## 完整性
-- 构建期 tool/gen_manifest.dart 对 lib/**/*.dart 算加盐 SHA-512（salt=NEXT_MANIFEST_SALT），
-  Ed25519 私钥（NEXT_MANIFEST_KEY）签清单。
+- 构建期 `tool/gen_verification.dart` 生成 `verification.json`：对 lib/**/*.dart 算加盐 SHA-512（salt=`NEXT_MANIFEST_SALT`）+ MD5 留样，RSA-4096 私钥（`RSA4096_PRIVATE_PEM`）签名；无法签名时 `signed:false` 降级不阻塞构建。旧的 `tool/gen_manifest.dart` + Ed25519（`NEXT_MANIFEST_KEY`）流程已失效，不再使用。
 - 运行期 L1 init 校验，失败拒绝启动；--bypass-integrity 或 NEXT_DEBUG_BYPASS 仅 debug 构建生效。
 
 ## CI
-- analyze/test/layer_audit 报错不妥协，一次跑完暴露全部错误，末尾 verdict 判定。
+- analyze/test/layer_audit 报错不妥协，一次跑完暴露全部错误，末尾 verdict 判定；verdict 与本地 `tool/local_gate.sh` 十道门禁逐项对齐（`layer_audit` / `syntax` / `smoke` / `analyze_gate` / `md5` / `field_truth` / `reachability` / `boot` / `play` / `resolve` / `download`），每道独立 `tee /tmp/*.log` + 正向 PASS / 反向 FAIL grep 判据。
 - build 矩阵 split-per-abi（arm64-v8a/armeabi-v7a/x86_64），极限包体。
 - workflow_dispatch 参数：release(bool)、debug(bool)。
 - 更新日志：release body 取 changed/<版本>.md，不存在则用最近 20 条 commit。

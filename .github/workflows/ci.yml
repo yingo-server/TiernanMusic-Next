@@ -54,6 +54,10 @@ jobs:
         if: always()
         run: dart run tool/smoke_check.dart 2>&1 | tee /tmp/smoke.log
         continue-on-error: true
+      - name: md5 smoke (four vectors, pure Dart)
+        if: always()
+        run: dart run tool/md5_smoke.dart 2>&1 | tee /tmp/md5.log
+        continue-on-error: true
       - name: feature reachability (pure Dart)
         if: always()
         run: dart run tool/feature_reachability_test.dart 2>&1 | tee /tmp/reach.log
@@ -113,7 +117,7 @@ jobs:
           V=ok
           # 语法闸：dart format 解析失败即语法错（不依赖 flutter SDK）
           test "${{ steps.syntax.outcome }}" = success || V=fail
-          grep -q "Could not format" /tmp/syntax.log && V=fail
+          grep -qi "Could not format" /tmp/syntax.log && V=fail
           # analyze 必须真的跑过（有汇总行）+ 无 error；warning/info 不参与门禁。
           # 不可用 steps.analyze.outcome：flutter analyze 只要有 warning 就 exit 1，
           # 与批05-A「warning 仅计数」决策冲突，会造成本轮这种假红。
@@ -125,14 +129,24 @@ jobs:
           echo "warnings=$W" >> $GITHUB_OUTPUT
           grep -qE "All tests (passed|passed!)|tests passed" /tmp/test.log || V=fail
           grep -q "VIOLATION" /tmp/layer.log && V=fail
+          grep -q "PASS strict six-five" /tmp/layer.log || V=fail
           grep -q "REAL-ERRORS" /tmp/analyze_gate.log && V=fail
+          grep -q "^FAIL" /tmp/analyze_gate.log && V=fail
           grep -q "Traceback" /tmp/analyze_gate.log && V=fail
           grep -q "analyze_gate ok" /tmp/analyze_gate.log || V=fail
           grep -q "^VIOLATION\|^FAIL" /tmp/smoke.log && V=fail
+          grep -q "PASS smoke_check" /tmp/smoke.log || V=fail
+          # md5 四向量：逐条正向 PASS（缺任一向量即 fail），FAIL 反向判据
+          grep -q "^PASS md5 empty:" /tmp/md5.log || V=fail
+          grep -q "^PASS md5 abc:" /tmp/md5.log || V=fail
+          grep -q "^PASS md5 fox:" /tmp/md5.log || V=fail
+          grep -q "^PASS md5 long:" /tmp/md5.log || V=fail
+          grep -q "^FAIL md5" /tmp/md5.log && V=fail
           grep -q "FIELD-TRUTH-OK" /tmp/field_truth.log || V=fail
           grep -q "FIELD-TRUTH-FAIL" /tmp/field_truth.log && V=fail
           grep -q "FEATURE-REACHABILITY-OK" /tmp/reach.log || V=fail
           grep -q "FEATURE-REACHABILITY-FAIL" /tmp/reach.log && V=fail
+          # 纯 Dart 契约自检：正向 self-check + 0 failed 两重判据（日志均已 tee）
           grep -q "boot contract self-check" /tmp/boot_contract.log || V=fail
           grep -q "0 failed" /tmp/boot_contract.log || V=fail
           grep -q "resolve contract self-check" /tmp/resolve_contract.log || V=fail

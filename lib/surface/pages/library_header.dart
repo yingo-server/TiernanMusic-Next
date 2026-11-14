@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart' show UserProfile;
 import '../../bridges/bridge_logic.dart' show Log;
-import '../theme/tn_theme.dart' show TnDims;
+import '../ui/spotify_ui.dart' show Sp;
 
 const String _tag = 'surface.libraryHeader';
 
@@ -29,16 +29,16 @@ class LibraryAccountCard extends StatelessWidget {
       final TextTheme t = Theme.of(context).textTheme;
       return Padding(
         padding: const EdgeInsets.fromLTRB(
-            TnDims.padL, TnDims.padL, TnDims.padL, TnDims.padS),
+            Sp.pagePad, Sp.pagePad, Sp.pagePad, Sp.gapS),
         child: Card(
           margin: EdgeInsets.zero,
           elevation: 0,
           color: cs.surfaceContainerHigh,
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(TnDims.rL)),
+              borderRadius: BorderRadius.circular(Sp.rCard)),
           clipBehavior: Clip.antiAlias,
           child: Padding(
-            padding: const EdgeInsets.all(TnDims.padM),
+            padding: const EdgeInsets.all(Sp.gapM),
             child: FutureBuilder<UserProfile>(
               future: profile,
               builder: (ctx, snap) {

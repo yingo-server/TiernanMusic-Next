@@ -13,6 +13,13 @@ import '../lib/core/net/endpoints/artist_endpoints.dart'
 import '../lib/core/net/endpoints/search_typed_endpoints.dart';
 import '../lib/core/net/endpoints/misc_endpoints.dart'
     show krcDecode, kKrcXorKey;
+// 批3-F2 新契约断言（纯 Dart，无 flutter）：CommentPage.blockedReason 与
+// 每日推荐显式分态；旧锚点一行不动。
+import '../lib/core/net/endpoints/comment_endpoints.dart'
+    show CommentPage, commentBlockedReason;
+import '../lib/core/net/endpoints/recommend_endpoints.dart'
+    show DailyRecommendState, DailyRecommendResult;
+import '../lib/core/net/kugou_client.dart' show KugouApiException;
 import '../lib/core/net/signing.dart' show KugouSign, Md5;
 
 /// 测试锚点用 MD5（复用 signing.dart 纯 Dart 实现，小写 hex）。
@@ -783,6 +790,45 @@ void main() {
   };
   eq('A3-1 35104 失败形态取 error_code',
       safeInt(play35104['errcode'] ?? play35104['error_code']), 35104);
+
+  // ══ 批3-F2 · 网络层诚实化新契约（旧锚点全部保留，仅追加）══
+  group('F2 network honesty contract');
+  const plainPage = CommentPage();
+  eq('F2 CommentPage 旧构造 blockedReason 默认 null',
+      plainPage.blockedReason, null);
+  eq('F2 CommentPage toMap 含 blockedReason 键',
+      plainPage.toMap().containsKey('blockedReason'), true);
+  final blocked = CommentPage(blockedReason: '接口返回非 JSON');
+  eq('F2 受限页 blockedReason 透传', blocked.blockedReason,
+      '接口返回非 JSON');
+  eq('F2 受限页 toMap 保留原因',
+      blocked.toMap()['blockedReason'], '接口返回非 JSON');
+  final waf = commentBlockedReason(
+      KugouApiException(-3, 'invalid json from commentMusic: Access Deny !!!'));
+  eq('F2 WAF 非 JSON(-3) 原因含「非 JSON」',
+      waf.contains('非 JSON'), true);
+  eq('F2 WAF 原因含「安全策略拦截」',
+      waf.contains('安全策略拦截'), true);
+  eq('F2 WAF 原因含原始 WAF 文案',
+      waf.contains('Access Deny !!!'), true);
+  eq('F2 其他异常原因不冒充 WAF',
+      commentBlockedReason(KugouApiException(403, 'http 403: blocked'))
+          .contains('接口响应异常'),
+      true);
+  final okState = DailyRecommendResult.ok(const <SongBrief>[]);
+  eq('F2 每日推荐空列表 → empty 态', okState.state,
+      DailyRecommendState.empty);
+  eq('F2 每日推荐 200103 → loginRequired 态',
+      DailyRecommendResult.loginRequired().state,
+      DailyRecommendState.loginRequired);
+  eq('F2 loginRequired 不可写缓存',
+      DailyRecommendResult.loginRequired().cacheable, false);
+  eq('F2 error 不可写缓存',
+      DailyRecommendResult.error().cacheable, false);
+  eq('F2 empty 可写缓存',
+      DailyRecommendResult.ok(const <SongBrief>[]).cacheable, true);
+  eq('F2 结果仍是 List<SongBrief>（home_page 零改动）',
+      okState is List<Object>, true);
 
   // ══ 批N3-B · A6 用户域歌单写锚点（原 main 收尾后独立函数）══
   n3b_playlist_write_truth();

@@ -1,6 +1,9 @@
 // L5 logic/catalog · 每日推荐门面（功能对齐批3-C · GAP #20，风格照 rank_logic.dart）
 // 消费已声明端点 EndpointRegistry.recommendSongs（/everyday_song_recommend）
 // 的封装 getDailyRecommend；缓存优先（ns:'recommend'，schemaVer 1，buildKey/prefixOf）。
+// 批3-F2：端点返回显式分态结果（ok / empty / loginRequired / error，结果对象
+// 同时实现 List<SongBrief>），本门面保持 Future<List<SongBrief>> 以兼容未改造的
+// home_page；loginRequired / error 一律不写缓存（失败不固化）。
 // 铁律：禁 surface/flutter、禁 IO 直连；每方法 try/catch + Log('logic.recommend')。
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' as ep show SongBrief, getDailyRecommend, kDailyRecommendPath;
@@ -25,8 +28,12 @@ class RecommendLogic {
   final KugouClient _client;
   final LruCache<String, dynamic> _cache;
 
-  /// 每日推荐分页（page 从 1 起）。缓存优先：命中直接返回 List<SongBrief>；
-  /// 未命中调端点封装后 put。空结果也落缓存（避免同页重复打网）。
+  /// 每日推荐分页（page 从 1 起）。缓存优先：命中直接返回列表；未命中调端点封装。
+  /// 批3-F2：端点结果自带 state（ok/empty/loginRequired/error），仅 ok / empty
+  /// 且非空落缓存；loginRequired / error 绝不写缓存——旧实现把失败固化，
+  /// 登录后仍恒命中空缓存。签名保留 Future<List<SongBrief>> 以兼容未改造的
+  /// home_page；实际返回 DailyRecommendResult（同时是 List<SongBrief>），
+  /// 后续 UI 可直接从结果取 .state 区分「需登录」与「暂无推荐」。
   Future<List<SongBrief>> daily(int page, {int pageSize = _defaultPageSize}) async {
     try {
       final p = page < 1 ? 1 : page;
@@ -43,12 +50,11 @@ class RecommendLogic {
         Log.d(_tag, 'daily cache hit page=$p');
         return hit;
       }
-      final items = await ep.getDailyRecommend(_client, page: p, pageSize: ps);
-      // 审查修复：空结果（200103 未登录/服务端错误/网络异常在端点层都归空）
-      // 不落缓存——旧实现把失败固化，登录后仍恒命中空缓存。对齐 fm_logic 语义。
-      if (items.isNotEmpty) _cache.put(key, items);
-      Log.d(_tag, 'daily page=$p got=${items.length}');
-      return items;
+      final res = await ep.getDailyRecommend(_client, page: p, pageSize: ps);
+      // 只缓存确实拿到（或确实为空）的列表；未登录/失败不固化，下次可重试。
+      if (res.cacheable && res.isNotEmpty) _cache.put(key, res.toList());
+      Log.d(_tag, 'daily page=$p state=${res.state.name} got=${res.length}');
+      return res;
     } catch (e, st) {
       Log.e(_tag, 'daily failed page=$page', e, st);
       return const <SongBrief>[];

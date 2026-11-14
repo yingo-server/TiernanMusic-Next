@@ -74,16 +74,21 @@ class CommentItem {
 }
 
 /// 评论分页：顶层 list / data.list[] 双容错 + 热词 chips。
+/// 批3-F2：blockedReason 非空表示「加载受限」（WAF `Access Deny !!!` 等非 JSON
+/// 响应被 KugouClient 归一为 KugouApiException(-3)），UI 据此显示受限提示，
+/// 不再把解析失败误报成「暂无评论」。可选命名参数，旧 const 构造零破坏。
 class CommentPage {
   const CommentPage({
     this.total = 0,
     this.items = const <CommentItem>[],
     this.hotWords = const <String>[],
+    this.blockedReason,
   });
 
   final int total; // count / total
   final List<CommentItem> items;
   final List<String> hotWords; // data.hot_words 之类提取，空=无
+  final String? blockedReason; // 非 null：加载受限原因（解析失败/WAF/异常）
 
   bool get hasMore {
     try {
@@ -96,6 +101,7 @@ class CommentPage {
 
   Map<String, Object?> toMap() => <String, Object?>{
         'total': total, 'hotWords': hotWords, 'hasMore': hasMore,
+        'blockedReason': blockedReason,
         'items': items.map((c) => c.toMap()).toList(growable: false),
       };
 }
@@ -139,14 +145,33 @@ List<String> _hotWordsOf(Map<String, dynamic> res) {
   }
 }
 
+/// 批3-F2：把受限原因归一化（端点 catch 与 tool/field_truth_test.dart 共用同一实现，
+/// 避免测试复制逻辑）；生产调用与断言都走此函数。
+/// 只保留可读短因，绝不把原始响应/凭据写进 UI 文案。
+String commentBlockedReason(Object e) {
+  try {
+    final msg = '$e'.trim();
+    if (e is KugouApiException && e.code == -3) {
+      // 实测：WAF 拦截返回非 JSON（Access Deny !!!），jsonDecode 失败归一为 -3。
+      return '接口返回非 JSON（可能被安全策略拦截，$msg）';
+    }
+    return '接口响应异常（$msg）';
+  } catch (_) {
+    return '接口响应异常';
+  }
+}
+
 /// 歌曲评论列表（commentMusic：GET，参数走 query；android 签名）。
+/// 批3-F2：catch 中把失败原因写入 CommentPage.blockedReason，端点层不静默吞，
+/// 调用方（logic → surface）据此区分「受限」与「真的没有评论」。
 Future<CommentPage> getMusicComments(
     KugouClient client, int mixSongId, int page,
     {int pageSize = 20}) async {
   try {
     if (mixSongId <= 0) {
       Log.w(_tag, 'getMusicComments invalid mixSongId=$mixSongId');
-      return const CommentPage();
+      return const CommentPage(
+          blockedReason: '歌曲标识无效，无法加载评论');
     }
     final res = await client.request(EndpointRegistry.commentMusic,
         <String, Object?>{
@@ -168,8 +193,11 @@ Future<CommentPage> getMusicComments(
         'total=$total hot=${page_.hotWords.length}');
     return page_;
   } catch (e, st) {
-    Log.e(_tag, 'getMusicComments failed mix=$mixSongId p=$page', e, st);
-    return const CommentPage();
+    final reason = commentBlockedReason(e);
+    Log.e(_tag, 'getMusicComments failed mix=$mixSongId p=$page '
+        'reason=$reason', e, st);
+    // 诚实化：受限不是「暂无评论」，把原因随空页透传给 UI，且不落缓存。
+    return CommentPage(blockedReason: reason);
   }
 }
 

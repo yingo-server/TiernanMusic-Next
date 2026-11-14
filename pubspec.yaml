@@ -1,5 +1,5 @@
 name: tiernan_music_next
-description: "TiernanMusic-Next: six-layer rewrite. Offline-first Kugou client on miuix."
+description: "TiernanMusic-Next: six-layer rewrite. Offline-first Kugou client on Flutter M3 + Riverpod."
 publish_to: "none"
 version: 26.11.10+1
 

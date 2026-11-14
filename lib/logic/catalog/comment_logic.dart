@@ -1,6 +1,8 @@
 // L5 logic/catalog · 评论域门面（GAP #14，风格照 search_logic.dart）
 // 注入 KugouClient + LruCache<String, CommentPage>(capacity 128)。
 // comments/floor 走缓存（ns:'comment'，schemaVer v1，buildKey/prefixOf）。
+// 批3-F2：CommentPage.blockedReason 随结果透传；受限页（非空）不写缓存，
+// 否则 WAF/解析失败被固化，重试也恒显示受限。每方法 try/catch + Log。
 // 铁律：禁 surface/flutter；每方法 try/catch + Log('logic.comment')。
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' show CommentItem, CommentPage, KugouClient, LruCache, buildKey, getCommentFloor, getMusicComments, prefixOf;
@@ -45,13 +47,18 @@ class CommentLogic {
       }
       final res = await getMusicComments(_client, mixSongId, page,
           pageSize: pageSize);
-      _cache.put(key, res);
+      // 批3-F2：blockedReason 如实透传；受限页不落缓存（可重试），
+      // 使 UI 能显示「评论加载受限」而非「暂无评论」。
+      if (res.blockedReason == null) _cache.put(key, res);
       Log.d(_tag, 'comments miss→network mix=$mixSongId p=$page '
-          'got=${res.items.length} cacheSize=${_cache.length}');
+          'got=${res.items.length} '
+          'blocked=${res.blockedReason != null} '
+          'cacheSize=${_cache.length}');
       return res;
     } catch (e, st) {
       Log.e(_tag, 'comments failed mix=$mixSongId page=$page', e, st);
-      return const CommentPage();
+      return const CommentPage(
+          blockedReason: '评论门面异常，请稍后重试');
     }
   }
 

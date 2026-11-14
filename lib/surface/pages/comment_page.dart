@@ -67,6 +67,7 @@ class _CommentListModel extends ChangeNotifier {
   int _page = 1;
   bool loading = false;
   String? error;
+  String? blockedReason; // 批3-F2：端点/门面受限原因（非空时优先展示受限提示）
 
   List<CommentItem> get items => List<CommentItem>.unmodifiable(_items);
   bool get hasMore => _items.length < _total || (_total <= 0 && _items.isNotEmpty);
@@ -76,6 +77,7 @@ class _CommentListModel extends ChangeNotifier {
       if (loading || _mixSongId <= 0) return;
       loading = true;
       error = null;
+      blockedReason = null;
       notifyListeners();
       if (refresh) {
         _page = 1;
@@ -85,6 +87,7 @@ class _CommentListModel extends ChangeNotifier {
       _items.addAll(page.items);
       if (page.hotWords.isNotEmpty) hotWords = page.hotWords;
       if (page.total > 0) _total = page.total;
+      blockedReason = page.blockedReason;
       _page += 1;
     } catch (e, st) {
       error = '$e';
@@ -179,6 +182,9 @@ class _CommentPageBodyState extends State<_CommentPageBody> {
                   TnPagePadding(child: _HotWordsChips(words: _model.hotWords)),
                 if (_model.error != null)
                   TnPagePadding(child: Text('加载失败：${_model.error}')),
+                if (_model.blockedReason != null)
+                  TnPagePadding(
+                      child: Text('评论加载受限：${_model.blockedReason}')),
                 ..._model.items.asMap().entries.map((e) => TnMotionStaggered(
                       // 评论流入场（R2-B 接线）：+2 错开热词区基准。
                       index: e.key + 2,
@@ -197,7 +203,9 @@ class _CommentPageBodyState extends State<_CommentPageBody> {
                     padding: EdgeInsets.all(tnPadL),
                     child: Center(child: Text('没有更多了')),
                   )
-                else if (_model.items.isEmpty && !_model.loading)
+                else if (_model.items.isEmpty &&
+                    !_model.loading &&
+                    _model.blockedReason == null)
                   const Padding(
                     padding: EdgeInsets.all(TnDims.padXL),
                     child: Center(child: Text('暂无评论')),

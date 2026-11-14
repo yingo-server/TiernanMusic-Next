@@ -268,7 +268,8 @@ TnAppBar「评论」
       └─ ⚠️ _CommentTile 回复项 onTapFloor: () {}（空回调）；⚠️ 无分页/刷新（_load 仅 initState 一次）
 ```
 
-> ⚠️ 评论页**只读浏览**：无发表评论 / 回复输入框。字段锚点见 `tool/field_truth_test.dart` N3-A 组（文档无评论域实测章节）。
+> ⚠️ 评论页**只读浏览**：无发表评论 / 回复输入框（这是 UI 未接线，与上游 WAF 无关）。字段锚点见 `tool/field_truth_test.dart` N3-A 组（文档无评论域实测章节）。
+> ⚠️ 上游 WAF 口径：评论**列表读取**接口返回 `Access Deny !!!`（非 JSON），已由 `KugouClient` 归一为 `KugouApiException` 解析错（见 `docs/API_TEST_REPORT.md` §四/§五）；当前代码按空列表兜底，UI 不应显示「暂无评论」，应显示受限提示。
 
 ### 9.3 MV 页（`mv_page.dart`）
 
@@ -277,7 +278,7 @@ TnAppBar「评论」
 | ✅ `BackButton` | `Navigator.maybePop()` | — |
 | ⚠️ `IconButton`「收藏 MV / 取消收藏」 | `_toggleFavorite()` → `onToggleFavorite?(hash)` | 回调未注入时点击无效果、状态不变 |
 | ✅ `RefreshIndicator` | `_load()` 重拉清晰度列表 | hash 为空时不包裹，显示「无 MV 提示」 |
-| ⚠️ `InkWell`（封面 64px 播放图标） | `_play()`：`logic.playUrl(h, requestedId)` → `onExternalPlay?(urls.first)`；不可播 → SnackBar「暂无可播放的清晰度」 | `_loading` 时 onTap=null；**外部播放器意图占位，无内嵌播放壳** |
+| ⚠️ `InkWell`（封面 64px 播放图标） | `_play()`：`logic.playUrl(h, requestedId)` → `onExternalPlay?(urls.first)`；不可播 → SnackBar「暂无可播放的清晰度」 | `_loading` 时 onTap=null；**部分接线**：`mv_page.dart` 已 import 并以 `_inlineUrl` 渲染 `MvPlayerShell`（内嵌 `video_player` 播放壳，见 §11.1），摘要 UI 仍占位 |
 | ✅ `ChoiceChip` ×N（清晰度 q.label/q.id） | `setState(_selectedQualityId = q.id)`（默认选第一个） | — |
 | ⚠️ `FilledButton.icon`「播放（外部播放器占位）」 | 同上 `_play()` | `_loading` 时 null |
 
@@ -348,37 +349,54 @@ TnAppBar「{歌手名}」
 
 ---
 
-## 11. 未接线 / 占位清单（R2 更新）
+## 11. 接线状态清单（批3-F3 按当前代码逐文件核对）
 
-### 11.1 已补齐（此前未接线 → 现已接通）
+> 逐项以文件存在 / import 与调用点为据；无法从当前代码确认的标「待核对」，不杜撰完成度。
+
+### 11.1 已补齐 / 部分接线（原 §11.2 误列为未接线者已回迁）
 
 | 项 | 现状 |
 |---|---|
-| MV 播放 | ✅ 内嵌 `MvPlayerShell`（video_player），清晰度 chips 切换真实 CDN 链路；外部播放器回调降级为可选 |
-| 动态主题 | ✅ `core/net/cover_color.dart` 取字节 → surface `dart:ui` 解码 → `extractDominant` → `dynamicThemeProvider` → `tnThemeWithPalette` |
-| 播放队列 | ✅ `queue_sheet.dart`（跳转/移除/当前曲高亮），入口：播放页 ⋮ 菜单 / 封面上滑 |
-| 歌曲操作 | ✅ `song_actions_sheet.dart`（下一首播放/收藏/下载/歌曲信息） |
-| 存储诊断 | ✅ `storage_diag_page.dart`（本地曲库/下载任务/我的歌单 + 歌单曲目） |
-| 我的歌单 | ✅ `PlaylistWriteLogic.myPlaylists()` → 音乐库横滑卡片区 |
-| 封面 | ✅ `SongBrief.cover` 字段 + MiniBar/播放页/歌单弹层真实渲染 |
+| 封面 `{size}` 归一化 | ✅ `core/net/endpoints/cover_url.dart` 的 `normalizeCoverUrl` 已接入模型层 `fromMap`（唯一收口点，UI 零处理）；`{size}` 原样透传导致全占位图的问题已消除 |
+| MV 内嵌播放壳 | ⚠️ **部分接线**：`pages/mv_player_shell.dart`（`video_player`）存在，`mv_page.dart` 以 `_inlineUrl` 真实渲染，清晰度 chips → CDN 链路已通；但 C1 报告指出 `_brief` 已删、`MvLogic` 无 brief 查询 API，摘要 UI（时长/歌手/封面）仍占位（`mv_page.dart` L101/L186 自认待接线），外部播放器回调降级为可选 |
+| 动态主题 | ✅ `app_root.dart` 消费 `dynamicThemeProvider`（`ref.watch` → `tnThemeWithPalette`），`theme/cover_palette.dart` 的 `applyCoverPalette` 已接 `updateFromImageBytes`；`core/net/cover_color.dart` 取字节 → surface `dart:ui` 解码 → 主色提取 |
+| 播放队列 sheet | ✅ `widgets/queue_sheet.dart`（`ctl.playAt(i)` / `removeFromQueue(i)` / 当前曲高亮）；入口：播放页 ⋮ 菜单 / 封面上滑 |
+| 歌曲操作 sheet | ✅ `widgets/song_actions_sheet.dart`（下一首播放/收藏/下载/歌曲信息）；入口见 §13.2（首页 ⋮ 待核对） |
+| 存储诊断页 | ✅ `pages/storage_diag_page.dart`（本地曲库/下载任务/我的歌单 + 歌单曲目弹层）；仍只读，见 §11.2 |
+| 我的歌单 | ✅ `PlaylistWriteLogic.myPlaylists()` → `assembly.dart` 注入 → `pages/library_my_playlists.dart` 横滑卡片区 |
+| 搜索历史 | ✅ `KeyValueSettings` 持久化（10 条，可单删/清空，`pages/search_home_view.dart`） |
+| 预读 | ✅ `PrefetchEngine`（`modules.dart` 构造）接 `PlayerController.playAll`；队列后续曲目预热播放源 |
+| 三级缓存 | ✅ L1 `LruCache` + L2 `ResourceCache`（磁盘）+ 单飞 `InFlight` 已由 `bootloader.dart` 注入 `KugouClient.request()`；播放地址类端点 `cacheable=false` |
+| 封面渲染 | ✅ `SongBrief.cover` 字段 + MiniBar/播放页/歌单弹层真实渲染 |
 | 首页卡片 | ✅ 榜单卡/歌单卡可点（真实曲目弹层） |
-| 搜索历史 | ✅ `KeyValueSettings` 持久化（10 条，可单删/清空） |
-| 预读 | ✅ `PrefetchEngine` 接入 `PlayerController.playAll`（队列后续曲目预热播放源） |
-| 三级缓存 | ✅ L1 `LruCache` + L2 `ResourceCache`（磁盘，200MB/7 天）+ 单飞 `InFlight`；客户端 `request()` 自动命中（播放地址类端点 `cacheable=false`） |
 
-### 11.2 仍未接线（如实标注）
+### 11.2 仍未接线（如实标注，含部分接线）
 
 | 项 | 现状 |
 |---|---|
-| 评论发表 / 回复输入 | ❌ 无输入入口（只读浏览）；且上游返回 `Access Deny`（WAF） |
+| 评论发表 / 回复输入 | ❌ 无输入入口（只读浏览）；与上游 WAF 无关，WAF 只影响**列表读取**（见 §9.2 注） |
 | 评论点赞 / 热词 | ❌ 纯展示，无点击事件 |
-| 每日推荐 | ❌ 上游返回 `error_code=200103`，端点未修正（UI 按空态显示） |
-| 高潮片段 / 云盘 / MV 明细 | ❌ 本次实测均为空，标注「待补测」 |
 | 歌词行点击 seek | ❌ 仅自动滚动 + 逐字着色 |
-| 音质当前档回显 | ⚠️ 播放页弹层仍硬编码 `q128`，未读真实偏好 |
-| 二维码会话热生效 | ⚠️ 提示「建议重启 App」 |
-| 通知栏系统事件 | ⚠️ seek/next/prev 未接队列控制；封面 artUrl 未接 |
-| 存储清理项 | ⚠️ 诊断页只读统计，尚无「一键清缓存/清下载」 |
+| 音质当前档回显 | ⚠️ 播放页 `_showQualitySheet` 仍硬编码 `selected: q128`，未读真实偏好 |
+| 通知栏系统事件 | ⚠️ **部分接线**：`player_controller.dart` 已调 `updateMetadata`（title/artist/artUri）；`audio_service_bridge.dart` 的 `next` / `prev` / `seek` 队列控制未接 |
+| 存储一键清理 | ⚠️ `storage_diag_page.dart` 只读统计，尚无「一键清缓存/清下载」 |
+| 其它（高潮片段 / 云盘 / 二维码会话热生效 / 首页「每日推荐」行尾 ⋮ / 每日推荐 200103） | ⚠️ **待核对**：不列入「已补齐」，亦不断言已修；逐项以文件存在为准 |
+
+### 11.3 批1 / 批2 修复清单（简述，按当前代码留痕）
+
+| 修复项 | 留痕 / 现状 |
+|---|---|
+| DB await | `core/database/db.dart` `await Isar.open(...)`；打开失败显式留痕 |
+| settings 单实例 | `core/storage/settings_store.dart` `KeyValueSettings` 存在；单实例装配路径 **待核对** |
+| HTTP 超时 | `core/net/kugou_client.dart`：`connectionTimeout=10s` + 响应头/响应体两段 `15s`，超时归一 `KugouApiException(-2)` |
+| Future 风暴 ×8 | `pages/library_my_playlists.dart` 注释「Future 在 initState 一次生成」为已确认一例；其余 7 处 **待核对** |
+| 缓存失败不固化 | `kugou_client.dart` `putJson` 包 try/catch + `Log.e`，写缓存失败不抛、不固化成功态 |
+| tick / seek 风暴 | 节流 / 合并实现 **待核对** |
+| 账号切换持久化 | `logic/auth/account_logic.dart` `switchTo(accountId)` 写 `KugouSession` + cookieBlob 恢复，`AccountDao` 为事实源 |
+| specialid 链路 | `assembly.dart` / `playlist_page.dart` / `storage_diag_page.dart`：gc_id 先 `detail` 换数字 `specialId`，空则 `Log.w` + 空曲目，不回退 gc_id（否则 20010） |
+| favoriteListId | `collect_logic.dart` 经 `endpoints.collect.favoriteListId(client)` 取 listid 再拉曲目；「我喜欢」= listid 2 |
+| privKnown / 31833 | `endpoints/play_models.dart`：仅 `errcode==20028` 或 `status==2 && !privKnown && urls.isEmpty` 为验证态；**31833 是错盐签名失败负对照**，由上层映射 network |
+| 播放历史 / 通知栏元数据 | `user_endpoints.dart uploadPlayHistory` + `logic/player/history_recorder.dart`；`player_controller.dart` L395 `updateMetadata` 已接（next/prev 未接，见 §11.2） |
 
 ## 12. 核对方式（如何复现本功能树）
 
@@ -419,7 +437,7 @@ dart run tool/feature_reachability_test.dart   # FEATURE-REACHABILITY-OK
 | 「下载」 | `downloads.enqueue(song, quality)` |
 | 「歌曲信息」 | 展示 hash / mixsongid / album_audio_id / 时长 / bitrate |
 
-> 入口：首页「每日推荐」行尾 ⋮；歌单曲目弹层行尾 ⋮。
+> 入口：歌单曲目弹层行尾 ⋮（`playlist_tracks_sheet.dart` 真实调用）。⚠️ C3 复核：首页「每日推荐」行尾 ⋮ **实际未调用**（`home_page.dart` 该行仅 trailing `play_arrow` → `onPlay(items[i])`，无 `more_vert` / 无 `showSongActionsSheet` 引用），旧描述已删。
 
 ### 13.3 歌单曲目弹层（`widgets/playlist_tracks_sheet.dart`）
 通用实现，首页推荐歌单与音乐库「我的歌单」共用：封面 + 名称 + 曲目数 + 曲目列表（骨架屏 → 错误重试 → 空态三态），点击播放，行尾 ⋮ 打开歌曲操作弹层。

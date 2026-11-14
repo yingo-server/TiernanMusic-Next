@@ -6,9 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_logic.dart'
     show Log, PlaylistLogic, PlaylistBrief, RankLogic, RankBrief, SongBrief;
-import '../theme/tn_theme.dart' show TnDims;
-import '../widgets/m3/m3_skeleton.dart' show M3ListSkeleton;
-import '../widgets/m3/m3_state_views.dart' show M3EmptyState, M3ErrorRetry;
+import '../ui/spotify_ui.dart' as sp;
 import '../widgets/playlist_tracks_sheet.dart'
     as generic_sheet;
 
@@ -74,7 +72,7 @@ Future<void> showRankTracksSheet(
             children: <Widget>[
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    TnDims.padL, 0, TnDims.padL, TnDims.padM),
+                    sp.Sp.pagePad, 0, sp.Sp.pagePad, sp.Sp.gapM),
                 child: Row(
                   children: <Widget>[
                     Expanded(
@@ -102,18 +100,20 @@ Future<void> showRankTracksSheet(
                   future: future,
                   builder: (ctx3, snap) {
                     if (snap.connectionState != ConnectionState.done) {
-                      return const M3ListSkeleton(rows: 6);
+                      return const sp.SpListSkeleton(rows: 6);
                     }
                     if (snap.hasError) {
-                      return M3ErrorRetry(
+                      return sp.SpStateView(
+                        icon: Icons.error_outline,
                         title: '榜单加载失败',
-                        detail: '${snap.error}',
-                        onRetry: () => Navigator.of(ctx3).pop(),
+                        subtitle: '${snap.error}',
+                        actionLabel: '重试',
+                        onAction: () => Navigator.of(ctx3).pop(),
                       );
                     }
                     final songs = snap.data ?? const <SongBrief>[];
                     if (songs.isEmpty) {
-                      return const M3EmptyState(
+                      return const sp.SpStateView(
                         icon: Icons.leaderboard_outlined,
                         title: '榜单为空',
                         subtitle: '该榜单暂无可播放曲目',
