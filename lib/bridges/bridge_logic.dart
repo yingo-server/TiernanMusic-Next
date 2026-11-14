@@ -62,7 +62,6 @@ export '../logic/auth/auth_logic.dart'
         AuthLogic,
         QrLoginStatus,
         QrLoginState,
-        RefreshResult,
         kSettingToken,
         kSettingUserid,
         kSettingMid,

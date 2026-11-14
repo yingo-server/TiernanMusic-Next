@@ -14,13 +14,12 @@
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart'
-    show MvBrief, MvQuality, MvPlayResult;
+    show MvQuality, MvPlayResult;
 import '../../bridges/bridge_logic.dart'
     show MvLogic, Log, LogicFacade;
 import '../registry.dart';
 import 'mv_player_shell.dart' show MvPlayerShell;
 import '../widgets/tn_app_bar.dart' show TnAppBar, TnPagePadding;
-import '../widgets/common_widgets.dart' show CoverImage;
 
 const String _tag = 'surface.mv_page';
 
@@ -99,7 +98,7 @@ class _MvPageBody extends StatefulWidget {
 
 class _MvPageBodyState extends State<_MvPageBody> {
   String? _hash;
-  MvBrief? _brief;
+  // MV 摘要待 logic 接线（MvLogic 暂无 brief 查询 API，_brief 已移除）。
   List<MvQuality> _qualities = const <MvQuality>[];
   String? _selectedQualityId;
   MvPlayResult? _playResult;
@@ -150,7 +149,7 @@ class _MvPageBodyState extends State<_MvPageBody> {
       setState(() => _loading = true);
       final r = await widget.logic.playUrl(h,
           requestedId: _selectedQualityId,
-          title: _brief?.name ?? '');
+          title: '');
       if (!mounted) return;
       setState(() {
         _playResult = r;
@@ -184,15 +183,7 @@ class _MvPageBodyState extends State<_MvPageBody> {
     }
   }
 
-  String _fmtDuration(int ms) {
-    try {
-      final s = (ms / 1000).floor();
-      return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
-    } catch (e, st) {
-      Log.e(_tag, '_fmtDuration failed', e, st);
-      return '0:00';
-    }
-  }
+  // MV 摘要待 logic 接线：时长/歌手/封面展示需 MvBrief（MvLogic 暂无查询 API）。
 
   @override
   Widget build(BuildContext context) {
@@ -228,7 +219,12 @@ class _MvPageBodyState extends State<_MvPageBody> {
                         aspectRatio: 16 / 9,
                         child: Stack(children: <Widget>[
                           Positioned.fill(
-                            child: CoverImage(url: _brief?.coverUrl),
+                            child: SizedBox.expand(
+                              child: ColoredBox(
+                                color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                                child: const Icon(Icons.movie_outlined, size: 64),
+                              ),
+                            ),
                           ),
                           Positioned.fill(
                             // M3 语义例外：InkWell 水波纹需 Material 透明承载层（非取色语义），保留裸值。
@@ -255,17 +251,6 @@ class _MvPageBodyState extends State<_MvPageBody> {
                       if (_inlineUrl != null && _inlineUrl!.isNotEmpty) ...<Widget>[
                         MvPlayerShell(url: _inlineUrl!),
                         const SizedBox(height: 12),
-                      ],
-                      if (_brief != null) ...<Widget>[
-                        Text(_brief!.name,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium),
-                        const SizedBox(height: 4),
-                        Text(
-                            '${_brief!.singer}  ·  '
-                            '${_fmtDuration(_brief!.durationMs)}',
-                            style: Theme.of(context).textTheme.bodySmall),
                       ],
                       const SizedBox(height: 16),
                       // 清晰度 chips。

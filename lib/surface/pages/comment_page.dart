@@ -12,7 +12,7 @@ import '../../bridges/bridge_logic.dart'
 import '../registry.dart';
 import '../widgets/tn_app_bar.dart' show TnAppBar, TnPagePadding;
 import '../theme/tn_motion.dart' show TnPageRoute, TnMotionStaggered;
-import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadM, tnPadL, tnRadiusM;
+import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadL;
 
 const String _tag = 'surface.comment_page';
 

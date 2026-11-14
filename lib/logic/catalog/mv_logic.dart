@@ -1,9 +1,9 @@
 // L5 logic/catalog · MV 域门面（批1-B · GAP_ANALYSIS #16）
-// mvDetail/videoDetail/videoUrl 端点 + LruCache(ns:'mv')。schemaVer v1（顶部常量）。
+// videoDetail/videoUrl 端点 + LruCache(ns:'mv')。schemaVer v1（顶部常量）。
 // 风格照 rank_logic.dart：缓存优先、每方法 try/catch + Log('logic.mv')。
 // 清晰度降级策略见 playUrl 文档注释。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' as mv show MvBrief, MvPlayResult, MvQuality, getMvBySong, getVideoQualities, getVideoUrl;
+import '../../bridges/bridge_core.dart' as mv show MvPlayResult, MvQuality, getVideoQualities, getVideoUrl;
 import '../../bridges/bridge_core.dart' show KugouClient, LruCache, buildKey, prefixOf;
 
 /// MV 域缓存 schema 版本。
@@ -11,9 +11,7 @@ const int kMvCacheSchemaVer = 1;
 
 const String _tag = 'logic.mv';
 const String _ns = 'mv';
-const String _pMvDetail = '/kmr/audio/mv';
 const String _pVideoDetail = '/v1/video/detail';
-const String _pVideoUrl = '/v2/interface/index';
 
 class MvLogic {
   MvLogic({
@@ -26,32 +24,6 @@ class MvLogic {
 
   final KugouClient _client;
   final LruCache<String, dynamic> _cache;
-
-  /// 按歌查 MV（kmr/audio/mv data.list[0]）。缓存优先（ns:'mv'）。
-  /// 查不到返回 null（无 MV 与失败共用，调用方不区分）。
-  Future<mv.MvBrief?> resolveBySong(int albumAudioId) async {
-    try {
-      final key = buildKey(
-        ns: _ns,
-        userid: _client.session.userid,
-        path: _pMvDetail,
-        params: <String, Object?>{'album_audio_id': albumAudioId},
-        schemaVer: kMvCacheSchemaVer,
-      );
-      final hit = _cache.get(key);
-      if (hit is mv.MvBrief?) {
-        Log.d(_tag, 'resolveBySong cache hit aid=$albumAudioId');
-        return hit;
-      }
-      final brief = await mv.getMvBySong(_client, albumAudioId);
-      _cache.put(key, brief);
-      Log.d(_tag, 'resolveBySong aid=$albumAudioId got=${brief != null}');
-      return brief;
-    } catch (e, st) {
-      Log.e(_tag, 'resolveBySong failed aid=$albumAudioId', e, st);
-      return null;
-    }
-  }
 
   /// MV 清晰度档位（video/detail）。缓存优先。
   Future<List<mv.MvQuality>> qualities(String mvHash) async {

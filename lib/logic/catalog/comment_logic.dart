@@ -1,10 +1,9 @@
 // L5 logic/catalog · 评论域门面（GAP #14，风格照 search_logic.dart）
 // 注入 KugouClient + LruCache<String, CommentPage>(capacity 128)。
-// comments/floor 走缓存（ns:'comment'，schemaVer v1，buildKey/prefixOf）；
-// count 直通不缓存（轻量、需实时）。热词由 CommentPage.hotWords 携带。
+// comments/floor 走缓存（ns:'comment'，schemaVer v1，buildKey/prefixOf）。
 // 铁律：禁 surface/flutter；每方法 try/catch + Log('logic.comment')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show CommentItem, CommentPage, KugouClient, LruCache, buildKey, getCommentCount, getCommentFloor, getMusicComments, prefixOf;
+import '../../bridges/bridge_core.dart' show CommentItem, CommentPage, KugouClient, LruCache, buildKey, getCommentFloor, getMusicComments, prefixOf;
 
 /// 评论域缓存 schema 版本：模型变更升版自动失效老键。
 const int kCommentCacheSchemaVer = 1;
@@ -82,31 +81,6 @@ class CommentLogic {
     } catch (e, st) {
       Log.e(_tag, 'floor failed cid=$commentId page=$page', e, st);
       return const <CommentItem>[];
-    }
-  }
-
-  /// 评论总数：直通不缓存（轻量、需实时）。
-  /// 批N3-A 实测：端点必须传 FileHash，hash 由页面从当前 SongBrief 注入。
-  Future<int> count(int mixSongId, {String fileHash = ''}) async {
-    try {
-      final n = await getCommentCount(_client, mixSongId, fileHash: fileHash);
-      Log.d(_tag, 'count mix=$mixSongId got=$n');
-      return n;
-    } catch (e, st) {
-      Log.e(_tag, 'count failed mix=$mixSongId', e, st);
-      return 0;
-    }
-  }
-
-  /// 最近一次取到的热词 chips（由 comments 结果携带；无请求时返回空）。
-  Future<List<String>> hotWords(int mixSongId, int page) async {
-    try {
-      final p = await comments(mixSongId, page);
-      Log.d(_tag, 'hotWords mix=$mixSongId got=${p.hotWords.length}');
-      return p.hotWords;
-    } catch (e, st) {
-      Log.e(_tag, 'hotWords failed mix=$mixSongId', e, st);
-      return const <String>[];
     }
   }
 

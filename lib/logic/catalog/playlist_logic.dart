@@ -159,18 +159,6 @@ Future<TrackPage> tracks(String playlistId, int page,
     }
   }
 
-  /// R3-C #3：外部读取某歌单当前 list_ver（无缓存返回 0）。
-  int listVerOf(String listid) {
-    try {
-      final v = _listVerCache[listid.trim()] ?? 0;
-      Log.d(_tag, 'listVerOf id=$listid ver=$v');
-      return v;
-    } catch (e, st) {
-      Log.e(_tag, 'listVerOf failed id=$listid', e, st);
-      return 0;
-    }
-  }
-
   // ── 本地歌单镜像（PlaylistDao） ──
 
   /// 保存本地镜像：PlaylistDetail + 其曲目 hash 有序列表 → PlaylistMeta。

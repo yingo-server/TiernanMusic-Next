@@ -1,6 +1,5 @@
-// L5 logic/auth · 账号登录域状态机（二维码登录 / 会话恢复 / 登出 / token 续期）
-// 知识来源：docs/KUGOU_API.md §3.8（login_qr_key / login_qr_check / login_token）
-//   + §2.1（AES 固定 key/iv）+ §2.2（RSA 包 AES key）。
+// L5 logic/auth · 账号登录域状态机（二维码登录 / 会话恢复 / 登出）
+// 知识来源：docs/KUGOU_API.md §3.8（login_qr_key / login_qr_check）。
 // 注入：KugouClient（session 落点）+ KeyValueSettings（持久化）。
 // 登录状态机（login_qr_check status 语义）：
 //   0 expired（二维码过期，需重新 createQrLogin）
@@ -10,10 +9,8 @@
 //   （status 3 及其他未知值归为 waitScan 继续轮询，容错）
 // 铁律：禁 surface/flutter；每方法 try/catch + Log('logic.auth')；
 //   token 等敏感值不进日志（只打存在性与长度）。
-import 'dart:convert';
-
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show AesCbc, EndpointRegistry, KeyValueSettings, KugouApiException, KugouClient, KugouSession, KugouSign, Md5, RsaRaw;
+import '../../bridges/bridge_core.dart' show EndpointRegistry, KeyValueSettings, KugouApiException, KugouClient, KugouSession, KugouSign, Md5;
 const String _tag = 'logic.auth';
 
 /// 二维码轮询状态语义枚举（docs/KUGOU_API.md §3.8）。
@@ -37,13 +34,6 @@ class QrLoginState {
   /// 实测 2026-11-13：/v2/qrcode 返回 data.qrcode_img（PNG base64，已含 key），
   /// UI 优先直接显示该官方图，避免自编码 QR 内容错误导致扫码失败。
   final String qrImageB64;
-}
-
-/// login_token 续期结果：token 是否有效更新。
-class RefreshResult {
-  const RefreshResult({required this.ok, this.error = ''});
-  final bool ok;
-  final String error;
 }
 
 /// 持久化键（settings.json）。
@@ -214,61 +204,6 @@ class AuthLogic {
     }
   }
 
-  // ── 3. token 续期（login_token，§3.8 login_token.js + §2.1/§2.2） ──
-
-  /// token 续期：p3 = AES固定key({clienttime, token})，
-  /// pk = RSA({clienttime_ms, key})（AES key 明文 JSON），
-  /// params = AES随机key({})（占位空体）。
-  /// AES 固定 key `90b8382a1bb4ccdcf063102053fd75b8` / iv `f063102053fd75b8`
-  /// （出处 docs/KUGOU_API.md §2.1 login_token.js）。
-  Future<RefreshResult> refreshToken() async {
-    const aesKey = '90b8382a1bb4ccdcf063102053fd75b8';
-    const aesIv = 'f063102053fd75b8';
-    try {
-      final token = session.token;
-      if (token.isEmpty) {
-        Log.w(_tag, 'refreshToken skipped: no session token');
-        return const RefreshResult(ok: false, error: 'no token');
-      }
-      final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
-      // 随机 16 位小写 key（§2.1：不传 key 时随机 tempKey → md5 前 32 hex，
-      // 此处按 login_token.js：params 用独立随机 key 加密空对象）。
-      final rndKey = _randomKey();
-      final paramsCipher =
-          AesCbc.encryptHex('{}', Md5.hex(rndKey).substring(0, 32),
-              Md5.hex(rndKey).substring(16, 32));
-      final p3 = AesCbc.encryptHex(
-          jsonEncode(<String, Object?>{'clienttime': nowSec, 'token': token}),
-          aesKey,
-          aesIv);
-      final pk = RsaRaw.encryptHex(
-          jsonEncode(<String, Object?>{'clienttime_ms': nowMs, 'key': aesKey}));
-      final res = await _client.request(
-        EndpointRegistry.loginToken,
-        <String, Object?>{'params': paramsCipher, 'pk': pk, 'p3': p3},
-        body: <String, Object?>{},
-      );
-      final status = '${res['status']}';
-      final data = res['data'];
-      final map = data is Map<String, dynamic> ? data : <String, dynamic>{};
-      final newToken = '${map['token'] ?? ''}';
-      final userid = '${map['userid'] ?? session.userid}';
-      final ok = (status == '1' || map.isNotEmpty) && newToken.isNotEmpty;
-      if (!ok) {
-        Log.w(_tag, 'refreshToken rejected status=$status');
-        return RefreshResult(ok: false, error: 'status=$status');
-      }
-      await _applyCredentials(newToken, userid, source: 'refresh');
-      Log.d(_tag,
-          'refreshToken ok uid=$userid newTokenLen=${newToken.length}');
-      return const RefreshResult(ok: true);
-    } catch (e, st) {
-      Log.e(_tag, 'refreshToken failed', e, st);
-      return RefreshResult(ok: false, error: '$e');
-    }
-  }
-
   // ── 内部：凭据落 session + 持久化 ──
 
   Future<void> _applyCredentials(String token, String userid,
@@ -303,17 +238,5 @@ class AuthLogic {
     final src =
         'tmn-${DateTime.now().microsecondsSinceEpoch}-${session.dfid}';
     return Md5.hex(src);
-  }
-
-  /// 随机 16 位小写串（§2.1 tempKey 语义，防随机性缺失场景）。
-  String _randomKey() {
-    final seed = DateTime.now().microsecondsSinceEpoch;
-    var s = '';
-    var v = seed;
-    while (s.length < 16) {
-      v = (v * 6364136223846793005 + 1442695040888963407) & 0x7fffffffffffffff;
-      s += (v % 26 + 97).toRadixString(36); // a-z
-    }
-    return s.substring(0, 16);
   }
 }

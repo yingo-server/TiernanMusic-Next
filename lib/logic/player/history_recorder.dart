@@ -18,7 +18,7 @@ class HistoryRecorder {
   final HistoryDao _history;
   final SongDao _songs;
 
-  /// 记录一次播放：
+  /// 记录一次播放（待 _startCurrent 后接线，否则播放历史不落库）：
   /// 1) SongRecord 不存在（在线曲未入库）→ 先 put 建档；
   /// 2) HistoryDao.record（同 hash 去重：刷新 playedAt 并累计 durationPlayedMs）；
   /// 3) SongDao.markPlayed（playCount+1、lastPlayedAt=now）。

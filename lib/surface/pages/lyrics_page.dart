@@ -8,10 +8,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../bridges/bridge_logic.dart' show LyricsLogic, parseLyrics, applyOffset, findLineIndex, LyricParseResult, LrcLine, KrcWord, Log, TranslationLogic, DisplayLine, LogicFacade;
+import '../../bridges/bridge_logic.dart' show LyricsLogic, findLineIndex, LyricParseResult, KrcWord, Log, TranslationLogic, DisplayLine, LogicFacade;
 import '../../bridges/bridge_core.dart' show SongBrief, LyricsDisplayMode;
 import '../registry.dart';
-import '../theme/tn_theme.dart' show TnDims, TnMotion, TnText;
+import '../theme/tn_theme.dart' show TnMotion, TnText;
 
 const String _tag = 'surface.lyrics';
 
@@ -258,7 +258,8 @@ class _LyricsPageState extends State<LyricsPage> {
         widget.deps.lyrics.lyricsFor(song).then((r) {
           if (!mounted) return;
           setState(() => _displayLines =
-              widget.deps.translation?.displayFor(r, m, songHash: hash) ??
+              widget.deps.translation
+                      ?.displayFor(r, m, songHash: _loadedHash) ??
                   const <DisplayLine>[]);
         }).catchError((Object e) {
           Log.w(_tag, 'displayFor failed: $e');

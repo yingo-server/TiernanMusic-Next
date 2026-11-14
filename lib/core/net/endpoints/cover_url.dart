@@ -10,10 +10,7 @@ import '../../../bridges/bridge_kernel.dart' show Log;
 const String _tag = 'net.cover';
 
 /// 预置尺寸档位（与酷狗 CDN 实测一致）。
-const int kCoverThumb = 90;
-const int kCoverSquare = 120;
 const int kCoverStandard = 240;
-const int kCoverHd = 400;
 
 /// 归一化封面 URL：替换 {size} 模板为具体像素档。
 /// - 空 / 非 http → 返回空串（UI 显示占位）

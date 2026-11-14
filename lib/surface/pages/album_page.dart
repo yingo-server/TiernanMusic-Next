@@ -10,7 +10,7 @@ import '../registry.dart';
 import '../widgets/common_widgets.dart' show SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 import '../theme/tn_motion.dart' show TnMotionStaggered;
-import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadM, tnPadL, tnRadiusM;
+import '../theme/tn_theme.dart' show tnPadS, tnPadL, tnRadiusM;
 
 const String _tag = 'surface.album_page';
 

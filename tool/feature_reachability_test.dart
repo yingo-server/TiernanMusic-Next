@@ -30,13 +30,9 @@ void main() {
       .allMatches(client)
       .map((m) => m.group(1)!)
       .toSet();
-  final allBlock = RegExp(r'static const _all = \[(.*?)\];', dotAll: true)
-      .firstMatch(client)!
-      .group(1)!;
-  final registered = RegExp(r'\b(\w+)\b')
-      .allMatches(allBlock.replaceAll(RegExp(r'//.*'), ''))
-      .map((m) => m.group(1)!)
-      .toSet();
+  // 端点注册表拆出后 `_all` 总表已被清理（批1-F3），声明集合本身就是
+  // 唯一真源；不再要求额外「注册列表」镜像，避免死代码复活。
+  final registered = endpoints;
 
   // ① 端点声明 = 注册
   check('endpoints declared == registered (${endpoints.length})',

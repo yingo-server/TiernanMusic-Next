@@ -119,40 +119,6 @@ class QueueState {
     }
   }
 
-  /// 跳到第 i 首；越界返回 null。
-  QueueState? jumpTo(int i) {
-    try {
-      if (i < 0 || i >= items.length) {
-        Log.w(_tag, 'jumpTo out of range i=$i len=${items.length}');
-        return null;
-      }
-      return _with(items, i);
-    } catch (e, st) {
-      Log.e(_tag, 'jumpTo failed', e, st);
-      return null;
-    }
-  }
-
-  /// 追加一首；原队列空则成为当前曲。
-  QueueState append(SongBrief song) {
-    try {
-      final list = List<SongBrief>.of(items)..add(song);
-      // index 越界（历史状态残留）时钳位：未播放过指向新追加项，越界指向尾部。
-      int ni;
-      if (index < 0) {
-        ni = list.length - 1;
-      } else if (index >= list.length) {
-        ni = list.length - 1;
-      } else {
-        ni = index;
-      }
-      return _with(list, ni);
-    } catch (e, st) {
-      Log.e(_tag, 'append failed', e, st);
-      return this;
-    }
-  }
-
   QueueState appendAll(List<SongBrief> songs) {
     try {
       final list = List<SongBrief>.of(items)..addAll(songs);
@@ -215,33 +181,6 @@ class QueueState {
       return _with(List<SongBrief>.of(list), si);
     } catch (e, st) {
       Log.e(_tag, 'replaceQueue failed', e, st);
-      return this;
-    }
-  }
-
-  /// shuffle 化重排：以 [seed]（缺省沿用/生成新值）确定性打乱 items，
-  /// 当前曲固定在首位，index 置 0；再次调用可还原顺序（mode 切回 sequence 时按 items 顺序播）。
-  QueueState shuffled({int? seed}) {
-    try {
-      final s = seed ?? (this.seed == 0 ? 20261110 : this.seed);
-      final cur = current;
-      final rest = <SongBrief>[];
-      for (var i = 0; i < items.length; i++) {
-        if (i != index) rest.add(items[i]);
-      }
-      // Fisher–Yates with LCG，确定性。
-      var state = s & 0x7FFFFFFF;
-      for (var i = rest.length - 1; i > 0; i--) {
-        state = (state * 1103515245 + 12345) & 0x7FFFFFFF;
-        final j = state % (i + 1);
-        final t = rest[i];
-        rest[i] = rest[j];
-        rest[j] = t;
-      }
-      final list = cur == null ? rest : <SongBrief>[cur, ...rest];
-      return _with(list, list.isEmpty ? -1 : 0, mode: PlayMode.shuffle, seed: s);
-    } catch (e, st) {
-      Log.e(_tag, 'shuffled failed', e, st);
       return this;
     }
   }

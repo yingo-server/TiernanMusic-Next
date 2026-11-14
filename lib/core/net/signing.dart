@@ -8,7 +8,6 @@ class KugouSign {
 
   // ── 盐常量（docs/KUGOU_API.md §1.1）──
   static const androidSalt = 'OIlwieks28dk2k092lksi2UIkp';
-  static const androidLiteSalt = 'LnT6xpN3khm36zse0QzvmgTZ3waWdRSA';
   static const webSalt = 'NVPh5oo715z5DIWAeQlhMDsWXXQV4hwt';
   static const registerSalt = '1014';
   static const signKeySalt = '57ae12eb6890223e355ccfcb74edf70d';
@@ -19,7 +18,6 @@ class KugouSign {
   static const appid = '1005';
   static const clientver = '20489';
   static const srcappid = '2919';
-  static const apiver = '20';
   static const defaultUa = 'Android15-1070-11083-46-0-DiscoveryDRADProtocol-wifi';
 
   /// Android 签名（§1.2）：参数名 ASCII 升序 k=v 无分隔拼接，

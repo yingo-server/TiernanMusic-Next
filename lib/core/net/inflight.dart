@@ -14,25 +14,11 @@ import 'dart:async';
 
 import '../../bridges/bridge_kernel.dart';
 
-/// 统计计数器
-class InFlightStats {
-  int started = 0; // 首次真正执行的任务数
-  int coalesced = 0; // 被合并的等待者数
-  int failed = 0; // 任务失败次数
-  int timedOut = 0; // 等待者超时次数
-
-  @override
-  String toString() =>
-      'InFlightStats(started=$started, coalesced=$coalesced, '
-      'failed=$failed, timedOut=$timedOut)';
-}
-
 /// 单飞合并器：同一 key 并发请求只执行一次。
 class InFlight<T> {
   final Map<String, Future<T>> _pending = {};
-  final InFlightStats _stats = InFlightStats();
-
-  InFlightStats get stats => _stats;
+  // 统计计数（日志用；私有字段保留，外部不可读）。
+  int _started = 0, _coalesced = 0, _failed = 0, _timedOut = 0;
 
   /// key 是否正在执行中
   bool has(String key) => _pending.containsKey(key);
@@ -55,17 +41,17 @@ class InFlight<T> {
       {Duration? timeout}) {
     final existing = _pending[key];
     if (existing != null) {
-      _stats.coalesced++;
+      _coalesced++;
       logD('InFlight',
-          'coalesced on key=$key (coalesced=${_stats.coalesced})');
+          'coalesced on key=$key (coalesced=${_coalesced})');
       return _awaitWithTimeout(key, existing, timeout);
     }
 
-    _stats.started++;
+    _started++;
     final future = _execute(key, task);
     // 立即登记：_execute 同步段内已注册失败钩子前，防止并发窗口二次创建。
     _pending[key] = future;
-    logD('InFlight', 'started key=$key (started=${_stats.started})');
+    logD('InFlight', 'started key=$key (started=${_started})');
     return _awaitWithTimeout(key, future, timeout);
   }
 
@@ -74,8 +60,8 @@ class InFlight<T> {
       try {
         return await task();
       } catch (e, st) {
-        _stats.failed++;
-        logE('InFlight', 'task failed key=$key (failed=${_stats.failed})',
+        _failed++;
+        logE('InFlight', 'task failed key=$key (failed=${_failed})',
             e, st);
         rethrow;
       } finally {
@@ -89,9 +75,9 @@ class InFlight<T> {
     if (timeout == null) return f;
     return f.timeout(timeout).catchError((Object e) {
       if (e is TimeoutException) {
-        _stats.timedOut++;
+        _timedOut++;
         logW('InFlight',
-            'waiter timeout key=$key (timedOut=${_stats.timedOut})');
+            'waiter timeout key=$key (timedOut=${_timedOut})');
       }
       throw e;
     });

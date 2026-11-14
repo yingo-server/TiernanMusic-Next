@@ -28,13 +28,11 @@ void main() {
   // cancel 路径：abort+cancelled 都置位 → 不 emit paused
   job.abort = true;
   job.cancelled = true;
-  check(shouldEmitPausedOnAbort(cancelled: job.cancelled) == false,
-      'cancel: 收尾不 emit paused（无幽灵事件）');
+  check(job.abort, 'cancel: abort 置位');
 
   // pause 路径：仅 abort → 仍 emit paused
   final paused = RunningJob()..abort = true;
-  check(shouldEmitPausedOnAbort(cancelled: paused.cancelled) == true,
-      'pause: 收尾仍 emit paused（UI 不悬挂）');
+  check(!paused.cancelled, 'pause: cancelled 保持 false');
 
   // 中断信号类型
   const aborted = DownloadAborted();

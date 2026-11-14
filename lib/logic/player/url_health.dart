@@ -59,8 +59,7 @@ class UrlHealthChecker {
     return c;
   }
 
-  /// 探测单个 URL 可达性。
-  Future<UrlProbeResult> probe(String url) async {
+  Future<UrlProbeResult> _probe(String url) async {
     final sw = Stopwatch()..start();
     try {
       final uri = Uri.parse(url);
@@ -199,7 +198,7 @@ class UrlHealthChecker {
       if (tried >= maxTries) break;
       tried++;
       try {
-        final r = await probe(url);
+        final r = await _probe(url);
         if (r.health == UrlHealth.healthy) return url;
       } catch (e, st) {
         logE('UrlHealth', 'firstHealthy item failed: $url', e, st);

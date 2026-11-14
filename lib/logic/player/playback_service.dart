@@ -1,15 +1,13 @@
 // L5 logic/player · 播放源编排器
-// 职责：本地优先解析播放源 → 否则在线取 URL；下载流落盘经 DownloadStore。
+// 职责：本地优先解析播放源 → 否则在线取 URL。
 // 三态原则（.test_creds/FINDINGS.md 实测）：
 //  - 匿名（未登录/缺 token）：play_url v5 一律 status=2 errcode=20028 → needsVerification。
 //  - VIP 曲目（tracker_through.musicpack_advance=1）非 VIP 账号：status=2 priv_status=0 → noPrivilege。
 //  - 其余失败（hash 无效、无返回 URL 等）→ notFound；传输层异常 → network。
 // 铁律：每方法 try/catch + Log('logic.playback')；可 import core/kernel；禁 import surface/flutter。
 
-import 'dart:io';
-
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show DownloadRecord, DownloadStore, KugouClient, PlayResult, SongBrief, SongDao, getPlayUrlV5;
+import '../../bridges/bridge_core.dart' show DownloadStore, KugouClient, PlayResult, SongBrief, SongDao, getPlayUrlV5;
 const String _tag = 'logic.playback';
 
 /// 播放失败语义枚举。
@@ -23,7 +21,7 @@ enum PlaybackError {
   /// 未找到：hash 无效 / 响应无 URL / status 非 1 且非上述两态。
   notFound,
 
-  /// 网络异常：传输层失败（HttpClient/解析/HTTP 非 200）。
+/// 网络异常：传输层失败（解析/HTTP 非 200）。
   network,
 }
 
@@ -82,19 +80,17 @@ class PlaySource {
   }
 }
 
-/// 播放服务编排器：resolvePlaySource / download。
-/// 构造注入 KugouClient + SongDao + DownloadStore。
+/// 播放服务编排器：resolvePlaySource。
+/// 构造注入 KugouClient + DownloadStore（SongDao 保留装配兼容）。
 class PlaybackService {
   PlaybackService({
     required KugouClient client,
     required SongDao songDao,
     required DownloadStore downloadStore,
   })  : _client = client,
-        _songDao = songDao,
         _store = downloadStore;
 
   final KugouClient _client;
-  final SongDao _songDao;
   final DownloadStore _store;
 
   /// 解析播放源：
@@ -163,106 +159,6 @@ class PlaybackService {
     } catch (e, st) {
       Log.e(_tag, '_mapError failed', e, st);
       return PlaybackError.notFound;
-    }
-  }
-
-  /// 下载：先 resolvePlaySource 拿在线 URL，再 HttpClient 字节流下载
-  /// （网络异常重试 1 次——幂等 GET），经 DownloadStore.commitDownload 落盘。
-  /// 失败抛 PlaybackException（带语义错误）。
-  Future<DownloadRecord> download(SongBrief song, String quality) async {
-    final hash = song.hash.trim().toLowerCase();
-    try {
-      final src = await resolvePlaySource(song, quality);
-      if (src.error != null || src.urls.isEmpty) {
-        throw PlaybackException(src.error ?? PlaybackError.notFound,
-            'no url for $hash');
-      }
-      final url = src.urls.first;
-      final data = await _fetchBytes(url);
-      final fileName = _buildFileName(song, src.extName);
-      final rec = _store.commitDownload(
-        hash: hash,
-        fileName: fileName,
-        data: data,
-        quality: src.quality.isEmpty ? quality : src.quality,
-      );
-      if (rec == null) {
-        throw PlaybackException(
-            PlaybackError.network, 'commitDownload failed $hash');
-      }
-      // 同步本地曲库：存在则补 localPath/quality，不存在建档。
-      try {
-        final existing = await _songDao.getByHash(hash);
-        if (existing != null) {
-          existing.localPath =
-              _store.absolutePathOf(rec) ?? existing.localPath;
-          existing.quality = rec.quality;
-          await _songDao.put(existing);
-        }
-      } catch (e, st) {
-        Log.e(_tag, 'download sync song db failed $hash', e, st);
-      }
-      Log.d(_tag, 'download done $hash -> ${rec.fileName} (${rec.bytes}B)');
-      return rec;
-    } on PlaybackException {
-      rethrow;
-    } catch (e, st) {
-      Log.e(_tag, 'download $hash q=$quality', e, st);
-      throw PlaybackException(PlaybackError.network, '$e');
-    }
-  }
-
-  /// 字节流下载，网络异常重试 1 次（幂等 GET）。
-  Future<List<int>> _fetchBytes(String url) async {
-    try {
-      return await _fetchOnce(url);
-    } catch (e, st) {
-      Log.w(_tag, 'fetch retry once $url ERR=$e');
-      try {
-        return await _fetchOnce(url);
-      } catch (e2, st2) {
-        Log.e(_tag, 'fetch failed after retry $url', e2, st2);
-        throw PlaybackException(PlaybackError.network, '$e2');
-      }
-    }
-  }
-
-  Future<List<int>> _fetchOnce(String url) async {
-    final http = HttpClient()
-      ..userAgent = 'TiernanMusicNext'
-      ..connectionTimeout = const Duration(seconds: 15);
-    try {
-      final req = await http.getUrl(Uri.parse(url));
-      req.headers.set('Range', 'bytes=0-'); // 完整拉取，段服务器友好
-      final res = await req.close();
-      if (res.statusCode != 200 && res.statusCode != 206) {
-        throw HttpException('http ${res.statusCode}');
-      }
-      final builder = BytesBuilder(copy: false);
-      await for (final chunk in res) {
-        builder.add(chunk);
-      }
-      return builder.takeBytes();
-    } finally {
-      http.close();
-    }
-  }
-
-  /// 落盘文件名："歌手 - 标题.ext"，净化非法字符。
-  String _buildFileName(SongBrief song, String ext) {
-    try {
-      final raw = song.singer.isEmpty
-          ? song.name
-          : '${song.singer} - ${song.name}';
-      final cleaned = raw
-          .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
-          .trim();
-      final name = cleaned.isEmpty ? song.hash : cleaned;
-      final e = ext.trim().isEmpty ? 'mp3' : ext.trim().toLowerCase();
-      return '$name.$e';
-    } catch (e, st) {
-      Log.e(_tag, '_buildFileName failed', e, st);
-      return '${song.hash}.mp3';
     }
   }
 }

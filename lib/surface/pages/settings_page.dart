@@ -6,7 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../bridges/bridge_logic.dart';
+import '../../bridges/bridge_logic.dart' show LogicFacade, Log;
 import '../l10n/l10n_helper.dart' show TnStrings;
 import '../registry.dart';
 import '../theme/theme_state.dart' show themeModeProvider;

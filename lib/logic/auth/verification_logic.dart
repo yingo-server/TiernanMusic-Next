@@ -1,4 +1,5 @@
 // L5 logic/auth · 20028 人机验证单一门面（功能对齐批5-A）
+// 验证链路未接线，待 play_url 20028 通知接入。
 // 收敛语义（docs/PARITY_NOTES.md §3、FEATURE_PARITY.md S-2）：
 //   旧项目 20028 存在三套平行实现（auth_repository / verification_service /
 //   captcha_types），语义不一致。本项目 **唯一可信验证入口是 VerificationLogic**：

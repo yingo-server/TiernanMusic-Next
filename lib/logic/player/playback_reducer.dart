@@ -55,7 +55,7 @@ class SeekTo extends PlaybackAction {
   final int positionMs;
 }
 
-/// 队列跳转：换当前曲并进入 loading。
+/// 队列跳转：换当前曲并进入 loading（保留，状态机完整性）。
 class QueueJump extends PlaybackAction {
   const QueueJump(this.song, {this.index = -1});
   final SongBrief song;
@@ -79,7 +79,7 @@ class Resume extends PlaybackAction {
   const Resume();
 }
 
-/// 停止回到 idle。
+/// 停止回到 idle（保留，状态机完整性）。
 class Stop extends PlaybackAction {
   const Stop();
 }

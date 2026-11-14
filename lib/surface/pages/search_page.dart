@@ -7,7 +7,6 @@ import '../../bridges/bridge_logic.dart' show SearchLogic, SearchSuggestItem, Se
 import '../../bridges/bridge_core.dart' show SongBrief, SearchType, KeyValueSettings;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
-import '../theme/tn_motion.dart' show TnMotionStaggered;
 import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadL;
 import '../widgets/common_widgets.dart' show SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;

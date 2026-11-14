@@ -6,7 +6,7 @@ export '../core/storage/paths.dart' show StoragePaths;
 
 // ── 网络层缓存/并发合并（批R2）：L2 磁盘缓存 + 单飞 ──
 export '../core/storage/resource_cache.dart' show ResourceCache;
-export '../core/net/inflight.dart' show InFlight, InFlightStats;
+export '../core/net/inflight.dart' show InFlight;
 export '../core/storage/download_store.dart' show DownloadRecord, DownloadStore;
 export '../core/database/dao.dart'
     show SongDao, PlaylistDao, HistoryDao, SortKey, SortOrder;
@@ -29,9 +29,7 @@ export '../core/storage/settings_store.dart' show KeyValueSettings;
 // ── 封面取色（动态主题）：只取字节，解码在 surface ──
 export '../core/net/cover_color.dart' show fetchCoverBytes;
 export '../core/net/database_opener.dart' show openDatabase; // DatabaseOpener（审计B F-08：原 database_bridge.dart，非五桥，去 bridge 命名）
-export '../core/net/endpoints/models.dart' show SearchResult, LyricResult; // 审计B F-03：此行与上方 models.dart 的 export 重复同一符号，为兼容既有 importer 保留；合并前先确认 22 importer 无独立依赖此行
-
-// ── 评论域端点模型（批1-A：logic/surface 经此引用 CommentItem/CommentPage） ──
+// R3-C #3：PlaylistDetail 已含实测字段 listVer（models.dart re-export 自
 export '../core/net/endpoints/comment_endpoints.dart'
     show CommentItem, CommentPage;
 // ── 多账号（批2-A）：AccountRecord 实体与 AccountDao 经 core 桥转出 ──

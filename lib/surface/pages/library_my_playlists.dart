@@ -1,5 +1,7 @@
 // L6 surface/pages · 音乐库「我的歌单」横向卡片区
 // 数据经 LibraryDeps.myPlaylists 注入（登录态才有）；点开显示曲目（通用弹层）。
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart' show PlaylistBrief;
@@ -11,17 +13,39 @@ import 'library_page.dart' show LibraryDeps;
 const String _tag = 'surface.library';
 
 /// 「我的歌单」横向卡片区（登录态才有数据；点开显示曲目）。
-class LibraryMyPlaylists extends StatelessWidget {
+/// 审查修复：Future 在 initState 一次生成（旧实现 build 内 deps.myPlaylists!()
+/// 每次 rebuild 重发接口，下载事件 setState 会放大成接口风暴）。
+class LibraryMyPlaylists extends StatefulWidget {
   const LibraryMyPlaylists({required this.deps});
 
   final LibraryDeps deps;
 
   @override
+  State<LibraryMyPlaylists> createState() => _LibraryMyPlaylistsState();
+}
+
+class _LibraryMyPlaylistsState extends State<LibraryMyPlaylists> {
+  Future<List<PlaylistBrief>>? _future;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      _future = widget.deps.myPlaylists?.call();
+    } catch (e, st) {
+      Log.e(_tag, 'myPlaylists call failed', e, st);
+      _future = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final f = _future;
+    if (f == null) return const SizedBox.shrink();
     try {
       final cs = Theme.of(context).colorScheme;
       return FutureBuilder<List<PlaylistBrief>>(
-        future: deps.myPlaylists!(),
+        future: f,
         builder: (ctx, snap) {
           final items = snap.data ?? const <PlaylistBrief>[];
           if (snap.connectionState != ConnectionState.done || items.isEmpty) {
@@ -40,14 +64,14 @@ class LibraryMyPlaylists extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   onTap: () {
                     try {
-                      final loader = deps.playlistTracks;
+                      final loader = widget.deps.playlistTracks;
                       if (loader == null) return;
                       showPlaylistTracksSheet(
                         ctx,
                         p,
                         load: () => loader(p.id),
-                        onPlay: deps.onPlay,
-                        onSongAction: deps.onSongAction,
+                        onPlay: widget.deps.onPlay,
+                        onSongAction: widget.deps.onSongAction,
                       );
                     } catch (e, st) {
                       Log.e(_tag, 'open my playlist failed', e, st);

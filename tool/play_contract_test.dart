@@ -1,5 +1,5 @@
 // tool/play_contract_test.dart · 播放链路契约自检（纯 Dart，无 flutter）
-// 目的：钉死 play_url 三态判定与音质降级语义，防止回归。
+// 目的：钉死 play_url 解析、降级链决策语义，防止回归。
 // 运行：dart run tool/play_contract_test.dart
 import '../lib/logic/player/play_source_parser.dart';
 import '../lib/logic/player/quality_policy.dart';
@@ -18,46 +18,6 @@ void eq(Object? a, Object? b, String name) {
 }
 
 void main() {
-  // ── 三态判定（字段锚点：API_FIELDS_TRUTH §A3-1）──
-  // 1) 匿名 + VIP 曲：status=2 + errcode=20028 → needVerify
-  eq(
-      verdictOf(<String, dynamic>{
-        'status': 2,
-        'errcode': 20028,
-        'error': '本次请求需要验证'
-      }),
-      PlayVerdict.needVerify,
-      '匿名VIP曲 → needVerify(20028)');
-
-  // 2) 非VIP + VIP 曲：status=2 + priv_status=0 → noPrivilege
-  eq(
-      verdictOf(<String, dynamic>{'status': 2, 'priv_status': 0}),
-      PlayVerdict.noPrivilege,
-      '非VIP对VIP曲 → noPrivilege');
-
-  // 3) VIP：status=1 + priv_status=1 + url → ok
-  eq(
-      verdictOf(<String, dynamic>{
-        'status': 1,
-        'priv_status': 1,
-        'url': <String>['http://a/1.mp3']
-      }),
-      PlayVerdict.ok,
-      'VIP → ok');
-
-  // 4) 匿名免费曲：status=1 + url，但**无 priv_status 键** → ok（不得误杀）
-  eq(
-      verdictOf(<String, dynamic>{
-        'status': 1,
-        'url': <String>['http://a/free.mp3']
-      }),
-      PlayVerdict.ok,
-      '匿名免费曲(无priv键) → ok');
-
-  // 5) 非 Map / 空 → malformed
-  eq(verdictOf(null), PlayVerdict.malformed, 'null → malformed');
-  eq(verdictOf(<String, dynamic>{}), PlayVerdict.malformed, '空Map → malformed');
-
   // ── 解析：顶层结构 + 兼容形态 ──
   final p = parse(<String, dynamic>{
     'status': 1,
@@ -91,10 +51,6 @@ void main() {
   // ── 音质降级 ──
   eq(downgradeChain('flac').join(','), 'flac,320,128', '降级链 flac→320→128');
   eq(downgradeChain('unknown').join(','), '320,128', '未知档位 → 安全链');
-  eq(nextQuality('flac', 0, 3), '320', 'flac 下一档 → 320');
-  eq(nextQuality('320', 0, 3), '128', '320 下一档 → 128');
-  eq(nextQuality('128', 0, 3), null, '链尾 → exhausted');
-  eq(nextQuality('flac', 3, 3), null, '超次数 → exhausted');
 
   // 决策：有 url 优先（匿名免费曲 priv 缺失）
   eq(

@@ -105,7 +105,6 @@ class _LibraryPageState extends State<LibraryPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs =
       TabController(length: 3, vsync: this);
-  StreamSubscription<DownloadEvent>? _dlSub;
   // 审查修复：账号/收藏 Future 在 initState 一次生成（旧实现 build 内
   // deps.profile?.call() 每次 rebuild 重发两接口；下载事件整页 setState
   // 会放大成接口风暴）。
@@ -136,7 +135,6 @@ class _LibraryPageState extends State<LibraryPage>
 
   @override
   void dispose() {
-    _dlSub?.cancel();
     _tabs.dispose();
     super.dispose();
   }

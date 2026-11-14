@@ -19,10 +19,6 @@ class Endpoint {
     // kmr 系端点需要 kg-tid 头（出处 PARITY_NOTES.md：kmr/audio/mv KG-TID:38、
     // kmr/v2/albums KG-TID:255——本端点注册表需支持透传）。
     this.tid,
-    // 批N3-B 实测：srcappid 入签 → cloudlist 系端点 20006。
-    // 批05 复测（2026-11-14）：搜索端点同样 20006；不带 srcappid 则 status=1。
-    // 故默认**不注入**，仅显式声明的端点开启。
-    this.omitSrcappid = false,
     this.includeSrcappid = false,
   });
   final String id;
@@ -37,10 +33,6 @@ class Endpoint {
   /// 是否允许进入 L2 磁盘缓存（短时效 URL 类端点须显式 false）。
   final bool cacheable;
   final String? tid;
-  /// 批N3-B 实测（2026-11-12）：srcappid 参与签名时 cloudlist 系端点
-  /// （add_list/delete_list/delete_songs/get_all_list）返回 error_code 20006。
-  /// 置 true 则默认参数不注入 srcappid。
-  final bool omitSrcappid;
 
   /// 是否显式注入 srcappid（默认 false：实测带它 20006）。
   final bool includeSrcappid;
@@ -71,11 +63,6 @@ class EndpointRegistry {
       id: 'play_url_v5', path: '/v5/url',
       router: 'trackercdn.kugou.com', encryptKey: true,
       cacheable: false); // 播放地址短时效，禁止缓存
-  static const playUrlV6 = Endpoint(
-      id: 'play_url_v6',
-      base: 'http://tracker.kugou.com',
-      path: '/v6/priv_url', method: 'POST',
-      cacheable: false); // 播放地址短时效，禁止缓存
   static const privilegeLite = Endpoint(
       id: 'privilege_lite', path: '/v2/get_res_privilege/lite', method: 'POST',
       router: 'media.store.kugou.com');
@@ -95,7 +82,7 @@ class EndpointRegistry {
   // 成功 data.info.listid（⚠️ 非 data.listid）。srcappid 不得参与签名。
   static const playlistCreate = Endpoint(
       id: 'playlist_create', path: '/cloudlist.service/v5/add_list',
-      method: 'POST', omitSrcappid: true);
+      method: 'POST');
   // 删歌单：POST /v2/delete_list + x-router cloudlist.service.kugou.com。
   // 批F1-B：加密契约据 KuGouMusicApi util/crypto.js + module/playlist_del.js
   // 实现于 crypto_rsa.dart / playlist_write_endpoints.deletePlaylist：
@@ -103,12 +90,12 @@ class EndpointRegistry {
   // {listid,total_ver,type:1}（待实测验证 20010 是否消除）。
   static const playlistDelete = Endpoint(
       id: 'playlist_delete', path: '/v2/delete_list', method: 'POST',
-      router: 'cloudlist.service.kugou.com', omitSrcappid: true);
+      router: 'cloudlist.service.kugou.com');
   // 歌单删歌：POST /v4/delete_songs + x-router cloudlist.service.kugou.com。
   // body data:[{fileid}]（fileid=audio_id/album_audio_id，非 hash）。
   static const playlistDelSongs = Endpoint(
       id: 'playlist_del_songs', path: '/v4/delete_songs', method: 'POST',
-      router: 'cloudlist.service.kugou.com', omitSrcappid: true);
+      router: 'cloudlist.service.kugou.com');
   // 歌单加歌（批N3-B 实测）：POST /cloudlist.service/v6/add_song（URL 前缀式）。
   // query last_time/last_area=gztx/userid/token；body data:[{number,name,hash
   // (小写),size,sort,timelen,bitrate,album_id,mixsongid}]。成功 data.info[]
@@ -117,8 +104,7 @@ class EndpointRegistry {
   // 真实可用 = /v6/add_song + x-router cloudlist.service（VIP 加/删往返 status=1）。
   static const playlistAddSongs = Endpoint(
       id: 'playlist_add_songs', path: '/v6/add_song',
-      method: 'POST', router: 'cloudlist.service.kugou.com',
-      omitSrcappid: true);
+      method: 'POST', router: 'cloudlist.service.kugou.com');
   // 走 gateway（无 x-router；pubsongs 子域直连 404，见可用性矩阵）。
   static const playlistTags = Endpoint(
       id: 'playlist_tags',
@@ -128,7 +114,7 @@ class EndpointRegistry {
   // ⚠️ 全部写端点路径/参数/响应形态均「待三态实测」，实测后只改本声明，不动 request。
   static const userPlaylists = Endpoint(
       id: 'user_playlists', path: '/v7/get_all_list', method: 'POST',
-      router: 'cloudlist.service.kugou.com', omitSrcappid: true);
+      router: 'cloudlist.service.kugou.com');
 
   // ── 排行榜 ──
   static const rankList = Endpoint(
@@ -333,33 +319,4 @@ class EndpointRegistry {
       base: 'https://listenservice.kugou.com',
       path: '/v2/get_list',
       method: 'POST'); // 需三态实测，未实测不猜参数
-
-  /// 按 id 查端点。
-  static Endpoint byId(String id) => _all.firstWhere((e) => e.id == id,
-      orElse: () => throw StateError('unknown endpoint: $id'));
-
-  static const _all = [
-    searchSong, searchComplex, searchSuggest, searchHot,
-    playUrlV5, playUrlV6, privilegeLite,
-    playlistRecommend, playlistDetail, playlistTracks, playlistAddSongs,
-    playlistCreate, playlistDelete, playlistDelSongs, playlistTags,
-    userPlaylists,
-    rankList, rankInfo, rankAudio, lyricSearch, lyricDownload,
-    artistList, artistDetail, artistAudios, artistAlbums, albumDetail,
-    albumSongs, playlistSimilar, recommendSongs, personalFm, fmSongs,
-    mvDetail, videoDetail, videoDetailKmrV2, videoUrl,
-    loginQrKey, loginQrCheck, loginToken,
-    // 认证域两声明（功能对齐批5-A · GAP #31）：短信登录 + 发送验证码（needs probe）。
-    smsLogin, sendSmsCode,
-    commentMusic, commentFloor, commentCount,
-    // 收藏域三声明（批2-C）：count / collect / cancel_collect。
-    favoriteCount, collectSong, cancelCollect,
-    // 用户域/上报五声明（批6-A）：全部 needs probe，未实测不发请求。
-    userDetail, playHistoryUpload, songClimax, userCloud, listenReport,
-  ];
 }
-
-/// 统一请求执行器：dart:io HttpClient + 签名注入 + 防爬头。
-/// 三态实测结论（.test_creds/FINDINGS.md）：
-/// - 参数全显式在场（多参不缺参），签名用原始类型（数字不带引号）
-/// - play_url：响应顶层即数据（url/status/priv_status），无 data 包层

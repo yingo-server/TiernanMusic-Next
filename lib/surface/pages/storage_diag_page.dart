@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart'
-    show SongDao, SongRecord, PlaylistBrief, SongBrief;
+    show SongDao, PlaylistBrief, SongBrief;
 import '../../bridges/bridge_logic.dart' show DownloadManager, Log;
 import '../theme/tn_theme.dart' show TnDims;
 import '../widgets/m3/m3_state_views.dart' show M3EmptyState, M3ErrorRetry;

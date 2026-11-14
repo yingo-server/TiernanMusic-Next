@@ -18,7 +18,7 @@ import '../registry.dart';
 import '../widgets/common_widgets.dart' show CoverImage, SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar, TnPagePadding;
 import '../theme/tn_motion.dart' show TnMotionStaggered;
-import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadM, tnPadL, tnRadiusM;
+import '../theme/tn_theme.dart' show tnPadM, tnPadL;
 
 const String _tag = 'surface.artist_page';
 const int _pageSize = 30;

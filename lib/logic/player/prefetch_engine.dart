@@ -66,7 +66,7 @@ class PrefetchEngine {
     }
   }
 
-  /// 启动预热：非阻塞，按 spacing 逐个消费；已入队/已请求的 hash 跳过。
+  /// 启动预热：预留启动预热入口，待接线；非阻塞，按 spacing 逐个消费；已入队/已请求的 hash 跳过。
   void enqueueHashes(
     Iterable<String> hashes, {
     Duration spacing = const Duration(milliseconds: 100),

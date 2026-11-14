@@ -6,7 +6,7 @@
 // - 写成功后失效本地镜像缓存（触发注入的 onChanged 回调）+ Log 留痕。
 // 每方法 try/catch + Log('logic.playlist.write')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show KugouClient, PlaylistBrief, PlaylistDao, createPlaylist, deletePlaylist, getPlaylistTags, getUserPlaylists, removeSongsFromPlaylist;
+import '../../bridges/bridge_core.dart' show KugouClient, PlaylistBrief, PlaylistDao, createPlaylist, deletePlaylist, getUserPlaylists, removeSongsFromPlaylist;
 
 const String _tag = 'logic.playlist.write';
 
@@ -131,32 +131,5 @@ class PlaylistWriteLogic {
     }
   }
 
-  /// 歌单分类 tags（读操作，无缓存失效）。
-  Future<List<String>> tags() async {
-    try {
-      final t = await getPlaylistTags(_client);
-      Log.d(_tag, 'tags got=${t.length}');
-      return t;
-    } catch (e, st) {
-      Log.e(_tag, 'tags failed', e, st);
-      return const <String>[];
-    }
-  }
-
-  /// 用户歌单列表（读操作，无缓存失效）。
-  Future<List<PlaylistBrief>> userPlaylists({int page = 1, int pageSize = 30}) async {
-    try {
-      if (_client.session.userid.isEmpty) {
-        Log.w(_tag, 'userPlaylists: not logged in');
-        return const <PlaylistBrief>[];
-      }
-      final list =
-          await getUserPlaylists(_client, page: page, pageSize: pageSize);
-      Log.d(_tag, 'userPlaylists page=$page got=${list.length}');
-      return list;
-    } catch (e, st) {
-      Log.e(_tag, 'userPlaylists failed page=$page', e, st);
-      return const <PlaylistBrief>[];
-    }
-  }
+  // create / removeSongs：歌单管理为路线图功能，待 UI 接线（勿删）。
 }

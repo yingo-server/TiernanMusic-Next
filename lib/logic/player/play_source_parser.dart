@@ -6,14 +6,10 @@
 // - flac 档实测 bitRate 恒 0（extName=flac），不可用 bitRate 判档。
 // - 三态矩阵：匿名→status=2+errcode=20028（需验证）；非 VIP 曲→status=2+priv_status=0；
 //   VIP→status=1+priv_status=1+url[]。
-// - 判定顺序（verdictOf）：malformed → needVerify(20028) → noPrivilege(priv=0)
-//   → ok(status=1 且 urls 非空) → notFound 兜底。
+// play_url v5 顶层结构的解析产物
 import '../../bridges/bridge_kernel.dart' show Log;
 
 const String _tag = 'logic.playParse';
-
-/// play_url 响应裁决。
-enum PlayVerdict { ok, noPrivilege, needVerify, notFound, malformed }
 
 /// play_url v5 顶层结构的解析产物（字段名即实测顶层键名的规范化映射）。
 class ParsedPlayUrl {
@@ -95,41 +91,6 @@ List<String> _safeUrlList(Object? v) {
   } catch (e, st) {
     Log.e(_tag, '_safeUrlList failed', e, st);
     return const <String>[];
-  }
-}
-
-/// 裁决 play_url 响应。
-/// 顺序（§A3-1 三态矩阵）：
-/// 1. 响应非 Map / 空 → malformed
-/// 2. status==2 且 error_code/errcode==20028 → needVerify（需验证，匿名态典型）
-/// 3. privStatus==0 → noPrivilege（非 VIP 试听受限）
-/// 4. status==1 且 urls 非空 → ok
-/// 5. 其余 → notFound
-PlayVerdict verdictOf(Object? res, {List<String>? urls}) {
-  try {
-    if (res is! Map || res.isEmpty) {
-      Log.w(_tag, 'verdictOf: empty/non-map response');
-      return PlayVerdict.malformed;
-    }
-    final status = _safeInt(res['status']);
-    final errcode = _safeInt(res['errcode'] ?? res['error_code']);
-    if (status == 2 && errcode == 20028) return PlayVerdict.needVerify;
-    // urls 未由调用方给出时，自行从响应顶层 url 提取（批02 复核：
-    // 否则调用方漏传就会把可播曲误判 notFound）。
-    final u = (urls != null && urls.isNotEmpty)
-        ? urls
-        : _safeUrlList(res['url']);
-    // 先判「已拿到 url 的成功」：匿名免费曲实测常**不返回 priv_status 键**，
-    // 若先按缺失=0 判 noPrivilege 会把可播曲误杀（批02 复核修正）。
-    if (status == 1 && u.isNotEmpty) return PlayVerdict.ok;
-    final hasPriv = res.containsKey('priv_status') && res['priv_status'] != null;
-    if (hasPriv && _safeInt(res['priv_status']) == 0) {
-      return PlayVerdict.noPrivilege;
-    }
-    return PlayVerdict.notFound;
-  } catch (e, st) {
-    Log.e(_tag, 'verdictOf failed', e, st);
-    return PlayVerdict.malformed;
   }
 }
 

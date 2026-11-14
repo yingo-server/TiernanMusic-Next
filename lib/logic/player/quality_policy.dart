@@ -138,37 +138,3 @@ PlayDecision decide(QualityAttempt a) {
     return PlayDecision.downgrade;
   }
 }
-
-/// 取降级链中的下一档位。
-/// [attemptIndex]：本次尝试序号（0 基）。[maxAttempts]：最大尝试次数。
-/// 越界（链尾）或超次数（attemptIndex+1 >= maxAttempts）返回 null → exhausted。
-String? nextQuality(String current, int attemptIndex, int maxAttempts) {
-  try {
-    if (maxAttempts <= 0) {
-      Log.d(kTag, 'nextQuality: exhausted(maxAttempts<=0)');
-      return null;
-    }
-    final int nextIdx = attemptIndex + 1;
-    if (nextIdx >= maxAttempts) {
-      Log.d(kTag, 'nextQuality: exhausted(nextIdx=$nextIdx max=$maxAttempts)');
-      return null;
-    }
-    final List<String> chain = downgradeChain(current);
-    // current 必须位于链内；不在则回退链首（安全档 320）。
-    final int pos = chain.indexOf(current.trim().toLowerCase());
-    if (pos < 0) {
-      Log.w(kTag, 'nextQuality: current=$current not in chain, fallback head');
-      return chain.first;
-    }
-    if (pos + 1 >= chain.length) {
-      Log.d(kTag, 'nextQuality: chain end, exhausted');
-      return null;
-    }
-    final String next = chain[pos + 1];
-    Log.d(kTag, 'nextQuality: $current -> $next');
-    return next;
-  } catch (e, st) {
-    logW(kTag, 'nextQuality failed err=$e st=$st');
-    return null;
-  }
-}

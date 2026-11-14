@@ -133,16 +133,6 @@ String namespacePrefixOf(String ns) {
   }
 }
 
-/// 按 schema 版本失效：需要扫描时配合 CacheKeyInfo.schemaVer 使用。
-String schemaSuffixOf(int schemaVer) {
-  try {
-    return ':v${schemaVer < 0 ? 0 : schemaVer}';
-  } catch (e, st) {
-    Log.e(_tag, 'schemaSuffixOf failed', e, st);
-    return ':v0';
-  }
-}
-
 /// 缓存键解析结果；容错解析失败时 valid=false，字段给默认值。
 class CacheKeyInfo {
   const CacheKeyInfo({
@@ -162,15 +152,6 @@ class CacheKeyInfo {
   final String path;
   final String query;
   final int schemaVer;
-
-  bool matchesPrefix(String prefix) {
-    try {
-      return raw.startsWith(prefix);
-    } catch (e, st) {
-      Log.e(_tag, 'matchesPrefix failed', e, st);
-      return false;
-    }
-  }
 
   Map<String, Object?> toMap() {
     try {
@@ -261,19 +242,5 @@ CacheKeyPair keyWithPrefix({
   } catch (e, st) {
     Log.e(_tag, 'keyWithPrefix failed', e, st);
     return CacheKeyPair(key: buildKey(), prefix: prefixOf('default'));
-  }
-}
-
-/// 批失效辅助：收集匹配任一前缀的键（调用方再喂给 LruCache.remove）。
-List<String> keysMatching(Iterable<String> keys, List<String> prefixes) {
-  try {
-    final safe = prefixes.where((p) => p.isNotEmpty).toList(growable: false);
-    if (safe.isEmpty) return <String>[];
-    return keys
-        .where((k) => safe.any((p) => k.startsWith(p)))
-        .toList(growable: false);
-  } catch (e, st) {
-    Log.e(_tag, 'keysMatching failed', e, st);
-    return <String>[];
   }
 }
