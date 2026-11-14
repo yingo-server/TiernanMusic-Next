@@ -1,5 +1,5 @@
-// L6 surface/pages · 评论页模块（GAP #14，批1-A）· Material Design 3
-// 已收敛到 TnDims / Theme.colorScheme 令牌：4dp 网格、圆角 12、M3 卡片/Chip/滚动物理。
+// L6 surface/pages · 评论页模块（GAP #14，批1-A）· Spotify 设计令牌
+// 已收敛到 sp.Sp 令牌：间距 / 圆角 / 字号 / 色彩统一走 ui/spotify_ui.dart。
 // 无 navEntry——从播放页/歌单页 Navigator.push 进入。
 // 装配说明：本模块不由 modules.dart/assembly.dart 默认装配，
 // 由装配处执行 SurfaceRegistry.install(buildCommentModule(logic:..., mixSongIdProvider:...))。
@@ -10,9 +10,9 @@ import 'package:flutter/material.dart';
 import '../../bridges/bridge_logic.dart'
     show CommentLogic, CommentItem, CommentPage, Log, LogicFacade;
 import '../registry.dart';
+import '../ui/spotify_ui.dart' as sp;
 import '../widgets/tn_app_bar.dart' show TnAppBar, TnPagePadding;
 import '../theme/tn_motion.dart' show TnPageRoute, TnMotionStaggered;
-import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadL;
 
 const String _tag = 'surface.comment_page';
 
@@ -176,7 +176,7 @@ class _CommentPageBodyState extends State<_CommentPageBody> {
             onRefresh: _model.refresh,
             child: ListView(
               controller: _scroll,
-              padding: const EdgeInsets.symmetric(vertical: tnPadS),
+              padding: const EdgeInsets.symmetric(vertical: sp.Sp.gapS),
               children: [
                 if (_model.hotWords.isNotEmpty)
                   TnPagePadding(child: _HotWordsChips(words: _model.hotWords)),
@@ -195,19 +195,19 @@ class _CommentPageBodyState extends State<_CommentPageBody> {
                     )),
                 if (_model.loading)
                   const Padding(
-                    padding: EdgeInsets.all(tnPadL),
+                    padding: EdgeInsets.all(sp.Sp.pagePad),
                     child: Center(child: CircularProgressIndicator()),
                   )
                 else if (!_model.hasMore && _model.items.isNotEmpty)
                   const Padding(
-                    padding: EdgeInsets.all(tnPadL),
+                    padding: EdgeInsets.all(sp.Sp.pagePad),
                     child: Center(child: Text('没有更多了')),
                   )
                 else if (_model.items.isEmpty &&
                     !_model.loading &&
                     _model.blockedReason == null)
                   const Padding(
-                    padding: EdgeInsets.all(TnDims.padXL),
+                    padding: EdgeInsets.all(sp.Sp.gapXL),
                     child: Center(child: Text('暂无评论')),
                   ),
               ],
@@ -265,6 +265,8 @@ class _CommentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     try {
       final hasFloor = item.floor > 0 && item.id.isNotEmpty;
+      const TextStyle aux =
+          TextStyle(color: sp.Sp.textSub, fontSize: sp.Sp.fSub);
       final child = Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -293,22 +295,20 @@ class _CommentTile extends StatelessWidget {
                 ]),
                 if (item.replyTo.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: TnDims.padXS),
-                    child: Text('回复 @${item.replyTo}',
-                        style: Theme.of(context).textTheme.bodySmall),
+                    padding: const EdgeInsets.only(top: sp.Sp.gapS / 2),
+                    child: Text('回复 @${item.replyTo}', style: aux),
                   ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: TnDims.padXS),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: sp.Sp.gapS / 2),
                   child: Text(item.content.isEmpty ? '（空内容）' : item.content),
                 ),
                 Row(children: [
                   if (hasFloor)
-                    Text('${item.floor}楼',
-                        style: Theme.of(context).textTheme.bodySmall),
+                    Text('${item.floor}楼', style: aux),
                   if (hasFloor && _timeText(item.timeMs).isNotEmpty)
                     const Text(' · '),
-                  Text(_timeText(item.timeMs),
-                      style: Theme.of(context).textTheme.bodySmall),
+                  Text(_timeText(item.timeMs), style: aux),
                 ]),
               ],
             ),
@@ -370,17 +370,17 @@ class _FloorPageState extends State<_FloorPage> {
           leading: BackButton(onPressed: () => Navigator.of(context).maybePop()),
         ),
         body: ListView(
-          padding: const EdgeInsets.symmetric(vertical: tnPadS),
+          padding: const EdgeInsets.symmetric(vertical: sp.Sp.gapS),
           children: [
             ..._items.map((c) => _CommentTile(item: c, onTapFloor: () {})),
             if (_loading)
               const Padding(
-                padding: EdgeInsets.all(tnPadL),
+                padding: EdgeInsets.all(sp.Sp.pagePad),
                 child: Center(child: CircularProgressIndicator()),
               ),
             if (_items.isEmpty && !_loading)
               const Padding(
-                padding: EdgeInsets.all(TnDims.padXL),
+                padding: EdgeInsets.all(sp.Sp.gapXL),
                 child: Center(child: Text('暂无回复')),
               ),
           ],

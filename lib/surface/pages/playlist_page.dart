@@ -8,10 +8,10 @@ import '../../bridges/bridge_logic.dart'
 import '../../bridges/bridge_core.dart' show SongBrief, PlaylistMeta;
 import '../player_controller.dart' show PlayerController;
 import '../registry.dart';
+import '../ui/spotify_ui.dart' as sp;
 import '../widgets/common_widgets.dart' show CoverImage, SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 import '../theme/tn_motion.dart' show TnMotionStaggered, TnPageRoute;
-import '../theme/tn_theme.dart' show tnPadS, tnPadL;
 
 const String _tag = 'surface.playlist';
 
@@ -174,7 +174,7 @@ class _PlaylistPageBodyState extends State<_PlaylistPageBody> {
       return RefreshIndicator(
         onRefresh: () => _loadRecommend(reset: true),
         child: GridView.builder(
-          padding: const EdgeInsets.all(tnPadS),
+          padding: const EdgeInsets.all(sp.Sp.gapS),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             childAspectRatio: 0.78,
@@ -208,12 +208,12 @@ class _PlaylistPageBodyState extends State<_PlaylistPageBody> {
                 Text(b.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13)),
+                    style: const TextStyle(fontSize: sp.Sp.fSub)),
                 Text('${b.trackCount}首 · ${b.playCount}次',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 11, color: Theme.of(ctx).hintColor)),
+                    style: const TextStyle(
+                        fontSize: sp.Sp.fTiny, color: sp.Sp.textSub)),
               ]),
             ));
           },
@@ -409,7 +409,7 @@ class _PlaylistTracksPageState extends State<_PlaylistTracksPage> {
           itemBuilder: (ctx, i) {
             if (i == _tracks.length) {
               return const Padding(
-                padding: EdgeInsets.all(tnPadL),
+                padding: EdgeInsets.all(sp.Sp.pagePad),
                 child: Center(child: CircularProgressIndicator()),
               );
             }

@@ -6,19 +6,9 @@ import 'pages/song_action_launcher.dart' show launchSongActions;
 import 'deps.dart' show SurfaceDeps;
 import 'registry.dart' show SurfaceRegistry;
 import '../bridges/bridge_core.dart'
-    show
-        KugouClient,
-        SongDao,
-        PlaylistDao,
-        HistoryDao,
-        DownloadStore,
-        KeyValueSettings,
-        LruCache,
-        SearchResult,
-        LyricResult,
-        CommentPage,
-        AccountDao,
-        toPref;
+    show KugouClient, SongDao, PlaylistDao, HistoryDao, DownloadStore,
+        KeyValueSettings, LruCache, SearchResult, LyricResult, CommentPage,
+        AccountDao, toPref, toPlayUrlQuality;
 import '../bridges/bridge_logic.dart'
     show
         Log,
@@ -198,7 +188,9 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
           onQualitySelected: (q) {
             try {
               deps.settings.setString('preferred_quality', toPref(q));
-              Log.d(_tag, 'quality pref saved=${toPref(q)}');
+              // 持久化串带 magic_ 前缀，播放档位必须是 toPlayUrlQuality 裸名。
+              controllerRef?.setQuality(toPlayUrlQuality(q));
+              Log.d(_tag, 'quality pref saved=${toPref(q)} play=${toPlayUrlQuality(q)}');
             } catch (e, st) {
               Log.e(_tag, 'save quality pref failed', e, st);
             }

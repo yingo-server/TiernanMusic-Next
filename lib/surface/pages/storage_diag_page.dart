@@ -6,9 +6,7 @@ import 'package:flutter/material.dart';
 import '../../bridges/bridge_core.dart'
     show SongDao, PlaylistBrief, PlaylistDetail, SongBrief;
 import '../../bridges/bridge_logic.dart' show DownloadManager, Log;
-import '../theme/tn_theme.dart' show TnDims;
-import '../widgets/m3/m3_state_views.dart' show M3EmptyState, M3ErrorRetry;
-import '../widgets/m3/m3_skeleton.dart' show M3ListSkeleton;
+import '../ui/spotify_ui.dart' as sp;
 import '../widgets/playlist_tracks_sheet.dart' show showPlaylistTracksSheet;
 
 const String _tag = 'surface.storageDiag';
@@ -85,17 +83,20 @@ class _StorageDiagPageState extends State<StorageDiagPage> {
   @override
   Widget build(BuildContext context) {
     try {
-      final cs = Theme.of(context).colorScheme;
-      final t = Theme.of(context).textTheme;
       return Scaffold(
         appBar: AppBar(title: const Text('存储诊断')),
         body: _error != null
-            ? M3ErrorRetry(
-                title: '诊断数据加载失败', detail: _error, onRetry: _load)
+            ? sp.SpStateView(
+                icon: Icons.error_outline,
+                title: '诊断数据加载失败',
+                subtitle: _error,
+                actionLabel: '重试',
+                onAction: _load,
+              )
             : _localCount < 0
-                ? const M3ListSkeleton(rows: 5)
+                ? const sp.SpListSkeleton(rows: 5)
                 : ListView(
-                    padding: const EdgeInsets.only(bottom: TnDims.padXL),
+                    padding: const EdgeInsets.only(bottom: sp.Sp.gapXL),
                     children: <Widget>[
                       _StatTile(
                         icon: Icons.library_music_outlined,
@@ -114,7 +115,7 @@ class _StorageDiagPageState extends State<StorageDiagPage> {
                       ),
                       const Divider(height: 1),
                       if (_playlists.isEmpty)
-                        const M3EmptyState(
+                        const sp.SpStateView(
                           icon: Icons.folder_off_outlined,
                           title: '暂无歌单',
                           subtitle: '登录后可在酷狗云端查看「我的歌单」',
@@ -123,22 +124,24 @@ class _StorageDiagPageState extends State<StorageDiagPage> {
                         for (final p in _playlists)
                           ListTile(
                             leading: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius:
+                                  BorderRadius.circular(sp.Sp.rCard),
                               child: SizedBox(
                                 width: 44,
                                 height: 44,
                                 child: p.cover.isEmpty
                                     ? ColoredBox(
-                                        color: cs.surfaceContainerHigh,
-                                        child: Icon(Icons.queue_music,
-                                            color: cs.onSurfaceVariant),
+                                        color: sp.Sp.cardHigh,
+                                        child: const Icon(Icons.queue_music,
+                                            color: sp.Sp.textSub),
                                       )
                                     : Image.network(p.cover,
                                         fit: BoxFit.cover,
                                         errorBuilder: (_, __, ___) => ColoredBox(
-                                              color: cs.surfaceContainerHigh,
-                                              child: Icon(Icons.queue_music,
-                                                  color: cs.onSurfaceVariant),
+                                              color: sp.Sp.cardHigh,
+                                              child: const Icon(
+                                                  Icons.queue_music,
+                                                  color: sp.Sp.textSub),
                                             )),
                               ),
                             ),
@@ -155,10 +158,10 @@ class _StorageDiagPageState extends State<StorageDiagPage> {
                             },
                           ),
                       Padding(
-                        padding: const EdgeInsets.all(TnDims.padL),
+                        padding: const EdgeInsets.all(sp.Sp.pagePad),
                         child: Text('提示：歌词缓存可在设置页「播放与存储」中清理。',
-                            style: t.bodySmall
-                                ?.copyWith(color: cs.onSurfaceVariant)),
+                            style: const TextStyle(
+                                color: sp.Sp.textSub, fontSize: sp.Sp.fSub)),
                       ),
                     ],
                   ),
@@ -209,12 +212,12 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     try {
-      final cs = Theme.of(context).colorScheme;
-      final t = Theme.of(context).textTheme;
       return ListTile(
-        leading: Icon(icon, color: cs.primary),
+        leading: Icon(icon, color: sp.Sp.green),
         title: Text(label),
-        trailing: Text(value, style: t.titleMedium?.copyWith(color: cs.primary)),
+        trailing: Text(value,
+            style: const TextStyle(
+                color: sp.Sp.green, fontSize: sp.Sp.fItem)),
       );
     } catch (e, st) {
       Log.e(_tag, 'stat tile failed', e, st);

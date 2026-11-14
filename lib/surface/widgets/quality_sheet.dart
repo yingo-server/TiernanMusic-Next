@@ -6,7 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart'
-    show AudioQuality, magicQualities, toPref, vipQualities;
+    show AudioQuality, fromPref, magicQualities, toPref, vipQualities;
 import '../../bridges/bridge_logic.dart' show Log;
 
 const String _tag = 'surface.quality';
@@ -43,11 +43,24 @@ class QualitySheet extends StatelessWidget {
   const QualitySheet({
     super.key,
     this.selected = AudioQuality.q128,
+    this.initialQuality,
     required this.onSelected,
   });
 
   final AudioQuality selected;
-  final void Function(AudioQuality quality) onSelected;
+  /// 真实偏好回显（toPref 串）：非空时经 fromPref 覆盖 selected；
+  /// 默认 null → 保持旧行为 q128。player_page 本批禁改，后续批次接入该参数。
+  final String? initialQuality;
+
+  AudioQuality _effectiveSelected() {
+    try {
+      final init = initialQuality;
+      return (init == null || init.trim().isEmpty) ? selected : fromPref(init);
+    } catch (e, st) {
+      Log.e(_tag, 'resolve initialQuality failed', e, st);
+      return selected;
+    }
+  }
 
   List<_QualityGroup> _groups() {
     try {
@@ -80,6 +93,7 @@ class QualitySheet extends StatelessWidget {
   Widget build(BuildContext context) {
     try {
       final groups = _groups();
+      final current = _effectiveSelected();
       return SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -101,7 +115,7 @@ class QualitySheet extends StatelessWidget {
               const Text('音质档位（15 档）',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
-              ...groups.map((g) => _group(context, g)),
+              ...groups.map((g) => _group(context, g, current)),
             ],
           ),
         ),
@@ -112,7 +126,7 @@ class QualitySheet extends StatelessWidget {
     }
   }
 
-  Widget _group(BuildContext context, _QualityGroup g) {
+  Widget _group(BuildContext context, _QualityGroup g, AudioQuality current) {
     try {
       return Padding(
         padding: const EdgeInsets.only(top: 16),
@@ -129,7 +143,7 @@ class QualitySheet extends StatelessWidget {
                 try {
                   return ChoiceChip(
                     label: Text('${_label(q)} · ${toPref(q)}'),
-                    selected: selected == q,
+                    selected: current == q,
                     onSelected: (_) => _pick(q),
                   );
                 } catch (e, st) {
@@ -152,6 +166,7 @@ class QualitySheet extends StatelessWidget {
 Future<AudioQuality?> showQualitySheet(
   BuildContext context, {
   required AudioQuality selected,
+  String? initialQuality,
 }) async {
   try {
     return await showModalBottomSheet<AudioQuality>(
@@ -159,6 +174,7 @@ Future<AudioQuality?> showQualitySheet(
       isScrollControlled: true,
       builder: (ctx) => QualitySheet(
         selected: selected,
+        initialQuality: initialQuality,
         onSelected: (q) => Navigator.of(ctx).pop(q),
       ),
     );

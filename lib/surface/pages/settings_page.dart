@@ -1,5 +1,5 @@
 // L6 surface/pages · 设置页模块（buildSettingsPageModule）
-// 由 modules.dart（批4-B）汇总注册：SurfaceRegistry.install(buildSettingsPageModule(...))。
+// 由 modules.dart（批4-B）汇总注册：SurfaceRegistry.install(buildSettingsPageModule(...)).
 // 登录区（二维码登录轮询）/ 主题切换（亮/暗/跟随系统，riverpod 状态由批4-B 提供）/ 缓存清理 / 关于。
 // 二维码登录对话框 + 多账号管理区已拆至 widgets/settings_qr_dialog.dart（批R1-B）。
 // 铁律：只 import flutter/miuix/riverpod/bridge_logic/bridge_core/本层；try/catch + Log('surface.settings')。
@@ -10,8 +10,7 @@ import '../../bridges/bridge_logic.dart' show LogicFacade, Log;
 import '../l10n/l10n_helper.dart' show TnStrings;
 import '../registry.dart';
 import '../theme/theme_state.dart' show themeModeProvider;
-import '../widgets/m3/m3_section_header.dart' show M3SectionHeader;
-import '../theme/tn_theme.dart';
+import '../ui/spotify_ui.dart' as sp;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 import '../widgets/settings_qr_dialog.dart'
     show QrLoginDialog, AccountSection;
@@ -26,7 +25,7 @@ const String _tag = 'surface.settings';
 const String kAppVersion = '26.11.10.1';
 
 /// 设置页模块：id='settings'，底部导航入口「设置」。
-class SettingsPageModule extends SurfaceModule {
+class SettingsPageModule implements SurfaceModule {
   SettingsPageModule({required this.deps});
 
   final SettingsDeps deps;
@@ -146,19 +145,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final t = TnText.of(context);
+    // 辅助文本样式：Spotify 次级文字令牌。
+    const TextStyle aux =
+        TextStyle(color: sp.Sp.textSub, fontSize: sp.Sp.fSub);
     return Scaffold(
       appBar: const TnAppBar(title: '设置'),
       body: ListView(
         children: [
-          const M3SectionHeader(
-            title: '账号',
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
-          ),
+          const sp.SpSectionHeader('账号'),
           ListTile(
             leading: Icon(_loggedIn ? Icons.account_circle : Icons.login),
             title: Text(_loggedIn ? '已登录：$_userid' : '未登录（酷狗账号）'),
-            subtitle: Text(_loggedIn ? '点击登出' : '扫码登录后可使用会员音质等功能', style: t.aux),
+            subtitle: Text(_loggedIn ? '点击登出' : '扫码登录后可使用会员音质等功能', style: aux),
             trailing: _loggedIn
                 ? TextButton(onPressed: _logout, child: const Text('登出'))
                 : TextButton(
@@ -175,13 +173,13 @@ class _SettingsPageState extends State<SettingsPage> {
               subtitle: Text(
                   '已收藏 ${widget.deps.collect!.count} 首 · '
                   '列表 ${widget.deps.collect!.listFavorites().length} 条',
-                  style: t.aux),
+                  style: aux),
             ),
           if (widget.deps.onStartFm != null)
             ListTile(
               leading: const Icon(Icons.radio),
               title: const Text('个人 FM'),
-              subtitle: Text('随机连续播放，喜欢/不喜欢随时调整', style: t.aux),
+              subtitle: Text('随机连续播放，喜欢/不喜欢随时调整', style: aux),
               onTap: () {
                 try {
                   widget.deps.onStartFm!();
@@ -194,13 +192,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ListTile(
               leading: const Icon(Icons.verified_user_outlined),
               title: const Text('验证状态'),
-              subtitle: Text(widget.deps.verificationState!(), style: t.aux),
+              subtitle: Text(widget.deps.verificationState!(), style: aux),
             ),
           const Divider(height: 1),
-          const M3SectionHeader(
-            title: '外观',
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
-          ),
+          const sp.SpSectionHeader('外观'),
           Consumer(builder: (context, ref, _) {
             final mode = ref.watch(themeModeProvider);
             return ListTile(
@@ -249,22 +244,16 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const Divider(height: 1),
           // ── 缓存 ──
-          const M3SectionHeader(
-            title: '播放与存储',
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
-          ),
+          const sp.SpSectionHeader('播放与存储'),
           ListTile(
             leading: const Icon(Icons.cleaning_services),
             title: const Text('清理歌词缓存'),
-            subtitle: Text('内存缓存 + 本地歌词文件', style: t.aux),
+            subtitle: Text('内存缓存 + 本地歌词文件', style: aux),
             onTap: _clearCache,
           ),
           const Divider(height: 1),
           // ── 关于 ──
-          const M3SectionHeader(
-            title: '关于',
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
-          ),
+          const sp.SpSectionHeader('关于'),
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('关于'),
@@ -274,13 +263,14 @@ class _SettingsPageState extends State<SettingsPage> {
           Builder(builder: (ctx) {
             final s = TnStrings.of(ctx);
             return Padding(
-              padding: const EdgeInsets.fromLTRB(tnPadL, 0, tnPadL, tnPadS),
+              padding: const EdgeInsets.fromLTRB(
+                  sp.Sp.pagePad, 0, sp.Sp.pagePad, sp.Sp.gapS),
               child: Text(
                 '多语言：${TnStrings.supportedCodes.length}/'
                 '${TnStrings.plannedCodes.length} 语可用'
                 '（${TnStrings.plannedCodes.length - TnStrings.supportedCodes.length}'
                 ' 语待人工翻译）',
-                style: t.aux,
+                style: aux,
               ),
             );
           }),

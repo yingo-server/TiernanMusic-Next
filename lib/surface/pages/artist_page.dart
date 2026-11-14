@@ -15,10 +15,10 @@ import '../../bridges/bridge_core.dart' show ArtistDetail, AlbumBrief;
 import '../../bridges/bridge_logic.dart'
     show ArtistLogic, SongBrief, Log, LogicFacade;
 import '../registry.dart';
+import '../ui/spotify_ui.dart' as sp;
 import '../widgets/common_widgets.dart' show CoverImage, SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar, TnPagePadding;
 import '../theme/tn_motion.dart' show TnMotionStaggered;
-import '../theme/tn_theme.dart' show tnPadM, tnPadL;
 
 const String _tag = 'surface.artist_page';
 const int _pageSize = 30;
@@ -208,7 +208,7 @@ class _ArtistPageBodyState extends State<_ArtistPageBody> {
       final name = _detail.name.isEmpty ? widget.artistId : _detail.name;
       return TnPagePadding(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: tnPadM),
+          padding: const EdgeInsets.symmetric(vertical: sp.Sp.gapM),
           child: Row(children: <Widget>[
             CoverImage(url: _detail.avatar, size: const Size(88, 88)),
             const SizedBox(width: 12),
@@ -217,11 +217,13 @@ class _ArtistPageBodyState extends State<_ArtistPageBody> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                 Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium),
+                    style: const TextStyle(
+                        color: sp.Sp.text, fontSize: sp.Sp.fPageTitle)),
                 const SizedBox(height: 6),
                 Text(_detail.intro.isEmpty ? '暂无简介' : _detail.intro,
                     maxLines: 3, overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall),
+                    style: const TextStyle(
+                        color: sp.Sp.textSub, fontSize: sp.Sp.fSub)),
               ]),
             ),
           ]),
@@ -248,7 +250,7 @@ class _ArtistPageBodyState extends State<_ArtistPageBody> {
               catch (e, st) { Log.e(_tag, 'song auto load failed', e, st); }
             });
             return const Padding(
-              padding: EdgeInsets.all(tnPadL),
+              padding: EdgeInsets.all(sp.Sp.pagePad),
               child: Center(child: CircularProgressIndicator()),
             );
           }
@@ -279,7 +281,7 @@ class _ArtistPageBodyState extends State<_ArtistPageBody> {
               catch (e, st) { Log.e(_tag, 'album auto load failed', e, st); }
             });
             return const Padding(
-              padding: EdgeInsets.all(tnPadL),
+              padding: EdgeInsets.all(sp.Sp.pagePad),
               child: Center(child: CircularProgressIndicator()),
             );
           }

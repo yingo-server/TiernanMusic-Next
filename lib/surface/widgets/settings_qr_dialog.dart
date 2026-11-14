@@ -10,12 +10,12 @@ import '../../bridges/bridge_core.dart' show AccountRecord;
 import '../../bridges/bridge_logic.dart';
 import '../l10n/l10n_helper.dart' show TnStrings;
 import '../pages/settings_deps.dart' show SettingsDeps;
-import '../theme/tn_theme.dart';
+import '../ui/spotify_ui.dart' as sp;
 import 'qr_view.dart';
 
 const String _tag = 'surface.settings';
 
-/// 二维码纯白底（M3 语义例外）：二维码扫码对比度要求纯白底，
+/// 二维码纯白底（Spotify 语义例外）：二维码扫码对比度要求纯白底，
 /// 不改 scheme.surface，显式常量并保留例外说明。
 const Color kQrBackgroundColor = Color(0xFFFFFFFF);
 
@@ -177,8 +177,8 @@ class _AccountSectionState extends State<AccountSection> {
       final rec = await widget.accounts.saveCurrent();
       await _load();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(rec == null ? '未登录，无法保存账号' : '已保存当前账号')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(rec == null ? '未登录，无法保存账号' : '已保存当前账号')));
       }
     } catch (e, st) {
       Log.e(_tag, 'account save failed', e, st);
@@ -191,7 +191,8 @@ class _AccountSectionState extends State<AccountSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(tnPadL, tnPadS, tnPadL, TnDims.padXS),
+          padding: const EdgeInsets.fromLTRB(
+              sp.Sp.pagePad, sp.Sp.gapS, sp.Sp.pagePad, sp.Sp.gapS / 2),
           child: Row(
             children: [
               const Text('账号管理',
@@ -199,7 +200,8 @@ class _AccountSectionState extends State<AccountSection> {
               const Spacer(),
               TextButton.icon(
                 onPressed: _save,
-                icon: const Icon(Icons.person_add_alt, size: TnDims.iconS),
+                // 图标尺寸无 Sp 令牌，沿用 18dp。
+                icon: const Icon(Icons.person_add_alt, size: 18),
                 label: const Text('保存当前'),
               ),
             ],
@@ -207,8 +209,10 @@ class _AccountSectionState extends State<AccountSection> {
         ),
         if (_items.isEmpty)
           const Padding(
-            padding: EdgeInsets.fromLTRB(tnPadL, TnDims.padXS, tnPadL, tnPadS),
-            child: Text('暂无账号档案', style: TextStyle(fontSize: 12)),
+            padding: EdgeInsets.fromLTRB(
+                sp.Sp.pagePad, sp.Sp.gapS / 2, sp.Sp.pagePad, sp.Sp.gapS),
+            child: Text('暂无账号档案',
+                style: TextStyle(fontSize: sp.Sp.fSub, color: sp.Sp.textSub)),
           )
         else
           for (final r in _items)

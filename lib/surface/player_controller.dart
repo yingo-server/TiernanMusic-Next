@@ -1,20 +1,18 @@
 // L6 surface · PlayerController（riverpod StateNotifier）
-// 持有 QueueState + PlayerState，对外提供播放控制方法。
-// 播放真正执行依赖注入的 resolver（PlaybackService.resolvePlaySource 门面签名）
-// + AudioEngine 抽象（批5 用 just_audio 实现；本批 NullAudioEngine 占位）。
+// 持有 QueueState + PlayerState，对外提供播放控制方法；playback 依赖注入的
+// resolver（PlaybackService.resolvePlaySource）与批5 just_audio 引擎抽象。
 // 铁律：每方法 try/catch + Log；本文件属 L6，只 import flutter/riverpod/桥。
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bridges/bridge_core.dart'
-    show SongBrief, KeyValueSettings, StoragePaths;
-import '../bridges/bridge_logic.dart' show Log, PrefetchEngine, HistoryRecorder;
+    show SongBrief, KeyValueSettings, StoragePaths, fromPref, toPlayUrlQuality;
 import '../bridges/bridge_logic.dart'
-    show PlaySource, QueueState, PlayerState, PlayerStatus, PlayMode,
-        PlaybackAction, StartLoad, Playing, Paused, Progress, Completed,
-        ErrorAction, SeekTo, QueueJump, SetVolume, Resume, Stop,
-        SetSpeed, playbackReducer;
+    show Log, PrefetchEngine, HistoryRecorder, PlaySource, QueueState,
+        PlayerState, PlayerStatus, PlayMode, PlaybackAction, StartLoad,
+        Playing, Paused, Progress, Completed, ErrorAction, SeekTo,
+        QueueJump, SetVolume, Resume, Stop, SetSpeed, playbackReducer;
 
 import 'audio/audio_engine.dart' show AudioEngine, NullAudioEngine;
 import 'audio/audio_service_bridge.dart' show MinimalAudioHandler;
@@ -24,9 +22,7 @@ export 'audio/audio_engine.dart' show AudioEngine, NullAudioEngine;
 const String _tag = 'surface.player';
 
 void _d(String msg) {
-  try {
-    Log.d(_tag, msg);
-  } catch (e, st) {
+  try { Log.d(_tag, msg); } catch (e, st) {
     // Log 自身失败：兜底 print（不可再调 Log，否则递归）。
     // ignore: avoid_print
     print('$_tag: $msg (log failed: $e)');
@@ -34,18 +30,15 @@ void _d(String msg) {
 }
 
 void _e(String msg, Object? err, StackTrace? st) {
-  try {
-    Log.e(_tag, msg, err, st);
-  } catch (e, st) {
+  try { Log.e(_tag, msg, err, st); } catch (e, st) {
     // Log 自身失败：兜底 print（不可再调 Log，否则递归）。
     // ignore: avoid_print
     print('$_tag: $msg ERR=$err ST=$st (log failed: $e)');
   }
 }
 
-/// 倍速偏好存储门面（经 bridge_core 暴露的 KeyValueSettings）。
-/// 注入优先；未注入时懒取 StoragePaths.I 单例（bootloader 已装配），
-/// 任何失败都 Log 留痕并返回 null（不静默吞、不阻断播放）。
+/// 倍速偏好门面（bridge_core 的 KeyValueSettings）：注入优先，
+/// 未注入时懒取 StoragePaths.I；失败 Log 留痕返回 null，不阻断播放。
 KeyValueSettings? _fallbackSettings;
 
 KeyValueSettings? _settingsOf(KeyValueSettings? injected) {
@@ -62,8 +55,8 @@ KeyValueSettings? _settingsOf(KeyValueSettings? injected) {
   }
 }
 
-/// 从 KeyValueSettings 恢复倍速（键 preferred_speed，失败留痕降级 1.0）。
-/// getDouble 兼容历史字符串值与数值，越界 clamp。
+/// 从 KeyValueSettings 恢复倍速（键 preferred_speed，失败降级 1.0）。
+/// getDouble 兼容历史字符串/数值，越界 clamp。
 double _readSpeed(KeyValueSettings? injected) {
   try {
     final v = _settingsOf(injected)?.getDouble('preferred_speed') ?? 1.0;
@@ -74,16 +67,21 @@ double _readSpeed(KeyValueSettings? injected) {
   }
 }
 
-// ── 播放引擎抽象（批5 用 just_audio 实现 JustAudioEngine） ──
+/// 偏好串 toPref（魔法档带 magic_ 前缀）→ 播放裸名：fromPref→toPlayUrlQuality；
+/// 兼容历史 getInt 数值；读不到/失败返回 fallback（构造参数 quality 兜底）。
+String _readPlayQuality(KeyValueSettings? injected, String fallback) {
+  try {
+    final s = _settingsOf(injected);
+    final v = s?.getString('preferred_quality') ?? s?.getInt('preferred_quality')?.toString();
+    return (v == null || v.trim().isEmpty) ? fallback : toPlayUrlQuality(fromPref(v));
+  } catch (e, st) { _e('read preferred_quality failed', e, st); return fallback; }
+}
 
 // ── 组合状态：队列 + 播放器 ──
 
 /// 不可变组合快照（StateNotifier 单状态约束）。
 class PlayerSnapshot {
-  const PlayerSnapshot({
-    this.queue = const QueueState(),
-    this.player = const PlayerState(),
-  });
+  const PlayerSnapshot({this.queue = const QueueState(), this.player = const PlayerState()});
 
   final QueueState queue;
   final PlayerState player;
@@ -91,16 +89,11 @@ class PlayerSnapshot {
   /// 倍速（0.5~2.0；唯一真源为 L5 PlayerState.speed，默认 1.0）。
   double get speed => player.speed;
 
-  PlayerSnapshot copyWith({
-    QueueState? queue,
-    PlayerState? player,
-    double? speed,
-  }) {
+  PlayerSnapshot copyWith({QueueState? queue, PlayerState? player, double? speed}) {
     try {
       final nextPlayer = player ??
           (speed == null ? this.player : this.player.copyWith(speed: speed));
-      return PlayerSnapshot(
-          queue: queue ?? this.queue, player: nextPlayer);
+      return PlayerSnapshot(queue: queue ?? this.queue, player: nextPlayer);
     } catch (e, st) {
       Log.e(_tag, 'PlayerSnapshot.copyWith failed', e, st);
       return this;
@@ -116,36 +109,29 @@ typedef PlaySourceResolver = Future<PlaySource> Function(SongBrief song, String 
 
 class PlayerController extends StateNotifier<PlayerSnapshot> {
   PlayerController({
-    required PlaySourceResolver resolver,
-    AudioEngine? engine,
-    String quality = '128',
-    KeyValueSettings? settings,
-    PrefetchEngine? prefetch,
-    MinimalAudioHandler? audioHandler,
+    required PlaySourceResolver resolver, AudioEngine? engine,
+    String quality = '128', KeyValueSettings? settings,
+    PrefetchEngine? prefetch, MinimalAudioHandler? audioHandler,
     HistoryRecorder? historyRecorder,
   })  : _resolver = resolver,
         _prefetch = prefetch,
         _engine = engine ?? NullAudioEngine(),
-        _quality = quality,
+        _quality = _readPlayQuality(settings, quality),
         _settings = settings,
         _audioHandler = audioHandler,
         _historyRecorder = historyRecorder,
-        super(PlayerSnapshot(
-            player: PlayerState(speed: _readSpeed(settings)))) {
+        super(PlayerSnapshot(player: PlayerState(speed: _readSpeed(settings)))) {
     _d('init engine=${_engine.runtimeType} quality=$_quality speed=${state.speed}');
     // 预读回调：只解析播放源（不落盘），命中缓存时播放更快。
     _prefetch?.attach((hash, q) async {
-      try {
-        await _resolver(SongBrief(hash: hash), q);
-      } catch (e, st) {
-        _e('prefetch resolve failed $hash', e, st);
-      }
+      try { await _resolver(SongBrief(hash: hash), q); }
+      catch (e, st) { _e('prefetch resolve failed $hash', e, st); }
     });
   }
 
   final PlaySourceResolver _resolver;
   final AudioEngine _engine;
-  final String _quality;
+  String _quality;
   final KeyValueSettings? _settings;
   final PrefetchEngine? _prefetch; // 队列变化预热播放源（可选）
   final MinimalAudioHandler? _audioHandler; // 通知栏 metadata（可选）
@@ -356,6 +342,20 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
     } catch (e, st) {
       _e('setSpeed failed $speed', e, st);
     }
+  }
+
+  /// 切换播放档位：参数是 toPlayUrlQuality 裸名串（非 toPref 偏好串）。
+  /// 空串忽略；有当前曲则用新档重新解析并起播，无当前曲只更新字段。
+  void setQuality(String q) {
+    try {
+      if (q.trim().isEmpty) { _d('setQuality ignored empty'); return; }
+      _quality = q.trim();
+      _d('setQuality $_quality');
+      if (state.queue.current == null) return;
+      unawaited(() async {
+        try { await _startCurrent(); } catch (e, st) { _e('setQuality restart failed', e, st); }
+      }());
+    } catch (e, st) { _e('setQuality failed $q', e, st); }
   }
 
   /// 音量 0.0~1.0。

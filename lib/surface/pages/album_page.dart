@@ -7,10 +7,10 @@ import '../../bridges/bridge_core.dart'
     show SongBrief, AlbumDetail, PlaylistBrief;
 import '../../bridges/bridge_logic.dart' show AlbumLogic, Log, LogicFacade;
 import '../registry.dart';
+import '../ui/spotify_ui.dart' as sp;
 import '../widgets/common_widgets.dart' show SongTile;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 import '../theme/tn_motion.dart' show TnMotionStaggered;
-import '../theme/tn_theme.dart' show tnPadS, tnPadL, tnRadiusM;
 
 const String _tag = 'surface.album_page';
 
@@ -106,16 +106,16 @@ class _AlbumPageState extends State<AlbumPage> {
       return Scaffold(
         appBar: TnAppBar(title: _detail.name.isEmpty ? '专辑' : _detail.name),
         body: _loading
-            // 页面级加载态（R2-B 统一）：M3 规范 Linear（局部加载才用 Circular）。
+            // 页面级加载态（R2-B 统一）：Linear（局部加载才用 Circular）。
             ? const LinearProgressIndicator(minHeight: 2)
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (_detail.cover.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.all(tnPadL),
+                      padding: const EdgeInsets.all(sp.Sp.pagePad),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(tnRadiusM),
+                        borderRadius: BorderRadius.circular(sp.Sp.rCard),
                         child: Image.network(_detail.cover,
                             height: 160, fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
@@ -124,7 +124,8 @@ class _AlbumPageState extends State<AlbumPage> {
                     ),
                   if (_detail.intro.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: tnPadL),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: sp.Sp.pagePad),
                       child: Text(_detail.intro,
                           maxLines: 3, overflow: TextOverflow.ellipsis),
                     ),
@@ -159,7 +160,7 @@ class _AlbumPageState extends State<AlbumPage> {
                             index: i + 4,
                             child: Container(
                             width: 140,
-                            padding: const EdgeInsets.all(tnPadS),
+                            padding: const EdgeInsets.all(sp.Sp.gapS),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -169,7 +170,8 @@ class _AlbumPageState extends State<AlbumPage> {
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w600)),
                                 Text('${p.trackCount} 首',
-                                    style: const TextStyle(fontSize: 11)),
+                                    style: const TextStyle(
+                                        fontSize: sp.Sp.fTiny)),
                               ],
                             ),
                           ));

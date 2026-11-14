@@ -4,9 +4,7 @@
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_logic.dart' show SearchSuggestItem, Log;
-import '../theme/tn_theme.dart' show TnDims;
-import '../widgets/m3/m3_section_header.dart' show M3SectionHeader;
-import '../widgets/m3/m3_state_views.dart' show M3EmptyState;
+import '../ui/spotify_ui.dart' as sp;
 
 const String _tag = 'surface.searchHome';
 
@@ -38,12 +36,12 @@ class SearchHomeView extends StatelessWidget {
         if (g.isNotEmpty && !categories.contains(g)) categories.add(g);
       }
       return ListView(
-        padding: const EdgeInsets.only(bottom: TnDims.padXL),
+        padding: const EdgeInsets.only(bottom: sp.Sp.gapXL),
         children: <Widget>[
           if (history.isNotEmpty) ...<Widget>[
-            M3SectionHeader(
-              title: '搜索历史',
-              actionLabel: '清空',
+            sp.SpSectionHeader(
+              '搜索历史',
+              action: '清空',
               onAction: () {
                 try {
                   onClearHistory();
@@ -53,7 +51,7 @@ class SearchHomeView extends StatelessWidget {
               },
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: TnDims.padL),
+              padding: const EdgeInsets.symmetric(horizontal: sp.Sp.pagePad),
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -72,13 +70,9 @@ class SearchHomeView extends StatelessWidget {
             ),
           ],
           if (categories.isNotEmpty) ...<Widget>[
-            const M3SectionHeader(
-              title: '热门分类',
-              padding: EdgeInsets.fromLTRB(
-                  TnDims.padL, TnDims.padXL, TnDims.padL, TnDims.padM),
-            ),
+            const sp.SpSectionHeader('热门分类'),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: TnDims.padL),
+              padding: const EdgeInsets.symmetric(horizontal: sp.Sp.pagePad),
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -93,9 +87,9 @@ class SearchHomeView extends StatelessWidget {
               ),
             ),
           ],
-          const M3SectionHeader(title: '热门搜索'),
+          const sp.SpSectionHeader('热门搜索'),
           if (hot.isEmpty)
-            const M3EmptyState(
+            const sp.SpStateView(
               icon: Icons.local_fire_department_outlined,
               title: '暂无热搜',
               subtitle: '网络恢复后重试',
@@ -109,7 +103,7 @@ class SearchHomeView extends StatelessWidget {
                     '${i + 1}',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: i < 3 ? cs.primary : cs.onSurfaceVariant,
+                          color: i < 3 ? sp.Sp.green : sp.Sp.textSub,
                           fontWeight: FontWeight.bold,
                         ),
                   ),

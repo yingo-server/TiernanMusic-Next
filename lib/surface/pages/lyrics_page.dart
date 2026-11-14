@@ -1,9 +1,9 @@
 // L6 surface/pages · 歌词页模块（buildLyricsPageModule）
-// 由 modules.dart（批4-B）汇总注册：SurfaceRegistry.install(buildLyricsPageModule(...))。
+// 由 modules.dart（批4-B）汇总注册：SurfaceRegistry.install(buildLyricsPageModule(...)).
 // 嵌入播放页第二页签或独立路由；行级高亮 + 居中滚动（TnMotion.normal）+ KRC 逐字高亮。
 // positionMs 来源：注入 positionMsProvider（批4-B PlayerController 提供，本文件只定义接口）。
 // 铁律：只 import flutter/material/riverpod/bridge_logic/bridge_core/本层；try/catch + Log('surface.lyrics')。
-// M3：歌词高亮取 scheme.primary / 非高亮 onSurfaceVariant；滚动与动效取 TnMotion*（M3 版）。
+// Spotify：歌词高亮取 sp.Sp.green / 非高亮 sp.Sp.text；滚动与动效取 TnMotion*（动效本批不动）。
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -11,7 +11,8 @@ import 'package:flutter/material.dart';
 import '../../bridges/bridge_logic.dart' show LyricsLogic, findLineIndex, LyricParseResult, KrcWord, Log, TranslationLogic, DisplayLine, LogicFacade;
 import '../../bridges/bridge_core.dart' show SongBrief, LyricsDisplayMode;
 import '../registry.dart';
-import '../theme/tn_theme.dart' show TnMotion, TnText;
+import '../theme/tn_theme.dart' show TnMotion;
+import '../ui/spotify_ui.dart' as sp;
 
 const String _tag = 'surface.lyrics';
 
@@ -38,7 +39,7 @@ class LyricsDeps {
 }
 
 /// 歌词页模块：id='lyrics'，无 navEntry（嵌入播放页）。
-class LyricsPageModule extends SurfaceModule {
+class LyricsPageModule implements SurfaceModule {
   LyricsPageModule({required this.deps});
 
   final LyricsDeps deps;
@@ -167,7 +168,7 @@ class _LyricsPageState extends State<LyricsPage> {
       return Center(
         child: Text(
           _loading ? '歌词加载中…' : (_loadedHash.isEmpty ? '未在播放' : '暂无歌词'),
-          style: TnText.of(context).aux,
+          style: const TextStyle(color: sp.Sp.textSub, fontSize: sp.Sp.fSub),
         ),
       );
     }
@@ -199,7 +200,7 @@ class _LyricsPageState extends State<LyricsPage> {
       Expanded(
         child: ListView.builder(
       controller: _scroll,
-      // M3 语义例外：歌词滚动留白是布局数值（列表上下呼吸区），非设计令牌间距语义，保留裸值。
+      // Spotify 语义例外：歌词滚动留白是布局数值（列表上下呼吸区），非设计令牌间距语义，保留裸值。
       padding: const EdgeInsets.symmetric(vertical: 100, horizontal: 24),
       itemCount: _parsed.lines.length,
       itemBuilder: (context, i) {
@@ -215,15 +216,16 @@ class _LyricsPageState extends State<LyricsPage> {
           height: 48,
           child: Center(
             child: DefaultTextStyle(
-              style: TnText.of(context).body.copyWith(
-                    fontSize: active ? 18 : 15,
+              style: const TextStyle(
+                    color: sp.Sp.text,
+                    fontSize: sp.Sp.fItem,
+                    fontWeight: FontWeight.w400,
+                  ).copyWith(
+                    fontSize: active ? 18 : sp.Sp.fItem,
                     fontWeight: active ? FontWeight.w700 : FontWeight.w400,
                     color: active
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.5),
+                        ? sp.Sp.green
+                        : sp.Sp.text.withValues(alpha: 0.5),
                   ),
               child: (active && words != null && words.isNotEmpty)
                   ? _KrcLine(words: words, positionMs: pos)
@@ -236,7 +238,8 @@ class _LyricsPageState extends State<LyricsPage> {
                           Text(sub,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TnText.of(context).aux),
+                              style: const TextStyle(
+                                  color: sp.Sp.textSub, fontSize: sp.Sp.fSub)),
                       ],
                     ),
             ),
@@ -291,7 +294,7 @@ class _KrcLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final base = DefaultTextStyle.of(context).style;
     final done = base.copyWith(
-        color: Theme.of(context).colorScheme.primary,
+        color: sp.Sp.green,
         fontWeight: FontWeight.w700);
     final undone =
         base.copyWith(color: base.color?.withValues(alpha: 0.85));

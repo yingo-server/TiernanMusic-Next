@@ -5,9 +5,8 @@ import 'package:flutter/material.dart';
 import '../../bridges/bridge_logic.dart' show Log;
 import '../../bridges/bridge_core.dart' show SongBrief, SearchType;
 import '../theme/tn_motion.dart' show TnMotionStaggered;
-import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadL;
+import '../ui/spotify_ui.dart' as sp;
 import '../widgets/common_widgets.dart' show SongTile;
-import '../widgets/m3/m3_skeleton.dart' show M3ListSkeleton;
 
 const String _tag = 'surface.searchTile';
 
@@ -17,20 +16,21 @@ class SongTileData {
   final SongBrief song;
 }
 
-/// 统一卡片壳（交错入场 + M3 Card）。
+/// 统一卡片壳（交错入场 + Spotify 卡片）。
 Widget searchCard(BuildContext ctx, int i, Widget child) {
   try {
     final cs = Theme.of(ctx).colorScheme;
     return TnMotionStaggered(
       index: i,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(tnPadL, 0, tnPadL, tnPadS),
+        padding: const EdgeInsets.fromLTRB(sp.Sp.pagePad, 0, sp.Sp.pagePad, sp.Sp.gapS),
         child: Card(
           margin: EdgeInsets.zero,
           elevation: 1,
           surfaceTintColor: cs.surfaceTint,
           color: cs.surfaceContainer,
-          shape: RoundedRectangleBorder(borderRadius: TnDims.rMBorder),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(sp.Sp.rCard)),
           clipBehavior: Clip.antiAlias,
           child: child,
         ),
@@ -52,8 +52,6 @@ Widget searchCardRow(
   required void Function(SongTileData, SearchType) onDrill,
 }) {
   try {
-    final cs = Theme.of(ctx).colorScheme;
-    final tt = Theme.of(ctx).textTheme;
     final Widget child;
     if (type == SearchType.song) {
       child = SongTile(song: d.song, onPlay: (_) => onPlay(d), index: i + 1);
@@ -66,16 +64,16 @@ Widget searchCardRow(
       child = ListTile(
         leading: Icon(
           type == SearchType.special ? Icons.queue_music : Icons.album,
-          color: cs.primary,
+          color: sp.Sp.green,
         ),
         title: Text(d.song.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: tt.bodyMedium?.copyWith(color: cs.onSurface)),
+            style: const TextStyle(color: sp.Sp.text, fontSize: sp.Sp.fItem)),
         subtitle: Text('$owner · ${d.song.durationSec}首 · id=$id',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+            style: const TextStyle(color: sp.Sp.textSub, fontSize: sp.Sp.fSub)),
         onTap: () => onDrill(d, type),
       );
     }
@@ -88,8 +86,8 @@ Widget searchCardRow(
 
 /// 加载态骨架（统一替代 LinearProgress）。
 Widget searchLoadingSkeleton() => const Padding(
-      padding: EdgeInsets.symmetric(vertical: TnDims.padS),
-      child: M3ListSkeleton(rows: 4),
+      padding: EdgeInsets.symmetric(vertical: sp.Sp.gapS),
+      child: sp.SpListSkeleton(rows: 4),
     );
 
 
