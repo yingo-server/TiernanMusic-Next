@@ -339,7 +339,7 @@ class _RecentTabState extends State<_RecentTab> {
                   '${h.singerName} · ${dt.month}/${dt.day} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
               onTap: () {
                 try {
-                  deps.onPlay(SongBrief(
+                  widget.deps.onPlay(SongBrief(
                     hash: h.hash,
                     name: h.fileName,
                     singer: h.singerName,

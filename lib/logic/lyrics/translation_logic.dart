@@ -31,6 +31,7 @@ class TranslationLogic {
     LyricResult lyric,
     LyricsDisplayMode mode, {
     List<String>? translatedLines,
+    String songHash = '',
   }) {
     try {
       List<String>? local = translatedLines;
@@ -47,15 +48,21 @@ class TranslationLogic {
           local = null;
         }
       }
+      // 审查修复：文件缓存路径 lyric.id 恒 0（candidates id 未持久化），
+      // 旧键跨歌碰撞（同 mode 同译文行数即返回错歌歌词）。改用 songHash 维度。
       final key = buildKey(
         ns: 'translation',
         path: '/lyrics/display',
         params: <String, Object?>{
-          'hash': lyric.id,
+          // songHash 缺省时退化为 content 指纹（长度+首行前 24 字符），
+          // 仍远优于旧实现的恒 0。
+          'song': songHash.isEmpty
+              ? '${lyric.content.length}:${lyric.content.trim().length > 24 ? lyric.content.trim().substring(0, 24) : lyric.content.trim()}'
+              : songHash,
           'mode': mode.name,
           'trans': local?.length ?? 0,
         },
-        schemaVer: 1,
+        schemaVer: 2,
       );
       final hit = _cache.get(key);
       if (hit != null) return hit;

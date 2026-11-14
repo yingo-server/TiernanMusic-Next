@@ -18,7 +18,7 @@ import '../../bridges/bridge_core.dart' show SongBrief;
 import '../../bridges/bridge_core.dart' show KeyValueSettings, KugouClient;
 
 const String _tag = 'logic.collect';
-const String _kFavoritesKey = 'favorites';
+const String _kFavoritesKeyLegacy = 'favorites';
 
 /// 收藏逻辑门面。构造注入（沿用 L5 门面风格，见 rank_logic.dart）：
 /// - client：L4 网络执行器；settings：L4 KV 持久化；
@@ -88,6 +88,10 @@ class CollectLogic {
 
   /// 换号时清空本地镜像并重读持久层（多账号隔离：避免上一账号收藏串号显示）。
   /// 重读后由 refreshCount / 服务端回填新账号收藏（写入仍只在 toggle 时发生）。
+  ///
+  /// 审查修复：持久键按账号维度（'favorites.<uid>'），旧实现全局键
+  /// 'favorites' 不分账号——resetLocalMirror 重读的仍是上一个账号的收藏。
+  /// 迁移兼容：旧全局键在首次读取后迁移到当前 uid 键。
   void resetLocalMirror() {
     try {
       _favorites.clear();
@@ -235,10 +239,26 @@ class CollectLogic {
     }
   }
 
-  /// 读镜像：settings.getString('favorites') → JSON 数组 → Set<String>。
+  /// 按账号维度的持久键：换号/登出后新账号不读旧账号收藏（审查修复串号）。
+  /// 迁移兼容：旧全局键 'favorites' 首次读取后迁移到当前 uid 键。
+  String get _kFavoritesKey {
+    final uid = _client.session.userid;
+    return uid.isEmpty ? 'favorites.anon' : 'favorites.$uid';
+  }
+
+  /// 读镜像：settings.getString(key) → JSON 数组 → Set<String>。
   void _load() {
     try {
-      final raw = _settings.getString(_kFavoritesKey);
+      var raw = _settings.getString(_kFavoritesKey);
+      // 迁移：新键为空且旧全局键有数据 → 一次性搬到当前 uid 键。
+      if ((raw == null || raw.isEmpty)) {
+        final legacy = _settings.getString(_kFavoritesKeyLegacy);
+        if (legacy != null && legacy.isNotEmpty) {
+          _settings.setString(_kFavoritesKey, legacy);
+          raw = legacy;
+          Log.d(_tag, 'favorites migrated to per-account key');
+        }
+      }
       if (raw == null || raw.isEmpty) {
         _count = 0;
         return;

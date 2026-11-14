@@ -4,6 +4,7 @@ import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import '../signing.dart' show KugouSign;
 import 'models.dart';
+import 'cover_url.dart' show normalizeCoverUrl;
 import 'playlist_write_endpoints.dart' as write;
 
 const String _tag = 'ep.playlist';

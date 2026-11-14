@@ -177,7 +177,14 @@ class PrefetchEngine {
       if (_pending.isEmpty) return;
       final hash = _pending.removeAt(0);
       final fetch = _fetch;
-      if (fetch == null) return; // 未 attach：只收集不请求
+      if (fetch == null) {
+        // 审查修复：未 attach 时把 hash 放回队首并撤销占位——旧实现弹出后
+        // return，attach 前入队的所有 hash 永久丢失（既不预取也永不重入队）。
+        _pending.insert(0, hash);
+        _requested.remove(hash);
+        _requestedOrder.remove(hash);
+        return; // 未 attach：只收集不请求
+      }
       try {
         await fetch(hash, quality);
         _prefetched++;

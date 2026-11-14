@@ -115,7 +115,7 @@ class _LyricsPageState extends State<LyricsPage> {
       setState(() {
         _parsed = widget.deps.lyrics.parsedFor(r);
         _displayLines = widget.deps.translation
-                ?.displayFor(r, _displayMode) ??
+                ?.displayFor(r, _displayMode, songHash: hash) ??
             const <DisplayLine>[];
         _loadedHash = hash;
         _lastLine = -2;
@@ -258,7 +258,7 @@ class _LyricsPageState extends State<LyricsPage> {
         widget.deps.lyrics.lyricsFor(song).then((r) {
           if (!mounted) return;
           setState(() => _displayLines =
-              widget.deps.translation?.displayFor(r, m) ??
+              widget.deps.translation?.displayFor(r, m, songHash: hash) ??
                   const <DisplayLine>[]);
         }).catchError((Object e) {
           Log.w(_tag, 'displayFor failed: $e');

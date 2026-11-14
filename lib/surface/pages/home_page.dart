@@ -267,7 +267,7 @@ class _SectionState<T> extends State<_Section<T>> {
       builder: (ctx, snap) {
         Widget body;
         if (snap.connectionState != ConnectionState.done) {
-          body = asList
+          body = widget.asList
               ? const sp.SpListSkeleton(rows: 5)
               : const Padding(
                   padding: EdgeInsets.symmetric(horizontal: sp.Sp.pagePad),
@@ -288,7 +288,7 @@ class _SectionState<T> extends State<_Section<T>> {
             subtitle: '${snap.error}',
           );
         } else {
-          final items = snap.data ?? const <T>[];
+          final items = snap.data ?? <T>[];
           if (items.isEmpty) {
             body = const sp.SpStateView(
                 icon: Icons.inbox_outlined, title: '暂无内容');
@@ -299,7 +299,7 @@ class _SectionState<T> extends State<_Section<T>> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            sp.SpSectionHeader(title),
+            sp.SpSectionHeader(widget.title),
             body,
           ],
         );
