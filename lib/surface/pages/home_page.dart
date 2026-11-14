@@ -57,12 +57,14 @@ class HomePageModule implements SurfaceModule {
     required PlaylistLogic playlist,
     required void Function(SongBrief) onPlay,
     required void Function() onOpenSearch,
+    void Function(SongBrief)? onSongAction,
   })  : _recommend = recommend,
         _rank = rank,
         _search = search,
         _playlist = playlist,
         _onPlay = onPlay,
-        _onOpenSearch = onOpenSearch;
+        _onOpenSearch = onOpenSearch,
+        _onSongAction = onSongAction;
   final RecommendLogic _recommend;
   final RankLogic _rank;
   final SearchLogic _search;
