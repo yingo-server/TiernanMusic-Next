@@ -3,11 +3,12 @@
 import 'package:flutter/material.dart';
 
 import '../bridges/bridge_session.dart'
-    show ModuleRegistry, NavEntry, SurfaceModule;
+    show ModuleRegistry, NavEntry, NavState, SurfaceModule;
 import 'design/mini_bar.dart' show SpMiniBar;
 import 'design/tokens.dart';
 import 'pages/home_page.dart' show HomePageModule;
 import 'pages/library_page.dart' show LibraryPageModule;
+import 'pages/lyrics_page.dart' show LyricsPageModule;
 import 'pages/player_page.dart' show PlayerPageModule;
 import 'pages/playlist_page.dart' show PlaylistPageModule;
 import 'pages/search_page.dart' show SearchPageModule;
@@ -23,7 +24,8 @@ void registerModules() {
       ..install(PlaylistPageModule())
       ..install(LibraryPageModule())
       ..install(SettingsPageModule())
-      ..install(PlayerPageModule());
+      ..install(PlayerPageModule())
+      ..install(LyricsPageModule());
   } catch (e, st) {
     debugPrint('surface.shell: registerModules failed: $e\n$st');
   }
@@ -57,6 +59,32 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _index = 0;
+  late final void Function() _navListener = _onNavState;
+
+  @override
+  void initState() {
+    super.initState();
+    NavState.instance.addListener(_navListener);
+  }
+
+  @override
+  void dispose() {
+    NavState.instance.removeListener(_navListener);
+    super.dispose();
+  }
+
+  void _onNavState() {
+    try {
+      final req = NavState.instance.tabRequest;
+      if (req.isEmpty) return;
+      final modules = _modules;
+      final i = modules.indexWhere((m) => m.id == req);
+      if (i >= 0 && mounted) setState(() => _index = i);
+      NavState.instance.clearTabRequest();
+    } catch (e, st) {
+      debugPrint('surface.shell: nav request failed: $e\n$st');
+    }
+  }
 
   List<SurfaceModule> get _modules =>
       ModuleRegistry.instance.active().where((m) => m.navEntry != null).toList();

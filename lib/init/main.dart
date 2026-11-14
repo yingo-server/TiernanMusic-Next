@@ -16,7 +16,7 @@ import '../bridges/bridge_boot.dart' show BootOutcome, runBoot;
 // 业务调用仍全部经 bridge_boot。
 import '../bootloader/register.dart' show registerBootloader;
 import '../bridges/bridge_surface.dart'
-    show SurfaceDeps, bootstrapApp, installServices, tnLightThemeData;
+    show SurfaceDeps, bootstrapApp, installServices, spLightThemeData;
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -116,7 +116,7 @@ class _BootErrorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: tnLightThemeData(),
+      theme: spLightThemeData(),
       home: Scaffold(
         appBar: AppBar(title: const Text('TiernanMusicNext 无法启动')),
         body: SafeArea(

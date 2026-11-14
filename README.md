@@ -1,20 +1,22 @@
 # TiernanMusic-Next
 
 Flutter 离线优先的酷狗第三方客户端（酷狗原生 API 直连，不依赖第三方网关）。
-76 原则（V1 已废弃）架构 + Riverpod + Isar，目标平台 Android（split-per-abi 三架构极限包体）。
+**76 原则（七层六桥）**架构 + Riverpod + Isar，目标平台 Android（split-per-abi 三架构极限包体）。
 
 > 零源仓库代码复用：酷狗 API 知识全部来自逆向知识文档 [docs/KUGOU_API.md](docs/KUGOU_API.md)。
 
-## 架构速览：76 原则（V1 已废弃）
+## 架构速览：76 原则（七层六桥 · 权威定义见 [docs/SEVEN_SIX_RULE.md](docs/SEVEN_SIX_RULE.md)）
 
 ```
-L6 surface    交互/UI (Flutter M3)       ⇅ bridge_surface.dart
-L5 logic      纯后端逻辑（无UI无IO直连）    ⇅ bridge_logic.dart
-L4 core       存储/数据库/内存/网络        ⇅ bridge_core.dart
-L3 kernel     生命周期/注册表/日志/校验     ⇅ bridge_kernel.dart
-L2 bootloader 启动序列/依赖装配           ⇅ bridge_boot.dart
+L7 surface    仅 UI 控件（Spotify 深色设计系统）   ⇅ bridge_surface.dart
+L6 session    播放编排/播放列表/装配图/导航状态    ⇅ bridge_session.dart
+L5 logic      纯后端逻辑（无UI无IO直连）           ⇅ bridge_logic.dart
+L4 core       缓存⊃预读/音频网关/纯算法/网络/存储  ⇅ bridge_core.dart
+L3 kernel     生命周期/日志                     ⇅ bridge_kernel.dart
+L2 bootloader 启动序列/依赖装配                 ⇅ bridge_boot.dart
 L1 init       main 入口/完整性校验触发
 ```
+依赖方向 `surface(L7) → session(L6) → logic(L5) → core(L4)`，禁止反向。
 
 **铁律**
 
@@ -22,8 +24,8 @@ L1 init       main 入口/完整性校验触发
 2. 桥函数统一 try/catch + Log 留痕，失败不静默吞。
 3. core/net/endpoints/ 每端点一模块 + `core/net/endpoint_registry.dart` 的 `EndpointRegistry` 声明式配置（50 个端点常量，从 `kugou_client.dart` 拆出），改 API 不动调用方。
 4. 零源仓库代码复用；酷狗 API 知识仅来自 docs/KUGOU_API.md。
-5. 依赖纪律：SDK 可实现（≤500行/文件）不引库；例外清单：`riverpod / just_audio / audio_service / isar / isar_flutter_libs / path_provider / video_player`（MV 内嵌播放壳，`video_player` 已加入 pubspec 并同时列入 `tool/layer_audit.py` / `tool/smoke_check.dart` 的 L6 白名单；`package:isar/isar.dart` 为两工具共同的 L4_EXTRA 例外）。以 `pubspec.yaml` 为唯一依赖事实源。
-6. L6 热插拔：页面/组件为 SurfaceModule，注册表一行增删，模块间零直接 import。
+5. 依赖纪律：SDK 可实现（≤500行/文件）不引库；例外清单：`riverpod / just_audio / audio_service / isar / isar_flutter_libs / path_provider / video_player`（MV 内嵌播放壳，`video_player` 已加入 pubspec 并同时列入 `tool/layer_audit.py` / `tool/smoke_check.dart` 的 L4/L7 白名单；`package:isar/isar.dart` 为两工具共同的 L4_EXTRA 例外）。以 `pubspec.yaml` 为唯一依赖事实源。
+6. L7 热插拔：页面为 SurfaceModule，注册表在 L6 session，L7 按 id 动态生成导航；模块间零直接 import。
 
 ## 快速开始
 

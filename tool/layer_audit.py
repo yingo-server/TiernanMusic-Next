@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""layer_audit.py — 76 原则强约束审计（strict six-five）。
+"""layer_audit.py — 76 原则强约束审计（strict seven-six）。
 
 层序 L1 init / L2 bootloader / L3 kernel / L4 core / L5 logic / L6 surface。
 五桥唯一存在于 lib/bridges/：bridge_boot / bridge_kernel / bridge_core / bridge_logic / bridge_surface。
@@ -10,7 +10,7 @@
 拒绝：跨层 import 非桥 .dart（含 init→surface、core→kernel、logic→core、surface→kernel）。
 拒绝：lib/bridges 之外的影子 bridges/ 目录含 .dart；五桥缺失/多余；
       桥文件公开函数体无 try/catch 捕获留痕。
-输出：PASS strict six-five 或逐条 VIOLATION + 退出码 1。
+输出：PASS strict seven-six 或逐条 VIOLATION + 退出码 1。
 """
 import os
 import re
@@ -243,11 +243,11 @@ def main():
                 continue
             check_imports(rel, src, lvl)
     if violations:
-        print('FAIL strict six-five: %d 项违规，扫描 %d 个 dart 文件' % (len(violations), file_count))
+        print('FAIL strict seven-six: %d 项违规，扫描 %d 个 dart 文件' % (len(violations), file_count))
         for v in violations:
             print('VIOLATION %s' % v)
         sys.exit(1)
-    print('PASS strict six-five (%d files scanned)' % file_count)
+    print('PASS strict seven-six (%d files scanned)' % file_count)
 
 
 if __name__ == '__main__':

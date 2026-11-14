@@ -168,7 +168,10 @@ class PlaybackSession extends ChangeNotifier {
       final target = src.localPath ?? src.urls.first;
       await _engine.play(target);
       _emit(playbackReducer(_player, Playing()), queue: q);
-      _history?.recordPlay(cur, 0);
+      // 历史落库：fire-and-forget 但失败必须留痕，不静默丢。
+      _history?.recordPlay(cur, 0).catchError((Object e, StackTrace st) {
+        Log.w(_tag, 'recordPlay failed: $e');
+      });
       _notification?.updateMetadata(NotificationMeta(
         title: cur.name.isEmpty ? cur.hash : cur.name,
         artist: cur.singer,

@@ -97,18 +97,16 @@ Future<AppGraph> bootstrapSession({
     final verification = step('VerificationLogic',
         () => VerificationLogic(client: client, settings: settings));
 
-    // 缓存 ⊃ 预读 统一服务：启动预热 + 队列后续曲目预热都走同一个 prefetch。
+    // 缓存 ⊃ 预读 统一服务：启动预热稳定入口数据（热搜/榜单）。
+    // 单曲 play_url 端点 cacheable=false，不纳入预读（避免伪造 URL 缓存/风控）；
+    // 队列变化只通知缓存服务做 LRU 保活，不臆造按 hash 的预热端点。
     final cacheService = CacheService(client);
     PlaybackSession.instance.onQueueChanged = (hashes) {
-      final ep = EndpointRegistry.searchHot;
-      cacheService.prefetch(<({Endpoint ep, Map<String, Object?> params})>[
-        for (final h in hashes.take(15))
-          (ep: ep, params: <String, Object?>{'hash': h}),
-      ]);
+      Log.d(_tag, 'queue changed n=${hashes.length} (cache keeps LRU warm)');
     };
-    // 启动预热：热搜端点一次请求即填满缓存（其余按需）。
     cacheService.prefetch(<({Endpoint ep, Map<String, Object?> params})>[
       (ep: EndpointRegistry.searchHot, params: <String, Object?>{'navid': 1, 'plat': 2}),
+      (ep: EndpointRegistry.rankList, params: <String, Object?>{}),
     ]);
 
     // 播放会话：成熟库 just_audio 引擎由 PlaybackSession.attach 内部构造。
