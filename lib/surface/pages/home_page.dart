@@ -230,7 +230,9 @@ class SpHomePage extends StatelessWidget {
 }
 
 /// 区块壳：统一 未来加载 → 骨架 / 空态 / 数据（横滑行或列表）。
-class _Section<T> extends StatelessWidget {
+/// 审查修复：StatefulWidget 持有 Future（旧实现 build 内 future() 每次重建
+/// 重发请求 —— MiniBar 每 200ms 的进度 tick 会触发四接口风暴）。
+class _Section<T> extends StatefulWidget {
   const _Section({
     required this.title,
     required this.future,
@@ -246,9 +248,22 @@ class _Section<T> extends StatelessWidget {
   final bool asList;
 
   @override
+  State<_Section<T>> createState() => _SectionState<T>();
+}
+
+class _SectionState<T> extends State<_Section<T>> {
+  late Future<List<T>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.future();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<T>>(
-      future: future(),
+      future: _future,
       builder: (ctx, snap) {
         Widget body;
         if (snap.connectionState != ConnectionState.done) {
@@ -278,7 +293,7 @@ class _Section<T> extends StatelessWidget {
             body = const sp.SpStateView(
                 icon: Icons.inbox_outlined, title: '暂无内容');
           } else {
-            body = (asList ? buildList : buildRow)!(items, ctx);
+            body = (widget.asList ? widget.buildList : widget.buildRow)!(items, ctx);
           }
         }
         return Column(

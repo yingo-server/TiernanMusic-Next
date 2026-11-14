@@ -21,6 +21,7 @@ import '../widgets/favorite_button.dart' show FavoriteButton;
 import '../widgets/player_speed_sheet.dart' show showPlayerSpeedSheet;
 import '../widgets/quality_sheet.dart' show QualitySheet;
 import '../widgets/queue_sheet.dart' show showQueueSheet;
+import '../widgets/seek_slider.dart' show SeekSlider;
 import '../widgets/tn_app_bar.dart' show TnAppBar;
 import '../theme/tn_theme.dart'
     show TnDims, tnPadS, tnPadM, tnPadL;
@@ -297,18 +298,19 @@ class PlayerPageBody extends ConsumerWidget {
                     ]),
                   ),
                   const SizedBox(height: 16),
-                  // 进度条 Slider seek
-                  Slider(
-                    value: p.progress,
-                    onChanged: p.durationMs > 0
-                        ? (v) {
-                            try {
-                              ctl.seek((v * p.durationMs).round());
-                            } catch (e, st) {
-                              Log.e(_tag, 'slider seek crashed', e, st);
-                            }
-                          }
-                        : null,
+                  // 进度条：拖动中只更新本地预览（onChanged 不 seek），
+                  // 松手（onChangeEnd）才真正 seek —— 审查修复拖动 seek 风暴。
+                  SeekSlider(
+                    progress: p.progress,
+                    enabled: p.durationMs > 0,
+                    durationMs: p.durationMs,
+                    onSeek: (ms) {
+                      try {
+                        ctl.seek(ms);
+                      } catch (e, st) {
+                        Log.e(_tag, 'slider seek crashed', e, st);
+                      }
+                    },
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: TnDims.padXL),

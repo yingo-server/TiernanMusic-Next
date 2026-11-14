@@ -190,12 +190,30 @@ class KugouClient {
       req.headers.contentType = ContentType.json;
       req.write(bodyStr);
     }
-    final res = await req.close();
-    final text = await res.transform(utf8.decoder).join();
+    // 审查修复：响应整体超时（旧代码只限连接超时，服务器挂起时
+    // join 永久悬挂且 InFlight 会让所有同键等待者一起悬挂）。
+    const responseTimeout = Duration(seconds: 15);
+    final res = await req.close().timeout(responseTimeout);
+    final text = await res
+        .transform(utf8.decoder)
+        .join()
+        .timeout(responseTimeout, onTimeout: () {
+      Log.e('core.net', 'response body timeout ${ep.id}');
+      throw KugouApiException(-2, 'response body timeout (${ep.id})');
+    });
     if (res.statusCode != 200) {
       throw KugouApiException(res.statusCode, 'http ${res.statusCode}: $text');
     }
-    final decoded = jsonDecode(text);
+    // 审查修复：解析错归一为 KugouApiException（旧代码 FormatException
+    // 直接外抛，HTTP 错/业务错/解析错混流，上层无法分类重试）。
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(text);
+    } catch (e, st) {
+      Log.e('core.net', 'json decode failed ${ep.id} len=${text.length}', e, st);
+      throw KugouApiException(-3,
+          'invalid json from ${ep.id}: ${text.substring(0, text.length < 80 ? text.length : 80)}');
+    }
     if (decoded is Map<String, dynamic>) return decoded;
     // rawBody 端点（加密响应如 delete_list）回退原文，由端点层解密。
     if (rawBody != null) return <String, dynamic>{'_raw_text': text};

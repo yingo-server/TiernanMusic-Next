@@ -33,8 +33,6 @@ class MiniBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     try {
       final snap = ref.watch(playerProvider);
-      final p = snap.player;
-      final song = p.current;
       if (song == null || p.status == PlayerStatus.idle) {
         return const SizedBox.shrink(); // 无当前曲不悬浮
       }

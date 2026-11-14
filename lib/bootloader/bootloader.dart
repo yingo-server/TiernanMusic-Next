@@ -92,14 +92,19 @@ class Bootstrap {
     final paths = core.StoragePaths.init(rootDir ?? '.');
     Log.d('boot', 'storage root=${paths.rootDir.path}');
 
-    // 2) DB 打开（经桥接函数，幂等）——bootloader 是 async 不可行，
-    //    改由 main 在 runApp 前 await；此处仅记录意图。
-    Log.d('boot', 'db open deferred to main (bridge: openDatabase)');
-    unawaited(core
+    // 2) DB 打开（幂等）：**不在 bootloader 里 unawaited**——审查发现 main 从不
+    //    await，surface 拿到 DAO 时 DB 可能未开（首屏 StateError 竞态）。
+    //    把 Future 放进 deps，由 main await 后再装配 surface。
+    Log.d('boot', 'db open future staged for main await');
+    final Future<bool> dbOpenFuture = core
         .openDatabase(paths.db().path)
-        .then((opened) => Log.d('boot', 'db opened=$opened'))
-        .catchError((Object e, StackTrace st) =>
-            Log.e('boot', 'db open failed (async)', e, st)));
+        .then((opened) {
+      Log.d('boot', 'db opened=$opened');
+      return opened;
+    }).catchError((Object e, StackTrace st) {
+      Log.e('boot', 'db open failed', e, st);
+      throw StateError('db open failed: $e');
+    });
 
     // 3) core 单例 + AuthLogic 单例（每步 try/catch 由 run 外层兜底留痕）。
     // 客户端带 L2 磁盘缓存 + 单飞合并（批R2）：
@@ -112,8 +117,10 @@ class Bootstrap {
       ),
       inflight: core.InFlight<Map<String, dynamic>>(),
     );
-    final auth =
-        lg.AuthLogic(client: client, settings: core.KeyValueSettings(paths));
+    // settings 单实例（审查修复）：旧代码给 AuthLogic 与 deps 各 new 一个
+    // KeyValueSettings —— 各自内存缓存互盲，auth 写的会话 surface 永远读不到。
+    final settings = core.KeyValueSettings(paths);
+    final auth = lg.AuthLogic(client: client, settings: settings);
     try {
       final ok2 = auth.restoreSession();
       Log.d('boot', 'restoreSession ok=$ok2');
@@ -127,7 +134,8 @@ class Bootstrap {
       'playlistDao': core.PlaylistDao(),
       'historyDao': core.HistoryDao(),
       'downloadStore': core.DownloadStore(paths),
-      'settings': core.KeyValueSettings(paths),
+      'settings': settings,
+      'dbOpenFuture': dbOpenFuture,
       'paths': paths,
       'auth': auth,
     };

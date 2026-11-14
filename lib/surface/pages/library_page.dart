@@ -106,10 +106,17 @@ class _LibraryPageState extends State<LibraryPage>
   late final TabController _tabs =
       TabController(length: 3, vsync: this);
   StreamSubscription<DownloadEvent>? _dlSub;
+  // 审查修复：账号/收藏 Future 在 initState 一次生成（旧实现 build 内
+  // deps.profile?.call() 每次 rebuild 重发两接口；下载事件整页 setState
+  // 会放大成接口风暴）。
+  Future<UserProfile>? _profileFuture;
+  Future<int>? _favoriteFuture;
 
   @override
   void initState() {
     super.initState();
+    _profileFuture = widget.deps.profile?.call();
+    _favoriteFuture = widget.deps.favoriteCount?.call();
     try {
       // 下载管理 tab：订阅任务事件实时刷新。
       widget.deps.downloads.onTask = _onDownloadEvent;
@@ -141,8 +148,8 @@ class _LibraryPageState extends State<LibraryPage>
       body: Column(
         children: [
           LibraryAccountCard(
-            profile: widget.deps.profile?.call(),
-            favoriteCount: widget.deps.favoriteCount?.call(),
+            profile: _profileFuture,
+            favoriteCount: _favoriteFuture,
             onOpenSettings: widget.deps.onOpenSettings,
           ),
           if (widget.deps.myPlaylists != null)
@@ -200,24 +207,37 @@ class _LibraryPageState extends State<LibraryPage>
 
 // ─── Tab 1：本地曲库 ───
 
-class _LocalTab extends StatelessWidget {
+/// 审查修复：StatefulWidget 持有 Future（旧实现 build 内 _load() 每次
+/// rebuild 重查 DAO；下载事件 setState 整页重建会放大成查询风暴）。
+class _LocalTab extends StatefulWidget {
   const _LocalTab({required this.deps});
 
   final LibraryDeps deps;
 
-  Future<List<SongRecord>> _load() async {
-    try {
-      return await deps.songDao.list();
-    } catch (e, st) {
-      Log.e(_tag, 'songDao.list failed', e, st);
-      return const <SongRecord>[];
-    }
+  @override
+  State<_LocalTab> createState() => _LocalTabState();
+}
+
+class _LocalTabState extends State<_LocalTab> {
+  late Future<List<SongRecord>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = () async {
+      try {
+        return await widget.deps.songDao.list();
+      } catch (e, st) {
+        Log.e(_tag, 'songDao.list failed', e, st);
+        return const <SongRecord>[];
+      }
+    }();
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<SongRecord>>(
-      future: _load(),
+      future: _future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
           // 页面级（tab 内容）加载态统一为 Linear（R2-B）。
@@ -243,7 +263,7 @@ class _LocalTab extends StatelessWidget {
               trailing: s.localPath != null ? const Icon(Icons.offline_pin) : null,
               onTap: () {
                 try {
-                  deps.onPlay(SongBrief(
+                  widget.deps.onPlay(SongBrief(
                     hash: s.hash,
                     name: s.fileName,
                     singer: s.singerName,
@@ -265,22 +285,36 @@ class _LocalTab extends StatelessWidget {
 
 // ─── Tab 2：最近播放 ───
 
-class _RecentTab extends StatelessWidget {
+/// 审查修复：同 _LocalTab，StatefulWidget 持有 Future。
+class _RecentTab extends StatefulWidget {
   const _RecentTab({required this.deps});
 
   final LibraryDeps deps;
 
   @override
+  State<_RecentTab> createState() => _RecentTabState();
+}
+
+class _RecentTabState extends State<_RecentTab> {
+  late Future<List<PlayHistoryEntry>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = () async {
+      try {
+        return await widget.deps.historyRecent(limit: 50);
+      } catch (e, st) {
+        Log.e(_tag, 'historyRecent failed', e, st);
+        return const <PlayHistoryEntry>[];
+      }
+    }();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<PlayHistoryEntry>>(
-      future: () async {
-        try {
-          return await deps.historyRecent(limit: 50);
-        } catch (e, st) {
-          Log.e(_tag, 'historyRecent failed', e, st);
-          return const <PlayHistoryEntry>[];
-        }
-      }(),
+      future: _future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
           // 页面级（tab 内容）加载态统一为 Linear（R2-B）。

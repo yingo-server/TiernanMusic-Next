@@ -21,6 +21,9 @@ Future<void> showPlaylistTracksSheet(
   String emptyHint = '暂无曲目',
 }) async {
   try {
+    // 审查修复：Future 在打开弹层前发起（旧实现 builder 内 load() 每次
+    // rebuild 重拉全部曲目）。sheet 内容重建时复用同一 Future。
+    final Future<List<SongBrief>> future = load();
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -82,7 +85,7 @@ Future<void> showPlaylistTracksSheet(
               const Divider(height: 1),
               Expanded(
                 child: FutureBuilder<List<SongBrief>>(
-                  future: load(),
+                  future: future,
                   builder: (ctx3, snap) {
                     if (snap.connectionState != ConnectionState.done) {
                       return const M3ListSkeleton(rows: 6);

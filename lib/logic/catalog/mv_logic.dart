@@ -71,7 +71,8 @@ class MvLogic {
         return hit;
       }
       final items = await mv.getVideoQualities(_client, h);
-      _cache.put(key, items);
+      // 审查修复：空结果不落缓存——旧实现网络抖动一次即永久「不可播」。
+      if (items.isNotEmpty) _cache.put(key, items);
       Log.d(_tag, 'qualities hash=$h got=${items.length}');
       return items;
     } catch (e, st) {

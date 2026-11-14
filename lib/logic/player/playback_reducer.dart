@@ -136,6 +136,15 @@ PlayerState playbackReducer(PlayerState state, PlaybackAction action) {
       // loading 态的陈旧进度（上一曲残流）不得写入新曲状态：换歌瞬间
       // 旧流 chunk 会把 positionMs 覆盖回大值。loading/非 playing 一律忽略。
       if (state.status != PlayerStatus.playing) return state;
+      // 审查修复：位置/时长/缓冲均未变时返回**同一实例**（引用稳定），
+      // Riverpod watch 不通知 → MiniBar/播放页不再每 ~200ms 全树重建。
+      final bool samePos = action.positionMs < 0 ||
+          action.positionMs == state.positionMs;
+      final bool sameDur =
+          action.durationMs < 0 || action.durationMs == state.durationMs;
+      final bool sameBuf =
+          action.bufferMs < 0 || action.bufferMs == state.bufferMs;
+      if (samePos && sameDur && sameBuf) return state;
       return state.copyWith(
         status: PlayerStatus.playing,
         positionMs: action.positionMs >= 0 ? action.positionMs : null,

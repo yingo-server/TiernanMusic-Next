@@ -38,7 +38,15 @@ class ArtistLogic {
         return hit;
       }
       final value = await fetch();
-      _cache.put(key, value);
+      // 审查修复：空结果不落缓存（List 空 / Map empty / String empty），
+      // 失败与「真无数据」都不固化，下次重试。
+      final bool isEmptyResult = switch (value) {
+        List() => value.isEmpty,
+        Map() => value.isEmpty,
+        String s2 => s2.isEmpty,
+        _ => false,
+      };
+      if (!isEmptyResult) _cache.put(key, value);
       return value;
     } catch (e, st) {
       Log.e(_tag, '_cached failed path=$path', e, st);

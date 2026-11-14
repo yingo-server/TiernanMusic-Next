@@ -41,7 +41,8 @@ class RankLogic {
         return hit;
       }
       final items = await misc.rankList(_client);
-      _cache.put(key, items);
+      // 审查修复：空结果不落缓存（失败不固化）。
+      if (items.isNotEmpty) _cache.put(key, items);
       Log.d(_tag, 'rankList got=${items.length}');
       return items;
     } catch (e, st) {
@@ -66,7 +67,8 @@ class RankLogic {
         return hit;
       }
       final items = await misc.rankInfo(_client, rankId);
-      _cache.put(key, items);
+      // 审查修复：空结果不落缓存（失败不固化）。
+      if (items.isNotEmpty) _cache.put(key, items);
       Log.d(_tag, 'rankInfo rankId=$rankId got=${items.length}');
       return items;
     } catch (e, st) {

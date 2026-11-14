@@ -62,27 +62,43 @@ Future<void> _boot({required bool debugBypass}) async {
 
   // ④ surface 装配（L6 经桥）：仅按 deps 具名键取值（Map 形状），零 duck typing。
   final deps = outcome.deps;
-  if (deps['client'] != null && deps['songDao'] != null) {
-    try {
-      await installServices(
-        deps: SurfaceDeps(
-          client: outcome.dep('client'),
-          songDao: outcome.dep('songDao'),
-          playlistDao: outcome.dep('playlistDao'),
-          historyDao: outcome.dep('historyDao'),
-          downloadStore: outcome.dep('downloadStore'),
-          settings: outcome.dep('settings'),
-          paths: outcome.dep('paths'),
-        ),
-      );
-    } catch (e, st) {
-      debugPrint('main: installServices failed: $e\n$st');
-      runApp(_BootErrorApp(message: '装配失败：$e'));
-      return;
+  // 审查修复：全 dep 判空（旧代码只查 client/songDao，其余 5 个可为 null
+  // 却被下游按非 null 用 → NPE）。缺任一走错误页，不静默降级。
+  const requiredDeps = <String>[
+    'client', 'songDao', 'playlistDao', 'historyDao',
+    'downloadStore', 'settings', 'paths',
+  ];
+  final missing = <String>[
+    for (final k in requiredDeps)
+      if (deps[k] == null) k
+  ];
+  if (missing.isNotEmpty) {
+    debugPrint('main: core assembly incomplete, missing: $missing');
+    runApp(_BootErrorApp(message: '核心模块缺失：${missing.join(', ')}'));
+    return;
+  }
+  try {
+    // 审查修复：先 await DB 打开（bootloader 不再 unawaited），
+    // DAO 首访绝不禁于未打开的 Isar。
+    final dbFuture = deps['dbOpenFuture'];
+    if (dbFuture is Future<bool>) {
+      await dbFuture;
+      debugPrint('main: db ready');
     }
-  } else {
-    debugPrint('⚠️ main: core assembly failed, surface not installed');
-    runApp(const _BootErrorApp(message: '核心模块装配失败。'));
+    await installServices(
+      deps: SurfaceDeps(
+        client: outcome.dep('client'),
+        songDao: outcome.dep('songDao'),
+        playlistDao: outcome.dep('playlistDao'),
+        historyDao: outcome.dep('historyDao'),
+        downloadStore: outcome.dep('downloadStore'),
+        settings: outcome.dep('settings'),
+        paths: outcome.dep('paths'),
+      ),
+    );
+  } catch (e, st) {
+    debugPrint('main: installServices failed: $e\n$st');
+    runApp(_BootErrorApp(message: '装配失败：$e'));
     return;
   }
 

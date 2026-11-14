@@ -47,6 +47,8 @@ Future<void> showRankTracksSheet(
   void Function(SongBrief) onPlay,
 ) async {
   try {
+    // 审查修复：Future 打开前发起（同 playlist_tracks_sheet）。
+    final Future<List<SongBrief>> future = rank.rankInfo(brief.rankId);
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -88,7 +90,7 @@ Future<void> showRankTracksSheet(
               const Divider(height: 1),
               Expanded(
                 child: FutureBuilder(
-                  future: rank.rankInfo(brief.rankId),
+                  future: future,
                   builder: (ctx3, snap) {
                     if (snap.connectionState != ConnectionState.done) {
                       return const M3ListSkeleton(rows: 6);

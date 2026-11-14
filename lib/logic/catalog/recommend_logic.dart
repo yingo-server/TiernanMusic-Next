@@ -44,7 +44,9 @@ class RecommendLogic {
         return hit;
       }
       final items = await ep.getDailyRecommend(_client, page: p, pageSize: ps);
-      _cache.put(key, items);
+      // 审查修复：空结果（200103 未登录/服务端错误/网络异常在端点层都归空）
+      // 不落缓存——旧实现把失败固化，登录后仍恒命中空缓存。对齐 fm_logic 语义。
+      if (items.isNotEmpty) _cache.put(key, items);
       Log.d(_tag, 'daily page=$p got=${items.length}');
       return items;
     } catch (e, st) {
