@@ -26,7 +26,10 @@ Future<void> showPlaylistTracksSheet(
       context,
       brief,
       load: () async {
-        final page = await playlist.tracks(brief.id, 1);
+        // 链路修复：先 detail 拿数字 specialId（global_collection_id 实测 20010）。
+        final detail = await playlist.detail(brief.id);
+        final sid = detail.specialId.isNotEmpty ? detail.specialId : brief.id;
+        final page = await playlist.tracks(sid, 1, specialIdOverride: sid);
         return page.items;
       },
       onPlay: onPlay,

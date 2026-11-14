@@ -116,8 +116,10 @@ Future<PlaylistDetail> playlistDetail(
       // 键为 name/pic/list_create_username（无 specialname/imgurl/username），
       // 无 playcount；tags 是逗号分隔字符串（非数组）。
       id: safeStr(first['global_collection_id'] ?? id),
+      // 数字 specialid 透传（playlistTracks 必须用它；A2-2 实测 data[0] 含 specialid）。
+      specialId: safeStr(first['specialid'] ?? first['special_id'] ?? ''),
       name: safeStr(first['name'], safeStr(first['specialname'])),
-      cover: safeStr(first['pic'], safeStr(first['imgurl'])),
+      cover: normalizeCoverUrl(safeStr(first['pic'], safeStr(first['imgurl']))),
       playCount: safeInt(first['playcount'] ?? first['play_count']),
       trackCount: safeInt(first['count']),
       intro: safeStr(first['intro']),
@@ -149,6 +151,12 @@ Future<TrackPage> playlistTracks(
     final ps = pageSize < 1 ? 30 : pageSize;
     if (id.isEmpty) {
       Log.w(_tag, 'playlistTracks empty id');
+      return const TrackPage();
+    }
+    // 防御：global_collection_id（collection_ 开头）非数字 id，实测 20010。
+    // 上层必须传 detail.specialId；此处对明显错误形态留痕（不抛，返回空）。
+    if (id.startsWith('collection_')) {
+      Log.e(_tag, 'playlistTracks got global_collection_id (must be numeric specialid): $id');
       return const TrackPage();
     }
     final beginIdx = (p - 1) * ps;

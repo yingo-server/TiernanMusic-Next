@@ -17,6 +17,7 @@
 import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart' show safeInt, safeStr, dataOf, listOf;
+import 'cover_url.dart' show normalizeCoverUrl;
 
 const String _tag = 'ep.mv';
 
@@ -51,9 +52,9 @@ class MvBrief {
         // 实测键：duration（毫秒，如 231732=3:51）。
         durationMs: safeInt(m['duration'] ?? m['timelength']),
         // 实测键：hdpic（{size} 模板高清封面）/ thumb（缩略图）。
-        coverUrl: safeStr(
+        coverUrl: normalizeCoverUrl(safeStr(
             m['hdpic'] ?? m['imgurl'] ?? m['cover'] ?? m['thumb'] ??
-            m['suaac_cover'] ?? m['img'] ?? ''),
+            m['suaac_cover'] ?? m['img'] ?? '')),
       );
     } catch (e, st) {
       Log.e(_tag, 'MvBrief.fromMap failed', e, st);

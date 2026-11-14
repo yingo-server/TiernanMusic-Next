@@ -94,7 +94,11 @@ class PlaylistLogic {
 
   /// 歌单曲目分页。走修正后封装（specialid 参数 / data.songs[] / data.count）。
   /// 缓存 path:/pubsongs/v2/get_other_list_file_nofilt。
-  Future<TrackPage> tracks(String playlistId, int page, {int pageSize = 30}) async {
+  /// [specialIdOverride]：detail 响应透传的数字 specialid（必须）。
+/// 传 global_collection_id 实测恒 20010 —— 上层先 detail 后 tracks。
+Future<TrackPage> tracks(String playlistId, int page,
+      {int pageSize = 30, String? specialIdOverride}) async {
+    final effective = (specialIdOverride ?? playlistId).trim();
     try {
       final id = playlistId.trim();
       final beginIdx = (page < 1 ? 1 : page - 1) * pageSize;
@@ -103,7 +107,7 @@ class PlaylistLogic {
         userid: _uid(),
         path: '/pubsongs/v2/get_other_list_file_nofilt',
         params: <String, Object?>{
-          'specialid': id, 'begin_idx': beginIdx, 'pagesize': pageSize,
+          'specialid': effective, 'begin_idx': beginIdx, 'pagesize': pageSize,
         },
         schemaVer: kPlaylistCacheSchemaVer,
       );
@@ -112,7 +116,7 @@ class PlaylistLogic {
         Log.d(_tag, 'tracks cache hit id=$id page=$page');
         return hit;
       }
-      final tp = await playlistTracks(_client, id, page, pageSize);
+      final tp = await playlistTracks(_client, effective, page, pageSize);
       _cache.put(key, tp);
       Log.d(_tag, 'tracks id=$id page=$page got=${tp.items.length}/${tp.total}');
       return tp;

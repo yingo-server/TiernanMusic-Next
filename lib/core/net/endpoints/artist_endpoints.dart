@@ -8,6 +8,7 @@
 import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import 'models.dart' show SongBrief, dataOf, listOf, safeInt, safeStr;
+import 'cover_url.dart' show normalizeCoverUrl;
 const String _tag = 'ep.artist';
 // 路径常量与 EndpointRegistry 声明一致；L5 缓存键复用，避免两处漂移。
 const String kArtistListPath = '/ocean/v6/singer/list';
@@ -169,8 +170,8 @@ class AlbumBrief {
         name: safeStr(m['album_name'] ?? m['albumname'] ?? m['name']),
         // 实测：sizable_cover（{size} 模板完整 URL）；cover 只是裸文件名
         // （如 '20250125121901851911.jpg'，非 URL——不映射）。
-        cover: safeStr(m['sizable_cover'] ?? m['imgurl'] ?? m['img'] ??
-            m['cover']),
+        cover: normalizeCoverUrl(safeStr(m['sizable_cover'] ?? m['imgurl'] ?? m['img'] ??
+            m['cover'] ?? '')),
         publishDate: safeStr(m['publish_date'] ?? m['publish_time'] ??
             m['publishdate'] ?? m['publishtime']),
         // ⚠️ kmr/v2/albums 无曲目数键（count/song_count 均不存在）——
@@ -334,7 +335,7 @@ Future<List<AlbumBrief>> getArtistAlbums(KugouClient client,
 /// img 可能是裸文件名（同 A4-3 的 cover），只有 http(s) 完整 URL 才作封面。
 AlbumBrief albumBriefFromSearchAlbum(Map<String, dynamic> m) {
   try {
-    final img = safeStr(m['img'] ?? m['imgurl'] ?? m['sizable_cover']);
+    final img = normalizeCoverUrl(safeStr(m['img'] ?? m['imgurl'] ?? m['sizable_cover']));
     final cover = img.startsWith('http://') || img.startsWith('https://')
         ? img : '';
     return AlbumBrief(

@@ -50,6 +50,12 @@ Future<List<SongBrief>> getDailyRecommend(
         .toList(growable: false);
     final errCode = safeInt(res['errcode'] ?? data['errcode'], 0);
     final errMsg = safeStr(res['error'] ?? data['error'] ?? data['errmsg']);
+    // 实测（API_TEST_REPORT）：未登录态 errcode=200103、data 为字符串。
+    // 显式留痕 + 如实返回空（UI 侧按「需登录」提示，不冒充「暂无推荐」）。
+    if (errCode == 200103) {
+      Log.w(_tag, 'getDailyRecommend: 200103 (login required)');
+      return const <SongBrief>[];
+    }
     if (errCode != 0 || errMsg.isNotEmpty) {
       Log.w(_tag, 'getDailyRecommend page=$p server ec=$errCode msg=$errMsg');
     }

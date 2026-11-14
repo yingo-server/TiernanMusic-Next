@@ -168,8 +168,11 @@ class QueueState {
   QueueState insert(SongBrief song) {
     try {
       if (index < 0 || index >= items.length) {
+        // 越界残留态（如先 removeAt 清空再 insertNext）：新歌成为当前曲，
+        // index 修正为 0 —— 旧实现沿用越界 index → current 恒 null →
+        // MiniBar 不渲染、播放不启动（R2 用户报障根因之一）。
         final list = List<SongBrief>.of(items)..add(song);
-        return _with(list, index < 0 ? 0 : index);
+        return _with(list, list.length - 1);
       }
       final list = List<SongBrief>.of(items)..insert(index + 1, song);
       return _with(list, index);

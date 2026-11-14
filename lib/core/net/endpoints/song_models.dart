@@ -2,6 +2,7 @@
 // 来源拆分：models.dart（614 行超行拆分，R2-A）；类体逐字搬移，零逻辑改动。
 import '../../../bridges/bridge_kernel.dart' show Log;
 import 'models_util.dart';
+import 'cover_url.dart' show normalizeCoverUrl;
 
 
 const String _tag = 'net.models.song';
@@ -56,8 +57,8 @@ class SongBrief {
         albumId: safeStr(m['AlbumID']),
         albumName: safeStr(m['AlbumName']),
         // 封面：搜索列表常见键 Image；同时容错 img/cover。
-        cover: safeStr(m['Image'],
-            safeStr(m['img'], safeStr(m['cover'], m['AlbumImage'] ?? ''))),
+        cover: normalizeCoverUrl(safeStr(m['Image'],
+            safeStr(m['img'], safeStr(m['cover'], m['AlbumImage'] ?? '')))),
         // 批N1-A 实测（A1-1）：musicpack_advance 在 trans_param 内。
         isVip: safeBool(m['musicpack_advance'],
             safeBool(m['trans_param'] is Map
@@ -217,9 +218,9 @@ class SongBrief {
         albumId: safeStr(m['album_id'], safeStr(m['AlbumID'])),
         albumName: safeStr(m['album_name'],
             safeStr(m['AlbumName'], albumNameFallback)),
-        cover: safeStr(m['album_cover'],
+        cover: normalizeCoverUrl(safeStr(m['album_cover'],
             safeStr(m['album_img'],
-                safeStr(m['Image'], safeStr(m['img'], m['cover'] ?? '')))),
+                safeStr(m['Image'], safeStr(m['img'], m['cover'] ?? ''))))),
         // 批N3-C 实测：audio_group/author 的 musicpack_advance 在 trans_param
         // 内（顶层无 musicpack_advance）——补 trans_param 兜底。
         isVip: safeBool(m['musicpack_advance'],

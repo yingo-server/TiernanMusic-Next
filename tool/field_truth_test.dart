@@ -44,7 +44,8 @@ void eq(String name, Object? got, Object? want) {
 void group(String name) => print('-- $name');
 
 void main() {
-  // ══ A5/A6 · 批N3-A 评论/收藏/FM 实测锚点（2026-11-12）══
+  // 封面契约更新（R2）：{size} 模板在模型层归一化为 240（cover_url.dart）。
+// ══ A5/A6 · 批N3-A 评论/收藏/FM 实测锚点（2026-11-12）══
   group('N3-A comment/collect/FM field truth');
 
   final cmt = <String, dynamic>{
@@ -217,7 +218,7 @@ void main() {
     'global_collection_id': 'collection_1_486950678_2255477_0',
     'specialid': 2255477,
     'specialname': '跑步必听｜超燃英文歌，助你轻松奔跑',
-    'imgurl': 'http://imge.kugou.com/soft/collection/{size}/20200324/20200324024507285054.jpg',
+    'imgurl': 'http://imge.kugou.com/soft/collection/240/20200324/20200324024507285054.jpg',
     'pic': 'http://imge.kugou.com/soft/collection/{size}/20200324/pic.jpg',
     'intro': '适合跑步时听的英文歌',
     'play_count': 888888,
@@ -229,7 +230,7 @@ void main() {
   eq('rec.id(global_collection_id 优先)', pb2.id, 'collection_1_486950678_2255477_0');
   eq('rec.name', pb2.name, '跑步必听｜超燃英文歌，助你轻松奔跑');
   eq('rec.cover(imgurl 优先)', pb2.cover,
-      'http://imge.kugou.com/soft/collection/{size}/20200324/20200324024507285054.jpg');
+      'http://imge.kugou.com/soft/collection/240/20200324/20200324024507285054.jpg');
   eq('rec.playCount(play_count，N1-C 修复)', pb2.playCount, 888888);
   eq('rec.creator(nickname)', pb2.creator, '薛予安');
 
@@ -239,7 +240,7 @@ void main() {
     'global_collection_id': 'collection_1_486950678_2255477_0',
     'specialid': 2255477,
     'name': '跑步必听｜超燃英文歌，助你轻松奔跑',
-    'pic': 'http://imge.kugou.com/soft/collection/{size}/20200324/20200324024507285054.jpg',
+    'pic': 'http://imge.kugou.com/soft/collection/240/20200324/20200324024507285054.jpg',
     'intro': '适合跑步时听的英文歌',
     'count': 23,
     'tags': '英语,兴奋,运动', // 实测为逗号分隔字符串
@@ -257,7 +258,7 @@ void main() {
   eq('detail.name(实测 name)', detailItem['name'],
       '跑步必听｜超燃英文歌，助你轻松奔跑');
   eq('detail.cover(实测 pic)', detailItem['pic'],
-      'http://imge.kugou.com/soft/collection/{size}/20200324/20200324024507285054.jpg');
+      'http://imge.kugou.com/soft/collection/240/20200324/20200324024507285054.jpg');
   eq('detail.creator(实测 list_create_username)', detailItem['list_create_username'], '薛予安');
   eq('detail.trackCount(count)', detailItem['count'], 23);
   eq('detail.tags(逗号字符串拆分)', (detailItem['tags'] as String).split(',').length, 3);
@@ -305,7 +306,7 @@ void main() {
   const rankItem = <String, dynamic>{
     'rankid': 8888,
     'rankname': 'TOP500',
-    'imgurl': 'http://imge.kugou.com/rank/{size}/top500.jpg',
+    'imgurl': 'http://imge.kugou.com/rank/240/top500.jpg',
     'intro': '酷狗TOP500',
     'update_frequency': '每天更新',
     'rank_cid': 12345,
@@ -313,7 +314,7 @@ void main() {
   final rb = RankBrief.fromMap(rankItem);
   eq('rank.rankid', rb.rankId, 8888);
   eq('rank.name', rb.name, 'TOP500');
-  eq('rank.cover', rb.cover, 'http://imge.kugou.com/rank/{size}/top500.jpg');
+  eq('rank.cover', rb.cover, 'http://imge.kugou.com/rank/240/top500.jpg');
   eq('rank.intro', rb.intro, '酷狗TOP500');
   eq('rank.updateTime(update_frequency 兜底，无 updatetime)', rb.updateTime, '每天更新');
   // rank_info 实测：data.songinfo[] 仅 {album_audio_id, album_cover, songname} 三字段
@@ -505,7 +506,7 @@ void main() {
     },
     'album_info': {
       'album_name': '十一月的萧邦',
-      'cover': 'http://imge.kugou.com/stdmusic/{size}/20250125/x.jpg',
+      'cover': 'http://imge.kugou.com/stdmusic/240/20250125/x.jpg',
     },
     'authors': [
       {'author_name': '周杰伦', 'author_id': 3520},
@@ -544,7 +545,7 @@ void main() {
     'album_id': '958909',
     'album_name': '十一月的萧邦',
     'author_name': '周杰伦',
-    'sizable_cover': 'http://imge.kugou.com/stdmusic/{size}/20250125/x.jpg',
+    'sizable_cover': 'http://imge.kugou.com/stdmusic/240/20250125/x.jpg',
     'cover': '20250125121901851911.jpg', // 实测裸文件名，非 URL
     'intro': '周杰伦2005最新国语专辑',
     'publish_date': '2005-11-01',
@@ -559,7 +560,7 @@ void main() {
   eq('album.id(str)', ab.id, '958909');
   eq('album.name', ab.name, '十一月的萧邦');
   eq('album.cover(sizable_cover 优先)', ab.cover,
-      'http://imge.kugou.com/stdmusic/{size}/20250125/x.jpg');
+      'http://imge.kugou.com/stdmusic/240/20250125/x.jpg');
   eq('album.publishDate', ab.publishDate, '2005-11-01');
   eq('album.songCount(实测无键如实 0)', ab.songCount, 0);
 
@@ -607,7 +608,7 @@ void main() {
     'mv_name': '夜曲',
     'singer': '周杰伦',
     'duration': 231732, // 实测毫秒 3:51
-    'hdpic': 'http://imge.kugou.com/mvhdpic/{size}/20201126/x.jpg',
+    'hdpic': 'http://imge.kugou.com/mvhdpic/240/20201126/x.jpg',
     'thumb': 'http://imge.kugou.com/mvthumb/{size}/3e/d4/x.jpg',
     'hit': 33229711,
     'have_mp4': 1,
@@ -619,7 +620,7 @@ void main() {
   eq('mv.singer', mv.singer, '周杰伦');
   eq('mv.durationMs', mv.durationMs, 231732);
   eq('mv.coverUrl(hdpic 优先)', mv.coverUrl,
-      'http://imge.kugou.com/mvhdpic/{size}/20201126/x.jpg');
+      'http://imge.kugou.com/mvhdpic/240/20201126/x.jpg');
 
   // ── A5-2 · /v1/video data[0] 平铺档位（夜曲 MV 实测留样）──
   group('A5-2 mv qualities flat');

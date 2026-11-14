@@ -18,8 +18,24 @@ class KugouSession {
   String token = '';
   String userid = '';
   String mid = '';
-  String dfid = '-';
   Map<String, String> cookies = {};
+
+  String _dfid = '';
+
+  /// dfid：首次访问生成随机 24 位（A-Z0-9），并回写缓存。
+  /// 实测契约（docs/KUGOU_API.md §3.1）：play_url v5 必须随机 24 位 dfid
+  /// + Cookie(t1)，恒 '-' 时匿名/登录态均 20028。
+  String get dfid {
+    if (_dfid.isEmpty) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      final rnd = DateTime.now().microsecondsSinceEpoch;
+      _dfid = String.fromCharCodes(List.generate(
+          24, (i) => chars.codeUnitAt((rnd >> (i % 31)) % chars.length)));
+    }
+    return _dfid;
+  }
+
+  set dfid(String v) => _dfid = v;
 }
 
 /// 端点注册表：所有端点在此声明，改 API 只改这里。
@@ -52,7 +68,7 @@ class KugouClient {
     String? rawBody,
   }) async {
     // 缓存/合并键：method + path + 排序 query + userid（键维度唯一真源）。
-    final String cacheKey = _cacheKeyOf(ep, params);
+    final String cacheKey = _cacheKeyOf(ep, params, body: body);
     final bool cacheable = ep.cacheable && _cache != null && rawBody == null;
     if (cacheable) {
       final hit = await _cache!.getJson(cacheKey);
@@ -82,12 +98,20 @@ class KugouClient {
     return res;
   }
 
-  /// 缓存键：method + path + 排序后的 query + userid。
-  String _cacheKeyOf(Endpoint ep, Map<String, Object?> params) {
+  /// 缓存键：method + path + 排序后的 query + body 摘要 + userid + token 态。
+  /// 修复（批R2 审计）：旧键不含 body（同 query 不同 body 的 POST 会错误
+  /// 合并/命中）也不含 token 维度（匿名↔登录脏命中）。
+  String _cacheKeyOf(Endpoint ep, Map<String, Object?> params,
+      {Map<String, Object?> body = const {}}) {
     try {
       final keys = params.keys.toList()..sort();
       final q = keys.map((k) => '$k=${params[k]}').join('&');
-      return '${ep.method} ${ep.base}${ep.path}?$q&uid=${session.userid}';
+      final b = body.isEmpty
+          ? ''
+          : '&body=${body.hashCode}';
+      return '${ep.method} ${ep.base}${ep.path}?$q$b'
+          '&uid=${session.userid}'
+          '&tk=${session.token.isEmpty ? 'anon' : session.token.hashCode}';
     } catch (e, st) {
       Log.e('core.net', 'cacheKey build failed', e, st);
       return '${ep.method} ${ep.path}';
@@ -156,9 +180,12 @@ class KugouClient {
       ..set('kg-thash', '5d816a0')
       ..set('kg-rec', '1')
       ..set('kg-rf', 'B9EDA08A64250DEFFBCADDEE00F8F25F');
-    session.cookies.forEach((k, v) =>
-        req.headers.set('Cookie', session.cookies.keys
-            .map((k2) => '$k2=${session.cookies[k2]}').join('; ')));
+    // Cookie 一次性拼接（旧实现对每条 cookie 全量重写整头，效率低且易错）。
+    if (session.cookies.isNotEmpty) {
+      req.headers.set('Cookie', session.cookies.entries
+          .map((e) => '${e.key}=${e.value}')
+          .join('; '));
+    }
     if (bodyStr.isNotEmpty) {
       req.headers.contentType = ContentType.json;
       req.write(bodyStr);

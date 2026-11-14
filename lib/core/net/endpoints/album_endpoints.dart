@@ -13,6 +13,7 @@ import 'models.dart'
         safeStr,
         dataOf,
         listOf;
+import 'cover_url.dart' show normalizeCoverUrl;
 
 const String _tag = 'ep.album';
 
@@ -65,7 +66,7 @@ Future<AlbumDetail> getAlbumDetail(KugouClient client, String albumId) async {
       name: safeStr(m['album_name'] ?? m['name'] ?? m['albumname']),
       // 实测：sizable_cover 是 {size} 模板完整 URL；cover 键是裸文件名
       //（非 URL），不作为回退（防死链）。
-      cover: safeStr(m['sizable_cover'] ?? m['imgurl']),
+      cover: normalizeCoverUrl(safeStr(m['sizable_cover'] ?? m['imgurl'])),
       intro: safeStr(m['intro'] ?? m['description']),
       publishDate: safeStr(m['publish_date'] ?? m['publish_time']),
     );
