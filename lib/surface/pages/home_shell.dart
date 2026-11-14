@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderScope;
 import '../../bridges/bridge_logic.dart' show Log;
 import '../providers.dart' show homeTabRequest, logicFacadeProvider;
 import '../registry.dart' show NavEntry, SurfaceModule, SurfaceRegistry;
-import '../theme/tn_theme.dart' show TnText;
+import '../theme/tn_theme.dart' show TnText, tnPadL, tnPadS;
 import '../widgets/common_m3.dart' show ErrorRetryBox;
 import '../widgets/mini_bar.dart' show MiniBar;
 
@@ -229,6 +229,9 @@ class _ScaffoldMessage extends StatelessWidget {
 
 class FallbackApp extends StatelessWidget {
   const FallbackApp({super.key, required this.message});
+
+  /// 启动失败原因（真实 error/detail，不隐藏）。
+  final String message;
   @override
   Widget build(BuildContext context) {
     try {
