@@ -29,7 +29,7 @@ class _SettingsPageState extends State<SettingsPage> {
   ];
 
   // 主题模式：当前无 L6 主题会话出口，先本地维护（TODO 接 theme 会话持久化）。
-  ThemeMode _themeMode = ThemeMode.dark;
+  int _themeMode = 2; // 0 系统 / 1 亮 / 2 暗 / 3 纯黑
   String _nickname = '';
   bool _loggedIn = false;
 
@@ -182,19 +182,15 @@ class _SettingsPageState extends State<SettingsPage> {
                         const SizedBox(height: Sp.gapM),
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
-                          child: SegmentedButton<ThemeMode>(
+                          child: SegmentedButton<int>(
                             showSelectedIcon: false,
-                            segments: const <ButtonSegment<ThemeMode>>[
-                              ButtonSegment<ThemeMode>(
-                                  value: ThemeMode.system, label: Text('跟随系统')),
-                              ButtonSegment<ThemeMode>(
-                                  value: ThemeMode.light, label: Text('亮')),
-                              ButtonSegment<ThemeMode>(
-                                  value: ThemeMode.dark, label: Text('暗')),
-                              ButtonSegment<ThemeMode>(
-                                  value: ThemeMode.black, label: Text('纯黑')),
+                            segments: const <ButtonSegment<int>>[
+                              ButtonSegment<int>(value: 0, label: Text('跟随系统')),
+                              ButtonSegment<int>(value: 1, label: Text('亮')),
+                              ButtonSegment<int>(value: 2, label: Text('暗')),
+                              ButtonSegment<int>(value: 3, label: Text('纯黑')),
                             ],
-                            selected: <ThemeMode>{_themeMode},
+                            selected: <int>{_themeMode},
                             onSelectionChanged: (s) =>
                                 setState(() => _themeMode = s.first),
                           ),

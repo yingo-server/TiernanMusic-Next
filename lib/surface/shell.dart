@@ -82,7 +82,7 @@ class _AppShellState extends State<AppShell> {
             Expanded(
               child: KeyedSubtree(
                 key: ValueKey<String>(current.id),
-                child: current.builder?.call(context) ??
+                child: (current.builder as WidgetBuilder?)?.call(context) ??
                     const Center(child: Text('模块未提供页面')),
               ),
             ),
@@ -108,7 +108,7 @@ class _AppShellState extends State<AppShell> {
   void _openPlayer() {
     try {
       final player = ModuleRegistry.instance.byId('player');
-      final builder = player?.builder;
+      final WidgetBuilder? builder = player?.builder as WidgetBuilder?;
       if (builder == null) return;
       Navigator.of(context).push(
         MaterialPageRoute<void>(

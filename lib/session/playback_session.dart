@@ -1,6 +1,9 @@
-// L6 session · 播放编排会话（纯 Dart，无 Widget）
+// L6 session · 播放编排会话（零 Widget 渲染；ChangeNotifier 仅作 Listenable
+// 状态容器，76 原则 §2 允许 L6 依赖 flutter/foundation）。
 // 职责：持有 L5 的 QueueState/PlayerState/reducer 与 L4 音频引擎门面，
-// 向 L7 暴露不可变快照 + 意图方法。L7 只 ref.watch 快照、发意图，零状态机。
+// 向 L7 暴露不可变快照 + 意图方法。L7 只监听快照、发意图，零状态机。
+import 'package:flutter/foundation.dart' show ChangeNotifier;
+
 import '../bridges/bridge_core.dart'
     show SongBrief, AudioEngine, NullAudioEngine, JustAudioEngine,
         AudioEvent, AudioEventType, MusicAudioHandler, NotificationMeta,
@@ -34,31 +37,13 @@ class PlaybackSnapshot {
 }
 
 /// 全局播放会话（单例）。构造由 session/bootstrap 装配时调用 [attach]。
-class PlaybackSession {
+class PlaybackSession extends ChangeNotifier {
   PlaybackSession._();
   static final PlaybackSession instance = PlaybackSession._();
 
   PlaybackService? _service;
   HistoryRecorder? _history;
   AudioEngine _engine = NullAudioEngine();
-  final List<void Function()> _listeners = <void Function()>[];
-
-  /// 订阅播放态变更（L7 用；与 flutter ChangeNotifier 同形，session 零 flutter）。
-  void addListener(void Function() listener) {
-    try {
-      _listeners.add(listener);
-    } catch (e, st) {
-      Log.e(_tag, 'addListener failed', e, st);
-    }
-  }
-
-  void removeListener(void Function() listener) {
-    try {
-      _listeners.remove(listener);
-    } catch (e, st) {
-      Log.e(_tag, 'removeListener failed', e, st);
-    }
-  }
 
   /// 队列变化回调（bootstrap 接给 CacheService 做 upcoming 预读）。
   void Function(List<String> hashes)? onQueueChanged;
@@ -107,7 +92,7 @@ class PlaybackSession {
       }
       _quality = quality.isEmpty ? '128' : quality;
       Log.d(_tag, 'attached quality=$_quality');
-      _notify();
+      notifyListeners();
     } catch (e, st) {
       Log.e(_tag, 'attach failed', e, st);
     }
@@ -140,25 +125,11 @@ class PlaybackSession {
     }
   }
 
-  void _notify() {
-    try {
-      for (final l in List<void Function()>.of(_listeners)) {
-        try {
-          l();
-        } catch (e, st) {
-          Log.e(_tag, 'listener failed', e, st);
-        }
-      }
-    } catch (e, st) {
-      Log.e(_tag, 'notify failed', e, st);
-    }
-  }
-
   void _emit(PlayerState next, {QueueState? queue}) {
     try {
       if (queue != null) _queue = queue;
       _player = next;
-      _notify();
+      notifyListeners();
     } catch (e, st) {
       Log.e(_tag, 'emit failed', e, st);
     }
