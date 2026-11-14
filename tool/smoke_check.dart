@@ -7,7 +7,7 @@
 //      - logic/ 出现任何 'package:flutter' → 违规（logic 层零 UI 依赖）
 //      - 强约束六五规则（与 tool/layer_audit.py 一致）：
 //        每层只许 import 同层、SDK(dart:*)、相邻桥（lib/bridges/ 下五桥之一）、
-//        L6 额外允许 package:flutter*/riverpod/just_audio/audio_service/path_provider；
+//        L6 额外允许 package:flutter*/riverpod/just_audio/audio_service/path_provider/video_player；
 //        跨层 import 非桥 .dart 文件 → VIOLATION（含 init→surface、core→kernel、
 //        logic→core、surface→kernel 等一切直连，白名单全部删除）。
 //   c) 桥文件唯一性：lib/bridges/*.dart 不得存在影子目录（lib/surface/bridges、
@@ -167,6 +167,7 @@ const _layerAllowedBridges = <int, Set<String>>{
 const _l6Extra = [
   'package:flutter', 'package:riverpod',
   'package:just_audio', 'package:audio_service', 'package:path_provider',
+  'package:video_player', // MV inline shell (batch R2)
 ];
 
 String? _resolveTarget(String rel, String imp) {

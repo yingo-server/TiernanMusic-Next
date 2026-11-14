@@ -411,7 +411,6 @@ class _SearchPageBodyState extends State<_SearchPageBody> {
       Log.e(_tag, 'clearHistory failed', e, st);
     }
   }
-
   Widget _buildHot() {
     try {
       return SearchHomeView(

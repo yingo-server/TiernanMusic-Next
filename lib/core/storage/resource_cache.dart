@@ -14,13 +14,13 @@ import '../../bridges/bridge_kernel.dart' as bk;
 const String _tag = 'ResourceCache';
 
 /// 统计快照。
-class CacheStats {
+class ResourceCacheStats {
   final int entries;
   final int bytes;
   final int hits;
   final int misses;
   final int evictions;
-  const CacheStats({
+  const ResourceCacheStats({
     required this.entries,
     required this.bytes,
     required this.hits,
@@ -280,14 +280,14 @@ class ResourceCache {
   }
 
   /// entries / bytes / hits / misses / evictions。
-  Future<CacheStats> stats() async {
+  Future<ResourceCacheStats> stats() async {
     try {
       final Map<String, Map<String, dynamic>> index = _loadIndex();
       int bytes = 0;
       for (final Map<String, dynamic> m in index.values) {
         bytes += (m['bytes'] as num?)?.toInt() ?? 0;
       }
-      return CacheStats(
+      return ResourceCacheStats(
         entries: index.length,
         bytes: bytes,
         hits: _hits,
@@ -296,7 +296,7 @@ class ResourceCache {
       );
     } catch (e, st) {
       bk.logE(_tag, 'stats failed ns=$namespace err=$e', e, st);
-      return CacheStats(
+      return ResourceCacheStats(
           entries: 0, bytes: 0, hits: _hits, misses: _misses, evictions: _evictions);
     }
   }

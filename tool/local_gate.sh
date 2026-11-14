@@ -20,6 +20,13 @@ if ! /opt/dart/bin/dart format --output=none lib tool > /tmp/syntax.log 2>&1; th
 fi
 echo PASS-syntax
 
+echo "== smoke check (line limits / imports / bridge uniqueness) =="
+/opt/dart/bin/dart run tool/smoke_check.dart > /tmp/smoke_local.log 2>&1 || {
+  rg "VIOLATION" /tmp/smoke_local.log | head -10
+  echo "FAIL-smoke"; exit 1; }
+grep -q "VIOLATION" /tmp/smoke_local.log && { rg "VIOLATION" /tmp/smoke_local.log | head -10; echo "FAIL-smoke"; exit 1; }
+echo PASS-smoke
+
 echo "== analyze gate (project-type errors only) =="
 python3 tool/analyze_gate.py || exit 1
 

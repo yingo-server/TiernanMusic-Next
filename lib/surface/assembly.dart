@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Override;
 
 import 'assembly_result.dart' show AssemblyResult;
-import 'widgets/song_actions_sheet.dart' show showSongActionsSheet;
+import 'pages/song_action_launcher.dart' show launchSongActions;
 import 'deps.dart' show SurfaceDeps;
 import 'registry.dart' show SurfaceRegistry;
 import '../bridges/bridge_core.dart'
@@ -266,26 +266,14 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         myPlaylists: playlistWriteLogic.myPlaylists,
         playlistTracks: (id) async =>
             (await playlist.tracks(id, 1)).items,
-        onSongAction: (song) {
-          try {
-            final ctx = appNavigatorKey.currentContext;
-            if (ctx == null) {
-              Log.w(_tag, 'song action skipped: no navigator context');
-              return;
-            }
-            showSongActionsSheet(
-              ctx,
-              song,
-              onPlayNext: () => controllerRef?.insertNext(song),
-              onCollect: () => collectLogic.toggle(
-                  song.hash, song.mixSongId, song: song),
-              collected: collectLogic.isCollected(song.hash),
-              onDownload: () => downloads.enqueue(song, quality),
-            );
-          } catch (e, st) {
-            Log.e(_tag, 'song action sheet failed', e, st);
-          }
-        },
+        onSongAction: (song) => launchSongActions(
+          song: song,
+          onPlayNext: (s) => controllerRef?.insertNext(s),
+          onCollect: () =>
+              collectLogic.toggle(song.hash, song.mixSongId, song: song),
+          collected: collectLogic.isCollected(song.hash),
+          onDownload: () => downloads.enqueue(song, quality),
+        ),
         onOpenSettings: () {
           try {
             homeTabRequest.value = 'settings';
@@ -410,26 +398,14 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
       search: search,
       playlist: playlist,
       onPlay: (song) => controllerRef?.playSong(song),
-      onSongAction: (song) {
-        try {
-          final ctx = appNavigatorKey.currentContext;
-          if (ctx == null) {
-            Log.w(_tag, 'home song action skipped: no navigator context');
-            return;
-          }
-          showSongActionsSheet(
-            ctx,
-            song,
-            onPlayNext: () => controllerRef?.insertNext(song),
-            onCollect: () =>
-                collectLogic.toggle(song.hash, song.mixSongId, song: song),
-            collected: collectLogic.isCollected(song.hash),
-            onDownload: () => downloads.enqueue(song, quality),
-          );
-        } catch (e, st) {
-          Log.e(_tag, 'home song action failed', e, st);
-        }
-      },
+      onSongAction: (song) => launchSongActions(
+        song: song,
+        onPlayNext: (s) => controllerRef?.insertNext(s),
+        onCollect: () =>
+            collectLogic.toggle(song.hash, song.mixSongId, song: song),
+        collected: collectLogic.isCollected(song.hash),
+        onDownload: () => downloads.enqueue(song, quality),
+      ),
       onOpenSearch: () {
         try {
           // 首页搜索入口 → 请求切到搜索 tab（app_root.homeTabRequest 消费）。
