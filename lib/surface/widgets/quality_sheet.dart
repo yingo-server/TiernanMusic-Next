@@ -48,6 +48,10 @@ class QualitySheet extends StatelessWidget {
   });
 
   final AudioQuality selected;
+
+  /// 点选回调（由 player_page / showQualitySheet 注入，档位变更唯一出口）。
+  final void Function(AudioQuality) onSelected;
+
   /// 真实偏好回显（toPref 串）：非空时经 fromPref 覆盖 selected；
   /// 默认 null → 保持旧行为 q128。player_page 本批禁改，后续批次接入该参数。
   final String? initialQuality;

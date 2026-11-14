@@ -46,6 +46,10 @@ class CollectLogic {
   /// 本地收藏镜像（hash 恒小写）。
   final Set<String> _favorites = <String>{};
 
+  /// 批5-F2：hash → fileid 镜像（加歌回执里的真实 fileid，删歌锚点）。
+  /// 取消收藏优先用它；缺失时旧镜像需重新收藏或后续补（不强行补旧数据）。
+  final Map<String, String> _fileIds = <String, String>{};
+
   /// 收藏计数：优先服务端返回，缺失则以镜像条数为准。
   int _count = 0;
 
@@ -95,6 +99,7 @@ class CollectLogic {
   void resetLocalMirror() {
     try {
       _favorites.clear();
+      _fileIds.clear();
       _count = 0;
       _load();
       _notify();
@@ -152,8 +157,14 @@ class CollectLogic {
       final wasCollected = _favorites.contains(h);
       final ep.CollectResult r;
       if (wasCollected) {
-        r = await ep.cancelCollectByHash(_client, h,
-            albumAudioId: '${song?.albumAudioId ?? 0}');
+        // 批5-F2：优先用镜像里的真实 fileid（加歌回执建档）；缺失则维持现状
+        // （回退 album_audio_id）并 Log.w —— fileid 未建档时删歌可能无效。
+        final fid = _fileIds[h] ?? '';
+        if (fid.isEmpty) {
+          Log.w(_tag, 'cancel fileid 未建档，回退 album_audio_id hash=$h');
+        }
+        final use = fid.isNotEmpty ? fid : '${song?.albumAudioId ?? 0}';
+        r = await ep.cancelCollectByHash(_client, h, albumAudioId: use);
       } else {
         r = await ep.collectSongByHash(_client, h, mixSongId,
             name: song?.name ?? '',
@@ -171,8 +182,16 @@ class CollectLogic {
       // 写成功后才动镜像：失败/未登录绝不落本地状态。
       if (wasCollected) {
         _favorites.remove(h);
+        _fileIds.remove(h);
       } else {
         _favorites.add(h);
+        // 批5-F2：建档 fileid（加歌回执）；缺失即「未建档」（旧镜像同理）。
+        final fid = r.fileId ?? '';
+        if (fid.isNotEmpty) {
+          _fileIds[h] = fid;
+        } else {
+          Log.w(_tag, 'collect 无 fileid 回执，fileid 未建档 hash=$h');
+        }
       }
       // 计数校准：端点 count 可能是占位值（collectSongByHash 成功恒返回 1、
       // cancelCollectByHash 恒返回 0），不可直接覆盖镜像条数——否则多曲收藏
@@ -182,7 +201,7 @@ class CollectLogic {
       _notify();
       Log.d(_tag, 'toggle ok hash=$h cancel=$wasCollected '
           'size=${_favorites.length} count=$_count flushed=$flushed');
-      return ep.CollectResult(ok: true, count: _count);
+      return ep.CollectResult(ok: true, count: _count, fileId: r.fileId);
     } catch (e, st) {
       Log.e(_tag, '_doToggle failed hash=$h', e, st);
       return const ep.CollectResult();
@@ -246,9 +265,41 @@ class CollectLogic {
     return uid.isEmpty ? 'favorites.anon' : 'favorites.$uid';
   }
 
+  /// 批5-F2：fileid 镜像持久键（按账号维度，与 _kFavoritesKey 同风格）。
+  String get _kFileIdsKey {
+    final uid = _client.session.userid;
+    return uid.isEmpty ? 'favorites.fileids.anon' : 'favorites.fileids.$uid';
+  }
+
+  /// 读 fileid 镜像（批5-F2）：JSON 对象 {"<小写hash>": "<fileid>"}。
+  /// 旧 favorites JSON 数组格式不动；旧镜像缺 fileid 时需重新收藏或后续补
+  /// （本层不强行补旧数据，不臆造 fileid）。
+  void _loadFileIds() {
+    try {
+      final raw = _settings.getString(_kFileIdsKey);
+      if (raw == null || raw.isEmpty) return;
+      final j = jsonDecode(raw);
+      if (j is Map) {
+        for (final e in j.entries) {
+          final h = _norm('${e.key}');
+          final v = '${e.value}'.trim();
+          if (h.isNotEmpty && v.isNotEmpty) _fileIds[h] = v;
+        }
+      } else {
+        Log.w(_tag, 'favorites.fileids not a JSON map, ignored');
+      }
+      return;
+    } catch (e, st) {
+      Log.e(_tag, '_loadFileIds failed', e, st);
+      return;
+    }
+  }
+
   /// 读镜像：settings.getString(key) → JSON 数组 → Set<String>。
   void _load() {
     try {
+      _fileIds.clear();
+      _loadFileIds();
       var raw = _settings.getString(_kFavoritesKey);
       // 迁移：新键为空且旧全局键有数据 → 一次性搬到当前 uid 键。
       if ((raw == null || raw.isEmpty)) {
@@ -287,7 +338,10 @@ class CollectLogic {
       final ok = _settings.setString(
           _kFavoritesKey, jsonEncode(_favorites.toList(growable: false)));
       if (!ok) Log.w(_tag, '_flush setString returned false');
-      return ok;
+      // 批5-F2：fileid 镜像另写一把（与 favorites 同维度、按账号隔离）。
+      final okIds = _settings.setString(_kFileIdsKey, jsonEncode(_fileIds));
+      if (!okIds) Log.w(_tag, '_flush fileids setString returned false');
+      return ok && okIds;
     } catch (e, st) {
       Log.e(_tag, '_flush failed', e, st);
       return false;

@@ -125,6 +125,20 @@ Future<List<SurfaceModule>> defaultModules(ModuleDeps deps) async {
     );
     controllerRef = controller;
     _installedController = controller;
+    // 通知栏 next/prev 接线（批5-F2）：handler 早于 controller 创建，故在
+    // controller 就绪后 bind 回调；bridge 不反向依赖 controller。
+    try {
+      audioHandler?.bind(
+        onNext: () {
+          controller.next();
+        },
+        onPrev: () {
+          controller.prev();
+        },
+      );
+    } catch (e, st) {
+      Log.w('surface.modules', 'audioHandler bind next/prev failed: $e $st');
+    }
     final overrides = <Override>[
       playerProvider.overrideWith((ref) => controller),
       playerControllerProvider.overrideWith((ref) => controller),

@@ -32,9 +32,8 @@ import 'l10n/l10n_helper.dart' show TnStrings;
 import 'theme/theme_state.dart' show themeModeProvider, settingsProvider;
 import 'theme/dynamic_theme.dart' show dynamicThemeProvider, ThemePalette;
 import 'theme/cover_palette.dart' show applyCoverPalette;
-import 'theme/tn_theme.dart'
-    show tnThemeWithPalette, tnPitchBlackThemeData, tnPadL, tnPadS, TnText;
 import 'theme/tn_shader_warmup.dart' show TnShaderWarmup;
+import 'ui/spotify_tokens.dart' show Sp;
 
 export 'deps.dart' show SurfaceDeps;
 
@@ -252,13 +251,15 @@ class _AppRootState extends State<AppRoot> {
 
   Widget _buildMaterialApp(int mode, ThemePalette? palette) {
     try {
+      // 批5-F1：主题统一由 Sp.theme() 出（Spotify 设计系统唯一真源），
+      // 消除「Sp.* 硬编码色 + M3 tnThemeWithPalette」两套混搭。
+      // 21 页消费 Sp.* 硬编码色，主题层必须与之一致 → 亮/暗槽位同源，
+      // 仅 mode==3（纯黑）走 pitchBlack 表面族覆盖。
       return MaterialApp(
           navigatorKey: appNavigatorKey,
           title: 'TiernanMusicNext',
-          theme: tnThemeWithPalette(palette, dark: false),
-          darkTheme: mode == 3
-              ? tnPitchBlackThemeData()
-              : tnThemeWithPalette(palette, dark: true),
+          theme: Sp.theme(palette: palette),
+          darkTheme: Sp.theme(palette: palette, pitchBlack: mode == 3),
           themeMode: switch (mode) {
             1 => ThemeMode.light,
             2 => ThemeMode.dark,

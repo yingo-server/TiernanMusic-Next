@@ -69,6 +69,11 @@ flutter analyze / flutter test   # 需本机安装 Flutter SDK
 
 `26.11.10.N`（日期.序号）。每个发布版本一份 `changed/<版本>.md` changelog，CI 的 release job 自动将其作为 Release body（缺失则回退最近 20 条 commit）。当前版本：26.11.10.1 LTS。
 
+## 验收与批5 检查报告
+
+- **真机验收**：见 [docs/ACCEPTANCE_CHECKLIST.md](docs/ACCEPTANCE_CHECKLIST.md)（42 条编号待执行验收项 + 风险与结论，覆盖启动/首页/搜索/歌单/播放/收藏/下载/歌词/评论/设置/通知栏）。
+- **批5 检查报告**：见 `docs/batch5_c*.md`（C1 UI 残留与 app_root 主题统一方案、C2 通知栏 next/prev + collect fileid 方案、C3 真机验收清单产出），另见 `docs/batch5_f1.md`（app_root 主题收口）与 `docs/batch5_f2.md`（通知栏 next/prev + collect fileid 补齐）改动说明。
+
 ## License
 
 Apache-2.0

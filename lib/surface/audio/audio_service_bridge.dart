@@ -15,20 +15,37 @@ const String _tag = 'surface.audio';
 ///   play/pause/stop 直接转发，不另建播放链路。
 /// - 通知栏 metadata 由 [updateMetadata] 推送（title/artist，album/artUri 可选）。
 /// 未完成项（批5-A 精简，TODO 批5-B/后续批）：
-/// - TODO(queue): playbackState 的系统事件（seek/next/prev）未接队列控制；
+/// - 批5-F2：系统事件 next/prev 已接（外部注入回调，见 bind）；seek 仍直连 player。
 /// - TODO(art): 封面 artUrl 未接（SongBrief 无封面字段映射）；
 /// - TODO(lifecycle): AudioService.init 需在宿主 main/boot 处调用，本文件不负责。
 class MinimalAudioHandler extends BaseAudioHandler {
-  MinimalAudioHandler({required AudioPlayer player}) : _player = player {
+  MinimalAudioHandler({
+    required AudioPlayer player,
+    void Function()? onNext,
+    void Function()? onPrev,
+  })  : _player = player,
+        _onNext = onNext,
+        _onPrev = onPrev {
     try {
       // playerState → playbackState（通知栏按钮态）
       _player.playerStateStream.listen((ps) {
         try {
           final playing = ps.playing;
           playbackState.add(playbackState.value.copyWith(
+            // 批5-F2：通知栏补 next/prev（队列长度未知 → 常显）。
             controls: playing
-                ? [MediaControl.pause, MediaControl.stop]
-                : [MediaControl.play, MediaControl.stop],
+                ? <MediaControl>[
+                    MediaControl.pause,
+                    MediaControl.stop,
+                    MediaControl.skipToPrevious,
+                    MediaControl.skipToNext,
+                  ]
+                : <MediaControl>[
+                    MediaControl.play,
+                    MediaControl.stop,
+                    MediaControl.skipToPrevious,
+                    MediaControl.skipToNext,
+                  ],
             processingState: _mapProcessing(_player.processingState),
             playing: playing,
             updatePosition: _player.position,
@@ -47,6 +64,26 @@ class MinimalAudioHandler extends BaseAudioHandler {
   }
 
   final AudioPlayer _player;
+
+  /// 通知栏「下一首 / 上一首」回调（批5-F2）。
+  /// bridge 不反向依赖 controller，故由装配层（modules.dart）构造完
+  /// PlayerController 后经 bind 注入；未绑定时系统事件只 Log.w 不阻断。
+  void Function()? _onNext;
+  void Function()? _onPrev;
+
+  /// 绑定通知栏 next/prev 回调（可在 controller 建好后调用）。
+  void bind({
+    required void Function() onNext,
+    required void Function() onPrev,
+  }) {
+    try {
+      _onNext = onNext;
+      _onPrev = onPrev;
+      Log.d(_tag, 'bind next/prev controls');
+    } catch (e, st) {
+      Log.e(_tag, 'bind failed', e, st);
+    }
+  }
 
   /// 推送通知栏 metadata（title/artist 必填，其余可空）。
   void updateMetadata({
@@ -120,6 +157,38 @@ class MinimalAudioHandler extends BaseAudioHandler {
       await super.stop();
     } catch (e, st) {
       Log.e(_tag, 'handler stop failed', e, st);
+    }
+  }
+
+  // ── 通知栏 next/prev（批5-F2） ──
+
+  @override
+  Future<void> skipToNext() async {
+    try {
+      final cb = _onNext;
+      if (cb == null) {
+        Log.w(_tag, 'skipToNext ignored (no callback bound)');
+        await super.skipToNext();
+        return;
+      }
+      cb();
+    } catch (e, st) {
+      Log.e(_tag, 'skipToNext failed', e, st);
+    }
+  }
+
+  @override
+  Future<void> skipToPrevious() async {
+    try {
+      final cb = _onPrev;
+      if (cb == null) {
+        Log.w(_tag, 'skipToPrevious ignored (no callback bound)');
+        await super.skipToPrevious();
+        return;
+      }
+      cb();
+    } catch (e, st) {
+      Log.e(_tag, 'skipToPrevious failed', e, st);
     }
   }
 

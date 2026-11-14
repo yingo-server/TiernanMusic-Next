@@ -9,7 +9,13 @@
 // - 交互：底部 64dp 导航（5 位）；每个条目 trailing = ⋮ 操作；横滑卡片 120dp。
 // - 布局：全列表驱动（无 Tab 嵌套），首页 = 垂直区块流 + 横滑行。
 // 纪律：只 import flutter/material + 本目录；所有颜色/字号/间距只在本文件定义。
+//
+// 批5-F1：theme() 增补可选动态调色板与纯黑模式，app_root 统一走这里，
+// 消除 Sp.* 硬编码色与 app_root M3 主题两套混搭（21 页消费 Sp.* 不动）。
 import 'package:flutter/material.dart';
+
+import '../../bridges/bridge_logic.dart' show Log;
+import '../theme/color_extract.dart' show ThemePalette;
 
 /// Spotify 设计令牌（唯一真源，禁止页面层硬编码颜色/字号）。
 abstract class Sp {
@@ -47,72 +53,129 @@ abstract class Sp {
   static const double fTiny = 11;
 
   /// 深色主题（Spotify 风格，全 app 唯一主题；Spotify 不提供亮色）。
-  static ThemeData theme() {
-    final base = ThemeData(useMaterial3: false, brightness: Brightness.dark);
-    final cs = ColorScheme.dark(
-      surface: bg,
-      onSurface: text,
-      surfaceContainer: card,
-      surfaceContainerHigh: cardHigh,
-      primary: green,
-      onPrimary: Colors.black,
-      secondary: textSub,
-      error: red,
-    );
-    return base.copyWith(
-      colorScheme: cs,
-      scaffoldBackgroundColor: bg,
-      canvasColor: bg,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: bg,
-        elevation: 0,
-        centerTitle: false,
-        titleTextStyle: TextStyle(
-            color: text, fontSize: fPageTitle, fontWeight: FontWeight.w900),
-        iconTheme: IconThemeData(color: text),
-      ),
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: Colors.black,
-        indicatorColor: Colors.transparent,
-        height: navH,
-        iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
-              color: states.contains(WidgetState.selected) ? text : textSub,
-            )),
-        labelTextStyle: WidgetStateProperty.resolveWith((states) =>
-            TextStyle(
-                fontSize: fTiny,
-                fontWeight: states.contains(WidgetState.selected)
-                    ? FontWeight.w700
-                    : FontWeight.w400,
-                color: states.contains(WidgetState.selected)
-                    ? text
-                    : textSub)),
-      ),
-      listTileTheme: ListTileThemeData(
-        iconColor: textSub,
-        titleTextStyle: const TextStyle(
-            color: text, fontSize: fItem, fontWeight: FontWeight.w500),
-        subtitleTextStyle:
-            const TextStyle(color: textSub, fontSize: fSub),
-        contentPadding: const EdgeInsets.symmetric(horizontal: pagePad),
-        minLeadingWidth: 0,
-      ),
-      chipTheme: ChipThemeData(
-        backgroundColor: card,
-        selectedColor: green,
-        labelStyle: const TextStyle(color: text, fontSize: fSub),
-        side: BorderSide.none,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rBtn)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      ),
-      dividerTheme: const DividerThemeData(color: divider, thickness: 0.5),
-      snackBarTheme: const SnackBarThemeData(
-        backgroundColor: cardHigh,
-        contentTextStyle: TextStyle(color: text),
-        behavior: SnackBarBehavior.floating,
-      ),
-      progressIndicatorTheme:
-          const ProgressIndicatorThemeData(color: green),
-    );
+  ///
+  /// [palette]：动态调色板（封面取色），非空时覆盖 primary/onPrimary/primaryContainer。
+  /// [pitchBlack]：纯黑模式——surface 家族（surfaceContainer* / scaffold / canvas）
+  ///   全覆盖为纯黑，其余令牌不变。
+  ///
+  /// 主题为 M3（useMaterial3: true），保证消费方 colorScheme.surfaceContainer*
+  /// 在各页稳定可用；失败一律 try/catch + Log 兜底为静态深色主题。
+  static ThemeData theme({ThemePalette? palette, bool pitchBlack = false}) {
+    try {
+      final base = ThemeData(useMaterial3: true, brightness: Brightness.dark);
+      final seed =
+          ColorScheme.fromSeed(seedColor: Sp.green, brightness: Brightness.dark);
+      final Color surface = pitchBlack ? Colors.black : const Color(0xFF0E0F12);
+      final Color low = pitchBlack ? Colors.black : Sp.card;
+      final Color high = pitchBlack ? Colors.black : Sp.cardHigh;
+      final ColorScheme cs = seed.copyWith(
+        surface: surface,
+        onSurface: Sp.text,
+        surfaceContainerLowest: surface,
+        surfaceContainerLow: low,
+        surfaceContainer: low,
+        surfaceContainerHigh: high,
+        surfaceContainerHighest: high,
+        primary: Sp.green,
+        onPrimary: Colors.black,
+        secondary: Sp.textSub,
+        onSecondary: Sp.text,
+        error: Sp.red,
+      );
+      final ColorScheme themed = _applyPalette(cs, palette);
+      return base.copyWith(
+        colorScheme: themed,
+        scaffoldBackgroundColor: themed.surface,
+        canvasColor: themed.surface,
+        appBarTheme: AppBarTheme(
+          backgroundColor: themed.surface,
+          elevation: 0,
+          centerTitle: false,
+          titleTextStyle: const TextStyle(
+              color: Sp.text, fontSize: fPageTitle, fontWeight: FontWeight.w900),
+          iconTheme: const IconThemeData(color: Sp.text),
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: pitchBlack ? Colors.black : Colors.black,
+          indicatorColor: Colors.transparent,
+          height: navH,
+          iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
+                color: states.contains(WidgetState.selected) ? Sp.text : Sp.textSub,
+              )),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) =>
+              TextStyle(
+                  fontSize: fTiny,
+                  fontWeight: states.contains(WidgetState.selected)
+                      ? FontWeight.w700
+                      : FontWeight.w400,
+                  color: states.contains(WidgetState.selected)
+                      ? Sp.text
+                      : Sp.textSub)),
+        ),
+        listTileTheme: const ListTileThemeData(
+          iconColor: Sp.textSub,
+          titleTextStyle: TextStyle(
+              color: Sp.text, fontSize: fItem, fontWeight: FontWeight.w500),
+          subtitleTextStyle: TextStyle(color: Sp.textSub, fontSize: fSub),
+          contentPadding: EdgeInsets.symmetric(horizontal: pagePad),
+          minLeadingWidth: 0,
+        ),
+        chipTheme: ChipThemeData(
+          backgroundColor: low,
+          selectedColor: Sp.green,
+          labelStyle: const TextStyle(color: Sp.text, fontSize: fSub),
+          side: BorderSide.none,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rBtn)),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        ),
+        dividerTheme: const DividerThemeData(color: Sp.divider, thickness: 0.5),
+        snackBarTheme: const SnackBarThemeData(
+          backgroundColor: Sp.cardHigh,
+          contentTextStyle: TextStyle(color: Sp.text),
+          behavior: SnackBarBehavior.floating,
+        ),
+        progressIndicatorTheme:
+            const ProgressIndicatorThemeData(color: Sp.green),
+      );
+    } catch (e, st) {
+      Log.e('surface.sp_tokens', 'theme() failed, fallback static', e, st);
+      return _fallbackTheme();
+    }
+  }
+
+  /// 动态调色板覆盖：仅在 palette 非空时改写 primary 三元组，surface 家族不动。
+  static ColorScheme _applyPalette(ColorScheme cs, ThemePalette? palette) {
+    try {
+      if (palette == null) return cs;
+      return cs.copyWith(
+        primary: palette.primary,
+        onPrimary: palette.onPrimary,
+        primaryContainer: palette.primaryContainer,
+      );
+    } catch (e, st) {
+      Log.e('surface.sp_tokens', '_applyPalette failed', e, st);
+      return cs;
+    }
+  }
+
+  /// 兜底静态主题（不依赖任何动态状态）。
+  static ThemeData _fallbackTheme() {
+    try {
+      return ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: const ColorScheme.dark(
+          surface: Color(0xFF0E0F12),
+          onSurface: Sp.text,
+          primary: Sp.green,
+          onPrimary: Colors.black,
+          secondary: Sp.textSub,
+          error: Sp.red,
+        ),
+      );
+    } catch (e, st) {
+      Log.e('surface.sp_tokens', '_fallbackTheme failed', e, st);
+      return ThemeData(useMaterial3: true, brightness: Brightness.dark);
+    }
   }
 }

@@ -25,6 +25,7 @@ class CollectResult {
     this.ok = false,
     this.needsLogin = false,
     this.count = 0,
+    this.fileId,
   });
 
   final bool ok;
@@ -32,13 +33,20 @@ class CollectResult {
   final bool needsLogin;
   // 服务端收藏总数；缺失 0。logic 层以本地镜像条数为单一事实源。
   final int count;
+  // 批5-F2：加歌回执里的 fileid（真实删除锚点；取消收藏时用）。
+  // 缺失为 null（logic 层据此判定「fileid 未建档」）。
+  final String? fileId;
 
-  CollectResult copyWith({bool? ok, bool? needsLogin, int? count}) =>
-      CollectResult(ok: ok ?? this.ok,
-          needsLogin: needsLogin ?? this.needsLogin, count: count ?? this.count);
+  CollectResult copyWith(
+          {bool? ok, bool? needsLogin, int? count, String? fileId}) =>
+      CollectResult(
+          ok: ok ?? this.ok,
+          needsLogin: needsLogin ?? this.needsLogin,
+          count: count ?? this.count,
+          fileId: fileId ?? this.fileId);
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'ok': ok, 'needsLogin': needsLogin, 'count': count,
+        'ok': ok, 'needsLogin': needsLogin, 'count': count, 'fileId': fileId,
       };
 
   @override
@@ -129,8 +137,21 @@ Future<CollectResult> collectSongByHash(
       },
     ]);
     final ok = rows.isNotEmpty;
-    Log.d(_tag, 'collectSongByHash via 我喜欢 listid=$listid ok=$ok hash=$h');
-    return CollectResult(ok: ok, count: ok ? 1 : 0);
+    // 批5-F2：加歌回执 data.info[] 首项的 fileid（兜底 audio_id）——
+    // fileid 才是删歌锚点（hash 无效），回执丢弃即无法取消收藏。
+    var fileId = '';
+    if (rows.isNotEmpty) {
+      final first = rows.first;
+      final fid = first['fileid'];
+      if (fid != null) fileId = '$fid'.trim();
+      if (fileId.isEmpty) {
+        final aid = first['audio_id'];
+        if (aid != null) fileId = '$aid'.trim();
+      }
+    }
+    Log.d(_tag, 'collectSongByHash via 我喜欢 listid=$listid ok=$ok hash=$h '
+        'fileId=$fileId');
+    return CollectResult(ok: ok, count: ok ? 1 : 0, fileId: fileId);
   } catch (e, st) {
     Log.e(_tag, 'collectSongByHash failed hash=$hash', e, st);
     return const CollectResult();

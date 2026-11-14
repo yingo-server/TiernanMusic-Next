@@ -349,9 +349,10 @@ TnAppBar「{歌手名}」
 
 ---
 
-## 11. 接线状态清单（批3-F3 按当前代码逐文件核对）
+## 11. 接线状态清单（批5-F3 按批1~4 最新修复刷新）
 
 > 逐项以文件存在 / import 与调用点为据；无法从当前代码确认的标「待核对」，不杜撰完成度。
+> 批4 修复项已按当前代码回填；批5 项如实标注「批5 进行 / 待验收」，不冒充完成。
 
 ### 11.1 已补齐 / 部分接线（原 §11.2 误列为未接线者已回迁）
 
@@ -377,9 +378,11 @@ TnAppBar「{歌手名}」
 | 评论发表 / 回复输入 | ❌ 无输入入口（只读浏览）；与上游 WAF 无关，WAF 只影响**列表读取**（见 §9.2 注） |
 | 评论点赞 / 热词 | ❌ 纯展示，无点击事件 |
 | 歌词行点击 seek | ❌ 仅自动滚动 + 逐字着色 |
-| 音质当前档回显 | ⚠️ 播放页 `_showQualitySheet` 仍硬编码 `selected: q128`，未读真实偏好 |
-| 通知栏系统事件 | ⚠️ **部分接线**：`player_controller.dart` 已调 `updateMetadata`（title/artist/artUri）；`audio_service_bridge.dart` 的 `next` / `prev` / `seek` 队列控制未接 |
+| 音质当前档回显 | ✅ **批4 已修**：音质偏好读取真实当前档并生效（原播放页 `_showQualitySheet` 硬编码 `selected: q128` 已移除） |
+| 通知栏系统事件 | ⚠️ **批5 进行 / 待验收**：`player_controller.dart` 已调 `updateMetadata`（title/artist/artUri）；`audio_service_bridge.dart` 的 `next` / `prev` / `seek` 队列控制在批5-C2 核对时**仍未接**，最小接线方案见 `docs/batch5_c2.md`；工作区已有相关改动（`audio_service_bridge.dart` / `modules.dart` 已修改），但**未跑分析器、未构建、未真机验收、未提交** |
 | 存储一键清理 | ⚠️ `storage_diag_page.dart` 只读统计，尚无「一键清缓存/清下载」 |
+| 收藏 fileid 落盘 | ⚠️ **批5 进行 / 待验收**：批5-C2 核对时 collect 只存 hash、`addSongsToPlaylist` 回执里的 `fileid` 被丢弃；方案见 `docs/batch5_c2.md`，工作区已实现 fileid 镜像键 `favorites.fileids.<uid>` 与回执取 fileid（改动说明 `docs/batch5_f2.md`），但**未跑分析器、未构建、未真机验收、未提交**，旧镜像缺 fileid 不自动补齐 |
+| app_root 主题 | ⚠️ **批5 进行 / 待验收**：`app_root` 已改为消费 `Sp.theme()`（批5-F1，`lib/surface/ui/spotify_tokens.dart` + `lib/surface/app_root.dart`），但**未跑分析器、未构建、未真机验收、未提交**；已知取舍：light 槽位仍渲染同一套深色主题（见 `docs/batch5_f1.md`「已知取舍」） |
 | 其它（高潮片段 / 云盘 / 二维码会话热生效 / 首页「每日推荐」行尾 ⋮ / 每日推荐 200103） | ⚠️ **待核对**：不列入「已补齐」，亦不断言已修；逐项以文件存在为准 |
 
 ### 11.3 批1 / 批2 修复清单（简述，按当前代码留痕）
@@ -396,7 +399,28 @@ TnAppBar「{歌手名}」
 | specialid 链路 | `assembly.dart` / `playlist_page.dart` / `storage_diag_page.dart`：gc_id 先 `detail` 换数字 `specialId`，空则 `Log.w` + 空曲目，不回退 gc_id（否则 20010） |
 | favoriteListId | `collect_logic.dart` 经 `endpoints.collect.favoriteListId(client)` 取 listid 再拉曲目；「我喜欢」= listid 2 |
 | privKnown / 31833 | `endpoints/play_models.dart`：仅 `errcode==20028` 或 `status==2 && !privKnown && urls.isEmpty` 为验证态；**31833 是错盐签名失败负对照**，由上层映射 network |
-| 播放历史 / 通知栏元数据 | `user_endpoints.dart uploadPlayHistory` + `logic/player/history_recorder.dart`；`player_controller.dart` L395 `updateMetadata` 已接（next/prev 未接，见 §11.2） |
+| 播放历史 / 通知栏元数据 | `user_endpoints.dart uploadPlayHistory` + `logic/player/history_recorder.dart`；`player_controller.dart` L395 `updateMetadata` 已接（next/prev 批5 进行 / 待验收，见 §11.2 / §11.4） |
+
+### 11.4 批4 完成项与批5 现状（按批1~4 最新修复刷新）
+
+**批4 完成**：
+
+| 修复项 | 现状 |
+|---|---|
+| 10 文件 Sp 收敛 | ✅ 批4 已完成：按 10 个文件为一批收敛 `Sp.*` 令牌消费，统一走 surface 层主题/间距令牌；⚠️ 批5-C1 核对显示全仓仍有 21 个页面消费 `Sp.*`（两套设计系统并存），其余批次待继续迁移（`docs/batch5_c1.md` §①） |
+| ResourceCache 异步 IO + 互斥 | ✅ 批4 已完成：`core/memory` 的 `ResourceCache` 磁盘读写改为异步 IO，并加入互斥保护，避免并发重复写/写冲突 |
+| 音质偏好生效 | ✅ 批4 已完成：音质偏好读取真实当前档并实际生效（原硬编码 `q128` 回显已移除） |
+
+**批5 现状（如实标注，不冒充完成）**：
+
+| 项 | 现状 | 检查报告 |
+|---|---|---|
+| 通知栏 next/prev | ⚠️ **批5 进行 / 待验收**：方案已出（`bind` + `skipToNext/skipToPrevious` + `MediaControl` 补键）；工作区 `audio_service_bridge.dart` / `modules.dart` 已改动，**未跑分析器、未构建、未真机验收、未提交** | `docs/batch5_c2.md` / `docs/batch5_f2.md` |
+| collect fileid 落盘 | ⚠️ **批5 进行 / 待验收**：hash→fileid 镜像键 `favorites.fileids.<uid>`、`CollectResult.fileId` 与回执取 fileid 已实现；工作区 `collect_endpoints.dart` / `collect_logic.dart` 已改动，**未跑分析器、未构建、未真机验收、未提交**，旧镜像缺 fileid 不自动补齐 | `docs/batch5_c2.md` / `docs/batch5_f2.md` |
+| app_root 主题 | ⚠️ **批5 进行 / 待验收**：`app_root` 已切到 `Sp.theme()`（批5-F1，`spotify_tokens.dart` + `app_root.dart`），light 槽位仍渲染同一套深色主题为已知取舍；**未跑分析器、未构建、未真机验收、未提交** | `docs/batch5_c1.md` / `docs/batch5_f1.md` |
+| 真机验收清单 | ⚠️ **待执行**：验收项全部为待人工执行项，无真机运行结论 | `docs/batch5_c3.md` / `docs/ACCEPTANCE_CHECKLIST.md` |
+
+> 批5 检查报告索引：`docs/batch5_c1.md`（UI 残留与 app_root 主题统一方案）、`docs/batch5_c2.md`（通知栏 + collect fileid 方案）、`docs/batch5_c3.md`（真机验收清单产出）、`docs/batch5_f1.md`（app_root 主题收口改动说明）、`docs/batch5_f2.md`（通知栏 next/prev + collect fileid 补齐改动说明）。
 
 ## 12. 核对方式（如何复现本功能树）
 

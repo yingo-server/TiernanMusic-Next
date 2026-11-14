@@ -53,6 +53,10 @@ class LyricsPageModule implements SurfaceModule {
   @override
   bool enabled(LogicFacade logic) => true;
 
+  /// 嵌入播放页，不贡献导航入口（抽象接口默认实现为 null；显式声明避免
+  /// 上游 SurfaceModule 收紧后编译告警）。
+  NavEntry? get navEntry => null;
+
   @override
   WidgetBuilder builder(LogicFacade logic) => (_) => LyricsPage(deps: deps);
 }
