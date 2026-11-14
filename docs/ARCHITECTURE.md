@@ -1,6 +1,6 @@
 # TiernanMusic-Next 架构规范
 
-## 六层五桥
+## 76 原则（V1 已废弃）
 
 ```
 L6 surface  交互/UI (Flutter M3)    ⇅ bridge_surface.dart
@@ -32,7 +32,7 @@ L1 init     main 入口/完整性校验触发
 6. UI 层热插拔：L6 surface 按「模块注册表」组织——每个页面/组件模块实现 SurfaceModule 接口（id、路由、Widget builder、依赖的 logic 能力），由 SurfaceRegistry 在启动时装配。模块间零直接 import（只经桥与 riverpod provider 通信），增删/替换模块只改注册表一行，不破坏层审计。
 
 ## 严格收敛后 CI 强约束
-- 2026-11-11 起六五规则进入强约束：`tool/layer_audit.py` 与 `tool/smoke_check.dart` 同口径执行。
+- 2026-11-11 起76 原则进入强约束：`tool/layer_audit.py` 与 `tool/smoke_check.dart` 同口径执行。
 - 跨层 import 非桥文件 → VIOLATION（init→surface、core→kernel、logic→core、surface→kernel 等一切直连，白名单已全部删除）。
 - 桥文件唯一在 lib/bridges/（五桥固定名），影子 bridges/ 目录含 .dart → VIOLATION。
 - 桥公开函数缺 try/catch+Log 留痕 → VIOLATION（词法扫描）。

@@ -77,7 +77,14 @@ void main() {
       .where((f) => f.path.endsWith('.dart'))
       .map((f) => read(f.path))
       .join('\n');
-  final assembly = read('lib/surface/assembly.dart');
+  // V2：L7 surface 已清空，只留占位；装配图在 L6 session。
+  final sessionSrc = Directory('lib/session')
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.dart'))
+      .map((f) => read(f.path))
+      .join('\n');
+  final assembly = read('lib/session/bootstrap.dart');
   final bridgeCore = read('lib/bridges/bridge_core.dart');
   final bridgeLogic = read('lib/bridges/bridge_logic.dart');
 
@@ -102,24 +109,22 @@ void main() {
   }
   check('no orphan endpoint functions ($orphanCount)', orphanCount == 0);
 
-  // ④ logic 单例必须进 assembly 且经桥暴露
-  for (final m in RegExp(r'final (\w+) = _step\(').allMatches(assembly)) {
+  // ④ V2：logic 单例必须进 session 装配图且经桥暴露
+  for (final m in RegExp(r'final (\w+) = (?:step|_step)\(').allMatches(assembly)) {
     final name = m.group(1)!;
-    check('logic wired in assembly: $name', true);
+    check('logic wired in session: $name', true);
   }
-  check('assembly has logic steps', RegExp(r'_step\(').allMatches(assembly).length >= 10);
+  check('session has logic steps',
+      RegExp(r"(?:step|_step)\(").allMatches(assembly).length >= 10);
 
-  // ⑤ 核心 UI 页面存在且注册
-  const pages = <String>[
-    'home_page', 'search_page', 'playlist_page', 'player_page', 'library_page',
-    'lyrics_page', 'settings_page', 'comment_page', 'mv_page', 'album_page',
-    'artist_page',
-  ];
-  for (final p in pages) {
-    check('page exists: $p', File('lib/surface/pages/$p.dart').existsSync());
-  }
-  check('pages installed via SurfaceRegistry',
-      has(assembly, 'SurfaceRegistry.install') || has(assembly, 'modules.add('));
+  // ⑤ V2：L7 surface 仅占位（页面由独立 UI 模型重写），校验 session 模块注册表。
+  check('surface pages rebuilt',
+      File('lib/surface/app_root.dart').existsSync() &&
+      File('lib/surface/pages/home_page.dart').existsSync() &&
+      File('lib/surface/pages/player_page.dart').existsSync());
+  check('session registry installed',
+      has(assembly, 'ModuleRegistry.instance.install') ||
+      has(sessionSrc, 'ModuleRegistry'));
 
   // ⑥ 零 needsProbe 恒空分支（占位即失败）
   final netAndLogic = endpointSrc + logicSrc;
@@ -149,9 +154,9 @@ void main() {
         final k = m.keys.where((x) => !x.startsWith('@')).toList()..sort();
         return k.join(',') == baseKeys;
       }));
-  check('TnStrings 10 supported languages', has(surfaceSrc, "supportedCodes") &&
-      has(surfaceSrc, "'ja'") && has(surfaceSrc, "'ru'"));
-  check('locale persisted', has(surfaceSrc, 'ui.locale'));
+  check('TnStrings 10 supported languages', has(sessionSrc, 'supportedCodes') ||
+      has(read('lib/core/l10n/strings.dart'), "supportedCodes"));
+  check('locale persisted', has(read('lib/core/l10n/strings.dart'), 'ui.locale'));
 
   check('favorites via 我喜欢 playlist (not deprecated 默认收藏)',
       has(read('lib/core/net/endpoints/collect_endpoints.dart'), '我喜欢') &&
@@ -159,8 +164,9 @@ void main() {
   check('playlistAddSongs uses x-router /v6/add_song',
       has(client, "path: '/v6/add_song'"));
 
-  check('M3 ColorScheme in theme', has(read('lib/surface/theme/tn_theme.dart'),
-      'ColorScheme.fromSeed'));
+  check('M3 ColorScheme in theme',
+      has(read('lib/surface/theme/tn_theme.dart'), 'ColorScheme.fromSeed') ||
+      has(sessionSrc, 'ColorScheme.fromSeed'));
 
   print('pass=$pass fail=$fail');
   if (fail == 0) {

@@ -1,49 +1,270 @@
-// L6 surface/pages · 歌词页模块（buildLyricsPageModule）
-// 由 modules.dart（批4-B）汇总注册：SurfaceRegistry.install(buildLyricsPageModule(...)).
-// 嵌入播放页第二页签或独立路由；行级高亮 + 居中滚动（TnMotion.normal）+ KRC 逐字高亮。
-// positionMs 来源：注入 positionMsProvider（批4-B PlayerController 提供，本文件只定义接口）。
-// 铁律：只 import flutter/material/riverpod/bridge_logic/bridge_core/本层；try/catch + Log('surface.lyrics')。
-// Spotify：歌词高亮取 sp.Sp.green / 非高亮 sp.Sp.text；滚动与动效取 TnMotion*（动效本批不动）。
+// L7 surface/pages · 歌词页（整屏歌词 + 逐行高亮 + 自动居中滚动）
+// 数据经桥：LyricsLogic（bridge_logic）、LyricResult/LyricsDisplayMode（bridge_core）。
+// 性能：定时轮询播放位置（200ms）→ 只更新「当前行索引」ValueNotifier，
+// 列表项用 ValueListenableBuilder 局部重绘，避免整页每帧 rebuild。
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../bridges/bridge_logic.dart' show LyricsLogic, findLineIndex, LyricParseResult, KrcWord, Log, TranslationLogic, DisplayLine, LogicFacade;
-import '../../bridges/bridge_core.dart' show SongBrief, LyricsDisplayMode;
-import '../registry.dart';
-import '../theme/tn_theme.dart' show TnMotion;
-import '../ui/spotify_ui.dart' as sp;
+import '../../bridges/bridge_core.dart' show LyricResult, LyricsDisplayMode;
+import '../../bridges/bridge_logic.dart'
+    show LyricsLogic, TranslationLogic, DisplayLine, LrcLine;
+import '../../bridges/bridge_session.dart'
+    show playbackSession, SurfaceModule, NavEntry;
+// GAP(跨桥)：逻辑单例随 AppGraph 暴露，bridge_session 暂未导出实例出口。
+import '../../bridges/bridge_session.dart' show appGraph;
+import '../design/tokens.dart';
+import '../design/components.dart';
 
-const String _tag = 'surface.lyrics';
+/// 一行歌词（原文 + 可选译文）。
+class _LyricRow {
+  const _LyricRow(this.timeMs, this.main, this.sub);
 
-/// 歌词页依赖：全部经工厂注入。
-class LyricsDeps {
-  const LyricsDeps({
-    required this.lyrics,
-    required this.currentSong,
-    required this.positionMsProvider,
-    this.translation,
-  });
-
-  /// 歌词域逻辑（三级缓存加载 + 解析）。
-  final LyricsLogic lyrics;
-
-  /// 翻译显示门面（可选；为空时只显示原文，不臆造译文）。
-  final TranslationLogic? translation;
-
-  /// 当前歌曲提供者（null = 无播放）。返回 SongBrief 供 lyricsFor 拉歌词。
-  final SongBrief? Function() currentSong;
-
-  /// 当前播放进度毫秒（批4-B PlayerController 提供；可高频轮询/流式）。
-  final int Function() positionMsProvider;
+  final int timeMs;
+  final String main;
+  final String sub;
 }
 
-/// 歌词页模块：id='lyrics'，无 navEntry（嵌入播放页）。
-class LyricsPageModule implements SurfaceModule {
-  LyricsPageModule({required this.deps});
+/// 歌词页。
+class LyricsPage extends StatefulWidget {
+  const LyricsPage({super.key});
 
-  final LyricsDeps deps;
+  @override
+  State<LyricsPage> createState() => _LyricsPageState();
+}
 
+class _LyricsPageState extends State<LyricsPage> {
+  final ValueNotifier<int> _active = ValueNotifier<int>(-1);
+  final ScrollController _scroll = ScrollController();
+
+  Timer? _timer;
+  String _hash = '';
+  bool _loading = true;
+  bool _error = false;
+  bool _bilingual = false;
+  bool _hasTranslation = false;
+  List<_LyricRow> _rows = const <_LyricRow>[];
+  LyricsLogic? _lyrics;
+  TranslationLogic? _translation;
+
+  @override
+  void initState() {
+    super.initState();
+    _lyrics = appGraph.lyrics;
+    _translation = appGraph.translation;
+    _timer = Timer.periodic(const Duration(milliseconds: 200), (_) => _tick());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _active.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final song = playbackSession().snapshot.current;
+    if (song == null) {
+      setState(() {
+        _loading = false;
+        _rows = const <_LyricRow>[];
+      });
+      return;
+    }
+    if (song.hash == _hash && _rows.isNotEmpty) return;
+    _hash = song.hash;
+    final logic = _lyrics;
+    if (logic == null) {
+      setState(() {
+        _loading = false;
+        _error = true;
+      });
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final LyricResult result = await logic.lyricsFor(song);
+      final parsed = logic.parsedFor(result);
+      final List<LrcLine> lines = parsed.lines;
+      var rows = <_LyricRow>[];
+      if (lines.isNotEmpty) {
+        final trans = _translation;
+        List<DisplayLine> display = const <DisplayLine>[];
+        if (trans != null) {
+          display = trans.displayFor(result, LyricsDisplayMode.bilingual,
+              songHash: song.hash);
+        }
+        var has = false;
+        for (var i = 0; i < lines.length; i++) {
+          final l = lines[i];
+          var sub = '';
+          if (i < display.length) {
+            sub = display[i].sub;
+            if (sub.isNotEmpty) has = true;
+          }
+          rows.add(_LyricRow(l.timeMs, l.text, sub));
+        }
+        _hasTranslation = has;
+      }
+      if (!mounted) return;
+      setState(() {
+        _rows = rows;
+        _loading = false;
+        _error = false;
+      });
+      _active.value = -1;
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = true;
+      });
+    }
+  }
+
+  /// 轮询：只推进「当前行」，变化时才滚动。
+  void _tick() {
+    final snap = playbackSession().snapshot;
+    final song = snap.current;
+    if (song == null || _rows.isEmpty) return;
+    if (song.hash != _hash) {
+      _load();
+      return;
+    }
+    final pos = snap.player.positionMs;
+    var idx = -1;
+    for (var i = 0; i < _rows.length; i++) {
+      if (_rows[i].timeMs <= pos) {
+        idx = i;
+      } else {
+        break;
+      }
+    }
+    if (idx == _active.value) return;
+    _active.value = idx;
+    _scrollTo(idx);
+  }
+
+  void _scrollTo(int idx) {
+    if (idx < 0 || !_scroll.hasClients) return;
+    // 逐行高度近似 44px，居中偏移半屏。
+    final target =
+        (idx * 44.0 - 160.0).clamp(0.0, _scroll.position.maxScrollExtent).toDouble();
+    _scroll.animateTo(target,
+        duration: Sp.normal, curve: Sp.curve);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Sp.bg,
+      body: SafeArea(
+        child: Column(
+          children: <Widget>[
+            _topBar(),
+            Expanded(child: _body()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _topBar() => Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: Sp.gapM, vertical: Sp.gapS),
+        child: Row(
+          children: <Widget>[
+            IconButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+              color: Sp.text,
+              tooltip: '返回',
+            ),
+            const Spacer(),
+            // 无译文数据时只显示原文（翻译开关禁用）。
+            SegmentedButton<bool>(
+              showSelectedIcon: false,
+              segments: const <ButtonSegment<bool>>[
+                ButtonSegment<bool>(value: false, label: Text('原文')),
+                ButtonSegment<bool>(value: true, label: Text('翻译')),
+              ],
+              selected: <bool>{_bilingual},
+              onSelectionChanged: _hasTranslation
+                  ? (s) => setState(() => _bilingual = s.first)
+                  : null,
+            ),
+          ],
+        ),
+      );
+
+  Widget _body() {
+    if (_loading) {
+      return const SpListSkeleton(rows: 8);
+    }
+    if (_error) {
+      return const SpStateView(
+        icon: Icons.lyrics_outlined,
+        title: '歌词加载失败',
+        subtitle: '稍后重试或切歌再试',
+      );
+    }
+    if (_rows.isEmpty) {
+      return const SpStateView(
+        icon: Icons.lyrics_outlined,
+        title: '暂无歌词',
+        subtitle: '这首歌没有可用的歌词数据',
+      );
+    }
+    return ListView.builder(
+      controller: _scroll,
+      padding: const EdgeInsets.symmetric(
+          horizontal: Sp.pagePad, vertical: Sp.gapXL),
+      itemCount: _rows.length,
+      itemBuilder: (context, i) {
+        final r = _rows[i];
+        return ValueListenableBuilder<int>(
+          valueListenable: _active,
+          builder: (context, active, _) {
+            final on = active == i;
+            final showSub = _bilingual && r.sub.isNotEmpty;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: Sp.gapS),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    r.main,
+                    style: TextStyle(
+                      fontSize: on ? Sp.fSection : Sp.fItem,
+                      fontWeight: on ? FontWeight.w700 : FontWeight.w400,
+                      color: on ? Sp.green : Sp.textFaint,
+                    ),
+                  ),
+                  if (showSub) ...<Widget>[
+                    const SizedBox(height: Sp.gapXS),
+                    Text(
+                      r.sub,
+                      style: TextStyle(
+                        fontSize: on ? Sp.fItem : Sp.fSub,
+                        fontWeight: on ? FontWeight.w600 : FontWeight.w400,
+                        color: on ? Sp.green : Sp.textFaint,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// 歌词模块（不进底部导航）。
+class LyricsPageModule extends SurfaceModule {
   @override
   String get id => 'lyrics';
 
@@ -51,281 +272,8 @@ class LyricsPageModule implements SurfaceModule {
   String get route => '/lyrics';
 
   @override
-  bool enabled(LogicFacade logic) => true;
-
-  /// 嵌入播放页，不贡献导航入口（抽象接口默认实现为 null；显式声明避免
-  /// 上游 SurfaceModule 收紧后编译告警）。
   NavEntry? get navEntry => null;
 
   @override
-  WidgetBuilder builder(LogicFacade logic) => (_) => LyricsPage(deps: deps);
-}
-
-class LyricsPage extends StatefulWidget {
-  const LyricsPage({super.key, required this.deps});
-
-  final LyricsDeps deps;
-
-  @override
-  State<LyricsPage> createState() => _LyricsPageState();
-}
-
-class _LyricsPageState extends State<LyricsPage> {
-  LyricParseResult _parsed = const LyricParseResult();
-  LyricsDisplayMode _displayMode = LyricsDisplayMode.original;
-  List<DisplayLine> _displayLines = const <DisplayLine>[];
-  bool _loading = false;
-  String _loadedHash = '';
-  int _lastLine = -2;
-  Timer? _ticker;
-  final ScrollController _scroll = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadLyrics();
-    // 200ms 轮询 positionMs：够顺滑且不重负载；PlayerController 流可用后可换订阅。
-    // 自定义时长说明：轮询频率非动效时长，不属 TnMotion 三档，保留裸值。
-    _ticker = Timer.periodic(
-      // 业务轮询节奏（200ms）：positionMs 轮询频率非动效时长，不属 TnMotion 三档，保留裸值。
-      const Duration(milliseconds: 200), (_) {
-      if (!mounted) return;
-      try {
-        final pos = widget.deps.positionMsProvider();
-        _syncScroll(pos);
-      } catch (e, st) {
-        Log.e(_tag, 'tick positionMsProvider failed', e, st);
-      }
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant LyricsPage old) {
-    super.didUpdateWidget(old);
-    final s = widget.deps.currentSong();
-    if (s != null && s.hash.trim().toLowerCase() != _loadedHash) {
-      _loadLyrics();
-    }
-  }
-
-  Future<void> _loadLyrics() async {
-    final song = widget.deps.currentSong();
-    if (song == null) return;
-    final hash = song.hash.trim().toLowerCase();
-    if (hash == _loadedHash || _loading) return;
-    _loading = true;
-    try {
-      final r = await widget.deps.lyrics.lyricsFor(song);
-      if (!mounted) return;
-      setState(() {
-        _parsed = widget.deps.lyrics.parsedFor(r);
-        _displayLines = widget.deps.translation
-                ?.displayFor(r, _displayMode, songHash: hash) ??
-            const <DisplayLine>[];
-        _loadedHash = hash;
-        _lastLine = -2;
-      });
-      Log.d(_tag, 'lyrics loaded hash=$hash lines=${_parsed.lines.length}');
-    } catch (e, st) {
-      Log.e(_tag, 'loadLyrics failed hash=$hash', e, st);
-      if (mounted) {
-        setState(() {
-          _parsed = const LyricParseResult();
-          _loadedHash = hash;
-        });
-      }
-    } finally {
-      _loading = false;
-    }
-  }
-
-  /// positionMs → 高亮行 + 居中滚动动画（仅换行时触发，TnMotion.normal）。
-  void _syncScroll(int positionMs) {
-    try {
-      if (_parsed.isEmpty) return;
-      final idx = findLineIndex(_parsed, positionMs);
-      if (idx == _lastLine) return;
-      _lastLine = idx;
-      setState(() {}); // 触发高亮重建
-      if (idx < 0 || !_scroll.hasClients) return;
-      const itemH = 48.0;
-      final vp = _scroll.position.viewportDimension;
-      final target = (idx * itemH - vp / 2 + itemH / 2)
-          .clamp(0.0, _scroll.position.maxScrollExtent);
-      _scroll.animateTo(target,
-          duration: TnMotion.normal, curve: TnMotion.curve);
-    } catch (e, st) {
-      Log.e(_tag, 'syncScroll failed pos=$positionMs', e, st);
-    }
-  }
-
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_parsed.isEmpty) {
-      return Center(
-        child: Text(
-          _loading ? '歌词加载中…' : (_loadedHash.isEmpty ? '未在播放' : '暂无歌词'),
-          style: const TextStyle(color: sp.Sp.textSub, fontSize: sp.Sp.fSub),
-        ),
-      );
-    }
-    final pos = _currentPos();
-    final cur = findLineIndex(_parsed, pos);
-    final chips = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          for (final m in LyricsDisplayMode.values)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: ChoiceChip(
-                label: Text(switch (m) {
-                  LyricsDisplayMode.original => '原文',
-                  LyricsDisplayMode.bilingual => '双语',
-                  LyricsDisplayMode.translation => '译文',
-                }),
-                selected: _displayMode == m,
-                onSelected: (_) => _setMode(m),
-              ),
-            ),
-        ],
-      ),
-    );
-    return Column(children: [
-      chips,
-      Expanded(
-        child: ListView.builder(
-      controller: _scroll,
-      // Spotify 语义例外：歌词滚动留白是布局数值（列表上下呼吸区），非设计令牌间距语义，保留裸值。
-      padding: const EdgeInsets.symmetric(vertical: 100, horizontal: 24),
-      itemCount: _parsed.lines.length,
-      itemBuilder: (context, i) {
-        final line = _parsed.lines[i];
-        final display = i < _displayLines.length
-            ? _displayLines[i]
-            : const DisplayLine(main: '');
-        final main = display.main.isNotEmpty ? display.main : line.text;
-        final sub = display.sub;
-        final active = i == cur;
-        final words = _parsed.wordsByLine[i];
-        return SizedBox(
-          height: 48,
-          child: Center(
-            child: DefaultTextStyle(
-              style: const TextStyle(
-                    color: sp.Sp.text,
-                    fontSize: sp.Sp.fItem,
-                    fontWeight: FontWeight.w400,
-                  ).copyWith(
-                    fontSize: active ? 18 : sp.Sp.fItem,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w400,
-                    color: active
-                        ? sp.Sp.green
-                        : sp.Sp.text.withValues(alpha: 0.5),
-                  ),
-              child: (active && words != null && words.isNotEmpty)
-                  ? _KrcLine(words: words, positionMs: pos)
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(main,
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                        if (sub.isNotEmpty)
-                          Text(sub,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: sp.Sp.textSub, fontSize: sp.Sp.fSub)),
-                      ],
-                    ),
-            ),
-          ),
-        );
-      },
-        ),
-      ),
-    ]);
-  }
-
-  void _setMode(LyricsDisplayMode m) {
-    try {
-      if (_displayMode == m) return;
-      setState(() => _displayMode = m);
-      // 用缓存的 LyricResult 重算显示行（无需重新拉网络）。
-      final song = widget.deps.currentSong();
-      if (song != null) {
-        widget.deps.lyrics.lyricsFor(song).then((r) {
-          if (!mounted) return;
-          setState(() => _displayLines =
-              widget.deps.translation
-                      ?.displayFor(r, m, songHash: _loadedHash) ??
-                  const <DisplayLine>[]);
-        }).catchError((Object e) {
-          Log.w(_tag, 'displayFor failed: $e');
-        });
-      }
-    } catch (e, st) {
-      Log.e(_tag, 'setMode failed', e, st);
-    }
-  }
-
-  int _currentPos() {
-    try {
-      return widget.deps.positionMsProvider();
-    } catch (e, st) {
-      Log.e(_tag, 'positionMsProvider failed', e, st);
-      return 0;
-    }
-  }
-}
-
-/// KRC 逐字高亮行：按 positionMs 判定每词进度（进行中词按比例填充）。
-class _KrcLine extends StatelessWidget {
-  const _KrcLine({required this.words, required this.positionMs});
-
-  final List<KrcWord> words;
-  final int positionMs;
-
-  @override
-  Widget build(BuildContext context) {
-    final base = DefaultTextStyle.of(context).style;
-    final done = base.copyWith(
-        color: sp.Sp.green,
-        fontWeight: FontWeight.w700);
-    final undone =
-        base.copyWith(color: base.color?.withValues(alpha: 0.85));
-    final spans = <TextSpan>[];
-    for (final w in words) {
-      try {
-        final end = w.startMs + w.durMs;
-        if (positionMs >= end) {
-          spans.add(TextSpan(text: w.word, style: done));
-        } else if (positionMs <= w.startMs) {
-          spans.add(TextSpan(text: w.word, style: undone));
-        } else {
-          // 进行中：本帧按词内比例混色（简化为半程切换，避免 ShaderMask 开销）。
-          final ratio = (positionMs - w.startMs) / (w.durMs == 0 ? 1 : w.durMs);
-          spans.add(TextSpan(
-              text: w.word, style: ratio >= 0.5 ? done : undone));
-        }
-      } catch (e, st) {
-        Log.e(_tag, 'krc word render failed', e, st);
-        spans.add(TextSpan(text: w.word, style: undone));
-      }
-    }
-    return RichText(
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      textAlign: TextAlign.center,
-      text: TextSpan(children: spans),
-    );
-  }
+  WidgetBuilder? get builder => (_) => const LyricsPage();
 }

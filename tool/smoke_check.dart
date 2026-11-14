@@ -5,7 +5,7 @@
 //      - core/logic/kernel 层文件出现 'package:flutter/' → 违规（surface 层才许碰 UI SDK；
 //        surface/ 目录内文件不算违规）
 //      - logic/ 出现任何 'package:flutter' → 违规（logic 层零 UI 依赖）
-//      - 强约束六五规则（与 tool/layer_audit.py 一致）：
+//      - 强约束76 原则（与 tool/layer_audit.py 一致）：
 //        每层只许 import 同层、SDK(dart:*)、相邻桥（lib/bridges/ 下五桥之一）、
 //        L6 额外允许 package:flutter*/riverpod/just_audio/audio_service/path_provider/video_player；
 //        跨层 import 非桥 .dart 文件 → VIOLATION（含 init→surface、core→kernel、
@@ -146,25 +146,24 @@ void _checkBrackets(String rel, String src) {
 
 // ---------- b) 禁 import（强约束六五，与 layer_audit.py 同口径） ----------
 const _pkg = 'tiernan_music_next';
-const _layers = {'init': 1, 'bootloader': 2, 'kernel': 3, 'core': 4, 'logic': 5, 'surface': 6};
-const _bridgeNames = {'bridge_boot', 'bridge_kernel', 'bridge_core', 'bridge_logic', 'bridge_surface'};
-// 层-桥显式白名单（批10-A 收口，与 tool/layer_audit.py LAYER_ALLOWED_BRIDGES 同口径）：
-// 这是显式枚举的每层允许桥集合，不是自动放宽；新增越级 import 必须显式修改此处并注明理由。
-//   L1 init      → bridge_boot + bridge_surface（装配入口，文档已注明保留）
-//   L2 bootloader → boot/kernel/core/logic 四桥（依赖装配层，组装 kernel/core/logic 的合理特例）
-//   L3 kernel    → bridge_kernel
-//   L4 core      → bridge_kernel + bridge_core（core 取 Log，现状）
-//   L5 logic     → bridge_logic + bridge_core（logic 经 core 桥取模型，现状）
-//   L6 surface   → bridge_surface + bridge_logic + bridge_core（surface 取 core 模型，现状）
+const _layers = {'init': 1, 'bootloader': 2, 'kernel': 3, 'core': 4,
+                 'logic': 5, 'session': 6, 'surface': 7};
+const _bridgeNames = {'bridge_boot', 'bridge_kernel', 'bridge_core',
+                      'bridge_logic', 'bridge_session', 'bridge_surface'};
+// 76 原则（76 原则）（docs/SEVEN_SIX_RULE.md）：session(L6) 是 surface(L7) 的底层。
+//   L6 session → 下五桥 + bridge_session
+//   L7 surface → bridge_surface + bridge_session（+ 现有下层桥白名单保留）
 const _layerAllowedBridges = <int, Set<String>>{
   1: {'bridge_boot', 'bridge_surface'},
   2: {'bridge_boot', 'bridge_kernel', 'bridge_core', 'bridge_logic'},
   3: {'bridge_kernel'},
   4: {'bridge_kernel', 'bridge_core'},
   5: {'bridge_logic', 'bridge_core', 'bridge_kernel'},
-  6: {'bridge_surface', 'bridge_logic', 'bridge_core'},
+  6: {'bridge_boot', 'bridge_kernel', 'bridge_core',
+      'bridge_logic', 'bridge_session'},
+  7: {'bridge_surface', 'bridge_session', 'bridge_logic', 'bridge_core'},
 };
-const _l6Extra = [
+const _l7Extra = [
   'package:flutter', 'package:riverpod',
   'package:just_audio', 'package:audio_service', 'package:path_provider',
   'package:video_player', // MV inline shell (batch R2)
@@ -271,8 +270,13 @@ void _checkForbiddenImports(String rel, String src) {
     const l1Extra = ['package:flutter/material.dart',
         'package:flutter/services.dart',
         'package:path_provider/path_provider.dart'];
-    const l4Extra = ['package:isar/isar.dart'];
-    final allowed = (lvl == 6 && _l6Extra.any((p) => imp.startsWith(p))) ||
+    const l4Extra = ['package:isar/isar.dart',
+        'package:just_audio/just_audio.dart',
+        'package:audio_service/audio_service.dart'];
+    const l6Extra = ['package:flutter_riverpod', 'package:riverpod',
+        'package:flutter/foundation.dart', 'package:flutter/widgets.dart'];
+    final allowed = (lvl == 7 && _l7Extra.any((p) => imp.startsWith(p))) ||
+        (lvl == 6 && l6Extra.any((p) => imp.startsWith(p))) ||
         (lvl == 1 && l1Extra.any((p) => imp.startsWith(p))) ||
         (lvl == 4 && l4Extra.any((p) => imp.startsWith(p)));
     if (!allowed) {

@@ -1,35 +1,275 @@
-// L6 surface/pages · 设置页模块（buildSettingsPageModule）
-// 由 modules.dart（批4-B）汇总注册：SurfaceRegistry.install(buildSettingsPageModule(...)).
-// 登录区（二维码登录轮询）/ 主题切换（亮/暗/跟随系统，riverpod 状态由批4-B 提供）/ 缓存清理 / 关于。
-// 二维码登录对话框 + 多账号管理区已拆至 widgets/settings_qr_dialog.dart（批R1-B）。
-// 铁律：只 import flutter/miuix/riverpod/bridge_logic/bridge_core/本层；try/catch + Log('surface.settings')。
+// L7 surface/pages · 设置页（分组：账号 / 外观 / 播放 / 存储 / 关于）
+// 数据经桥：AuthLogic / AccountLogic（bridge_logic）、CacheService（bridge_core）、
+// 播放偏好经 PlaybackSession 意图方法。
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../bridges/bridge_logic.dart' show LogicFacade, Log;
-import '../l10n/l10n_helper.dart' show TnStrings;
-import '../registry.dart';
-import '../theme/theme_state.dart' show themeModeProvider;
-import '../ui/spotify_ui.dart' as sp;
-import '../widgets/tn_app_bar.dart' show TnAppBar;
-import '../widgets/settings_qr_dialog.dart'
-    show QrLoginDialog, AccountSection;
+import '../../bridges/bridge_core.dart' show AudioQuality, qualityParam, vipQualities;
+import '../../bridges/bridge_logic.dart' show AuthLogic, AccountLogic;
+import '../../bridges/bridge_session.dart'
+    show playbackSession, SurfaceModule, NavEntry;
+// GAP(跨桥)：逻辑单例随 AppGraph 暴露，bridge_session 暂未导出实例出口。
+import '../../bridges/bridge_session.dart' show appGraph;
+import '../design/tokens.dart';
+import '../design/components.dart';
 
-import 'settings_deps.dart' show SettingsDeps;
+/// 应用版本号（与 pubspec.yaml version 同步）。
+const String kAppVersion = '26.11.10+1';
 
-// 批03-C 环A破除：SettingsDeps 定义迁至 settings_deps.dart；此处继续 export，
-// 保持 assembly 从 settings_page.dart 取类型的 import 不变。
-export 'settings_deps.dart' show SettingsDeps;
+/// 设置页。
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
 
-const String _tag = 'surface.settings';
-const String kAppVersion = '26.11.10.1';
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
 
-/// 设置页模块：id='settings'，底部导航入口「设置」。
-class SettingsPageModule implements SurfaceModule {
-  SettingsPageModule({required this.deps});
+class _SettingsPageState extends State<SettingsPage> {
+  static const List<double> _speeds = <double>[
+    0.5, 0.75, 1.0, 1.25, 1.5, 2.0,
+  ];
 
-  final SettingsDeps deps;
+  // 主题模式：当前无 L6 主题会话出口，先本地维护（TODO 接 theme 会话持久化）。
+  ThemeMode _themeMode = ThemeMode.dark;
+  String _nickname = '';
+  bool _loggedIn = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadAccount();
+  }
+
+  Future<void> _loadAccount() async {
+    final AuthLogic? auth = appGraph.auth;
+    final AccountLogic? account = appGraph.account;
+    if (auth == null && account == null) return;
+    var name = '';
+    if (account != null) {
+      final rec = await account.activeAccount();
+      if (rec != null) name = rec.displayName;
+    }
+    final uid = auth?.session.userid ?? '';
+    if (!mounted) return;
+    setState(() {
+      _nickname = name.isEmpty ? (uid.isEmpty ? '' : '酷狗用户 $uid') : name;
+      _loggedIn = uid.isNotEmpty;
+    });
+  }
+
+  void _logout() {
+    final AuthLogic? auth = appGraph.auth;
+    if (auth == null) return;
+    auth.logout();
+    setState(() {
+      _loggedIn = false;
+      _nickname = '';
+    });
+    _loadAccount();
+  }
+
+  void _openQualitySheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Sp.bgElevated,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: <Widget>[
+            const SpSectionHeader(title: '音质档位'),
+            for (final AudioQuality q in vipQualities())
+              ListTile(
+                title: Text(qualityParam(q)),
+                onTap: () {
+                  playbackSession().setQuality(qualityParam(q));
+                  Navigator.of(ctx).pop();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openSpeedSheet(double current) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Sp.bgElevated,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: <Widget>[
+            const SpSectionHeader(title: '播放倍速'),
+            for (final s in _speeds)
+              ListTile(
+                title: Text('${s}x'),
+                trailing: (s - current).abs() < 0.001
+                    ? const Icon(Icons.check, color: Sp.green)
+                    : null,
+                onTap: () {
+                  playbackSession().setSpeed(s);
+                  Navigator.of(ctx).pop();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 清缓存：经 bridge_core 的 CacheService 清理会话缓存。
+  /// 说明：磁盘级缓存目录清理能力尚未经桥暴露（见 GAP 注释），此处只做
+  /// 已暴露能力的调用，不臆造磁盘删除。
+  void _clearCache() {
+    final cache = appGraph.cache;
+    if (cache == null) {
+      _toast('缓存能力未装配');
+      return;
+    }
+    cache.invalidateSession();
+    _toast('已清理会话缓存');
+  }
+
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final session = playbackSession();
+    return Scaffold(
+      backgroundColor: Sp.bg,
+      body: SafeArea(
+        child: AnimatedBuilder(
+          animation: session,
+          builder: (context, _) {
+            final speed = session.snapshot.speed;
+            return ListView(
+              padding: const EdgeInsets.symmetric(vertical: Sp.gapM),
+              children: <Widget>[
+                const SpSectionHeader(title: '账号'),
+                _group(<Widget>[
+                  ListTile(
+                    leading: const Icon(Icons.person_outline, color: Sp.textSub),
+                    title: Text(_loggedIn ? '已登录' : '未登录'),
+                    subtitle: Text(
+                      _loggedIn
+                          ? (_nickname.isEmpty ? '酷狗用户' : _nickname)
+                          : '扫码登录后同步收藏与历史',
+                      style: const TextStyle(
+                          fontSize: Sp.fSub, color: Sp.textSub),
+                    ),
+                    trailing: _loggedIn
+                        ? TextButton(
+                            onPressed: _logout,
+                            child: const Text('登出'),
+                          )
+                        : FilledButton(
+                            onPressed: () => _toast('扫码登录入口待接入'),
+                            child: const Text('扫码登录'),
+                          ),
+                  ),
+                ]),
+                const SpSectionHeader(title: '外观'),
+                _group(<Widget>[
+                  Padding(
+                    padding: const EdgeInsets.all(Sp.pagePad),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        const Text('主题模式',
+                            style: TextStyle(fontSize: Sp.fItem, color: Sp.text)),
+                        const SizedBox(height: Sp.gapM),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SegmentedButton<ThemeMode>(
+                            showSelectedIcon: false,
+                            segments: const <ButtonSegment<ThemeMode>>[
+                              ButtonSegment<ThemeMode>(
+                                  value: ThemeMode.system, label: Text('跟随系统')),
+                              ButtonSegment<ThemeMode>(
+                                  value: ThemeMode.light, label: Text('亮')),
+                              ButtonSegment<ThemeMode>(
+                                  value: ThemeMode.dark, label: Text('暗')),
+                              ButtonSegment<ThemeMode>(
+                                  value: ThemeMode.black, label: Text('纯黑')),
+                            ],
+                            selected: <ThemeMode>{_themeMode},
+                            onSelectionChanged: (s) =>
+                                setState(() => _themeMode = s.first),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ]),
+                const SpSectionHeader(title: '播放'),
+                _group(<Widget>[
+                  ListTile(
+                    leading: const Icon(Icons.graphic_eq, color: Sp.textSub),
+                    title: const Text('音质'),
+                    subtitle: const Text('128（标准）',
+                        style: TextStyle(
+                            fontSize: Sp.fSub, color: Sp.textSub)),
+                    trailing: const Icon(Icons.chevron_right, color: Sp.textFaint),
+                    onTap: _openQualitySheet,
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.speed, color: Sp.textSub),
+                    title: const Text('倍速'),
+                    subtitle: Text('${speed}x',
+                        style: const TextStyle(
+                            fontSize: Sp.fSub, color: Sp.textSub)),
+                    trailing: const Icon(Icons.chevron_right, color: Sp.textFaint),
+                    onTap: () => _openSpeedSheet(speed),
+                  ),
+                ]),
+                const SpSectionHeader(title: '存储'),
+                _group(<Widget>[
+                  ListTile(
+                    leading: const Icon(Icons.cleaning_services_outlined,
+                        color: Sp.textSub),
+                    title: const Text('清理缓存'),
+                    subtitle: const Text('清理会话缓存与请求合并表',
+                        style: TextStyle(
+                            fontSize: Sp.fSub, color: Sp.textSub)),
+                    trailing: FilledButton(
+                      onPressed: _clearCache,
+                      child: const Text('清理'),
+                    ),
+                  ),
+                ]),
+                const SpSectionHeader(title: '关于'),
+                _group(<Widget>[
+                  ListTile(
+                    leading: const Icon(Icons.info_outline, color: Sp.textSub),
+                    title: const Text('版本'),
+                    trailing: Text(kAppVersion,
+                        style: const TextStyle(
+                            fontSize: Sp.fSub, color: Sp.textSub)),
+                  ),
+                ]),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _group(List<Widget> children) => Container(
+        margin: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+        decoration: BoxDecoration(
+          color: Sp.card,
+          borderRadius: BorderRadius.circular(Sp.rCard),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: children),
+      );
+}
+
+/// 设置模块（进底部导航）。
+class SettingsPageModule extends SurfaceModule {
   @override
   String get id => 'settings';
 
@@ -37,245 +277,8 @@ class SettingsPageModule implements SurfaceModule {
   String get route => '/settings';
 
   @override
-  NavEntry get navEntry => const NavEntry('设置', 'settings');
+  NavEntry? get navEntry => const NavEntry('设置', 'settings');
 
   @override
-  bool enabled(LogicFacade logic) => true;
-
-  @override
-  WidgetBuilder builder(LogicFacade logic) => (_) => SettingsPage(deps: deps);
-}
-
-class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, required this.deps});
-
-  final SettingsDeps deps;
-
-  @override
-  State<SettingsPage> createState() => _SettingsPageState();
-}
-
-class _SettingsPageState extends State<SettingsPage> {
-  bool _loggedIn = false;
-  String _userid = '';
-  // 从持久化读取偏好（'' = 跟随系统；失败降级 ''），重启后保持。
-  String _localeCode = TnStrings.loadLocale();
-
-  @override
-  void initState() {
-    super.initState();
-    _refreshLoginState();
-  }
-
-  void _refreshLoginState() {
-    try {
-      _userid = widget.deps.auth.session.userid;
-      _loggedIn = _userid.isNotEmpty;
-    } catch (e, st) {
-      Log.e(_tag, 'refreshLoginState failed', e, st);
-      _loggedIn = false;
-      _userid = '';
-    }
-  }
-
-  void _pickLocale(String code) {
-    try {
-      setState(() => _localeCode = code);
-      // 10 语偏好持久化（KeyValueSettings 'ui.locale'），'' = 跟随系统。
-      TnStrings.saveLocale(code);
-      widget.deps.onLocaleChanged?.call(code);
-    } catch (e, st) {
-      Log.e(_tag, 'set locale failed', e, st);
-    }
-  }
-
-  Future<void> _showQrLoginDialog() async {
-    try {
-      final st = await widget.deps.auth.createQrLogin();
-      if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => QrLoginDialog(deps: widget.deps, state: st),
-      );
-      if (!mounted) return;
-      setState(_refreshLoginState);
-    } catch (e, st) {
-      Log.e(_tag, 'createQrLogin failed', e, st);
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('创建二维码失败：$e')));
-      }
-    }
-  }
-
-  Future<void> _logout() async {
-    try {
-      final ok = widget.deps.auth.logout();
-      Log.d(_tag, 'logout ok=$ok');
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(ok ? '已登出' : '登出失败')));
-        setState(_refreshLoginState);
-      }
-    } catch (e, st) {
-      Log.e(_tag, 'logout failed', e, st);
-    }
-  }
-
-  Future<void> _clearCache() async {
-    try {
-      for (final h in widget.deps.lyricHashes()) {
-        widget.deps.lyrics.clearFileCache(h); // 逐曲内存+文件
-      }
-      widget.deps.clearLyricCache(); // 兜底 LruCache.clear 等
-      Log.d(_tag, 'cache cleared');
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('歌词缓存已清理')));
-      }
-    } catch (e, st) {
-      Log.e(_tag, 'clearCache failed', e, st);
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('清理失败：$e')));
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // 辅助文本样式：Spotify 次级文字令牌。
-    const TextStyle aux =
-        TextStyle(color: sp.Sp.textSub, fontSize: sp.Sp.fSub);
-    return Scaffold(
-      appBar: const TnAppBar(title: '设置'),
-      body: ListView(
-        children: [
-          const sp.SpSectionHeader('账号'),
-          ListTile(
-            leading: Icon(_loggedIn ? Icons.account_circle : Icons.login),
-            title: Text(_loggedIn ? '已登录：$_userid' : '未登录（酷狗账号）'),
-            subtitle: Text(_loggedIn ? '点击登出' : '扫码登录后可使用会员音质等功能', style: aux),
-            trailing: _loggedIn
-                ? TextButton(onPressed: _logout, child: const Text('登出'))
-                : TextButton(
-                    onPressed: _showQrLoginDialog,
-                    child: const Text('二维码登录')),
-          ),
-          // ── 多账号管理（批2 收尾接线）──
-          if (widget.deps.accounts != null)
-            AccountSection(accounts: widget.deps.accounts!),
-          if (widget.deps.collect != null)
-            ListTile(
-              leading: const Icon(Icons.favorite_border),
-              title: const Text('我的收藏'),
-              subtitle: Text(
-                  '已收藏 ${widget.deps.collect!.count} 首 · '
-                  '列表 ${widget.deps.collect!.listFavorites().length} 条',
-                  style: aux),
-            ),
-          if (widget.deps.onStartFm != null)
-            ListTile(
-              leading: const Icon(Icons.radio),
-              title: const Text('个人 FM'),
-              subtitle: Text('随机连续播放，喜欢/不喜欢随时调整', style: aux),
-              onTap: () {
-                try {
-                  widget.deps.onStartFm!();
-                } catch (e, st) {
-                  Log.e(_tag, 'start fm failed', e, st);
-                }
-              },
-            ),
-          if (widget.deps.verificationState != null)
-            ListTile(
-              leading: const Icon(Icons.verified_user_outlined),
-              title: const Text('验证状态'),
-              subtitle: Text(widget.deps.verificationState!(), style: aux),
-            ),
-          const Divider(height: 1),
-          const sp.SpSectionHeader('外观'),
-          Consumer(builder: (context, ref, _) {
-            final mode = ref.watch(themeModeProvider);
-            return ListTile(
-              leading: const Icon(Icons.brightness_6),
-              title: const Text('主题'),
-              subtitle: SegmentedButton<int>(
-                segments: <ButtonSegment<int>>[
-                  ButtonSegment<int>(value: 0, label: Text('系统')),
-                  ButtonSegment<int>(value: 1, label: Text('亮')),
-                  ButtonSegment<int>(value: 2, label: Text('暗')),
-                  ButtonSegment<int>(value: 3, label: Text('纯黑')),
-                ],
-                selected: {mode},
-                onSelectionChanged: (s) {
-                  try {
-                    ref.read(themeModeProvider.notifier).set(s.first);
-                    Log.d(_tag, 'theme mode=${s.first}');
-                  } catch (e, st) {
-                    Log.e(_tag, 'set theme failed', e, st);
-                  }
-                },
-              ),
-            );
-          }),
-          const Divider(height: 1),
-          // ── 语言（State 持有 + 回调注入；''=跟随系统，禁引入新依赖）──
-          ListTile(
-            leading: const Icon(Icons.language),
-            title: const Text('语言'),
-            trailing: DropdownButton<String>(
-              value: _localeCode, onChanged: (v) => _pickLocale(v ?? ''),
-              items: const [
-                DropdownMenuItem(value: '', child: Text('跟随系统')),
-                DropdownMenuItem(value: 'zh', child: Text('简体中文')),
-                DropdownMenuItem(value: 'zh_Hant', child: Text('繁體中文')),
-                DropdownMenuItem(value: 'en', child: Text('English')),
-                DropdownMenuItem(value: 'ja', child: Text('日本語')),
-                DropdownMenuItem(value: 'ko', child: Text('한국어')),
-                DropdownMenuItem(value: 'es', child: Text('Español')),
-                DropdownMenuItem(value: 'fr', child: Text('Français')),
-                DropdownMenuItem(value: 'de', child: Text('Deutsch')),
-                DropdownMenuItem(value: 'pt', child: Text('Português')),
-                DropdownMenuItem(value: 'ru', child: Text('Русский')),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          // ── 缓存 ──
-          const sp.SpSectionHeader('播放与存储'),
-          ListTile(
-            leading: const Icon(Icons.cleaning_services),
-            title: const Text('清理歌词缓存'),
-            subtitle: Text('内存缓存 + 本地歌词文件', style: aux),
-            onTap: _clearCache,
-          ),
-          const Divider(height: 1),
-          // ── 关于 ──
-          const sp.SpSectionHeader('关于'),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('关于'),
-            subtitle: Text('TiernanMusicNext v$kAppVersion'),
-          ),
-          // 批6-B：多语言状态行（3/10 语可用，7 语待人工翻译）。
-          Builder(builder: (ctx) {
-            final s = TnStrings.of(ctx);
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  sp.Sp.pagePad, 0, sp.Sp.pagePad, sp.Sp.gapS),
-              child: Text(
-                '多语言：${TnStrings.supportedCodes.length}/'
-                '${TnStrings.plannedCodes.length} 语可用'
-                '（${TnStrings.plannedCodes.length - TnStrings.supportedCodes.length}'
-                ' 语待人工翻译）',
-                style: aux,
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
+  WidgetBuilder? get builder => (_) => const SettingsPage();
 }

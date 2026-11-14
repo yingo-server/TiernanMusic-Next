@@ -51,6 +51,16 @@ class KugouClient {
 
   /// 并发合并（可选；null = 不合并）。
   final InFlight<Map<String, dynamic>>? _inflight;
+  /// 换号/登出时清等待表（不取消已发请求；磁盘键含 uid 天然隔离）。
+  void clearInflight() {
+    try {
+      _inflight?.clear();
+      Log.d('core.net', 'inflight cleared');
+    } catch (e, st) {
+      Log.e('core.net', 'clearInflight failed', e, st);
+    }
+  }
+
   HttpClient? _http;
   HttpClient get _h => _http ??= HttpClient()
     ..userAgent = KugouSign.defaultUa

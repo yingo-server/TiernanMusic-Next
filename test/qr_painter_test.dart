@@ -4,7 +4,7 @@
 // 2026-11-10：批1-C 审查时以纯 Python 独立解码器交叉验证通过（酷狗登录 URL 48B / V3-L）。
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tiernan_music_next/surface/widgets/qr_painter.dart';
+import 'package:tiernan_music_next/core/algorithms/qr_codec.dart';
 
 void main() {
   const cases = <String>[

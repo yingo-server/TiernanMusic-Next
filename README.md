@@ -1,11 +1,11 @@
 # TiernanMusic-Next
 
 Flutter 离线优先的酷狗第三方客户端（酷狗原生 API 直连，不依赖第三方网关）。
-六层五桥架构 + Riverpod + Isar，目标平台 Android（split-per-abi 三架构极限包体）。
+76 原则（V1 已废弃）架构 + Riverpod + Isar，目标平台 Android（split-per-abi 三架构极限包体）。
 
 > 零源仓库代码复用：酷狗 API 知识全部来自逆向知识文档 [docs/KUGOU_API.md](docs/KUGOU_API.md)。
 
-## 架构速览：六层五桥
+## 架构速览：76 原则（V1 已废弃）
 
 ```
 L6 surface    交互/UI (Flutter M3)       ⇅ bridge_surface.dart

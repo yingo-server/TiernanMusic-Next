@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""layer_audit.py — 六五规则强约束审计（strict six-five）。
+"""layer_audit.py — 76 原则强约束审计（strict six-five）。
 
 层序 L1 init / L2 bootloader / L3 kernel / L4 core / L5 logic / L6 surface。
 五桥唯一存在于 lib/bridges/：bridge_boot / bridge_kernel / bridge_core / bridge_logic / bridge_surface。
@@ -20,24 +20,24 @@ ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 LIB = os.path.join(ROOT, 'lib')
 BRIDGES = os.path.join(LIB, 'bridges')
 PKG = 'tiernan_music_next'
-LAYERS = {'init': 1, 'bootloader': 2, 'kernel': 3, 'core': 4, 'logic': 5, 'surface': 6}
-BRIDGE_NAMES = {'bridge_boot', 'bridge_kernel', 'bridge_core', 'bridge_logic', 'bridge_surface'}
-# 层-桥显式白名单（批10-A 收口）：这是显式枚举的每层允许桥集合，不是自动放宽。
-# 新增越级 import 必须显式修改此处并注明理由，禁止恢复「下层桥自动累积」逻辑。
-#   L1 init      → bridge_boot + bridge_surface（装配入口，SIX_FIVE_RULE §0 已注明保留）
-#   L2 bootloader → boot/kernel/core/logic 四桥（bootloader 是依赖装配层，
-#                    需经各桥组装 kernel/core/logic，属合理特例）
-#   L3 kernel    → bridge_kernel（仅本层桥）
-#   L4 core      → bridge_kernel + bridge_core（core 直接 import bridge_kernel 取 Log，现状保留）
-#   L5 logic     → bridge_logic + bridge_core（logic 经 core 桥取模型，现状保留）
-#   L6 surface   → bridge_surface + bridge_logic + bridge_core（surface 取 core 模型，现状保留）
+# 76 原则（76 原则）（docs/SEVEN_SIX_RULE.md）：session 在 L6、surface 在 L7。
+# 依赖方向 surface(L7) → session(L6) → logic(L5) → core(L4)。
+LAYERS = {'init': 1, 'bootloader': 2, 'kernel': 3, 'core': 4,
+          'logic': 5, 'session': 6, 'surface': 7}
+BRIDGE_NAMES = {'bridge_boot', 'bridge_kernel', 'bridge_core',
+                'bridge_logic', 'bridge_session', 'bridge_surface'}
+# 层-桥显式白名单（V2）：
+#   L6 session 可经下五桥 + bridge_session 取 core/logic 能力；
+#   L7 surface 经 bridge_surface + bridge_session 取状态，不得反向 import session 内部。
 LAYER_ALLOWED_BRIDGES = {
     1: {'bridge_boot', 'bridge_surface'},
     2: {'bridge_boot', 'bridge_kernel', 'bridge_core', 'bridge_logic'},
     3: {'bridge_kernel'},
     4: {'bridge_kernel', 'bridge_core'},
-    5: {'bridge_logic', 'bridge_core', 'bridge_kernel'},  # bridge_kernel 为 Log 载体（现状）
-    6: {'bridge_surface', 'bridge_logic', 'bridge_core'},
+    5: {'bridge_logic', 'bridge_core', 'bridge_kernel'},
+    6: {'bridge_boot', 'bridge_kernel', 'bridge_core',
+        'bridge_logic', 'bridge_session'},
+    7: {'bridge_surface', 'bridge_session', 'bridge_logic', 'bridge_core'},
 }
 
 # 显式登记的跨层装配例外（语言层面必要，非业务调用）：
@@ -48,13 +48,21 @@ LAYER_EXCEPTIONS = {
 # L1 init 是依赖根：允许装配桥 + flutter 基础包（WidgetsFlutterBinding/SystemNavigator/debugPrint）
 L1_EXTRA = ('package:flutter/material.dart', 'package:flutter/services.dart',
             'package:path_provider/path_provider.dart')
-L6_EXTRA = ('package:flutter', 'package:flutter_riverpod',
+# L7 surface（纯 UI 控件层）允许的 UI SDK；L6 session 只允许状态容器，
+# 不得画控件。V2：原 L6_EXTRA 随 surface 升到 L7。
+L7_EXTRA = ('package:flutter', 'package:flutter_riverpod',
             'package:riverpod', 'package:just_audio',
-            'package:video_player',  # MV inline player shell (batch R2)
+            'package:video_player',
             'package:audio_service', 'package:path_provider',
             'package:flutter_localizations')
+# L6 session：编排会话层，允许 riverpod 状态容器与 flutter foundation/widgets
+# 基础类型（GlobalKey / ChangeNotifier），禁止自定义 Widget 渲染类。
+L6_EXTRA = ('package:flutter_riverpod', 'package:riverpod',
+            'package:flutter/foundation.dart', 'package:flutter/widgets.dart')
 # L4 core 数据库域必需的 isar（存储/数据库四域之一）
-L4_EXTRA = ('package:isar/isar.dart',)
+L4_EXTRA = ('package:isar/isar.dart',
+            'package:just_audio/just_audio.dart',
+            'package:audio_service/audio_service.dart')
 
 violations = []
 file_count = 0
@@ -137,6 +145,8 @@ def check_imports(rel, src, lvl):
             if lvl == 1 and imp.startswith(L1_EXTRA):
                 continue
             if lvl == 6 and imp.startswith(L6_EXTRA):
+                continue
+            if lvl == 7 and imp.startswith(L7_EXTRA):
                 continue
             if lvl == 4 and imp.startswith(L4_EXTRA):
                 continue

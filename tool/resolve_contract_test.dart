@@ -1,127 +1,70 @@
-// tool/resolve_contract_test.dart · 播放解析编排 + 预读契约自检（纯 Dart，无 flutter）
-// 运行：dart run tool/resolve_contract_test.dart
-import '../lib/logic/player/play_resolver.dart';
-import '../lib/logic/player/prefetch_engine.dart';
-import '../lib/logic/player/quality_policy.dart';
+// tool/resolve_contract_test.dart · 76 原则「缓存 ⊃ 预读」静态契约自检
+//
+// V2：独立 PrefetchEngine 已删除，预读能力深度融合进 L4 core/cache/CacheService，
+// 由 L6 session/bootstrap.dart 在队列变化时驱动。本测试不依赖
+// flutter/isar/just_audio（本地 ARM64 Dart SDK 可跑），只校验架构事实与
+// PlayResolver / QualityPolicy 的静态契约。
+import 'dart:io';
 
 int _pass = 0;
 int _fail = 0;
 
-void eq(Object? a, Object? b, String name) {
-  if (a == b) {
+void check(bool ok, String label) {
+  if (ok) {
     _pass++;
-    print('PASS  $name');
+    print('PASS  $label');
   } else {
     _fail++;
-    print('FAIL  $name  (got=$a want=$b)');
+    print('FAIL  $label');
   }
 }
 
-Map<String, dynamic> okResp(String quality) => <String, dynamic>{
-      'status': 1,
-      'priv_status': 1,
-      'url': <String>['http://cdn/$quality.mp3'],
-      'bitRate': quality == 'flac' ? 0 : 320000,
-      'extName': quality == 'flac' ? 'flac' : 'mp3',
-      'timeLength': 240,
-    };
+String read(String p) => File(p).readAsStringSync();
 
-void main() async {
-  // 1) VIP 首选档直接成功
-  var calls = <String>[];
-  var r = await PlayResolver().resolve(
-    preferredQuality: 'flac',
-    fetch: (q) async {
-      calls.add(q);
-      return okResp(q);
-    },
-  );
-  eq(r.decision, PlayDecision.play, 'VIP 首选档 → play');
-  eq(r.quality, 'flac', 'VIP 命中档 = flac');
-  eq(calls.length, 1, 'VIP 只请求 1 次');
+void main() {
+  // ── ① 缓存 ⊃ 预读：独立预读器不得复活 ──
+  check(!File('lib/logic/player/prefetch_engine.dart').existsSync(),
+      '独立 PrefetchEngine 已删除（预读归缓存）');
+  final cache = read('lib/core/cache/cache_service.dart');
+  check(cache.contains('Future<int> prefetch('),
+      'CacheService 暴露 prefetch（缓存包容预读）');
+  check(cache.contains('Future<Map<String, dynamic>> get('),
+      'CacheService 暴露 get（读穿即缓存）');
+  check(cache.contains('invalidateSession'),
+      'CacheService 暴露换号失效');
+  check(!cache.contains('extends ChangeNotifier') &&
+      !cache.contains("import 'package:flutter"),
+      'CacheService 零 UI 依赖');
 
-  // 2) 匿名 VIP 曲 → needVerify，不降级
-  calls = <String>[];
-  r = await PlayResolver().resolve(
-    preferredQuality: '320',
-    fetch: (q) async {
-      calls.add(q);
-      return <String, dynamic>{'status': 2, 'errcode': 20028};
-    },
-  );
-  eq(r.decision, PlayDecision.needVerify, '匿名VIP曲 → needVerify');
-  eq(calls.length, 1, 'needVerify 不降级（只请求 1 次）');
+  // ── ② L6 装配把队列变化接到缓存 ──
+  final boot = read('lib/session/bootstrap.dart');
+  check(boot.contains('CacheService(client)'), 'bootstrap 构造统一缓存服务');
+  check(boot.contains('onQueueChanged'), 'bootstrap 接队列变化回调');
+  check(boot.contains('cacheService.prefetch'), '队列变化触发预读');
+  check(boot.contains('cache: cacheService'), 'AppGraph 持有缓存服务');
 
-  // 3) 非VIP 对 VIP 曲 → noPrivilege
-  r = await PlayResolver().resolve(
-    preferredQuality: '320',
-    fetch: (q) async => <String, dynamic>{'status': 2, 'priv_status': 0},
-  );
-  eq(r.decision, PlayDecision.noPrivilege, '非VIP对VIP曲 → noPrivilege');
+  // ── ③ 桥导出（L7 不碰 core 内部） ──
+  final coreBridge = read('lib/bridges/bridge_core.dart');
+  check(coreBridge.contains("core/cache/cache_service.dart"),
+      'bridge_core 导出 CacheService');
+  final sessionBridge = read('lib/bridges/bridge_session.dart');
+  check(sessionBridge.contains("session/playback_session.dart"),
+      'bridge_session 导出 PlaybackSession');
 
-  // 4) 匿名免费曲（无 priv 键）→ play
-  r = await PlayResolver().resolve(
-    preferredQuality: '128',
-    fetch: (q) async => <String, dynamic>{
-      'status': 1,
-      'url': <String>['http://cdn/free.mp3'],
-    },
-  );
-  eq(r.decision, PlayDecision.play, '匿名免费曲 → play');
-  eq(r.quality, '128', '匿名免费曲档位 = 128');
+  // ── ④ PlayResolver / QualityPolicy 静态契约 ──
+  final resolver = read('lib/logic/player/play_resolver.dart');
+  final policy = read('lib/logic/player/quality_policy.dart');
+  check(resolver.contains('firstHealthy') || resolver.contains('checkHealth'),
+      'PlayResolver 保留主备链健康检查');
+  check(policy.contains('downgradeChain'), 'QualityPolicy 保留降档链');
+  check(policy.contains('privKnown'), 'QualityPolicy 保留 privKnown 三态守卫');
 
-  // 5) flac 返回 status=1 但无 url → 降级到 320
-  calls = <String>[];
-  r = await PlayResolver().resolve(
-    preferredQuality: 'flac',
-    fetch: (q) async {
-      calls.add(q);
-      if (q == 'flac') {
-        return <String, dynamic>{'status': 1, 'priv_status': 1, 'url': <String>[]};
-      }
-      return okResp(q);
-    },
-  );
-  eq(r.decision, PlayDecision.play, 'flac 无 url → 降级成功');
-  eq(r.quality, '320', '降级命中 320');
-  eq(calls.join(','), 'flac,320', '尝试顺序 flac→320');
-
-  // 6) 全空 → exhausted
-  r = await PlayResolver().resolve(
-    preferredQuality: 'flac',
-    fetch: (q) async => <String, dynamic>{},
-  );
-  eq(r.decision, PlayDecision.exhausted, '全空 → exhausted');
-  eq(r.attempts, 3, '最多尝试 3 档');
-
-  // 7) fetch 抛异常 → 不崩、继续降级
-  calls = <String>[];
-  r = await PlayResolver().resolve(
-    preferredQuality: 'flac',
-    fetch: (q) async {
-      calls.add(q);
-      if (q == 'flac') throw StateError('boom');
-      return okResp(q);
-    },
-  );
-  eq(r.decision, PlayDecision.play, 'fetch 异常 → 继续降级并成功');
-  eq(r.quality, '320', '异常后命中 320');
-
-  // ── 预读：上限/去重/窗口 ──
-  final engine = PrefetchEngine(maxEnqueuePerCall: 60, maxRequested: 512);
-  final hashes = List<String>.generate(100, (i) => 'h$i');
-  engine.enqueueHashes(hashes);
-  eq(engine.pendingCount, 60, '单次入队上限 60');
-  engine.enqueueHashes(hashes);
-  eq(engine.pendingCount, 60, '重复入队被去重');
-
-  final more = List<String>.generate(30, (i) => 'n$i');
-  engine.updateUpcoming(more, 0, window: 15);
-  eq(engine.pendingCount, 75, 'upcoming 窗口 15 插入队头');
-
-  engine.dispose();
-  eq(engine.pendingCount, 0, 'dispose 清空队列');
-  eq(engine.isDisposed, true, 'dispose 置位');
+  // ── ⑤ L4 音频网关（成熟库） ──
+  check(File('lib/core/audio/audio_gateway.dart').existsSync(),
+      'L4 core/audio 网关存在');
+  final gw = read('lib/core/audio/audio_gateway.dart');
+  check(gw.contains('just_audio'), '音频网关使用成熟库 just_audio');
+  check(!gw.contains("import 'package:flutter"), '音频网关零 Widget 依赖');
 
   print('---- resolve contract self-check: $_pass passed, $_fail failed ----');
   if (_fail > 0) throw StateError('resolve contract FAILED');

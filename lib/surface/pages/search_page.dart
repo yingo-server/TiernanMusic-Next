@@ -1,498 +1,476 @@
-// L6 surface/pages · 搜索页（R3-C 拆出 SearchDetailPage）。综合三段：M3 SegmentedButton、独立缓存、翻页互不串扰。
-// M3：颜色/文本/动效走 colorScheme/textTheme/TnMotionStaggered。
-import 'dart:async';
-import 'dart:convert';
+// L7 surface/pages · 搜索页（Spotify 深色 + M3）
+// 只画控件；数据只经 bridge_logic 的 logic 单例取；颜色/字号/间距只用 Sp.*。
 import 'package:flutter/material.dart';
-import '../../bridges/bridge_logic.dart' show SearchLogic, SearchSuggestItem, SearchResult, Log, LogicFacade, SearchTypedLogic;
-import '../../bridges/bridge_core.dart' show SongBrief, SearchType, KeyValueSettings;
-import '../player_controller.dart' show PlayerController;
-import '../registry.dart';
-import '../theme/tn_theme.dart' show TnDims, tnPadS, tnPadL;
-import '../widgets/common_widgets.dart' show SongTile;
-import '../widgets/tn_app_bar.dart' show TnAppBar;
-import 'search_detail_page.dart' show SearchDetailPage;
-import 'search_home_view.dart' show SearchHomeView;
-import 'search_tile_widgets.dart'
-    show SongTileData, SearchSegmentState, searchCard, searchCardRow, searchLoadingSkeleton;
+
+import '../../bridges/bridge_logic.dart'
+    show Log, SearchResult, SongBrief, SearchSuggestItem;
+import '../../bridges/bridge_session.dart'
+    show NavState, PlaybackSession, SurfaceModule, NavEntry;
+import '../../bridges/bridge_session.dart' show appGraph;
+import '../design/tokens.dart' show Sp;
+
 const String _tag = 'surface.search';
-const int _kPageSize = 30;
-class SearchPageModule implements SurfaceModule {
-  SearchPageModule({required SearchLogic search, required PlayerController player,
-      SearchTypedLogic? typed, KeyValueSettings? settings})
-      : _search = search, _player = player, _typed = typed, _settings = settings;
-  final SearchLogic _search; final PlayerController _player;
-  final SearchTypedLogic? _typed; final KeyValueSettings? _settings;
-  @override String get id => 'search';
-  @override String get route => '/search';
-  @override NavEntry? get navEntry => const NavEntry('搜索', 'search');
-  @override bool enabled(LogicFacade logic) => true;
-  @override WidgetBuilder builder(LogicFacade logic) {
-    try { return (ctx) => _SearchPageBody(search: _search, player: _player, typed: _typed, settings: _settings); }
-    catch (e, st) { Log.e(_tag, 'builder failed', e, st); return (ctx) => const SizedBox.shrink(); }
-  }
+
+/// 页面模块注册。
+class SearchPageModule extends SurfaceModule {
+  @override
+  String get id => 'search';
+  @override
+  String get route => '/search';
+  @override
+  NavEntry? get navEntry => const NavEntry('搜索', 'search');
+  @override
+  bool get enabled => true;
+  @override
+  WidgetBuilder? get builder => (BuildContext ctx) => const SearchPage();
 }
-class _SearchPageBody extends StatefulWidget {
-  const _SearchPageBody({required this.search, required this.player, this.typed,
-      this.settings});
-  final SearchLogic search; final PlayerController player; final SearchTypedLogic? typed;
-  final KeyValueSettings? settings;
-  @override State<_SearchPageBody> createState() => _SearchPageBodyState();
+
+/// 结果分段：仅「歌曲」在当前 logic 层有可用端点，其余分段给空态说明。
+const List<String> kSearchSegments = <String>['歌曲', '歌单', '专辑', '歌手', '歌词'];
+
+/// 热门分类（前端关键词触发对应歌曲搜索；不臆造服务端分类端点）。
+const List<String> kHotCategories = <String>[
+  '华语', '流行', '摇滚', '民谣', '电子', '轻音乐', '古风', '情歌',
+];
+
+/// 搜索页：大胶囊搜索框 + 热门分类 + 历史记录 + 分段结果。
+class SearchPage extends StatefulWidget {
+  const SearchPage({super.key});
+  @override
+  State<SearchPage> createState() => _SearchPageState();
 }
-class _SearchPageBodyState extends State<_SearchPageBody> {
-  final TextEditingController _kwCtrl = TextEditingController();
-  final ScrollController _scrollCtrl = ScrollController();
-  Timer? _debounce;
-  List<SearchSuggestItem> _suggests = const <SearchSuggestItem>[];
-  List<SearchSuggestItem> _hot = const <SearchSuggestItem>[];
-  List<String> _history = <String>[];
-  static const String _kHistoryKey = 'search.history';
-  static const int _kHistoryMax = 10;
-  final SearchSegmentState _legacy = SearchSegmentState(); // 分类 Tab / typed==null 旧链路
-  bool _searching = false; String _committedKw = '';
-  static const List<String> _kTypeLabels = <String>['歌曲', '歌单', '专辑', '歌手', 'MV', '歌词'];
-  static const List<SearchType> _kTypes = <SearchType>[
-    SearchType.song, SearchType.special, SearchType.album,
-    SearchType.author, SearchType.mv, SearchType.lyric];
-  static const List<SearchType> _kSegTypes = <SearchType>[
-    SearchType.song, SearchType.special, SearchType.album];
-  static const List<String> _kSegLabels = <String>['歌曲', '歌单', '专辑'];
-  static const List<IconData> _kSegIcons = <IconData>[Icons.audiotrack, Icons.queue_music, Icons.album];
-  int _tabIndex = 0; SearchType _segment = SearchType.song;
-  final Map<SearchType, SearchSegmentState> _segments = <SearchType, SearchSegmentState>{
-    for (final t in _kSegTypes) t: SearchSegmentState(),
-  };
-  @override void initState() {
-    super.initState();
-    try {
-      _scrollCtrl.addListener(_onScroll);
-      for (final t in _kSegTypes) { _segments[t]!.scroll.addListener(() => _onSegmentScroll(t)); }
-      _loadHot();
-      _loadHistory();
-      Log.d(_tag, 'initState comprehensive=3 typed=${widget.typed != null}');
-    } catch (e, st) { Log.e(_tag, 'initState failed', e, st); }
-  }
-  @override void dispose() {
-    try {
-      _debounce?.cancel(); _kwCtrl.dispose(); _scrollCtrl.dispose();
-      _legacy.scroll.dispose();
-      for (final s in _segments.values) { s.scroll.dispose(); }
-      Log.d(_tag, 'dispose');
-    } catch (e, st) { Log.e(_tag, 'dispose failed', e, st); }
+
+class _SearchPageState extends State<SearchPage> {
+  final TextEditingController _ctrl = TextEditingController();
+  final List<String> _history = <String>[];
+  String _query = '';
+  int _segment = 0;
+  Future<SearchResult>? _resultF;
+  Future<List<SearchSuggestItem>>? _suggestF;
+  @override
+  void dispose() {
+    _ctrl.dispose();
     super.dispose();
   }
-  Future<void> _loadHot() async {
-    try { final hot = await widget.search.hotSearch();
-      if (!mounted) return;
-      setState(() => _hot = hot);
-      Log.d(_tag, 'hot loaded n=${_hot.length}');
-    } catch (e, st) { Log.e(_tag, 'loadHot failed', e, st); }
-  }
-  void _onChanged(String kw) {
+  void _doSearch(String kw) {
+    final String q = kw.trim();
+    if (q.isEmpty) return;
     try {
-      _debounce?.cancel();
-      if (kw.trim().isEmpty) { setState(() => _suggests = const <SearchSuggestItem>[]); return; }
-      _debounce = Timer(
-          // 业务防抖节奏（300ms）：搜索输入防抖非动效时长，不属 TnMotion 三档，保留裸值。
-          const Duration(milliseconds: 300), () async {
-        try {
-          final list = await widget.search.suggestions(kw);
-          if (!mounted) return;
-          setState(() => _suggests = list);
-          Log.d(_tag, 'suggestions n=${list.length}');
-        } catch (e, st) { Log.e(_tag, 'suggestions failed', e, st); }
-      });
-    } catch (e, st) { Log.e(_tag, 'onChanged failed', e, st); }
-  }
-  Future<void> _submit(String kw) async {
-    try {
-      final k = kw.trim();
-      if (k.isEmpty || _searching) return;
-      _recordHistory(k);
+      final se = appGraph.search;
       setState(() {
-        _searching = true; _committedKw = k;
-        _legacy.reset(k);
-        for (final s in _segments.values) { s.reset(k); }
-        _suggests = const <SearchSuggestItem>[];
+        _query = q;
+        _suggestF = null;
+        _resultF = se?.search(q, 1) ?? Future.value(const SearchResult());
       });
-      final typed = widget.typed;
-      if (typed == null) {
-        await _legacyFirst(k);
-      } else if (_tabIndex == 0) {
-        await Future.wait(<Future<void>>[for (final t in _kSegTypes) _segmentFirst(t, k)]);
-        if (!mounted) return;
-        setState(() => _searching = false);
-        Log.d(_tag, 'comprehensive done kw=$k segments=3');
-      } else {
-        final res = await typed.typed(_kTypes[_tabIndex - 1], k, 1);
-        if (!mounted) return;
-        setState(() {
-          _legacy.items = _toTiles(res); _legacy.total = res.total;
-          _legacy.loaded = true; _legacy.more = _moreOf(_legacy, res.items.length);
-          _searching = false;
-        });
-        Log.d(_tag, 'submit typed=${_kTypes[_tabIndex - 1].name} kw=$k');
-      }
+      _history
+        ..remove(q)
+        ..insert(0, q);
+      if (_history.length > 12) _history.removeLast();
     } catch (e, st) {
-      Log.e(_tag, 'submit failed kw=$kw', e, st);
-      if (mounted) setState(() => _searching = false);
+      Log.e(_tag, 'search failed kw=$q', e, st);
     }
   }
-  Future<void> _legacyFirst(String k) async {
-    try { final res = await widget.search.search(k, 1);
-      if (!mounted) return;
+  void _clearHistory() => setState(_history.clear);
+  void _onChanged(String text) {
+    final String t = text.trim();
+    if (t.isEmpty) {
       setState(() {
-        _legacy.items = _toTiles(res); _legacy.total = res.total;
-        _legacy.loaded = true; _legacy.more = _moreOf(_legacy, res.items.length);
-        _searching = false;
+        _suggestF = null;
+        _resultF = null;
+        _query = '';
       });
-      Log.d(_tag, 'legacy first kw=$k got=${res.items.length}');
+      return;
+    }
+    try {
+      final se = appGraph.search;
+      setState(() {
+        _suggestF =
+            se?.suggestions(t) ?? Future.value(const <SearchSuggestItem>[]);
+      });
     } catch (e, st) {
-      Log.e(_tag, 'legacyFirst failed kw=$k', e, st);
-      if (mounted) setState(() => _searching = false);
+      Log.e(_tag, 'suggest failed', e, st);
     }
   }
-  Future<void> _segmentFirst(SearchType type, String kw) async {
+  void _play(List<SongBrief> songs, int index) {
     try {
-      final s = _segments[type]!;
-      if (s.loaded || s.searching || s.loadingMore) return;
-      setState(() => s.searching = true);
-      final res = await widget.typed!.typed(type, kw, 1);
-      if (!mounted || s.kw != kw || _committedKw != kw) return;
-      setState(() {
-        s.page = 1; s.total = res.total; s.items = _toTiles(res);
-        s.loaded = true; s.searching = false; s.more = _moreOf(s, res.items.length);
-      });
-      Log.d(_tag, 'seg first type=${type.name} kw=$kw got=${s.items.length}');
+      PlaybackSession.instance.playAll(songs, index);
     } catch (e, st) {
-      Log.e(_tag, 'segFirst failed type=${type.name} kw=$kw', e, st);
-      if (mounted) setState(() => _segments[type]!.searching = false);
+      Log.e(_tag, 'playAll failed', e, st);
     }
   }
-  Future<void> _segmentMore(SearchType type) async {
+  void _openAlbum(String albumId) {
+    if (albumId.isEmpty) return;
     try {
-      final s = _segments[type]!; final k = s.kw;
-      if (k.isEmpty || !s.loaded || !s.more || s.loadingMore || s.searching) return;
-      setState(() => s.loadingMore = true);
-      final res = await widget.typed!.typed(type, k, s.page + 1);
-      if (!mounted || s.kw != k || _committedKw != k) return;
-      setState(() {
-        s.page += 1;
-        s.items = <SongTileData>[...s.items, ..._toTiles(res)];
-        s.loadingMore = false; s.more = _moreOf(s, res.items.length);
-      });
-      Log.d(_tag, 'seg more type=${type.name} kw=$k page=${s.page}');
+      NavState.instance.setAlbum(albumId);
     } catch (e, st) {
-      Log.e(_tag, 'segMore failed type=${type.name}', e, st);
-      if (mounted) setState(() => _segments[type]!.loadingMore = false);
+      Log.e(_tag, 'setAlbum failed', e, st);
     }
   }
-  Future<void> _loadMore() async {
-    try {
-      final k = _committedKw; final s = _legacy;
-      if (k.isEmpty || s.loadingMore || _searching || !s.more) return;
-      setState(() => s.loadingMore = true);
-      final typed = widget.typed;
-      final res = (typed != null && _tabIndex > 0)
-          ? await typed.typed(_kTypes[_tabIndex - 1], k, s.page + 1)
-          : await widget.search.search(k, s.page + 1);
-      if (!mounted) return;
-      setState(() {
-        s.page += 1;
-        s.items = <SongTileData>[...s.items, ..._toTiles(res)];
-        s.loadingMore = false; s.more = _moreOf(s, res.items.length);
-      });
-      Log.d(_tag, 'loadMore kw=$k page=${s.page} got=${res.items.length}');
-    } catch (e, st) {
-      Log.e(_tag, 'loadMore failed', e, st);
-      if (mounted) setState(() => _legacy.loadingMore = false);
-    }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Sp.bg,
+      body: SafeArea(
+        child: Column(
+          children: <Widget>[_searchBar(), _suggestBox(), Expanded(child: _body())],
+        ),
+      ),
+    );
   }
-  bool _moreOf(SearchSegmentState s, int fetched) {
-    try { return fetched >= _kPageSize && (s.total <= 0 || s.items.length < s.total); }
-    catch (e, st) { Log.e(_tag, 'moreOf failed', e, st); return false; }
-  }
-  void _onSegmentChanged(Set<SearchType> selected) {
-    try {
-      if (selected.isEmpty) return;
-      final t = selected.first;
-      setState(() => _segment = t);
-      if (_committedKw.isNotEmpty && !_segments[t]!.loaded) { _segmentFirst(t, _committedKw); }
-      Log.d(_tag, 'segment switch type=${t.name} loaded=${_segments[t]!.loaded}');
-    } catch (e, st) { Log.e(_tag, 'segment switch failed', e, st); }
-  }
-  void _onTab(int i) {
-    try {
-      setState(() => _tabIndex = i);
-      if (_committedKw.isNotEmpty) _submit(_committedKw);
-      Log.d(_tag, 'tab switch index=$i');
-    } catch (e, st) { Log.e(_tag, 'tab switch failed', e, st); }
-  }
-  void _onSegmentScroll(SearchType type) {
-    try { _autoMore(_segments[type]!.scroll, () => _segmentMore(type)); }
-    catch (e, st) { Log.e(_tag, 'segment scroll failed type=${type.name}', e, st); }
-  }
-  void _onScroll() {
-    try { _autoMore(_scrollCtrl, _loadMore); }
-    catch (e, st) { Log.e(_tag, 'onScroll failed', e, st); }
-  }
-  void _autoMore(ScrollController c, VoidCallback load) {
-    try { if (c.hasClients && c.position.pixels >= c.position.maxScrollExtent - 200) load(); }
-    catch (e, st) { Log.e(_tag, 'autoMore failed', e, st); }
-  }
-  List<SongTileData> _toTiles(SearchResult res) {
-    try { return <SongTileData>[for (final s in res.items) SongTileData(s)]; }
-    catch (e, st) { Log.e(_tag, 'toTiles failed', e, st); return const <SongTileData>[]; }
-  }
-  void _play(SongTileData d) {
-    try { widget.player.playSong(d.song); Log.d(_tag, 'play ${d.song.hash}'); }
-    catch (e, st) { Log.e(_tag, 'play failed', e, st); }
-  }
-  void _drillDown(SongTileData d, SearchType type) {
-    try {
-      if (type == SearchType.song) {
-        if (d.song.name.isEmpty) return;
-        _kwCtrl.text = d.song.name; _submit(d.song.name);
-        Log.d(_tag, 'drillDown type=${type.name} kw=${d.song.name}');
-        return;
-      }
-      // 歌单/专辑行 → 详情页导航（Navigator + injected deps，模块间零直接 import）。
-      final id = type == SearchType.special
-          ? '${d.song.mixSongId}' : d.song.albumId;
-      if (id.isEmpty || id == '0') return;
-      final nav = Navigator.of(context);
-      nav.push(MaterialPageRoute<void>(
-        builder: (_) => SearchDetailPage(
-          title: d.song.name, kind: type, refId: id,
-          player: widget.player, typed: widget.typed),
-      ));
-      Log.d(_tag, 'open detail type=${type.name} id=$id');
-    } catch (e, st) { Log.e(_tag, 'drillDown failed type=${type.name}', e, st); }
-  }
-  @override Widget build(BuildContext context) {
-    try {
-      final cs = Theme.of(context).colorScheme;
-      final tt = Theme.of(context).textTheme;
-      return DefaultTabController(length: 7, child: Scaffold(
-        backgroundColor: cs.surface,
-        appBar: TnAppBar(title: '搜索', bottom: widget.typed == null ? null : TabBar(
-          isScrollable: true, indicatorColor: cs.primary, labelColor: cs.primary,
-          unselectedLabelColor: cs.onSurfaceVariant,
-          tabs: <Widget>[const Tab(text: '综合'),
-            for (final label in _kTypeLabels) Tab(text: label)],
-          onTap: _onTab)),
-        body: Column(children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(tnPadL, tnPadS, tnPadL, tnPadS),
-            child: TextField(
-              controller: _kwCtrl, onChanged: _onChanged, onSubmitted: _submit,
-              textInputAction: TextInputAction.search,
-              style: tt.bodyMedium?.copyWith(color: cs.onSurface),
-              decoration: InputDecoration(
-                hintText: '搜歌曲 / 歌手 / 专辑',
-                hintStyle: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-                prefixIcon: Icon(Icons.search, color: cs.onSurfaceVariant),
-                suffixIcon: _kwCtrl.text.isEmpty ? null : IconButton(
-                  icon: Icon(Icons.clear, color: cs.onSurfaceVariant),
-                  onPressed: () {
-                    try { _kwCtrl.clear(); _onChanged(''); }
-                    catch (e, st) { Log.e(_tag, 'clear failed', e, st); }
-                  }),
-                filled: true, fillColor: cs.surfaceContainerHighest,
-                contentPadding: const EdgeInsets.symmetric(horizontal: tnPadL, vertical: tnPadS),
-                border: OutlineInputBorder(borderRadius: TnDims.rLBorder, borderSide: BorderSide.none),
-                focusedBorder: OutlineInputBorder(borderRadius: TnDims.rLBorder,
-                    borderSide: BorderSide(color: cs.primary, width: 2)),
+  Widget _searchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Sp.pagePad, Sp.gapM, Sp.pagePad, Sp.gapS),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.only(left: Sp.gapM, right: Sp.gapS),
+              decoration: BoxDecoration(
+                color: Sp.card,
+                borderRadius: BorderRadius.circular(Sp.rFull),
+                border: Border.all(color: Sp.divider),
+              ),
+              child: Row(
+                children: <Widget>[
+                  const Icon(Icons.search, size: 20, color: Sp.textSub),
+                  const SizedBox(width: Sp.gapS),
+                  Expanded(
+                    child: TextField(
+                      controller: _ctrl,
+                      style: const TextStyle(fontSize: Sp.fItem, color: Sp.text),
+                      cursorColor: Sp.green,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        hintText: '搜索歌曲、歌单、歌手',
+                        hintStyle:
+                            TextStyle(fontSize: Sp.fItem, color: Sp.textFaint),
+                      ),
+                      textInputAction: TextInputAction.search,
+                      onChanged: _onChanged,
+                      onSubmitted: _doSearch,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: tnPadL),
-            child: Wrap(spacing: tnPadS, runSpacing: tnPadS, children: <Widget>[
-              for (final s in _suggests) Builder(builder: (ctx) {
-                try {
-                  final chipCs = Theme.of(ctx).colorScheme;
-                  return FilterChip(selected: false,
-                    avatar: Icon(Icons.trending_up, size: TnDims.iconS, color: chipCs.primary),
-                    label: Text(s.keyword, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    onSelected: (_) {
-                      try { _kwCtrl.text = s.keyword; _submit(s.keyword); }
-                      catch (e, st) { Log.e(_tag, 'suggest tap failed', e, st); }
-                    });
-                } catch (e, st) {
-                  Log.e(_tag, 'suggest chip build failed', e, st);
-                  return const SizedBox.shrink();
-                }
-              }),
-            ]),
+          const SizedBox(width: Sp.gapS),
+          SizedBox(
+            width: 44,
+            height: 44,
+            child: Material(
+              color: Sp.green,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => _doSearch(_ctrl.text),
+                child:
+                    const Icon(Icons.arrow_forward, size: 20, color: Colors.black),
+              ),
+            ),
           ),
-          Divider(height: 1, color: cs.outlineVariant),
-          Expanded(child: _buildBody()),
-        ]),
-      ));
-    } catch (e, st) {
-      Log.e(_tag, 'build crashed', e, st);
-      return const SizedBox.shrink();
-    }
+        ],
+      ),
+    );
   }
-  Widget _buildBody() {
-    try {
-      final cs = Theme.of(context).colorScheme;
-      final tt = Theme.of(context).textTheme;
-      if (_committedKw.isEmpty) return _buildHot();
-      if (widget.typed != null && _tabIndex == 0) return _buildComprehensive();
-      if (_searching && _legacy.items.isEmpty) return _progress(cs);
-      if (_legacy.items.isEmpty) {
-        return Center(child: Text('没有找到「$_committedKw」相关结果',
-            style: tt.titleMedium?.copyWith(color: cs.onSurface)));
-      }
-      final type = (widget.typed != null && _tabIndex > 0)
-          ? _kTypes[_tabIndex - 1] : SearchType.song;
-      return _buildList(_legacy, type, _scrollCtrl, '上拉加载更多');
-    } catch (e, st) {
-      Log.e(_tag, 'buildBody crashed', e, st);
-      return const SizedBox.shrink();
-    }
+  Widget _suggestBox() {
+    final Future<List<SearchSuggestItem>>? f = _suggestF;
+    if (f == null) return const SizedBox.shrink();
+    return FutureBuilder<List<SearchSuggestItem>>(
+      future: f,
+      builder: (BuildContext c, AsyncSnapshot<List<SearchSuggestItem>> snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const SizedBox.shrink();
+        }
+        final List<SearchSuggestItem> items =
+            snap.data ?? const <SearchSuggestItem>[];
+        if (items.isEmpty) return const SizedBox.shrink();
+        return SizedBox(
+          height: 208,
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+            itemCount: items.length,
+            itemBuilder: (BuildContext c, int i) {
+              final SearchSuggestItem it = items[i];
+              return ListTile(
+                dense: true,
+                visualDensity: VisualDensity.compact,
+                contentPadding: EdgeInsets.zero,
+                leading:
+                    const Icon(Icons.history, size: 18, color: Sp.textFaint),
+                title: Text(it.keyword,
+                    style:
+                        const TextStyle(fontSize: Sp.fItem, color: Sp.text)),
+                onTap: () {
+                  _ctrl.text = it.keyword;
+                  _doSearch(it.keyword);
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
   }
-  Widget _progress(ColorScheme cs) {
-    try { return Padding(padding: const EdgeInsets.all(tnPadL),
-      child: LinearProgressIndicator(color: cs.primary,
-          backgroundColor: cs.surfaceContainerHighest));
-    } catch (e, st) { Log.e(_tag, 'progress crashed', e, st); return const SizedBox.shrink(); }
+  Widget _body() {
+    if (_resultF == null) return _idleBody();
+    return Column(
+      children: <Widget>[_segmentBar(), Expanded(child: _resultBody())],
+    );
   }
-  void _loadHistory() {
-    try {
-      final raw = widget.settings?.getString(_kHistoryKey);
-      if (raw == null || raw.isEmpty) return;
-      final decoded = jsonDecode(raw);
-      if (decoded is List) {
-        final list = <String>[for (final e in decoded) if (e is String && e.trim().isNotEmpty) e.trim()];
-        if (mounted) setState(() => _history = list.take(_kHistoryMax).toList());
-      }
-    } catch (e, st) {
-      Log.e(_tag, 'loadHistory failed', e, st);
-    }
-  }
-
-  void _saveHistory() {
-    try {
-      widget.settings?.setString(_kHistoryKey, jsonEncode(_history));
-    } catch (e, st) {
-      Log.e(_tag, 'saveHistory failed', e, st);
-    }
-  }
-
-  void _recordHistory(String kw) {
-    try {
-      final k = kw.trim();
-      if (k.isEmpty) return;
-      final next = <String>[k, ..._history.where((e) => e != k)];
-      setState(() => _history = next.take(_kHistoryMax).toList());
-      _saveHistory();
-    } catch (e, st) {
-      Log.e(_tag, 'recordHistory failed', e, st);
-    }
-  }
-
-  void _removeHistory(String kw) {
-    try {
-      setState(() => _history = _history.where((e) => e != kw).toList());
-      _saveHistory();
-    } catch (e, st) {
-      Log.e(_tag, 'removeHistory failed', e, st);
-    }
-  }
-
-  void _clearHistory() {
-    try {
-      setState(() => _history = <String>[]);
-      _saveHistory();
-    } catch (e, st) {
-      Log.e(_tag, 'clearHistory failed', e, st);
-    }
-  }
-  Widget _buildHot() {
-    try {
-      return SearchHomeView(
-        history: _history,
-        hot: _hot,
-        onPick: (kw) {
-          try {
-            _kwCtrl.text = kw;
-            _submit(kw);
-          } catch (e, st) {
-            Log.e(_tag, 'hot pick failed', e, st);
-          }
+  Widget _segmentBar() {
+    return SizedBox(
+      height: 48,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+        itemCount: kSearchSegments.length,
+        itemBuilder: (BuildContext c, int i) {
+          final bool sel = i == _segment;
+          return Padding(
+            padding: const EdgeInsets.only(right: Sp.gapS, top: Sp.gapS),
+            child: ChoiceChip(
+              label: Text(kSearchSegments[i],
+                  style: TextStyle(
+                      fontSize: Sp.fSub, color: sel ? Colors.black : Sp.text)),
+              selected: sel,
+              showCheckmark: false,
+              backgroundColor: Sp.card,
+              selectedColor: Sp.green,
+              side: const BorderSide(color: Sp.divider),
+              onSelected: (_) => setState(() => _segment = i),
+            ),
+          );
         },
-        onRemoveHistory: _removeHistory,
-        onClearHistory: _clearHistory,
-      );
-    } catch (e, st) {
-      Log.e(_tag, 'buildHot crashed', e, st);
-      return const SizedBox.shrink();
-    }
+      ),
+    );
   }
-  Widget _buildComprehensive() {
-    try {
-      return Column(children: <Widget>[
+  Widget _idleBody() {
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: Sp.gapXL),
+      itemCount: 2,
+      itemBuilder: (BuildContext c, int i) {
+        if (i == 0) return _hotCategories();
+        return _historySection();
+      },
+    );
+  }
+  Widget _hotCategories() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const Padding(
+          padding: EdgeInsets.fromLTRB(Sp.pagePad, Sp.gapL, Sp.pagePad, Sp.gapM),
+          child: Text('热门分类',
+              style: TextStyle(
+                  fontSize: Sp.fSection,
+                  fontWeight: FontWeight.w700,
+                  color: Sp.text)),
+        ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(tnPadL, tnPadS, tnPadL, tnPadS),
-          child: SegmentedButton<SearchType>(
-            segments: <ButtonSegment<SearchType>>[
-              for (var i = 0; i < _kSegTypes.length; i++)
-                ButtonSegment<SearchType>(value: _kSegTypes[i],
-                    label: Text(_kSegLabels[i]), icon: Icon(_kSegIcons[i])),
+          padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+          child: Wrap(
+            spacing: Sp.gapS,
+            runSpacing: Sp.gapS,
+            children: <Widget>[
+              for (final String name in kHotCategories)
+                ActionChip(
+                  label: Text(name,
+                      style: const TextStyle(fontSize: Sp.fSub, color: Sp.text)),
+                  backgroundColor: Sp.card,
+                  side: const BorderSide(color: Sp.divider),
+                  onPressed: () {
+                    _ctrl.text = name;
+                    _doSearch(name);
+                  },
+                ),
             ],
-            selected: <SearchType>{_segment},
-            onSelectionChanged: _onSegmentChanged,
           ),
         ),
-        Expanded(child: _buildSegmentList(_segment)),
-      ]);
-    } catch (e, st) { Log.e(_tag, 'buildComprehensive crashed', e, st); return const SizedBox.shrink(); }
+      ],
+    );
   }
-  Widget _buildSegmentList(SearchType type) {
-    try {
-      final cs = Theme.of(context).colorScheme;
-      final tt = Theme.of(context).textTheme;
-      final s = _segments[type]!;
-      if (s.searching && s.items.isEmpty) return _progress(cs);
-      if (s.items.isEmpty) { return Center(child: Text(
-          '该分类没有找到「$_committedKw」相关结果',
-          style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant))); }
-      return _buildList(s, type, s.scroll, s.more ? '上拉加载更多' : '没有更多了');
-    } catch (e, st) {
-      Log.e(_tag, 'buildSegmentList crashed type=${type.name}', e, st);
-      return const SizedBox.shrink();
+  Widget _historySection() {
+    if (_history.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(Sp.pagePad, Sp.gapXL, Sp.pagePad, 0),
+        child: Text('暂无搜索历史',
+            style: TextStyle(fontSize: Sp.fSub, color: Sp.textFaint)),
+      );
     }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              Sp.pagePad, Sp.gapXL, Sp.pagePad, Sp.gapM),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              const Text('历史记录',
+                  style: TextStyle(
+                      fontSize: Sp.fSection,
+                      fontWeight: FontWeight.w700,
+                      color: Sp.text)),
+              TextButton(
+                onPressed: _clearHistory,
+                child: const Text('清空',
+                    style: TextStyle(fontSize: Sp.fSub, color: Sp.textSub)),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+          child: Wrap(
+            spacing: Sp.gapS,
+            runSpacing: Sp.gapS,
+            children: <Widget>[
+              for (final String h in _history)
+                ActionChip(
+                  label: Text(h,
+                      style: const TextStyle(fontSize: Sp.fSub, color: Sp.text)),
+                  backgroundColor: Sp.card,
+                  side: const BorderSide(color: Sp.divider),
+                  onPressed: () {
+                    _ctrl.text = h;
+                    _doSearch(h);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
-  Widget _buildList(SearchSegmentState s, SearchType type, ScrollController scroll, String footer) {
-    try {
-      final cs = Theme.of(context).colorScheme;
-      final tt = Theme.of(context).textTheme;
-      return ListView.builder(controller: scroll, itemCount: s.items.length + 1,
-        itemBuilder: (ctx, i) {
-          try {
-            if (i == s.items.length) {
-              final busy = s.loadingMore || s.searching || _searching;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: tnPadL),
-                child: Center(
-                    child: busy
-                        ? searchLoadingSkeleton()
-                        : Text(footer,
-                            style: tt.bodyMedium
-                                ?.copyWith(color: cs.onSurfaceVariant))));
-            }
-            return searchCardRow(ctx, s.items[i], i, type,
-                onPlay: _play, onDrill: _drillDown);
-          } catch (e, st) {
-            Log.e(_tag, 'list row failed type=${type.name}', e, st);
-            return const SizedBox.shrink();
-          }
-        });
-    } catch (e, st) {
-      Log.e(_tag, 'buildList crashed type=${type.name}', e, st);
-      return const SizedBox.shrink();
+  Widget _resultBody() {
+    if (_segment != 0) {
+      return SearchEmptyBox(
+          '「${kSearchSegments[_segment]}」分类搜索在当前 logic 层未开放端点，暂不可用');
     }
+    final Future<SearchResult>? f = _resultF;
+    if (f == null) return const SearchEmptyBox('暂无结果');
+    return FutureBuilder<SearchResult>(
+      future: f,
+      builder: (BuildContext c, AsyncSnapshot<SearchResult> snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator(color: Sp.green));
+        }
+        if (snap.hasError) {
+          return SearchErrorRetry(message: '搜索失败', onRetry: () => _doSearch(_query));
+        }
+        final SearchResult r = snap.data ?? const SearchResult();
+        final List<SongBrief> items = r.items;
+        if (items.isEmpty) {
+          return SearchEmptyBox('没有找到与「$_query」相关的歌曲');
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.only(bottom: Sp.gapXL),
+          itemCount: items.length,
+          itemBuilder: (BuildContext c, int i) => SearchSongTile(
+            song: items[i],
+            onTap: () => _play(items, i),
+            onAlbum: () => _openAlbum(items[i].albumId),
+          ),
+        );
+      },
+    );
   }
+}
+
+/// 歌曲行（SpSongTile 风格）：封面 + 名称 + 歌手 + 专辑跳转 + 播放。
+class SearchSongTile extends StatelessWidget {
+  const SearchSongTile({required this.song, required this.onTap, required this.onAlbum});
+  final SongBrief song;
+  final VoidCallback onTap;
+  final VoidCallback onAlbum;
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(Sp.rM),
+        child: SizedBox(
+          width: Sp.tileCover,
+          height: Sp.tileCover,
+          child: song.cover.isEmpty
+              ? Container(color: Sp.cardHigh)
+              : Image.network(
+                  song.cover,
+                  fit: BoxFit.cover,
+                  errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
+                      Container(color: Sp.cardHigh),
+                ),
+        ),
+      ),
+      title: Text(
+        song.name.isEmpty ? '未知歌曲' : song.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: Sp.fItem,
+          color: Sp.text,
+          fontWeight: song.isVip ? FontWeight.w600 : FontWeight.w400,
+        ),
+      ),
+      subtitle: Text(
+        song.singer.isEmpty ? '未知歌手' : song.singer,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (song.albumId.isNotEmpty)
+            IconButton(
+              tooltip: '专辑',
+              iconSize: 18,
+              color: Sp.textFaint,
+              onPressed: onAlbum,
+              icon: const Icon(Icons.album_outlined),
+            ),
+          Text(
+            song.durationSec > 0 ? '${song.durationSec}s' : '',
+            style: const TextStyle(fontSize: Sp.fTiny, color: Sp.textFaint),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 空态。
+class SearchEmptyBox extends StatelessWidget {
+  const SearchEmptyBox(this.message);
+  final String message;
+  @override
+  Widget build(BuildContext context) => Padding(
+      padding:
+          const EdgeInsets.symmetric(horizontal: Sp.pagePad, vertical: Sp.gapXL),
+      child: Text(message,
+          style: const TextStyle(fontSize: Sp.fSub, color: Sp.textFaint)));
+}
+
+/// 错误 + 重试。
+class SearchErrorRetry extends StatelessWidget {
+  const SearchErrorRetry({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) => Padding(
+      padding:
+          const EdgeInsets.symmetric(horizontal: Sp.pagePad, vertical: Sp.gapXL),
+      child: Row(children: <Widget>[
+        Expanded(
+            child: Text(message,
+                style: const TextStyle(fontSize: Sp.fSub, color: Sp.red))),
+        TextButton(
+            onPressed: onRetry,
+            child: const Text('重试',
+                style: TextStyle(fontSize: Sp.fSub, color: Sp.green))),
+      ]));
 }

@@ -1,25 +1,41 @@
-// 五桥 · bridge_surface：L6 surface 暴露给 L1 init 的装配入口门面。
-// 铁律：每个桥函数 try/catch + Log 留痕（print 兜底防递归）；装配/runApp
-// 失败留痕后原样上抛（必须暴露），其余失败返回语义默认值。
-// init 禁再直接 import surface/app_root.dart（白名单已删）。
+// 六桥 · bridge_surface：L6 session ↔ L7 surface / L1 装配入口。
+// V2（docs/SEVEN_SIX_RULE.md）：surface 只画控件；播放编排/装配图全在 session。
+// 铁律：每个桥函数 try/catch + Log 留痕，失败原样上抛（必须暴露，不静默吞）。
 library;
 
+import '../kernel/kernel.dart' show Log;
 import '../surface/app_root.dart' as root
     show SurfaceDeps, bootstrapApp, installServices;
-import '../kernel/kernel.dart' show Log;
+import '../surface/theme/tn_theme.dart' show tnLightThemeData;
+import '../session/bootstrap.dart' as session;
 
-// 保留装配入口可见：SurfaceDeps（构造参数类型）与 AppRoot（根组件）。
 export '../surface/app_root.dart' show SurfaceDeps, AppRoot;
-// 启动失败错误页所需的 miuix 主题数据（L1 经桥取 L6 资源，禁直连）。
 export '../surface/theme/tn_theme.dart' show tnLightThemeData;
+// V2：L1/独立 UI 模型可直接经桥取 session 门面。
+export '../session/graph.dart' show AppGraph, SessionDeps;
+export '../session/contracts.dart' show NavEntry, SurfaceModule;
+export '../session/module_registry.dart' show ModuleRegistry;
+export '../session/nav_state.dart' show NavState;
+export '../session/playback_session.dart' show PlaybackSession, PlaybackSnapshot;
 
-/// installServices 转调：surface 全量装配（assembly.assembleAll）。
+/// L1 → L7 装配入口：先装配 L6 session，再由独立 UI 模型装配 L7。
 Future<void> installServices(
     {required dynamic deps, dynamic engine}) async {
   try {
-    await root.installServices(
-        deps: deps as root.SurfaceDeps,
-        engine: engine == null ? null : engine as dynamic);
+    // ① session（非 UI 逻辑）先就位；失败即暴露。
+    final d = deps as root.SurfaceDeps;
+    await session.bootstrapSession(
+      client: d.client,
+      songDao: d.songDao,
+      playlistDao: d.playlistDao,
+      historyDao: d.historyDao,
+      downloadStore: d.downloadStore,
+      settings: d.settings,
+      paths: d.paths,
+      engine: engine,
+    );
+    // ② L7 控件装配（独立模型实现；当前占位会抛 StateError）。
+    await root.installServices(deps: d, engine: engine);
     Log.d('bridge_surface', 'installServices ok');
   } catch (e, st) {
     Log.e('bridge_surface', 'installServices failed', e, st);
@@ -27,7 +43,7 @@ Future<void> installServices(
   }
 }
 
-/// bootstrapApp 转调：消费 installServices 装配结果并 runApp。
+/// bootstrapApp 转调。
 void bootstrapApp(dynamic bootResult) {
   try {
     root.bootstrapApp(bootResult);

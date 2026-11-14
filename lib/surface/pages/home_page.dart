@@ -1,73 +1,18 @@
-// L6 surface/pages · 首页（Spotify 架构全量重写）
-// 结构：大标题 → [快捷入口网格(收藏/下载/最近)] → 每日推荐(横滑) → 推荐歌单(横滑)
-//       → 排行榜(横滑) → 新歌/热搜(列表) ；每区块骨架/空态独立，互不拖垮。
-// 数据：沿用注入的 logic；封面经模型层归一化（SpCover 零处理）。
-// 纪律：回调全 try/catch；不 import 下层非桥；页面层禁止硬编码颜色（只用 Sp）。
+// L7 surface/pages · 首页（Spotify 深色 + M3）
+// 只画控件；数据只经 bridge_logic 的 logic 单例取；颜色/字号/间距只用 Sp.*。
 import 'package:flutter/material.dart';
-
 import '../../bridges/bridge_logic.dart'
-    show
-        LogicFacade,
-        Log,
-        RankLogic,
-        RankBrief,
-        PlaylistLogic,
-        PlaylistBrief,
-        RecommendLogic,
-        SearchLogic,
-        SearchSuggestItem,
-        SongBrief;
-import '../registry.dart';
-import '../ui/spotify_ui.dart' as sp;
-import 'home_detail_sheets.dart' show showPlaylistTracksSheet, showRankTracksSheet;
+    show Log, SongBrief, PlaylistBrief, RankBrief, SearchSuggestItem;
+import '../../bridges/bridge_session.dart'
+    show NavState, PlaybackSession, SurfaceModule, NavEntry;
+import '../../bridges/bridge_session.dart' show appGraph;
+import '../design/tokens.dart' show Sp;
+import 'playlist_page.dart' show PlaylistDetailSheet;
 
 const String _tag = 'surface.home';
 
-/// 工厂：装配层调用（签名不变，供 registry 热插拔）。
-SurfaceModule buildHomeModule({
-  required RecommendLogic recommend,
-  required RankLogic rank,
-  required SearchLogic search,
-  required PlaylistLogic playlist,
-  required void Function(SongBrief) onPlay,
-  required void Function() onOpenSearch,
-  void Function(SongBrief)? onSongAction,
-}) =>
-    HomePageModule(
-      recommend: recommend,
-      rank: rank,
-      search: search,
-      playlist: playlist,
-      onPlay: onPlay,
-      onOpenSearch: onOpenSearch,
-      onSongAction: onSongAction,
-    );
-
-class HomePageModule implements SurfaceModule {
-  HomePageModule({
-    required RecommendLogic recommend,
-    required RankLogic rank,
-    required SearchLogic search,
-    required PlaylistLogic playlist,
-    required void Function(SongBrief) onPlay,
-    required void Function() onOpenSearch,
-    void Function(SongBrief)? onSongAction,
-  })  : _recommend = recommend,
-        _rank = rank,
-        _search = search,
-        _playlist = playlist,
-        _onPlay = onPlay,
-        _onOpenSearch = onOpenSearch,
-        _onSongAction = onSongAction;
-
-  final RecommendLogic _recommend;
-  final RankLogic _rank;
-  final SearchLogic _search;
-  final PlaylistLogic _playlist;
-  final void Function(SongBrief) _onPlay;
-  final void Function() _onOpenSearch;
-  final void Function(SongBrief)? _onSongAction;
-
+/// 页面模块注册（L7 注入 builder，宿主按 id 覆盖 session 占位模块）。
+class HomePageModule extends SurfaceModule {
   @override
   String get id => 'home';
   @override
@@ -75,235 +20,481 @@ class HomePageModule implements SurfaceModule {
   @override
   NavEntry? get navEntry => const NavEntry('首页', 'home');
   @override
-  bool enabled(LogicFacade logic) => true;
+  bool get enabled => true;
   @override
-  WidgetBuilder builder(LogicFacade logic) => (ctx) => SpHomePage(
-        recommend: _recommend,
-        rank: _rank,
-        search: _search,
-        playlist: _playlist,
-        onPlay: _onPlay,
-        onOpenSearch: _onOpenSearch,
-        onSongAction: _onSongAction,
-      );
+  WidgetBuilder? get builder => (BuildContext ctx) => const HomePage();
 }
 
-/// 首页主体（Spotify 垂直区块流）。
-class SpHomePage extends StatelessWidget {
-  const SpHomePage({
-    super.key,
-    required this.recommend,
-    required this.rank,
-    required this.search,
-    required this.playlist,
-    required this.onPlay,
-    required this.onOpenSearch,
-    this.onSongAction,
-  });
-
-  final RecommendLogic recommend;
-  final RankLogic rank;
-  final SearchLogic search;
-  final PlaylistLogic playlist;
-  final void Function(SongBrief) onPlay;
-  final void Function() onOpenSearch;
-  final void Function(SongBrief)? onSongAction;
-
-  void _safe(void Function() f, String what) {
-    try {
-      f();
-    } catch (e, st) {
-      Log.e(_tag, '$what failed', e, st);
-    }
-  }
-
+/// 首页：每日推荐 / 推荐歌单 / 排行榜 / 热搜 四区块流。
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: sp.Sp.bg,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: sp.Sp.pagePad),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text('首页',
-                      style: TextStyle(
-                          color: sp.Sp.text,
-                          fontSize: sp.Sp.fPageTitle,
-                          fontWeight: FontWeight.w900)),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.search, color: sp.Sp.text, size: 26),
-                  tooltip: '搜索',
-                  onPressed: () => _safe(onOpenSearch, 'onOpenSearch'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-      body: RefreshIndicator(
-        color: sp.Sp.green,
-        backgroundColor: sp.Sp.card,
-        onRefresh: () async => _safe(() {}, 'refresh'),
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: 96),
-          children: [
-            _Section(
-              title: '每日推荐',
-              future: () => recommend.daily(1, pageSize: 12),
-              buildRow: (items, ctx) => sp.SpCardRow(
-                children: [
-                  for (final s in items)
-                    sp.SpCoverCard(
-                      coverUrl: s.cover,
-                      title: s.name,
-                      subtitle: s.singer,
-                      onTap: () => _safe(() => onPlay(s), 'play daily'),
-                    ),
-                ],
-              ),
-            ),
-            _Section(
-              title: '推荐歌单',
-              future: () => playlist.recommend(1, pageSize: 12),
-              buildRow: (items, ctx) => sp.SpCardRow(
-                children: [
-                  for (final p in items)
-                    sp.SpCoverCard(
-                      coverUrl: p.cover,
-                      title: p.name,
-                      subtitle: '${p.trackCount} 首',
-                      onTap: () => _safe(
-                          () => showPlaylistTracksSheet(
-                              ctx, playlist, p, onPlay),
-                          'open playlist'),
-                    ),
-                ],
-              ),
-            ),
-            _Section(
-              title: '排行榜',
-              future: () async =>
-                  (await rank.rankList()).take(12).toList(growable: false),
-              buildRow: (items, ctx) => sp.SpCardRow(
-                children: [
-                  for (final r in items)
-                    sp.SpCoverCard(
-                      coverUrl: r.cover,
-                      title: r.name,
-                      subtitle: r.updateTime,
-                      onTap: () => _safe(
-                          () => showRankTracksSheet(ctx, rank, r, onPlay),
-                          'open rank'),
-                    ),
-                ],
-              ),
-            ),
-            _Section(
-              title: '热门搜索',
-              future: () async {
-                final all = await search.hotSearch();
-                return <SearchSuggestItem>[for (final h in all.take(20)) h];
-              },
-              buildList: (items, ctx) => Column(
-                children: [
-                  for (var i = 0; i < items.length; i++)
-                    sp.SpSongTile(
-                      index: i + 1,
-                      title: items[i].keyword,
-                      subtitle: items[i].type,
-                      onTap: () => _safe(onOpenSearch, 'hot→search'),
-                    ),
-                ],
-              ),
-              asList: true,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  State<HomePage> createState() => _HomePageState();
 }
 
-/// 区块壳：统一 未来加载 → 骨架 / 空态 / 数据（横滑行或列表）。
-/// 审查修复：StatefulWidget 持有 Future（旧实现 build 内 future() 每次重建
-/// 重发请求 —— MiniBar 每 200ms 的进度 tick 会触发四接口风暴）。
-class _Section<T> extends StatefulWidget {
-  const _Section({
-    required this.title,
-    required this.future,
-    this.buildRow,
-    this.buildList,
-    this.asList = false,
-  });
-
-  final String title;
-  final Future<List<T>> Function() future;
-  final Widget Function(List<T>, BuildContext)? buildRow;
-  final Widget Function(List<T>, BuildContext)? buildList;
-  final bool asList;
-
-  @override
-  State<_Section<T>> createState() => _SectionState<T>();
-}
-
-class _SectionState<T> extends State<_Section<T>> {
-  late Future<List<T>> _future;
-
+class _HomePageState extends State<HomePage> {
+  late Future<List<SongBrief>> _dailyF;
+  late Future<List<PlaylistBrief>> _playlistF;
+  late Future<List<RankBrief>> _rankF;
+  late Future<List<SearchSuggestItem>> _hotF;
   @override
   void initState() {
     super.initState();
-    _future = widget.future();
+    _load();
   }
-
+  /// 异步数据只在 initState 持有 future（禁止在 build 内新建 future）。
+  void _load() {
+    try {
+      final g = appGraph;
+      _dailyF = g.recommend?.daily(1) ?? Future.value(const <SongBrief>[]);
+      _playlistF =
+          g.playlist?.recommend(1) ?? Future.value(const <PlaylistBrief>[]);
+      _rankF = g.rank?.rankList() ?? Future.value(const <RankBrief>[]);
+      _hotF = g.search?.hotSearch() ?? Future.value(const <SearchSuggestItem>[]);
+    } catch (e, st) {
+      Log.e(_tag, 'load failed', e, st);
+      _dailyF = Future.value(const <SongBrief>[]);
+      _playlistF = Future.value(const <PlaylistBrief>[]);
+      _rankF = Future.value(const <RankBrief>[]);
+      _hotF = Future.value(const <SearchSuggestItem>[]);
+    }
+  }
+  void _reload() => setState(_load);
+  void _play(List<SongBrief> songs, int index) {
+    try {
+      PlaybackSession.instance.playAll(songs, index);
+    } catch (e, st) {
+      Log.e(_tag, 'playAll failed', e, st);
+    }
+  }
+  void _openPlaylist(PlaylistBrief brief) {
+    try {
+      showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Sp.bgElevated,
+        isScrollControlled: true,
+        builder: (BuildContext c) => PlaylistDetailSheet(
+          playlistId: brief.id,
+          title: brief.name,
+          cover: brief.cover,
+        ),
+      );
+    } catch (e, st) {
+      Log.e(_tag, 'openPlaylist failed', e, st);
+    }
+  }
+  /// 榜单卡：直接进入榜单曲目并播放（榜单详情走 rankInfo）。
+  void _openRank(RankBrief rank) {
+    try {
+      final rk = appGraph.rank;
+      if (rk == null) return;
+      rk.rankInfo(rank.rankId).then((List<SongBrief> songs) {
+        if (songs.isEmpty) return;
+        PlaybackSession.instance.playAll(songs, 0);
+      }).catchError((Object e, StackTrace st) {
+        Log.e(_tag, 'rankInfo failed id=${rank.rankId}', e, st);
+      });
+    } catch (e, st) {
+      Log.e(_tag, 'openRank failed', e, st);
+    }
+  }
+  void _goSearch() {
+    try {
+      NavState.instance.requestTab('search');
+    } catch (e, st) {
+      Log.e(_tag, 'requestTab failed', e, st);
+    }
+  }
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<T>>(
-      future: _future,
-      builder: (ctx, snap) {
-        Widget body;
-        if (snap.connectionState != ConnectionState.done) {
-          body = widget.asList
-              ? const sp.SpListSkeleton(rows: 5)
-              : const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: sp.Sp.pagePad),
-                  child: Row(
-                    children: [
-                      sp.SpSkeleton(width: sp.Sp.cardCover, height: sp.Sp.cardCover),
-                      SizedBox(width: sp.Sp.gapM),
-                      sp.SpSkeleton(width: sp.Sp.cardCover, height: sp.Sp.cardCover),
-                      SizedBox(width: sp.Sp.gapM),
-                      sp.SpSkeleton(width: sp.Sp.cardCover, height: sp.Sp.cardCover),
-                    ],
-                  ),
-                );
-        } else if (snap.hasError) {
-          body = sp.SpStateView(
-            icon: Icons.error_outline,
-            title: '加载失败',
-            subtitle: '${snap.error}',
-          );
-        } else {
-          final items = snap.data ?? <T>[];
-          if (items.isEmpty) {
-            body = const sp.SpStateView(
-                icon: Icons.inbox_outlined, title: '暂无内容');
-          } else {
-            body = (widget.asList ? widget.buildList : widget.buildRow)!(items, ctx);
-          }
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            sp.SpSectionHeader(widget.title),
-            body,
+    return Scaffold(
+      backgroundColor: Sp.bg,
+      body: SafeArea(
+        child: Column(
+          children: <Widget>[
+            AppBar(
+              backgroundColor: Sp.bg,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              title: const Text('首页',
+                  style: TextStyle(
+                      fontSize: Sp.fHero,
+                      fontWeight: FontWeight.w700,
+                      color: Sp.text)),
+              actions: <Widget>[
+                IconButton(
+                  tooltip: '搜索',
+                  onPressed: _goSearch,
+                  icon: const Icon(Icons.search, color: Sp.text),
+                ),
+                const SizedBox(width: Sp.gapS),
+              ],
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: Sp.gapXL),
+                itemCount: 4,
+                itemBuilder: (BuildContext c, int i) {
+                  if (i == 0) return _dailySection(c);
+                  if (i == 1) return _playlistSection(c);
+                  if (i == 2) return _rankSection(c);
+                  return _hotSection(c);
+                },
+              ),
+            ),
           ],
-        );
+        ),
+      ),
+    );
+  }
+  Widget _section(BuildContext c, String title, Widget child) {
+    return Padding(
+      padding: const EdgeInsets.only(top: Sp.gapXL, bottom: Sp.gapM),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+            child: Text(title,
+                style: const TextStyle(
+                    fontSize: Sp.fSection,
+                    fontWeight: FontWeight.w700,
+                    color: Sp.text)),
+          ),
+          const SizedBox(height: Sp.gapM),
+          child,
+        ],
+      ),
+    );
+  }
+  Widget _dailySection(BuildContext c) {
+    return FutureBuilder<List<SongBrief>>(
+      future: _dailyF,
+      builder: (BuildContext c, AsyncSnapshot<List<SongBrief>> snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return _section(c, '每日推荐', const HomeSkeletonBox(height: 176));
+        }
+        if (snap.hasError) {
+          return _section(c, '每日推荐',
+              HomeErrorRetry(message: '每日推荐加载失败', onRetry: _reload));
+        }
+        final List<SongBrief> items = snap.data ?? const <SongBrief>[];
+        if (items.isEmpty) {
+          return _section(c, '每日推荐',
+              const HomeEmptyBox('暂无每日推荐（登录后可能可见）'));
+        }
+        return _section(
+            c,
+            '每日推荐',
+            SizedBox(
+              height: 176,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+                itemCount: items.length,
+                itemBuilder: (BuildContext c, int i) => _SongCard(
+                  song: items[i],
+                  onTap: () => _play(items, i),
+                ),
+              ),
+            ));
       },
     );
   }
+  Widget _playlistSection(BuildContext c) {
+    return FutureBuilder<List<PlaylistBrief>>(
+      future: _playlistF,
+      builder: (BuildContext c, AsyncSnapshot<List<PlaylistBrief>> snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return _section(c, '推荐歌单', const HomeSkeletonBox(height: 220));
+        }
+        if (snap.hasError) {
+          return _section(c, '推荐歌单',
+              HomeErrorRetry(message: '歌单加载失败', onRetry: _reload));
+        }
+        final List<PlaylistBrief> items = snap.data ?? const <PlaylistBrief>[];
+        if (items.isEmpty) {
+          return _section(c, '推荐歌单', const HomeEmptyBox('暂无推荐歌单'));
+        }
+        return _section(
+            c,
+            '推荐歌单',
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 0.72,
+                crossAxisSpacing: Sp.gapM,
+                mainAxisSpacing: Sp.gapM,
+              ),
+              itemCount: items.length,
+              itemBuilder: (BuildContext c, int i) => HomePlaylistCard(
+                brief: items[i],
+                onTap: () => _openPlaylist(items[i]),
+              ),
+            ));
+      },
+    );
+  }
+  Widget _rankSection(BuildContext c) {
+    return FutureBuilder<List<RankBrief>>(
+      future: _rankF,
+      builder: (BuildContext c, AsyncSnapshot<List<RankBrief>> snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return _section(c, '排行榜', const HomeSkeletonBox(height: 150));
+        }
+        if (snap.hasError) {
+          return _section(c, '排行榜',
+              HomeErrorRetry(message: '榜单加载失败', onRetry: _reload));
+        }
+        final List<RankBrief> items = snap.data ?? const <RankBrief>[];
+        if (items.isEmpty) {
+          return _section(c, '排行榜', const HomeEmptyBox('暂无榜单数据'));
+        }
+        return _section(
+            c,
+            '排行榜',
+            SizedBox(
+              height: 150,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+                itemCount: items.length,
+                itemBuilder: (BuildContext c, int i) => _RankCard(
+                  rank: items[i],
+                  onTap: () => _openRank(items[i]),
+                ),
+              ),
+            ));
+      },
+    );
+  }
+  Widget _hotSection(BuildContext c) {
+    return FutureBuilder<List<SearchSuggestItem>>(
+      future: _hotF,
+      builder: (BuildContext c, AsyncSnapshot<List<SearchSuggestItem>> snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return _section(c, '热搜', const HomeSkeletonBox(height: 60));
+        }
+        if (snap.hasError) {
+          return _section(c, '热搜',
+              HomeErrorRetry(message: '热搜加载失败', onRetry: _reload));
+        }
+        final List<SearchSuggestItem> items =
+            snap.data ?? const <SearchSuggestItem>[];
+        if (items.isEmpty) {
+          return _section(c, '热搜', const HomeEmptyBox('暂无热搜词'));
+        }
+        return _section(
+            c,
+            '热搜',
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+              child: Wrap(
+                spacing: Sp.gapS,
+                runSpacing: Sp.gapS,
+                children: <Widget>[
+                  for (final SearchSuggestItem it in items)
+                    ActionChip(
+                      label: Text(it.keyword,
+                          style: const TextStyle(fontSize: Sp.fSub)),
+                      backgroundColor: Sp.card,
+                      side: const BorderSide(color: Sp.divider),
+                      onPressed: _goSearch,
+                    ),
+                ],
+              ),
+            ));
+      },
+    );
+  }
+}
+
+/// 封面图（无图时占位，不伪造封面）。
+class _Cover extends StatelessWidget {
+  const _Cover({required this.url, this.size, this.radius = Sp.rM});
+  final String url;
+  final double? size;
+  final double radius;
+  @override
+  Widget build(BuildContext context) {
+    final Widget box = url.isEmpty
+        ? Container(color: Sp.cardHigh)
+        : Image.network(url, width: size, height: size, fit: BoxFit.cover,
+            errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
+                Container(color: Sp.cardHigh));
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: SizedBox(width: size, height: size, child: box));
+  }
+}
+
+/// 每日推荐横滑卡。
+class _SongCard extends StatelessWidget {
+  const _SongCard({required this.song, required this.onTap});
+  final SongBrief song;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 124,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _Cover(url: song.cover, size: 124, radius: Sp.rCard),
+            const SizedBox(height: Sp.gapS),
+            Text(
+              song.name.isEmpty ? '未知歌曲' : song.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: Sp.fSub, color: Sp.text),
+            ),
+            Text(
+              song.singer,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: Sp.fTiny, color: Sp.textSub),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 推荐歌单三列卡。
+class HomePlaylistCard extends StatelessWidget {
+  const HomePlaylistCard({required this.brief, required this.onTap});
+  final PlaylistBrief brief;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _Cover(url: brief.cover, radius: Sp.rCard),
+          const SizedBox(height: Sp.gapS),
+          Text(
+            brief.name.isEmpty ? '未命名歌单' : brief.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: Sp.fSub, color: Sp.text),
+          ),
+          Text(
+            brief.trackCount > 0 ? '${brief.trackCount} 首' : '曲目数未知',
+            style: const TextStyle(fontSize: Sp.fTiny, color: Sp.textFaint),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 排行榜渐变卡。
+class _RankCard extends StatelessWidget {
+  const _RankCard({required this.rank, required this.onTap});
+  final RankBrief rank;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 168,
+        padding: const EdgeInsets.all(Sp.gapM),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(Sp.rCard),
+          gradient: const LinearGradient(
+            colors: <Color>[Sp.green, Sp.greenDim],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            Text(
+              rank.name.isEmpty ? '榜单' : rank.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  fontSize: Sp.fSection,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black),
+            ),
+            Text(
+              rank.updateTime.isEmpty ? '每周更新' : rank.updateTime,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: Sp.fTiny, color: Colors.black87),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 骨架占位。
+class HomeSkeletonBox extends StatelessWidget {
+  const HomeSkeletonBox({required this.height});
+  final double height;
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+        itemCount: 3,
+        itemBuilder: (BuildContext c, int i) => Container(
+          width: 124,
+          margin: const EdgeInsets.only(right: Sp.gapM),
+          decoration: BoxDecoration(
+            color: Sp.card,
+            borderRadius: BorderRadius.circular(Sp.rCard),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 空态。
+class HomeEmptyBox extends StatelessWidget {
+  const HomeEmptyBox(this.message);
+  final String message;
+  @override
+  Widget build(BuildContext context) => Padding(
+      padding:
+          const EdgeInsets.symmetric(horizontal: Sp.pagePad, vertical: Sp.gapXL),
+      child: Text(message,
+          style: const TextStyle(fontSize: Sp.fSub, color: Sp.textFaint)));
+}
+
+/// 错误 + 重试。
+class HomeErrorRetry extends StatelessWidget {
+  const HomeErrorRetry({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) => Padding(
+      padding:
+          const EdgeInsets.symmetric(horizontal: Sp.pagePad, vertical: Sp.gapXL),
+      child: Row(children: <Widget>[
+        Expanded(
+            child: Text(message,
+                style: const TextStyle(fontSize: Sp.fSub, color: Sp.red))),
+        TextButton(
+            onPressed: onRetry,
+            child: const Text('重试',
+                style: TextStyle(fontSize: Sp.fSub, color: Sp.green))),
+      ]));
 }

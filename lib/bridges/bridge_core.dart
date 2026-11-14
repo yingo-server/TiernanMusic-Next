@@ -28,7 +28,24 @@ export '../core/storage/settings_store.dart' show KeyValueSettings;
 
 // ── 封面取色（动态主题）：只取字节，解码在 surface ──
 export '../core/net/cover_color.dart' show fetchCoverBytes;
-export '../core/net/database_opener.dart' show openDatabase; // DatabaseOpener（审计B F-08：原 database_bridge.dart，非五桥，去 bridge 命名）
+// ── V2：纯算法 / l10n 常量表（从 surface 下沉，L7 只经桥取） ──
+export '../core/algorithms/qr_codec.dart' show QrMatrix, QrException, encodeQr;
+export '../core/algorithms/color_extract.dart'
+    show ColorSeed, ThemePalette, extractDominant, fromSeed;
+export '../core/l10n/strings.dart' show TnStrings;
+// ── V2：缓存 ⊃ 预读 统一服务（L6 session 经本桥取） ──
+export '../core/cache/cache_service.dart'
+    show CacheService, CacheOrigin;
+// V2：session 构造预读请求需要 Endpoint 类型与注册表（core 内部数据类型，经桥转出）。
+export '../core/net/kugou_client.dart' show Endpoint, EndpointRegistry;
+// ── V2：core/audio 成熟库网关（L6 session 经本桥取引擎，L7 不碰引擎） ──
+export '../core/audio/audio_gateway.dart'
+    show AudioEngine, NullAudioEngine, JustAudioEngine, AudioEvent, AudioEventType;
+export '../core/audio/notification_gateway.dart'
+    show MusicAudioHandler, NotificationMeta, NotificationControls,
+        initNotification;
+// 数据库开启函数 DatabaseOpener（bootloader await 用，避免 DAO 首访 fail-fast）
+export '../core/net/database_opener.dart' show openDatabase;
 // R3-C #3：PlaylistDetail 已含实测字段 listVer（models.dart re-export 自
 export '../core/net/endpoints/comment_endpoints.dart'
     show CommentItem, CommentPage;
@@ -118,7 +135,7 @@ export '../core/net/endpoints/user_endpoints.dart'
         uploadPlayHistory;
 // 评论端点函数（logic 层经 core 桥取用，批7 收敛补齐）
 // 审计B F-03：comment_endpoints 经 bridge_core 与 bridge_logic 双桥出口；此为 core 出口，
-// 与 bridge_logic 的出口存在重复符号。按六五规则双桥唯一通道要求暂保留本行，后续统一收敛至单一出口。
+// 与 bridge_logic 的出口存在重复符号。按76 原则双桥唯一通道要求暂保留本行，后续统一收敛至单一出口。
 export '../core/net/endpoints/comment_endpoints.dart'
     show getMusicComments, getCommentFloor, getCommentCount;
 

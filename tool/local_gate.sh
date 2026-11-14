@@ -54,6 +54,11 @@ echo "== play contract (three-state verdict + quality ladder) =="
   echo FAIL-play-contract; exit 1; }
 echo PASS-play-contract
 
+echo "== session contract (L6 orchestration) =="
+/opt/dart/bin/dart run tool/session_contract_test.dart 2>&1 | tail -1 | grep -q "0 failed" || {
+  echo FAIL-session-contract; exit 1; }
+echo PASS-session-contract
+
 echo "== resolve contract (three-state + prefetch) =="
 /opt/dart/bin/dart run tool/resolve_contract_test.dart 2>&1 | tail -1 | grep -q "0 failed" || {
   echo FAIL-resolve-contract; exit 1; }
