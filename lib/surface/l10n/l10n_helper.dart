@@ -248,9 +248,10 @@ class TnStrings {
   static const List<String> plannedCodes = supportedCodes;
 
   /// 语言偏好持久化：设置页 _pickLocale 调用；重启后由 app_root 读取。
+  /// 批2-F3：改用进程内共享实例（旧代码每次 new 一份独立内存缓存）。
   static void saveLocale(String code) {
     try {
-      final s = KeyValueSettings(StoragePaths.I);
+      final s = KeyValueSettings.shared(StoragePaths.I);
       s.setString(_localeKey, normalize(code));
     } catch (e, st) {
       Log.e(_tag, 'saveLocale failed', e, st);
@@ -260,7 +261,7 @@ class TnStrings {
   /// 读取持久化的语言码；空/异常返回 ''（跟随系统）。
   static String loadLocale() {
     try {
-      final s = KeyValueSettings(StoragePaths.I);
+      final s = KeyValueSettings.shared(StoragePaths.I);
       final v = s.getString(_localeKey) ?? '';
       return v.isEmpty || v == 'system' ? '' : normalize(v);
     } catch (e, st) {

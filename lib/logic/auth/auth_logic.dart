@@ -193,8 +193,13 @@ class AuthLogic {
         ..token = ''
         ..userid = ''
         ..cookies.clear();
+      // mid/dfid/KUGOU_API_MID 也必须删：残留会让下次登录/restoreSession
+      // 复用旧账号设备标识，且与 switchTo 的全量回写不一致。
       final ok = _settings.remove(kSettingToken) &
           _settings.remove(kSettingUserid) &
+          _settings.remove(kSettingMid) &
+          _settings.remove(kSettingDfid) &
+          _settings.remove(kSettingKugouApiMid) &
           _settings.remove('auth.cookie');
       Log.d(_tag, 'logout uid=$uid settingsCleared=$ok');
       return ok;

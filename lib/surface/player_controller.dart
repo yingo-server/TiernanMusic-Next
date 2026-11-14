@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../bridges/bridge_core.dart'
     show SongBrief, KeyValueSettings, StoragePaths;
-import '../bridges/bridge_logic.dart' show Log, PrefetchEngine;
+import '../bridges/bridge_logic.dart' show Log, PrefetchEngine, HistoryRecorder;
 import '../bridges/bridge_logic.dart'
     show PlaySource, QueueState, PlayerState, PlayerStatus, PlayMode,
         PlaybackAction, StartLoad, Playing, Paused, Progress, Completed,
@@ -17,6 +17,7 @@ import '../bridges/bridge_logic.dart'
         SetSpeed, playbackReducer;
 
 import 'audio/audio_engine.dart' show AudioEngine, NullAudioEngine;
+import 'audio/audio_service_bridge.dart' show MinimalAudioHandler;
 
 export 'audio/audio_engine.dart' show AudioEngine, NullAudioEngine;
 
@@ -120,11 +121,15 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
     String quality = '128',
     KeyValueSettings? settings,
     PrefetchEngine? prefetch,
+    MinimalAudioHandler? audioHandler,
+    HistoryRecorder? historyRecorder,
   })  : _resolver = resolver,
         _prefetch = prefetch,
         _engine = engine ?? NullAudioEngine(),
         _quality = quality,
         _settings = settings,
+        _audioHandler = audioHandler,
+        _historyRecorder = historyRecorder,
         super(PlayerSnapshot(
             player: PlayerState(speed: _readSpeed(settings)))) {
     _d('init engine=${_engine.runtimeType} quality=$_quality speed=${state.speed}');
@@ -142,9 +147,9 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
   final AudioEngine _engine;
   final String _quality;
   final KeyValueSettings? _settings;
-
-  /// 预读引擎（可选）：队列变化时预热后续曲目的播放源。
-  final PrefetchEngine? _prefetch;
+  final PrefetchEngine? _prefetch; // 队列变化预热播放源（可选）
+  final MinimalAudioHandler? _audioHandler; // 通知栏 metadata（可选）
+  final HistoryRecorder? _historyRecorder; // 播放历史（待 assembly 注入）
   Timer? _ticker;
 
   // ── 引擎事件入口（批5-A：JustAudioEngine onAction 回调落点） ──
@@ -227,8 +232,18 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
         _d('removeFromQueue out of range i=$index len=${items.length}');
         return;
       }
+      final removingCurrent = index == state.queue.index;
       final q = state.queue.removeAt(index);
-      state = state.copyWith(queue: q);
+      // 删当前曲后 queue.current 已指向下一首：经 QueueJump reducer 同步
+      // player.current（不扩接口），并保留原播放态；空队列则清 current。
+      final nextSong = q.current;
+      final player = removingCurrent
+          ? (nextSong != null
+              ? playbackReducer(state.player, QueueJump(nextSong, index: q.index))
+                  .copyWith(status: state.player.status)
+              : state.player.copyWith(clearCurrent: true))
+          : state.player;
+      state = state.copyWith(queue: q, player: player);
       _d('removeFromQueue i=$index left=${q.items.length}');
     } catch (e, st) {
       _e('removeFromQueue failed $index', e, st);
@@ -373,15 +388,33 @@ class PlayerController extends StateNotifier<PlayerSnapshot> {
       }
       final urlOrPath = src.localPath ?? src.urls.first;
       await _engine.play(urlOrPath);
+      // 起播成功：推通知栏 metadata + 落播放历史，各自 try/catch 不阻断播放；
+      // 参数按 audio_service_bridge / history_recorder 的真实签名。
+      try {
+        final durSec = src.timeLengthSec > 0 ? src.timeLengthSec : song.durationSec;
+        _audioHandler?.updateMetadata(
+          title: song.name.isEmpty ? song.hash : song.name,
+          artist: song.singer,
+          album: song.albumName.isEmpty ? null : song.albumName,
+          durationMs: durSec > 0 ? durSec * 1000 : null,
+        );
+      } catch (e, st) {
+        _e('updateMetadata failed ${song.hash}', e, st);
+      }
+      final recorder = _historyRecorder;
+      if (recorder != null) {
+        try {
+          await recorder.recordPlay(song, 0); // 起播事件：已播时长 0
+        } catch (e, st) {
+          _e('recordPlay failed ${song.hash}', e, st);
+        }
+      }
       if (_engine is NullAudioEngine) {
         // NullEngine 无真实回调，用 1s ticker 模拟推进；真实引擎走
         // handleEngineAction（positionStream → Progress）。
         final durMs = (src.timeLengthSec > 0
             ? src.timeLengthSec
-            : song.durationSec > 0
-                ? song.durationSec
-                : 0) *
-            1000;
+            : song.durationSec > 0 ? song.durationSec : 0) * 1000;
         _dispatch(Playing(durationMs: durMs));
         _startTicker();
       }

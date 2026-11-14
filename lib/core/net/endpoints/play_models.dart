@@ -19,6 +19,7 @@ class PlayResult {
     this.isVipTrack = false,
     this.isFreePart = false,
     this.hash = '',
+    this.privKnown = false,
   });
 
   final int status; // 1=出URL；2=err（20028 匿名风控等）
@@ -34,6 +35,10 @@ class PlayResult {
   final bool isFreePart; // 试听片段
   final String hash;
 
+  /// 响应是否真的带了 priv_status；缺失时 privStatus=safeInt(null)=0 只是默认值，
+  /// 不得据此判定 noPrivilege（否则匿名/错盐响应被误判为无权限）。
+  final bool privKnown;
+
   bool get playable {
     try {
       return status == 1 && privStatus == 1 && urls.isNotEmpty;
@@ -45,7 +50,11 @@ class PlayResult {
 
   bool get needsVerification {
     try {
-      return errcode == 20028 || status == 2 && privStatus == 0 && urls.isEmpty;
+      // 20028 = 明确风控验证；31833 是签名失败（单列，由上层映射 network）。
+      // status=2 且无 URL 时只有 priv_status 缺失（privKnown=false）才是验证态；
+      // 明确带 priv_status=0 属 noPrivilege，不得混入验证态。
+      return errcode == 20028 ||
+          (status == 2 && !privKnown && urls.isEmpty);
     } catch (e, st) {
       Log.e(_tag, 'PlayResult.needsVerification failed', e, st);
       return false;
@@ -57,7 +66,8 @@ class PlayResult {
         'error': error, 'urls': urls, 'backupUrls': backupUrls,
         'bitrate': bitrate, 'extName': extName,
         'timeLengthSec': timeLengthSec, 'isVipTrack': isVipTrack,
-        'isFreePart': isFreePart, 'hash': hash, 'playable': playable,
+        'isFreePart': isFreePart, 'hash': hash, 'privKnown': privKnown,
+        'playable': playable,
       };
 
   @override

@@ -26,11 +26,20 @@ Future<void> showPlaylistTracksSheet(
       context,
       brief,
       load: () async {
-        // 链路修复：先 detail 拿数字 specialId（global_collection_id 实测 20010）。
-        final detail = await playlist.detail(brief.id);
-        final sid = detail.specialId.isNotEmpty ? detail.specialId : brief.id;
-        final page = await playlist.tracks(sid, 1, specialIdOverride: sid);
-        return page.items;
+        try {
+          // 先 detail 拿数字 specialId；gc_id 直传实测恒 20010，不再回退。
+          final d = await playlist.detail(brief.id);
+          final sid = d.specialId.trim();
+          if (sid.isEmpty) {
+            Log.w(_tag, 'empty specialId id=${brief.id} → empty tracks');
+            return const <SongBrief>[];
+          }
+          final page = await playlist.tracks(sid, 1, specialIdOverride: sid);
+          return page.items;
+        } catch (e) {
+          Log.w(_tag, 'detail/tracks failed id=${brief.id} → empty tracks: $e');
+          return const <SongBrief>[];
+        }
       },
       onPlay: onPlay,
     );

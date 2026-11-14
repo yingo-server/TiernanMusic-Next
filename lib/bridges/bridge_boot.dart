@@ -33,8 +33,10 @@ class BootOutcome {
   final String detail;
 
   /// 具名依赖：client / songDao / playlistDao / historyDao /
-  /// downloadStore / settings / paths；另含保留键 '__raw'（归一化前的原始
-  /// L2 结果，供既有桥函数 bootstrapApp 原样消费，不改桥业务逻辑）。
+  /// downloadStore / settings / paths / dbOpenFuture；另含保留键 '__raw'
+  /// （归一化前的原始 L2 结果，供既有桥函数 bootstrapApp 原样消费，不改桥
+  /// 业务逻辑）。批2-F3：dbOpenFuture 是 Future<bool>，main 据此 await DB
+  /// 打开后再装配 surface；此收口处丢键会让 DAO 首访撞上未打开的 Isar。
   final Map<String, Object?> deps;
 
   /// init 取依赖的唯一出口：Map 取值，返回 dynamic 以兼容既有桥构造参数类型。
@@ -69,6 +71,12 @@ class BootOutcome {
         'downloadStore': d.downloadStore,
         'settings': d.settings,
         'paths': d.paths,
+        // 批2-F3（P0 启动竞态）：原始 Map / BootResult 里的 dbOpenFuture 必须
+        // 一并带进 deps，否则 main 的 `deps['dbOpenFuture'] is Future<bool>`
+        // 判定恒为 false，DB 打开无人 await（首屏 DAO 首访竞态）。
+        // 动态探测必须容错（旧桩/无该字段的 BootResult 不得让整条成功路径
+        // 跌落 catch 变成 rejected）。
+        'dbOpenFuture': _readDbOpenFuture(any),
         '__raw': any,
       });
     } catch (e, st) {
@@ -79,6 +87,15 @@ class BootOutcome {
         e.toString(),
         <String, Object?>{'rejected': true},
       );
+    }
+  }
+  /// 安全读取 dbOpenFuture（桥不 import L2，桩对象可无该字段）。
+  static Object? _readDbOpenFuture(Object? any) {
+    try {
+      return (any as dynamic).dbOpenFuture as Object?;
+    } catch (e, st) {
+      k.Log.d('bridge_boot', 'dbOpenFuture unavailable (legacy result): $e');
+      return null;
     }
   }
 }

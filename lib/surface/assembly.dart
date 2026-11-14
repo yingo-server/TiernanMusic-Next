@@ -264,8 +264,18 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
         profile: userLogic.profile,
         favoriteCount: collectLogic.refreshCount,
         myPlaylists: playlistWriteLogic.myPlaylists,
-        playlistTracks: (id) async =>
-            (await playlist.tracks(id, 1)).items,
+        playlistDetail: (id) => playlist.detail(id),
+        // gc_id → detail 换数字 specialId（直传恒 20010）；数字 sid 直接用。
+        playlistTracks: (id) async {
+          final raw = id.trim();
+          final sid = raw.startsWith('collection_')
+              ? (await playlist.detail(raw)).specialId.trim() : raw;
+          if (sid.isEmpty || sid.startsWith('collection_')) {
+            Log.w(_tag, 'playlistTracks empty specialId id=$id → empty tracks');
+            return const <SongBrief>[];
+          }
+          return (await playlist.tracks(sid, 1, specialIdOverride: sid)).items;
+        },
         onSongAction: (song) => launchSongActions(
           song: song,
           onPlayNext: (s) => controllerRef?.insertNext(s),
@@ -464,8 +474,7 @@ Future<AssemblyResult> assembleAll(SurfaceDeps deps,
   );
 }
 
-// ───────────────────────── 内部工具 ─────────────────────────
-
+// ── 内部工具 ──
 LruCache<K, V> _newCache<K, V>(int capacity, String domain) {
   try {
     final c = LruCache<K, V>(capacity: capacity);

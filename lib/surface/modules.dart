@@ -11,7 +11,8 @@ import 'pages/player_page.dart' show PlayerPageModule;
 import 'widgets/mini_bar.dart' show MiniBar;
 import 'pages/playlist_page.dart' show PlaylistPageModule;
 import 'pages/search_page.dart' show SearchPageModule;
-import 'audio/audio_service_bridge.dart' show initAudioService;
+import 'audio/audio_service_bridge.dart'
+    show initAudioService, MinimalAudioHandler;
 import 'audio/just_audio_engine.dart' show JustAudioEngine;
 import 'player_controller.dart'
     show
@@ -102,6 +103,16 @@ Future<List<SurfaceModule>> defaultModules(ModuleDeps deps) async {
     final injected = deps.engine;
     final AudioEngine engine = injected ??
         JustAudioEngine(onAction: (a) => controllerRef?.handleEngineAction(a));
+    // 通知栏桥（可选能力）：仅 JustAudioEngine 有底层 player；失败不阻断装配。
+    // 先初始化再构造 PlayerController，才能把返回的 handler 注入控制器推 metadata。
+    MinimalAudioHandler? audioHandler;
+    if (engine is JustAudioEngine) {
+      try {
+        audioHandler = await initAudioService(engine.rawPlayer);
+      } catch (e, st) {
+        Log.w('surface.modules', 'audioService init skipped: $e $st');
+      }
+    }
     // 预读引擎：队列变化时预热后续曲目播放源（网络层缓存命中即秒开）。
     final prefetch = PrefetchEngine();
     final controller = PlayerController(
@@ -109,18 +120,11 @@ Future<List<SurfaceModule>> defaultModules(ModuleDeps deps) async {
       engine: engine,
       quality: deps.quality,
       prefetch: prefetch,
+      audioHandler: audioHandler,
+      // historyRecorder 待 assembly 注入（本层无 HistoryRecorder 实例，不强行造）。
     );
     controllerRef = controller;
     _installedController = controller;
-
-    // 通知栏桥（可选能力）：仅 JustAudioEngine 有底层 player；失败不阻断装配。
-    if (engine is JustAudioEngine) {
-      try {
-        await initAudioService(engine.rawPlayer);
-      } catch (e, st) {
-        Log.w('surface.modules', 'audioService init skipped: $e $st');
-      }
-    }
     final overrides = <Override>[
       playerProvider.overrideWith((ref) => controller),
       playerControllerProvider.overrideWith((ref) => controller),

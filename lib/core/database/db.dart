@@ -80,12 +80,28 @@ class DatabaseService {
   Future<void> deleteAll(String dir) async {
     try {
       await close();
-      // Isar 3.x 无静态 deleteInstance：直接删除目录下数据库文件。
+      // 批2-F3：旧实现 delete(recursive: true) 会把整个 db 目录连同
+      // settings.json 一起删掉（清库/登出丢全部用户设置）。改为只删 Isar
+      // 数据文件；目录本身与非 Isar 文件一律保留。
+      // Isar 3.x 实际文件名：open(name: 'tiernan_music_next') →
+      // <dir>/tiernan_music_next.isar（name 缺省时为 default.isar），
+      // 可能伴随 <name>.isar.lock 锁文件。
       final d = Directory(dir);
-      if (d.existsSync()) {
-        await d.delete(recursive: true);
+      if (!d.existsSync()) {
+        Log.d(_tag, 'deleteAll skipped, dir absent=$dir');
+        return;
       }
-      Log.w(_tag, 'deleted database dir=$dir');
+      var removed = 0;
+      for (final entity in d.listSync(followLinks: false)) {
+        if (entity is! File) continue;
+        final name = entity.uri.pathSegments.last;
+        if (name == 'settings.json') continue; // 用户设置必须保留
+        if (!(name.endsWith('.isar') || name.endsWith('.isar.lock'))) continue;
+        await entity.delete();
+        removed++;
+        Log.d(_tag, 'removed isar file=$name');
+      }
+      Log.w(_tag, 'deleted $removed isar file(s) dir=$dir (settings.json kept)');
     } catch (e, st) {
       Log.e(_tag, 'deleteAll failed dir=$dir', e, st);
       rethrow;

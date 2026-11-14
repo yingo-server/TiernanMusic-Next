@@ -92,7 +92,7 @@ int _countOf(Map<String, dynamic> res) {
 /// 返回 listid=1「默认收藏」(弃用)、listid=2「我喜欢」(真正的收藏，count=484)；
 /// 加歌走 POST /v6/add_song + x-router cloudlist.service.kugou.com
 /// （唯一封装：playlist_write_endpoints.addSongsToPlaylist）。
-/// 链路：getUserPlaylists 找 name=='我喜欢' 的 listid → v6/add_song 写入。
+/// 链路：favoriteListId 只取 listid=2 → v6/add_song 写入。
 /// 歌单字段来自 SongBrief（hash/name/albumAudioId/mixSongId/durationSec 等），
 /// 缺字段用 0/空串占位（多参不缺参），不猜上游字段。
 Future<CollectResult> collectSongByHash(
@@ -173,7 +173,8 @@ Future<CollectResult> cancelCollectByHash(
   }
 }
 
-/// 查找「我喜欢」歌单 listid（跳过 listid=1「默认收藏」概念版）。
+/// 查找「我喜欢」歌单 listid：实测契约只认 listid=2（listid=1「默认收藏」
+/// 已弃用；历史样本里 listid=1 也可能名叫「我喜欢」，故严禁按名字猜）。
 /// 登录态缺失时 getUserPlaylists 返回空 → null。
 /// 公开导出供 logic 层（collect_logic 首次进入回填镜像）使用。
 Future<String?> favoriteListId(KugouClient client) async {
@@ -181,16 +182,12 @@ Future<String?> favoriteListId(KugouClient client) async {
     if (client.session.userid.isEmpty) return null;
     final lists = await getUserPlaylists(client, page: 1, pageSize: 100);
     for (final p in lists) {
-      if (p.name.trim() != '我喜欢') continue;
       final id = p.listid.trim();
-      if (id.isEmpty) {
-        Log.w(_tag, '我喜欢 playlist has empty listid');
-        return null;
-      }
-      Log.d(_tag, 'favorite playlist 我喜欢 listid=$id');
+      if (id != '2') continue;
+      Log.d(_tag, 'favorite playlist listid=2 ok');
       return id;
     }
-    Log.w(_tag, 'favorite playlist 我喜欢 not found (n=${lists.length})');
+    Log.w(_tag, 'favorite playlist listid=2 not found (n=${lists.length})');
     return null;
   } catch (e, st) {
     Log.e(_tag, 'favorite playlist lookup failed', e, st);

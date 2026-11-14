@@ -273,6 +273,8 @@ class _PlaylistTracksPageState extends State<_PlaylistTracksPage> {
   static const int _pageSize = 30;
   final ScrollController _scrollCtrl = ScrollController();
   PlaylistDetail _detail = const PlaylistDetail();
+  // detail 响应透传的数字 specialid：tracks 分页必须用（gc_id 恒 20010）。
+  String _sid = '';
   List<SongBrief> _tracks = const <SongBrief>[];
   int _page = 1;
   bool _loading = false;
@@ -305,17 +307,32 @@ class _PlaylistTracksPageState extends State<_PlaylistTracksPage> {
     try {
       setState(() => _loading = true);
       final d = await widget.playlist.detail(widget.playlistId);
-      final tp = await widget.playlist.tracks(widget.playlistId, 1,
-          pageSize: _pageSize);
+      // gc_id 仅用于 detail；tracks 必须用 detail.specialId（实测恒 20010 否则）。
+      final sid = d.specialId.trim();
+      if (sid.isEmpty) {
+        Log.w(_tag, 'loadFirst empty specialId id=${widget.playlistId} → empty');
+        if (!mounted) return;
+        setState(() {
+          _detail = d;
+          _sid = '';
+          _tracks = const <SongBrief>[];
+          _hasMore = false;
+          _loading = false;
+        });
+        return;
+      }
+      final tp = await widget.playlist.tracks(sid, 1,
+          pageSize: _pageSize, specialIdOverride: sid);
       if (!mounted) return;
       setState(() {
         _detail = d;
+        _sid = sid;
         _tracks = tp.items;
         _page = 1;
         _hasMore = tp.hasMore;
         _loading = false;
       });
-      Log.d(_tag, 'loadFirst id=${widget.playlistId} got=${tp.items.length}');
+      Log.d(_tag, 'loadFirst id=${widget.playlistId} sid=$sid got=${tp.items.length}');
     } catch (e, st) {
       Log.e(_tag, 'loadFirst failed id=${widget.playlistId}', e, st);
       if (mounted) setState(() => _loading = false);
@@ -335,10 +352,11 @@ class _PlaylistTracksPageState extends State<_PlaylistTracksPage> {
 
   Future<void> _loadMore() async {
     try {
-      if (_loading || !_hasMore) return;
+      if (_loading || !_hasMore || _sid.isEmpty) return;
       setState(() => _loading = true);
-      final tp = await widget.playlist.tracks(widget.playlistId, _page + 1,
-          pageSize: _pageSize);
+      // 分页复用首屏 detail 拿到的数字 specialId（不回退 widget.playlistId）。
+      final tp = await widget.playlist.tracks(_sid, _page + 1,
+          pageSize: _pageSize, specialIdOverride: _sid);
       if (!mounted) return;
       setState(() {
         _page += 1;

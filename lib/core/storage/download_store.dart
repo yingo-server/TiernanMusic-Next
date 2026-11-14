@@ -117,6 +117,13 @@ class DownloadStore {
 
   void upsert(DownloadRecord r) {
     try {
+      // 批2-F3（P0 数据丢失）：写前必须先把磁盘索引读回内存，否则首次写以
+      // 空 _index 覆盖 index.json 会丢掉全部历史记录。本域 loadIndex() 是
+      // 同步 dart:io 实现、写方法亦为同步签名（download_commit 等调用方按
+      // 同步消费），故此处直接调用即等价于报告要求的「先 await loadIndex()」，
+      // 不改公开签名以免破坏调用方。
+      // 入口显式 forceReload：外部/其它实例更新索引后必须可见（必修4）。
+      loadIndex(forceReload: true);
       _index[r.hash] = r;
       saveIndex();
     } catch (e, st) {
@@ -127,6 +134,9 @@ class DownloadStore {
   DownloadRecord? remove(String hash) {
     DownloadRecord? old;
     try {
+      // 批2-F3：写前先（同步）读回磁盘索引，避免空 _index 覆盖丢记录；
+      // 保持同步签名以不破坏 deleteWithFile / 外部调用方。
+      loadIndex(forceReload: true);
       old = _index.remove(hash);
       if (old != null) saveIndex();
       Log.d('dlstore', 'removed $hash (${old != null})');
@@ -198,6 +208,10 @@ class DownloadStore {
         quality: quality,
         complete: true,
       );
+      // 批2-F3：登记索引前强制重载磁盘索引（同步 loadIndex，等价写前的
+      // await），否则首次提交以空 _index 覆盖 index.json 丢全部既有记录；
+      // forceReload 亦保证外部索引更新可见（必修4）。公开签名不变。
+      loadIndex(forceReload: true);
       _index[hash] = rec;
       saveIndex();
       Log.d('dlstore', 'committed ${rec.fileName} (${rec.bytes}B)');

@@ -126,6 +126,8 @@ Future<PlayResult> getPlayUrlV5(
       isVipTrack: vipTrack,
       isFreePart: isFreePart,
       hash: h,
+      // priv_status 缺失（匿名/错误响应）不得被 safeInt 折叠成 0 → 误判无权限。
+      privKnown: res.containsKey('priv_status') && res['priv_status'] != null,
     );
     Log.d(_tag,
         'getPlayUrlV5 hash=$h q=$q status=$status priv=$priv urls=${urls.length}');

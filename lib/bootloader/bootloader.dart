@@ -29,9 +29,16 @@ class BootResult {
     this.settings,
     this.paths,
     this.auth,
+    this.dbOpenFuture,
   });
   final bool rejected;
   final KernelContext? kernel;
+
+  /// 批2-F3（P0 启动竞态）：DB 打开的 Future 必须随 BootResult 上交，
+  /// 经 bridge_boot.BootOutcome.deps 透传到 main，由其 await 后再装配 surface。
+  /// 旧版 _assembleCore 已把该键放进局部 map，却在构造 BootResult 时丢弃，
+  /// 导致 main 的 `deps['dbOpenFuture'] is Future<bool>` 恒为 false。
+  final Future<bool>? dbOpenFuture;
 
   // 批5-B 装配的 core 单例（失败路径为 null）。
   final core.KugouClient? client;
@@ -77,6 +84,8 @@ class Bootstrap {
         settings: coreSet['settings'] as core.KeyValueSettings?,
         paths: coreSet['paths'] as core.StoragePaths?,
         auth: coreSet['auth'] as lg.AuthLogic?,
+        // 批2-F3：不得丢弃 _assembleCore 已放进 map 的 DB 打开 Future。
+        dbOpenFuture: coreSet['dbOpenFuture'] as Future<bool>?,
       );
     } catch (e, st) {
       Log.e('boot', 'core assemble failed', e, st);

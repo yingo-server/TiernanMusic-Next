@@ -4,6 +4,14 @@
 // 域缓存失效。零 UI、零网络直连；每方法 try/catch+Log('logic.account')。
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' show AccountDao, AccountRecord, KeyValueSettings, KugouClient;
+// settings 账号键与 AuthLogic 同源复用（同名常量，零新造键名）。
+import 'auth_logic.dart'
+    show
+        kSettingToken,
+        kSettingUserid,
+        kSettingMid,
+        kSettingDfid,
+        kSettingKugouApiMid;
 const String _tag = 'logic.account';
 
 /// 多账号管理门面。
@@ -78,8 +86,9 @@ class AccountLogic {
         ..mid = rec.mid
         ..dfid = rec.dfid;
       // cookie 串解析回 session.cookies（t1 播放权限依赖）。
+      // 空 blob 必须 clear 旧账号 cookies，防跨账号混用。
+      s.cookies.clear();
       if (rec.cookieBlob.isNotEmpty) {
-        s.cookies.clear();
         for (final pair in rec.cookieBlob.split(';')) {
           final i = pair.indexOf('=');
           if (i > 0) {
@@ -87,7 +96,18 @@ class AccountLogic {
                 pair.substring(i + 1).trim();
           }
         }
+      } else {
+        Log.w(_tag, 'switchTo empty cookieBlob, cookies cleared uid=$accountId');
       }
+      // 全量回写 settings 账号键（与 AuthLogic.restoreSession 读取口径一致），
+      // 且必须在 setActive 之前完成：只写 session 会在重启后回滚旧账号。
+      _settings
+        ..setString(kSettingToken, rec.token)
+        ..setString(kSettingUserid, rec.accountId)
+        ..setString(kSettingMid, rec.mid)
+        ..setString(kSettingKugouApiMid, rec.mid)
+        ..setString(kSettingDfid, rec.dfid)
+        ..setString('auth.cookie', rec.cookieBlob);
       await _dao.setActive(rec.id);
       _notify();
       Log.d(_tag, 'switchTo uid=$accountId ok');

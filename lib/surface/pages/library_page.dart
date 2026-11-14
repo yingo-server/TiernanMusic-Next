@@ -8,7 +8,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart'
-    show SongDao, SongRecord, PlayHistoryEntry, SongBrief, UserProfile, PlaylistBrief;
+    show SongDao, SongRecord, PlayHistoryEntry, SongBrief, UserProfile, PlaylistBrief, PlaylistDetail;
 import '../../bridges/bridge_logic.dart'
     show
         DownloadManager, DownloadEvent, DownloadTask, DownloadStatus, Log,
@@ -35,6 +35,7 @@ class LibraryDeps {
     this.favoriteCount,
     this.onOpenSettings,
     this.myPlaylists,
+    this.playlistDetail,
     this.playlistTracks,
     this.onSongAction,
   });
@@ -63,7 +64,10 @@ class LibraryDeps {
   /// 我的歌单（可选；登录态才有）。
   final Future<List<PlaylistBrief>> Function()? myPlaylists;
 
-  /// 歌单曲目（可选；存储诊断页用）。
+  /// 歌单详情（可选；打开弹层前取数字 specialId，避免 gc_id 直传 20010）。
+  final Future<PlaylistDetail> Function(String playlistId)? playlistDetail;
+
+  /// 歌单曲目（可选；存储诊断页用；入参必须是数字 specialId）。
   final Future<List<SongBrief>> Function(String playlistId)? playlistTracks;
 
   /// 歌曲更多操作（下一首播放/收藏/下载）。
@@ -176,6 +180,7 @@ class _LibraryPageState extends State<LibraryPage>
                       songDao: widget.deps.songDao,
                       downloads: widget.deps.downloads,
                       myPlaylists: widget.deps.myPlaylists,
+                      playlistDetail: widget.deps.playlistDetail,
                       playlistTracks: widget.deps.playlistTracks,
                       onPlay: widget.deps.onPlay,
                       onSongAction: widget.deps.onSongAction,

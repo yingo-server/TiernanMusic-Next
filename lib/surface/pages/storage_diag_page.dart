@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart'
-    show SongDao, PlaylistBrief, SongBrief;
+    show SongDao, PlaylistBrief, PlaylistDetail, SongBrief;
 import '../../bridges/bridge_logic.dart' show DownloadManager, Log;
 import '../theme/tn_theme.dart' show TnDims;
 import '../widgets/m3/m3_state_views.dart' show M3EmptyState, M3ErrorRetry;
@@ -19,6 +19,7 @@ class StorageDiagDeps {
     required this.songDao,
     required this.downloads,
     this.myPlaylists,
+    this.playlistDetail,
     this.playlistTracks,
     this.onPlay,
     this.onSongAction,
@@ -30,7 +31,10 @@ class StorageDiagDeps {
   /// 我的歌单（可选）。
   final Future<List<PlaylistBrief>> Function()? myPlaylists;
 
-  /// 歌单曲目（可选）。
+  /// 歌单详情（可选；打开弹层前取数字 specialId；入参 brief.id 为 gc_id）。
+  final Future<PlaylistDetail> Function(String playlistId)? playlistDetail;
+
+  /// 歌单曲目（可选；入参必须是数字 specialId）。
   final Future<List<SongBrief>> Function(String playlistId)? playlistTracks;
 
   final void Function(SongBrief)? onPlay;
@@ -168,11 +172,20 @@ class _StorageDiagPageState extends State<StorageDiagPage> {
   Future<void> _openPlaylist(PlaylistBrief brief) async {
     try {
       final loader = widget.deps.playlistTracks;
-      if (loader == null) return;
+      final detailOf = widget.deps.playlistDetail;
+      if (loader == null || detailOf == null) return;
+      // gc_id 先 detail 换数字 specialId；空则 Log.w + 空曲目（不回退 gc_id）。
+      final sid = (await detailOf(brief.id)).specialId.trim();
+      if (!mounted) return;
+      if (sid.isEmpty) {
+        Log.w(_tag, 'openPlaylist empty specialId id=${brief.id} → empty tracks');
+      }
       await showPlaylistTracksSheet(
         context,
         brief,
-        load: () => loader(brief.id),
+        load: () => sid.isEmpty
+            ? Future<List<SongBrief>>.value(const <SongBrief>[])
+            : loader(sid),
         onPlay: widget.deps.onPlay ?? (_) {},
         onSongAction: widget.deps.onSongAction,
       );

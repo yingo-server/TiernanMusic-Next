@@ -4,7 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../bridges/bridge_core.dart' show PlaylistBrief;
+import '../../bridges/bridge_core.dart' show PlaylistBrief, SongBrief;
 import '../../bridges/bridge_logic.dart' show Log;
 import '../theme/tn_theme.dart' show TnDims;
 import '../widgets/playlist_tracks_sheet.dart' show showPlaylistTracksSheet;
@@ -62,14 +62,23 @@ class _LibraryMyPlaylistsState extends State<LibraryMyPlaylists> {
                 final p = items[i];
                 return InkWell(
                   borderRadius: BorderRadius.circular(12),
-                  onTap: () {
+                  onTap: () async {
                     try {
                       final loader = widget.deps.playlistTracks;
-                      if (loader == null) return;
-                      showPlaylistTracksSheet(
+                      final detailOf = widget.deps.playlistDetail;
+                      if (loader == null || detailOf == null) return;
+                      // gc_id 先 detail 换数字 specialId；空则 Log.w + 空曲目。
+                      final sid = (await detailOf(p.id)).specialId.trim();
+                      if (!ctx.mounted) return;
+                      if (sid.isEmpty) {
+                        Log.w(_tag, 'empty specialId id=${p.id} → empty tracks');
+                      }
+                      await showPlaylistTracksSheet(
                         ctx,
                         p,
-                        load: () => loader(p.id),
+                        load: () => sid.isEmpty
+                            ? Future<List<SongBrief>>.value(const <SongBrief>[])
+                            : loader(sid),
                         onPlay: widget.deps.onPlay,
                         onSongAction: widget.deps.onSongAction,
                       );

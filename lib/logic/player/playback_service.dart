@@ -3,8 +3,11 @@
 // 三态原则（.test_creds/FINDINGS.md 实测）：
 //  - 匿名（未登录/缺 token）：play_url v5 一律 status=2 errcode=20028 → needsVerification。
 //  - VIP 曲目（tracker_through.musicpack_advance=1）非 VIP 账号：status=2 priv_status=0 → noPrivilege。
+//  - errcode=31833（错盐/签名失败，匿名典型态）：单列复用 network，禁止落 notFound。
 //  - 其余失败（hash 无效、无返回 URL 等）→ notFound；传输层异常 → network。
 // 铁律：每方法 try/catch + Log('logic.playback')；可 import core/kernel；禁 import surface/flutter。
+
+import 'dart:io';
 
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' show DownloadStore, KugouClient, PlayResult, SongBrief, SongDao, getPlayUrlV5;
@@ -149,12 +152,24 @@ class PlaybackService {
         // VerificationLogic 是唯一验证门面，播放链路只上报状态，不在本文件另写验证实现。
         return PlaybackError.needsVerification;
       }
+      if (pr.errcode == 31833) {
+        // 签名/错盐失败（anonymous 实测 status=0 errcode=31833 illegal key）：
+        // 单列，复用现有 network 枚举（无独立签名失败枚举，禁止新扩接口），
+        // 绝不能落 notFound（那是 hash 无效语义，会误导上层重试/提示）。
+        return PlaybackError.network;
+      }
       // status=2 且 priv_status=0：过风控但无权限（VIP 曲非 VIP 号典型态）。
-      if (pr.status == 2 && pr.privStatus == 0) {
+      // 必须 privKnown：缺失 priv_status 时 safeInt(null)=0 只是默认值，
+      // 匿名/错盐响应会被误判为无权限。
+      if (pr.status == 2 && pr.privKnown && pr.privStatus == 0) {
         return PlaybackError.noPrivilege;
       }
       // 兜底：VIP 曲目标记 + 无 URL 也视为无权限。
       if (pr.urls.isEmpty && pr.isVipTrack) return PlaybackError.noPrivilege;
+      // 响应未带 priv_status、status=2 且无 url：风控需验证，复用 needsVerification。
+      if (pr.status == 2 && !pr.privKnown && pr.urls.isEmpty) {
+        return PlaybackError.needsVerification;
+      }
       return PlaybackError.notFound;
     } catch (e, st) {
       Log.e(_tag, '_mapError failed', e, st);

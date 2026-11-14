@@ -193,7 +193,13 @@ class KugouClient {
     // 审查修复：响应整体超时（旧代码只限连接超时，服务器挂起时
     // join 永久悬挂且 InFlight 会让所有同键等待者一起悬挂）。
     const responseTimeout = Duration(seconds: 15);
-    final res = await req.close().timeout(responseTimeout);
+    // 批2-F3：响应头阶段超时同样归一为 KugouApiException(-2)。旧版裸
+    // timeout 抛 TimeoutException，与 body join 侧的 -2 语义不一致，上层
+    // 无法按错误码分类重试；两段 15s 时长与 dfid 生成算法均不变。
+    final res = await req.close().timeout(responseTimeout, onTimeout: () {
+      Log.e('core.net', 'response header timeout ${ep.id}');
+      throw KugouApiException(-2, 'response header timeout (${ep.id})');
+    });
     final text = await res
         .transform(utf8.decoder)
         .join()

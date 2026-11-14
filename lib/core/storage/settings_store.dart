@@ -11,7 +11,30 @@ import 'paths.dart';
 /// 职责：getString/setString/getBool/getInt/remove 等键值操作；进程内 Map 缓存，
 /// 每次变更即原子落盘（.part → rename）。所有公开方法 try/catch 失败必 Log.e 留痕。
 class KeyValueSettings {
-  KeyValueSettings(this._paths) : _file = _paths.fileIn('db', 'settings.json');
+  /// 批2-F3：进程内共享实例入口，同 paths（以 settings.json 绝对路径为键）
+  /// 恒返回同一对象，消除多处 `new KeyValueSettings(StoragePaths.I)` 各持一份
+  /// 内存缓存、写读互盲的问题。用法：
+  /// `KeyValueSettings.shared(StoragePaths.I)`。
+  /// 说明：bootloader 仍按原样 `new`（L2 已保证单实例，本批次按约束不改其
+  /// 装配逻辑）；构造器把自身登记进共享表，故 shared() 在启动后拿到的正是
+  /// L2 那一份。player_controller._fallbackSettings 属 F1 文件，本批次禁止
+  /// 改动 —— F1 完成后由主会话把该处 `new KeyValueSettings(...)` 改为
+  /// `KeyValueSettings.shared(...)` 即可完成全局收口。
+  static final Map<String, KeyValueSettings> _sharedByPath = {};
+
+  static KeyValueSettings shared(StoragePaths paths) {
+    final key = paths.fileIn('db', 'settings.json').path;
+    final hit = _sharedByPath[key];
+    if (hit != null) return hit;
+    final created = KeyValueSettings(paths);
+    _sharedByPath[key] = created;
+    return created;
+  }
+
+  KeyValueSettings(this._paths) : _file = _paths.fileIn('db', 'settings.json') {
+    // 登记自身，使 shared() 能命中任何已构造的同路径实例（尤其 L2 的那份）。
+    _sharedByPath[_file.path] ??= this;
+  }
 
   final StoragePaths _paths;
   final File _file;
