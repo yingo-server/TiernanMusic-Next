@@ -4,7 +4,23 @@
 // 本地镜像：saveLocalMirror(PlaylistDetail + tracks) 写 PlaylistDao；listLocal() 读。
 // schemaVer v1（顶部常量）；每方法 try/catch + Log('logic.playlist')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, PlaylistBrief, PlaylistDao, PlaylistDetail, PlaylistMeta, SongBrief, TrackPage, addSongsToPlaylist, buildKey, parseKey, playlistDetail, playlistTracks, prefixOf, recommendPlaylists;
+import '../../bridges/bridge_core.dart'
+    show
+        KugouClient,
+        LruCache,
+        PlaylistBrief,
+        PlaylistDao,
+        PlaylistDetail,
+        PlaylistMeta,
+        SongBrief,
+        TrackPage,
+        addSongsToPlaylist,
+        buildKey,
+        parseKey,
+        playlistDetail,
+        playlistTracks,
+        prefixOf,
+        recommendPlaylists;
 
 /// 歌单域缓存 schema 版本。
 const int kPlaylistCacheSchemaVer = 1;
@@ -17,9 +33,9 @@ class PlaylistLogic {
     required KugouClient client,
     required PlaylistDao playlistDao,
     required LruCache<String, dynamic> cache,
-  })  : _client = client,
-        _dao = playlistDao,
-        _cache = cache {
+  }) : _client = client,
+       _dao = playlistDao,
+       _cache = cache {
     Log.d(_tag, 'init capacity=${cache.capacity}');
   }
 
@@ -37,14 +53,20 @@ class PlaylistLogic {
   // ── 在线歌单 ──
 
   /// 推荐歌单列表。缓存 ns:'playlist' path:/v2/special_recommend。
-  Future<List<PlaylistBrief>> recommend(int page, {int pageSize = 30, int categoryId = 0}) async {
+  Future<List<PlaylistBrief>> recommend(
+    int page, {
+    int pageSize = 30,
+    int categoryId = 0,
+  }) async {
     try {
       final key = buildKey(
         ns: _ns,
         userid: _uid(),
         path: '/v2/special_recommend',
         params: <String, Object?>{
-          'page': page, 'pagesize': pageSize, 'categoryid': categoryId,
+          'page': page,
+          'pagesize': pageSize,
+          'categoryid': categoryId,
         },
         schemaVer: kPlaylistCacheSchemaVer,
       );
@@ -53,8 +75,12 @@ class PlaylistLogic {
         Log.d(_tag, 'recommend cache hit page=$page');
         return hit;
       }
-      final items = await recommendPlaylists(_client,
-          page: page, pageSize: pageSize, categoryId: categoryId);
+      final items = await recommendPlaylists(
+        _client,
+        page: page,
+        pageSize: pageSize,
+        categoryId: categoryId,
+      );
       _cache.put(key, items);
       Log.d(_tag, 'recommend page=$page got=${items.length}');
       return items;
@@ -83,7 +109,9 @@ class PlaylistLogic {
       final d = await playlistDetail(_client, id);
       _cache.put(key, d);
       // R3-C #3：detail 成功后记录 list_ver（实测字段，写操作回传）。
-      if (d.listVer > 0) { _listVerCache[id] = d.listVer; }
+      if (d.listVer > 0) {
+        _listVerCache[id] = d.listVer;
+      }
       Log.d(_tag, 'detail id=$id name=${d.name} listVer=${d.listVer}');
       return d;
     } catch (e, st) {
@@ -95,9 +123,13 @@ class PlaylistLogic {
   /// 歌单曲目分页。走修正后封装（specialid 参数 / data.songs[] / data.count）。
   /// 缓存 path:/pubsongs/v2/get_other_list_file_nofilt。
   /// [specialIdOverride]：detail 响应透传的数字 specialid（必须）。
-/// 传 global_collection_id 实测恒 20010 —— 上层先 detail 后 tracks。
-Future<TrackPage> tracks(String playlistId, int page,
-      {int pageSize = 30, String? specialIdOverride}) async {
+  /// 传 global_collection_id 实测恒 20010 —— 上层先 detail 后 tracks。
+  Future<TrackPage> tracks(
+    String playlistId,
+    int page, {
+    int pageSize = 30,
+    String? specialIdOverride,
+  }) async {
     final effective = (specialIdOverride ?? playlistId).trim();
     try {
       final id = playlistId.trim();
@@ -107,7 +139,9 @@ Future<TrackPage> tracks(String playlistId, int page,
         userid: _uid(),
         path: '/pubsongs/v2/get_other_list_file_nofilt',
         params: <String, Object?>{
-          'specialid': effective, 'begin_idx': beginIdx, 'pagesize': pageSize,
+          'specialid': effective,
+          'begin_idx': beginIdx,
+          'pagesize': pageSize,
         },
         schemaVer: kPlaylistCacheSchemaVer,
       );
@@ -118,7 +152,10 @@ Future<TrackPage> tracks(String playlistId, int page,
       }
       final tp = await playlistTracks(_client, effective, page, pageSize);
       _cache.put(key, tp);
-      Log.d(_tag, 'tracks id=$id page=$page got=${tp.items.length}/${tp.total}');
+      Log.d(
+        _tag,
+        'tracks id=$id page=$page got=${tp.items.length}/${tp.total}',
+      );
       return tp;
     } catch (e, st) {
       Log.e(_tag, 'tracks failed id=$playlistId page=$page', e, st);
@@ -130,7 +167,9 @@ Future<TrackPage> tracks(String playlistId, int page,
   /// list_ver：优先用 detail 缓存值，写成功后本地 +1（实测响应回执含递增
   /// list_ver 时以回执为准——此处保守本地递增）。
   Future<bool> addSongsToKugouPlaylist(
-      String playlistId, List<SongBrief> songs) async {
+    String playlistId,
+    List<SongBrief> songs,
+  ) async {
     try {
       final id = playlistId.trim();
       final lv = _listVerCache[id] ?? 0;
@@ -140,7 +179,8 @@ Future<TrackPage> tracks(String playlistId, int page,
         // 歌单内容变更：失效该 id 的 tracks 分页缓存 + detail 缓存（detail
         // 内含歌曲总数 count，不失效则 UI 首页显示旧总数）。按精确特殊 id
         // 匹配（数字 id 编码后与原文一致；同时匹配 detail 的 'id' 参数）。
-        final encId = Uri.encodeQueryComponent(playlistId.trim());        _cache.invalidateWhere((k) {
+        final encId = Uri.encodeQueryComponent(playlistId.trim());
+        _cache.invalidateWhere((k) {
           final info = parseKey('$k');
           return info.valid &&
               info.namespace == _ns &&
@@ -149,8 +189,11 @@ Future<TrackPage> tracks(String playlistId, int page,
               (info.query.contains('specialid=$encId') ||
                   info.query.contains('id=$encId'));
         });
-        Log.d(_tag, 'addSongsToKugouPlaylist ok id=$id n=${songs.length} '
-            'listVer=${_listVerCache[id]}');
+        Log.d(
+          _tag,
+          'addSongsToKugouPlaylist ok id=$id n=${songs.length} '
+          'listVer=${_listVerCache[id]}',
+        );
       }
       return ok;
     } catch (e, st) {
@@ -162,7 +205,10 @@ Future<TrackPage> tracks(String playlistId, int page,
   // ── 本地歌单镜像（PlaylistDao） ──
 
   /// 保存本地镜像：PlaylistDetail + 其曲目 hash 有序列表 → PlaylistMeta。
-  Future<bool> saveLocalMirror(PlaylistDetail detail, List<SongBrief> tracks) async {
+  Future<bool> saveLocalMirror(
+    PlaylistDetail detail,
+    List<SongBrief> tracks,
+  ) async {
     try {
       if (detail.id.trim().isEmpty) {
         Log.w(_tag, 'saveLocalMirror empty detail id');
@@ -177,9 +223,15 @@ Future<TrackPage> tracks(String playlistId, int page,
       meta
         ..name = detail.name
         ..coverUrl = detail.cover
-        ..songHashes = [for (final s in tracks) if (s.hash.isNotEmpty) s.hash];
+        ..songHashes = [
+          for (final s in tracks)
+            if (s.hash.isNotEmpty) s.hash,
+        ];
       await _dao.put(meta);
-      Log.d(_tag, 'saveLocalMirror id=${detail.id} tracks=${meta.songHashes.length}');
+      Log.d(
+        _tag,
+        'saveLocalMirror id=${detail.id} tracks=${meta.songHashes.length}',
+      );
       return true;
     } catch (e, st) {
       Log.e(_tag, 'saveLocalMirror failed id=${detail.id}', e, st);

@@ -3,7 +3,16 @@
 // 对齐契约渲染原文/双语/译文三模式；条数不等绝不臆造译文（alignTranslation
 // 已保证）。零 UI、零网络直连；每方法 try/catch+Log('logic.translation')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show LruCache, LyricResult, LyricsDisplayMode, TranslatedLine, alignTranslation, buildKey, extractOriginalLines, extractEmbeddedTranslatedLines;
+import '../../bridges/bridge_core.dart'
+    show
+        LruCache,
+        LyricResult,
+        LyricsDisplayMode,
+        TranslatedLine,
+        alignTranslation,
+        buildKey,
+        extractOriginalLines,
+        extractEmbeddedTranslatedLines;
 
 const String _tag = 'logic.translation';
 
@@ -18,8 +27,7 @@ class DisplayLine {
 /// 翻译显示门面。
 class TranslationLogic {
   TranslationLogic({LruCache<String, List<DisplayLine>>? cache})
-      : _cache = cache ??
-            LruCache<String, List<DisplayLine>>(capacity: 32);
+    : _cache = cache ?? LruCache<String, List<DisplayLine>>(capacity: 32);
 
   final LruCache<String, List<DisplayLine>> _cache;
 
@@ -40,9 +48,7 @@ class TranslationLogic {
           // 未显式传入译文时，从 LyricResult.content 抽本地 KRC 内嵌翻译轨
           //（不联网；上游无独立翻译端点，见 ENDPOINT_TRUTH.md §6）。
           final trans = extractEmbeddedTranslatedLines(lyric);
-          local = trans.isEmpty
-              ? null
-              : List<String>.unmodifiable(trans);
+          local = trans.isEmpty ? null : List<String>.unmodifiable(trans);
         } catch (e, st) {
           Log.w(_tag, 'local translation track extract failed: $e');
           local = null;
@@ -80,18 +86,20 @@ class TranslationLogic {
           case LyricsDisplayMode.original:
             out.add(DisplayLine(main: originals[i], lineIndex: i));
           case LyricsDisplayMode.bilingual:
-            out.add(DisplayLine(
-                main: originals[i], sub: t, lineIndex: i));
+            out.add(DisplayLine(main: originals[i], sub: t, lineIndex: i));
           case LyricsDisplayMode.translation:
-            out.add(DisplayLine(
-                main: t.isNotEmpty ? t : originals[i], lineIndex: i));
+            out.add(
+              DisplayLine(main: t.isNotEmpty ? t : originals[i], lineIndex: i),
+            );
         }
       }
       if (!hasTrans &&
           mode != LyricsDisplayMode.original &&
           originals.isNotEmpty) {
-        Log.w(_tag,
-            'translation unavailable mode=${mode.name} lines=${originals.length}, showing originals');
+        Log.w(
+          _tag,
+          'translation unavailable mode=${mode.name} lines=${originals.length}, showing originals',
+        );
       }
       final result = List<DisplayLine>.unmodifiable(out);
       _cache.put(key, result);

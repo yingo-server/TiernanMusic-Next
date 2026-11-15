@@ -3,7 +3,8 @@
 // AuthLogic.restoreSession，避免启动时序覆盖）；切换触发 onAccountChanged 让各
 // 域缓存失效。零 UI、零网络直连；每方法 try/catch+Log('logic.account')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show AccountDao, AccountRecord, KeyValueSettings, KugouClient;
+import '../../bridges/bridge_core.dart'
+    show AccountDao, AccountRecord, KeyValueSettings, KugouClient;
 // settings 账号键与 AuthLogic 同源复用（同名常量，零新造键名）。
 import 'auth_logic.dart'
     show
@@ -12,6 +13,7 @@ import 'auth_logic.dart'
         kSettingMid,
         kSettingDfid,
         kSettingKugouApiMid;
+
 const String _tag = 'logic.account';
 
 /// 多账号管理门面。
@@ -21,10 +23,10 @@ class AccountLogic {
     required KugouClient client,
     required KeyValueSettings settings,
     void Function()? onAccountChanged,
-  })  : _dao = dao,
-        _client = client,
-        _settings = settings,
-        _onAccountChanged = onAccountChanged;
+  }) : _dao = dao,
+       _client = client,
+       _settings = settings,
+       _onAccountChanged = onAccountChanged;
 
   final AccountDao _dao;
   final KugouClient _client;
@@ -48,8 +50,8 @@ class AccountLogic {
         ..displayName = displayName.isNotEmpty
             ? displayName
             : (existing?.displayName.isNotEmpty == true
-                ? existing!.displayName
-                : '酷狗用户 ${s.userid}')
+                  ? existing!.displayName
+                  : '酷狗用户 ${s.userid}')
         ..token = s.token
         ..mid = s.mid
         ..dfid = s.dfid
@@ -92,12 +94,16 @@ class AccountLogic {
         for (final pair in rec.cookieBlob.split(';')) {
           final i = pair.indexOf('=');
           if (i > 0) {
-            s.cookies[pair.substring(0, i).trim()] =
-                pair.substring(i + 1).trim();
+            s.cookies[pair.substring(0, i).trim()] = pair
+                .substring(i + 1)
+                .trim();
           }
         }
       } else {
-        Log.w(_tag, 'switchTo empty cookieBlob, cookies cleared uid=$accountId');
+        Log.w(
+          _tag,
+          'switchTo empty cookieBlob, cookies cleared uid=$accountId',
+        );
       }
       // 全量回写 settings 账号键（与 AuthLogic.restoreSession 读取口径一致），
       // 且必须在 setActive 之前完成：只写 session 会在重启后回滚旧账号。

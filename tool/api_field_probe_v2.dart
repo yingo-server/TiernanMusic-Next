@@ -115,10 +115,26 @@ List<String> _hosts(Object? v) {
 }
 
 const Set<String> _numericWhitelist = <String>{
-  'status', 'errcode', 'error_code', 'priv_status', 'bitrate', 'bitRate',
-  'timelength', 'count', 'total', 'isfreepart', 'end_byte', 'hash_offset',
-  'fail_process', 'musicpack_advance', 'vip_type', 'level', 'contenttype',
-  'duration', 'record_count', 'recordcount',
+  'status',
+  'errcode',
+  'error_code',
+  'priv_status',
+  'bitrate',
+  'bitRate',
+  'timelength',
+  'count',
+  'total',
+  'isfreepart',
+  'end_byte',
+  'hash_offset',
+  'fail_process',
+  'musicpack_advance',
+  'vip_type',
+  'level',
+  'contenttype',
+  'duration',
+  'record_count',
+  'recordcount',
 };
 
 /// 字段三元组：present / type / len；数值白名单可留值，敏感键只留掩码。
@@ -129,21 +145,21 @@ Map<String, Object?> _field(String key, Object? v) {
     'type': v == null
         ? 'null'
         : v is List
-            ? 'list'
-            : v is Map
-                ? 'map'
-                : v is num
-                    ? 'num'
-                    : v is bool
-                        ? 'bool'
-                        : 'string',
+        ? 'list'
+        : v is Map
+        ? 'map'
+        : v is num
+        ? 'num'
+        : v is bool
+        ? 'bool'
+        : 'string',
     'len': v is List
         ? v.length
         : v is Map
-            ? v.length
-            : v is String
-                ? v.length
-                : (v == null ? 0 : 1),
+        ? v.length
+        : v is String
+        ? v.length
+        : (v == null ? 0 : 1),
   };
   if (_isSensitive(key) || _isSensitive(leaf)) {
     f['masked'] = true;
@@ -182,16 +198,16 @@ Object? _at(Map<String, dynamic> res, String path) {
 }
 
 /// 顶层键（敏感键名掩码）+ 关键字段存在/类型/长度。
-Map<String, Object?> _capture(Map<String, dynamic> res, List<String> keys) =>
-    <String, Object?>{
-      '_topKeys': res.keys.map(_maskKey).toList(),
+Map<String, Object?> _capture(
+  Map<String, dynamic> res,
+  List<String> keys,
+) => <String, Object?>{
+  '_topKeys': res.keys.map(_maskKey).toList(),
 
-      '_topKeyCount': res.length,
-      '_redactedTopKeys': res.keys.where((k) => _maskKey(k) != k).length,
-      '_fields': <String, Object?>{
-        for (final k in keys) k: _field(k, _at(res, k)),
-      },
-    };
+  '_topKeyCount': res.length,
+  '_redactedTopKeys': res.keys.where((k) => _maskKey(k) != k).length,
+  '_fields': <String, Object?>{for (final k in keys) k: _field(k, _at(res, k))},
+};
 
 class Spec {
   const Spec(this.name, this.ep, this.params, this.body, this.keys);
@@ -208,147 +224,320 @@ List<Spec> _specs(KugouClient client) {
   final ms = '${DateTime.now().millisecondsSinceEpoch}';
   final uid = s.userid;
   return <Spec>[
-    Spec('search_song', EndpointRegistry.searchSong, <String, Object?>{
-      'keyword': '周杰伦', 'page': 1, 'pagesize': 10, 'albumhide': 0,
-      'iscorrection': 1, 'nocollect': 0, 'platform': 'AndroidFilter',
-    }, const <String, Object?>{}, const <String>[
-      'status', 'error_code', 'errcode', 'data', 'data.total', 'data.lists',
-      'data.info',
-    ]),
-    Spec('search_suggest', EndpointRegistry.searchSuggest, <String, Object?>{
-      'keyword': '周杰伦', 'AlbumTipCount': 10, 'CorrectTipCount': 10,
-      'MVTipCount': 10, 'MusicTipCount': 10, 'radiotip': 1,
-    }, const <String, Object?>{}, const <String>[
-      'status', 'error_code', 'data', 'data.0.RecordDatas',
-      'data.0.RecordCount',
-    ]),
-    Spec('search_hot', EndpointRegistry.searchHot, <String, Object?>{
-      'navid': 1, 'plat': 2,
-    }, const <String, Object?>{}, const <String>[
-      'status', 'error_code', 'data', 'data.list', 'data.info',
-    ]),
-    Spec('rank_list', EndpointRegistry.rankList, <String, Object?>{
-      'plat': 2, 'withsong': 1, 'parentid': 0,
-    }, const <String, Object?>{}, const <String>[
-      'status', 'error_code', 'data', 'data.info', 'data.list',
-    ]),
-    Spec('daily_recommend', EndpointRegistry.recommendSongs, <String, Object?>{
-      'platform': 'android', 'page': 1, 'pagesize': 30,
-      'dfid': s.dfid, 'mid': s.mid, 'uuid': '-',
-    }, <String, Object?>{
-      'userid': uid, 'token': s.token,
-    }, const <String>[
-      'status', 'errcode', 'error', 'data', 'data.songs', 'data.list',
-      'data.errcode',
-    ]),
-    Spec('user_detail', EndpointRegistry.userDetail, <String, Object?>{
-      'plat': 1,
-    }, <String, Object?>{
-      'visit_time': ctSec,
-      'usertype': 1,
-      'p': rsaCryptoEncrypt(
-          '{"token":"${s.token}","clienttime":$ctSec}'),
-      'userid': uid,
-    }, const <String>[
-      'status', 'error_code', 'data', 'nickname', 'pic', 'vip_type',
-      'userid', 'level',
-    ]),
-    Spec('favorite_count', EndpointRegistry.favoriteCount, <String, Object?>{
-      'mixsongids': '', 'dfid': s.dfid, 'mid': s.mid, 'uuid': '-',
-      'plat': 1, if (uid.isNotEmpty && uid != '0') 'userid': uid,
-    }, const <String, Object?>{}, const <String>[
-      'status', 'error_code', 'errcode', 'data', 'data.list', 'data.count',
-      'count',
-    ]),
-    Spec('song_climax', EndpointRegistry.songClimax, <String, Object?>{
-      'hash': _vipSongHash, 'album_audio_id': 0,
-    }, const <String, Object?>{}, const <String>[
-      'status', 'error_code', 'data', 'data.0.url', 'data.0.start_time',
-    ]),
-    Spec('user_cloud', EndpointRegistry.userCloud, <String, Object?>{
-      'page': 1, 'pagesize': 30,
-    }, const <String, Object?>{}, const <String>[
-      'status', 'error_code', 'data', 'data.list', 'data.info',
-    ]),
-    Spec('fm_play', EndpointRegistry.personalFm, <String, Object?>{
-      'dfid': s.dfid, 'mid': s.mid, 'uuid': '-',
-    }, <String, Object?>{
-      'appid': KugouSign.appid, 'clienttime': ms, 'mid': s.mid,
-      'action': 'play', 'mode': 'normal', 'recommend_source_locked': 0,
-      'song_pool_id': 0, 'callerid': '', 'm_type': 1, 'platform': 'android',
-      'area_code': 1, 'remain_songcnt': 0, 'clientver': KugouSign.clientver,
-      'is_overplay': 0, 'fakem': 'ca981cfc583a4c37f28d2d49000013c16a0a',
-      'key': KugouSign.signParamsKey(ms), 'userid': uid, 'kguid': uid,
-      'token': s.token, 'vip_type': 0, 'hash': '', 'songid': 0,
-      'playtime': 0,
-    }, const <String>[
-      'status', 'error_code', 'data', 'data.songs', 'data.list',
-    ]),
-    Spec('comment_music', EndpointRegistry.commentMusic, <String, Object?>{
-      'mixsongid': _mixSongId, 'p': 1, 'pagesize': 10, 'code': _commentCode,
-    }, const <String, Object?>{}, const <String>[
-      'status', 'error_code', 'data', 'data.count', 'data.total',
-      'data.list', 'data.hot_words',
-    ]),
-    Spec('comment_count', EndpointRegistry.commentCount, <String, Object?>{
-      'code': _commentCode, 'hash': _vipSongHash,
-    }, const <String, Object?>{}, const <String>[
-      'status', 'error_code', _vipSongHash,
-    ]),
-    Spec('mv_by_song', EndpointRegistry.mvDetail, const <String, Object?>{},
-        <String, Object?>{
-      'data': <Object?>[
-        <String, Object?>{'album_audio_id': _mixSongId},
+    Spec(
+      'search_song',
+      EndpointRegistry.searchSong,
+      <String, Object?>{
+        'keyword': '周杰伦',
+        'page': 1,
+        'pagesize': 10,
+        'albumhide': 0,
+        'iscorrection': 1,
+        'nocollect': 0,
+        'platform': 'AndroidFilter',
+      },
+      const <String, Object?>{},
+      const <String>[
+        'status',
+        'error_code',
+        'errcode',
+        'data',
+        'data.total',
+        'data.lists',
+        'data.info',
       ],
-      'fields': '',
-    }, const <String>[
-      'status', 'error_code', 'data', 'data.data', 'data.list',
-    ]),
-    Spec('album_detail', EndpointRegistry.albumDetail,
-        const <String, Object?>{}, <String, Object?>{
-      'data': <Object?>[
-        <String, Object?>{'album_id': _albumId},
+    ),
+    Spec(
+      'search_suggest',
+      EndpointRegistry.searchSuggest,
+      <String, Object?>{
+        'keyword': '周杰伦',
+        'AlbumTipCount': 10,
+        'CorrectTipCount': 10,
+        'MVTipCount': 10,
+        'MusicTipCount': 10,
+        'radiotip': 1,
+      },
+      const <String, Object?>{},
+      const <String>[
+        'status',
+        'error_code',
+        'data',
+        'data.0.RecordDatas',
+        'data.0.RecordCount',
       ],
-    }, const <String>[
-      'status', 'error_code', 'data', 'data.data', 'data.list',
-    ]),
-    Spec('lyric_search', EndpointRegistry.lyricSearch, <String, Object?>{
-      'hash': _vipSongHash, 'keyword': '晴天', 'duration': 269000,
-      'album_audio_id': 0, 'lrctxt': 1, 'man': 'no',
-      'appid': KugouSign.appid, 'clientver': KugouSign.clientver,
-    }, const <String, Object?>{}, const <String>[
-      'status', 'errcode', 'info', 'candidates', 'candidates.0.id',
-      'candidates.0.accesskey',
-    ]),
-    Spec('privilege_lite', EndpointRegistry.privilegeLite, <String, Object?>{
-      'appid': KugouSign.appid, 'clientver': KugouSign.clientver,
-      'area_code': 1, 'behavior': 'play', 'need_hash_offset': 1,
-      'relate': 1, 'support_verify': 1,
-    }, <String, Object?>{
-      'resource': <Object?>[
-        <String, Object?>{
-          'type': 'audio', 'hash': _vipSongHash, 'album_id': '',
-          'page_id': 0,
-        },
+    ),
+    Spec(
+      'search_hot',
+      EndpointRegistry.searchHot,
+      <String, Object?>{'navid': 1, 'plat': 2},
+      const <String, Object?>{},
+      const <String>['status', 'error_code', 'data', 'data.list', 'data.info'],
+    ),
+    Spec(
+      'rank_list',
+      EndpointRegistry.rankList,
+      <String, Object?>{'plat': 2, 'withsong': 1, 'parentid': 0},
+      const <String, Object?>{},
+      const <String>['status', 'error_code', 'data', 'data.info', 'data.list'],
+    ),
+    Spec(
+      'daily_recommend',
+      EndpointRegistry.recommendSongs,
+      <String, Object?>{
+        'platform': 'android',
+        'page': 1,
+        'pagesize': 30,
+        'dfid': s.dfid,
+        'mid': s.mid,
+        'uuid': '-',
+      },
+      <String, Object?>{'userid': uid, 'token': s.token},
+      const <String>[
+        'status',
+        'errcode',
+        'error',
+        'data',
+        'data.songs',
+        'data.list',
+        'data.errcode',
       ],
-      'qualities': const <String>['128', '320', 'flac', 'high'],
-      'appid': KugouSign.appid, 'clientver': KugouSign.clientver,
-      'area_code': 1, 'behavior': 'play',
-    }, const <String>[
-      'status', 'error_code', 'data', 'data.data', 'data.list',
-    ]),
-    Spec('play_url_v5', EndpointRegistry.playUrlV5, <String, Object?>{
-      'hash': _vipSongHash, 'quality': '128', 'album_audio_id': 0,
-      'album_id': 0, 'area_code': 1, 'behavior': 'play',
-      'ssa_flag': 'is_fromtrack', 'version': 11430, 'clientver': 11430,
-      'page_id': 151369488, 'ppage_id': '463467626,350369493,788954147',
-      'pid': 2, 'cmd': 26, 'pidversion': 3001, 'IsFreePart': 0,
-      'cdnBackup': 1,
-    }, const <String, Object?>{}, const <String>[
-      'status', 'priv_status', 'errcode', 'error_code', 'url', 'backupUrl',
-      'bitRate', 'extName', 'timeLength', 'IsFreePart', 'end_byte',
-      'hash_offset', 'fail_process', 'tracker_through.musicpack_advance',
-    ]),
+    ),
+    Spec(
+      'user_detail',
+      EndpointRegistry.userDetail,
+      <String, Object?>{'plat': 1},
+      <String, Object?>{
+        'visit_time': ctSec,
+        'usertype': 1,
+        'p': rsaCryptoEncrypt('{"token":"${s.token}","clienttime":$ctSec}'),
+        'userid': uid,
+      },
+      const <String>[
+        'status',
+        'error_code',
+        'data',
+        'nickname',
+        'pic',
+        'vip_type',
+        'userid',
+        'level',
+      ],
+    ),
+    Spec(
+      'favorite_count',
+      EndpointRegistry.favoriteCount,
+      <String, Object?>{
+        'mixsongids': '',
+        'dfid': s.dfid,
+        'mid': s.mid,
+        'uuid': '-',
+        'plat': 1,
+        if (uid.isNotEmpty && uid != '0') 'userid': uid,
+      },
+      const <String, Object?>{},
+      const <String>[
+        'status',
+        'error_code',
+        'errcode',
+        'data',
+        'data.list',
+        'data.count',
+        'count',
+      ],
+    ),
+    Spec(
+      'song_climax',
+      EndpointRegistry.songClimax,
+      <String, Object?>{'hash': _vipSongHash, 'album_audio_id': 0},
+      const <String, Object?>{},
+      const <String>[
+        'status',
+        'error_code',
+        'data',
+        'data.0.url',
+        'data.0.start_time',
+      ],
+    ),
+    Spec(
+      'user_cloud',
+      EndpointRegistry.userCloud,
+      <String, Object?>{'page': 1, 'pagesize': 30},
+      const <String, Object?>{},
+      const <String>['status', 'error_code', 'data', 'data.list', 'data.info'],
+    ),
+    Spec(
+      'fm_play',
+      EndpointRegistry.personalFm,
+      <String, Object?>{'dfid': s.dfid, 'mid': s.mid, 'uuid': '-'},
+      <String, Object?>{
+        'appid': KugouSign.appid,
+        'clienttime': ms,
+        'mid': s.mid,
+        'action': 'play',
+        'mode': 'normal',
+        'recommend_source_locked': 0,
+        'song_pool_id': 0,
+        'callerid': '',
+        'm_type': 1,
+        'platform': 'android',
+        'area_code': 1,
+        'remain_songcnt': 0,
+        'clientver': KugouSign.clientver,
+        'is_overplay': 0,
+        'fakem': 'ca981cfc583a4c37f28d2d49000013c16a0a',
+        'key': KugouSign.signParamsKey(ms),
+        'userid': uid,
+        'kguid': uid,
+        'token': s.token,
+        'vip_type': 0,
+        'hash': '',
+        'songid': 0,
+        'playtime': 0,
+      },
+      const <String>['status', 'error_code', 'data', 'data.songs', 'data.list'],
+    ),
+    Spec(
+      'comment_music',
+      EndpointRegistry.commentMusic,
+      <String, Object?>{
+        'mixsongid': _mixSongId,
+        'p': 1,
+        'pagesize': 10,
+        'code': _commentCode,
+      },
+      const <String, Object?>{},
+      const <String>[
+        'status',
+        'error_code',
+        'data',
+        'data.count',
+        'data.total',
+        'data.list',
+        'data.hot_words',
+      ],
+    ),
+    Spec(
+      'comment_count',
+      EndpointRegistry.commentCount,
+      <String, Object?>{'code': _commentCode, 'hash': _vipSongHash},
+      const <String, Object?>{},
+      const <String>['status', 'error_code', _vipSongHash],
+    ),
+    Spec(
+      'mv_by_song',
+      EndpointRegistry.mvDetail,
+      const <String, Object?>{},
+      <String, Object?>{
+        'data': <Object?>[
+          <String, Object?>{'album_audio_id': _mixSongId},
+        ],
+        'fields': '',
+      },
+      const <String>['status', 'error_code', 'data', 'data.data', 'data.list'],
+    ),
+    Spec(
+      'album_detail',
+      EndpointRegistry.albumDetail,
+      const <String, Object?>{},
+      <String, Object?>{
+        'data': <Object?>[
+          <String, Object?>{'album_id': _albumId},
+        ],
+      },
+      const <String>['status', 'error_code', 'data', 'data.data', 'data.list'],
+    ),
+    Spec(
+      'lyric_search',
+      EndpointRegistry.lyricSearch,
+      <String, Object?>{
+        'hash': _vipSongHash,
+        'keyword': '晴天',
+        'duration': 269000,
+        'album_audio_id': 0,
+        'lrctxt': 1,
+        'man': 'no',
+        'appid': KugouSign.appid,
+        'clientver': KugouSign.clientver,
+      },
+      const <String, Object?>{},
+      const <String>[
+        'status',
+        'errcode',
+        'info',
+        'candidates',
+        'candidates.0.id',
+        'candidates.0.accesskey',
+      ],
+    ),
+    Spec(
+      'privilege_lite',
+      EndpointRegistry.privilegeLite,
+      <String, Object?>{
+        'appid': KugouSign.appid,
+        'clientver': KugouSign.clientver,
+        'area_code': 1,
+        'behavior': 'play',
+        'need_hash_offset': 1,
+        'relate': 1,
+        'support_verify': 1,
+      },
+      <String, Object?>{
+        'resource': <Object?>[
+          <String, Object?>{
+            'type': 'audio',
+            'hash': _vipSongHash,
+            'album_id': '',
+            'page_id': 0,
+          },
+        ],
+        'qualities': const <String>['128', '320', 'flac', 'high'],
+        'appid': KugouSign.appid,
+        'clientver': KugouSign.clientver,
+        'area_code': 1,
+        'behavior': 'play',
+      },
+      const <String>['status', 'error_code', 'data', 'data.data', 'data.list'],
+    ),
+    Spec(
+      'play_url_v5',
+      EndpointRegistry.playUrlV5,
+      <String, Object?>{
+        'hash': _vipSongHash,
+        'quality': '128',
+        'album_audio_id': 0,
+        'album_id': 0,
+        'area_code': 1,
+        'behavior': 'play',
+        'ssa_flag': 'is_fromtrack',
+        'version': 11430,
+        'clientver': 11430,
+        'page_id': 151369488,
+        'ppage_id': '463467626,350369493,788954147',
+        'pid': 2,
+        'cmd': 26,
+        'pidversion': 3001,
+        'IsFreePart': 0,
+        'cdnBackup': 1,
+      },
+      const <String, Object?>{},
+      const <String>[
+        'status',
+        'priv_status',
+        'errcode',
+        'error_code',
+        'url',
+        'backupUrl',
+        'bitRate',
+        'extName',
+        'timeLength',
+        'IsFreePart',
+        'end_byte',
+        'hash_offset',
+        'fail_process',
+        'tracker_through.musicpack_advance',
+      ],
+    ),
   ];
 }
 
@@ -379,18 +568,18 @@ class Row2 {
   final String? skip;
 
   Map<String, Object?> toJson() => <String, Object?>{
-        'endpoint': endpoint,
-        'state': state,
-        'method': method,
-        'domain': domain,
-        'path': path,
-        'paramKeys': paramKeys,
-        'bodyKeys': bodyKeys,
-        'ok': ok,
-        'ms': ms,
-        'captured': captured,
-        if (skip != null) 'skip': skip,
-      };
+    'endpoint': endpoint,
+    'state': state,
+    'method': method,
+    'domain': domain,
+    'path': path,
+    'paramKeys': paramKeys,
+    'bodyKeys': bodyKeys,
+    'ok': ok,
+    'ms': ms,
+    'captured': captured,
+    if (skip != null) 'skip': skip,
+  };
 }
 
 String _classifyErr(String raw) {
@@ -473,13 +662,21 @@ Future<void> _probe(String outDir) async {
     final creds = entry.value;
     if (creds == null) {
       final row = Row2(
-        endpoint: '_session', state: state, method: '-', domain: '-',
-        path: '-', paramKeys: const <String>[], bodyKeys: const <String>[],
-        ok: false, ms: 0, captured: const <String, Object?>{},
+        endpoint: '_session',
+        state: state,
+        method: '-',
+        domain: '-',
+        path: '-',
+        paramKeys: const <String>[],
+        bodyKeys: const <String>[],
+        ok: false,
+        ms: 0,
+        captured: const <String, Object?>{},
         skip: 'SKIP: credentials missing (cj_${state}.txt)',
       );
       File('${dir.path}/$state.json').writeAsStringSync(
-          const JsonEncoder.withIndent('  ').convert(<Object?>[row.toJson()]));
+        const JsonEncoder.withIndent('  ').convert(<Object?>[row.toJson()]),
+      );
       _emit('== state=$state == SKIP: credentials missing');
       continue;
     }
@@ -490,13 +687,16 @@ Future<void> _probe(String outDir) async {
       final r = await _run(client: client, spec: spec, state: state);
       rows.add(r);
       final n = r.captured['_topKeyCount'] ?? '-';
-      _emit('${r.endpoint.padRight(18)} ok=${r.ok} ${r.ms}ms '
-          '${r.skip ?? "topKeys=$n"}');
+      _emit(
+        '${r.endpoint.padRight(18)} ok=${r.ok} ${r.ms}ms '
+        '${r.skip ?? "topKeys=$n"}',
+      );
     }
     client.close();
     File('${dir.path}/$state.json').writeAsStringSync(
-        const JsonEncoder.withIndent('  ')
-            .convert(rows.map((r) => r.toJson()).toList()));
+      const JsonEncoder.withIndent('  ')
+          .convert(rows.map((r) => r.toJson()).toList()),
+    );
   }
   _emit('saved states=${states.keys.join(",")} → $outDir');
 }

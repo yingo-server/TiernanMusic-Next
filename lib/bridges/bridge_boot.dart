@@ -89,6 +89,7 @@ class BootOutcome {
       );
     }
   }
+
   /// 安全读取 dbOpenFuture（桥不 import L2，桩对象可无该字段）。
   static Object? _readDbOpenFuture(Object? any) {
     try {
@@ -102,7 +103,8 @@ class BootOutcome {
 
 /// init 层拿到的启动失败结果（仅失败路径）：桥无法反向 import L2，
 /// 故用 Map 传递失败原因，由 init 层渲染错误页（真实异常不被吞）。
-Map<String, Object?> bootFailure(String reason, Object? error) => <String, Object?>{
+Map<String, Object?> bootFailure(String reason, Object? error) =>
+    <String, Object?>{
       'rejected': true,
       'kernel': null,
       'error': reason,
@@ -112,17 +114,21 @@ Map<String, Object?> bootFailure(String reason, Object? error) => <String, Objec
 /// init 层唯一启动入口包装：转调 bootloader.Bootstrap.run（L1 禁直连 L2）。
 /// try/catch + Log 留痕；任何返回值都经 [BootOutcome.fromAny] 归一化，
 /// 使 init 层不再面对 dynamic 的 BootResult（见审计 B F-04）。
-BootOutcome runBoot(
-  {bool bypassIntegrity = false,
+BootOutcome runBoot({
+  bool bypassIntegrity = false,
   String? rootDir,
   dynamic manifest,
-  Map<String, List<int>>? moduleBytes}) {
+  Map<String, List<int>>? moduleBytes,
+}) {
   try {
-    return BootOutcome.fromAny(runBootImpl(
+    return BootOutcome.fromAny(
+      runBootImpl(
         bypassIntegrity: bypassIntegrity,
         rootDir: rootDir,
         manifest: manifest,
-        moduleBytes: moduleBytes));
+        moduleBytes: moduleBytes,
+      ),
+    );
   } catch (e, st) {
     k.Log.e('bridge_boot', 'runBoot failed', e, st);
     return BootOutcome.fromAny(bootFailure('runBoot failed', e));
@@ -134,15 +140,18 @@ dynamic Function({
   bool bypassIntegrity,
   String? rootDir,
   dynamic manifest,
-  Map<String, List<int>>? moduleBytes
-})? _runBootImpl;
+  Map<String, List<int>>? moduleBytes,
+})?
+_runBootImpl;
 void setRunBootImpl(
-    dynamic Function({
-      bool bypassIntegrity,
-      String? rootDir,
-      dynamic manifest,
-      Map<String, List<int>>? moduleBytes
-    }) impl) {
+  dynamic Function({
+    bool bypassIntegrity,
+    String? rootDir,
+    dynamic manifest,
+    Map<String, List<int>>? moduleBytes,
+  })
+  impl,
+) {
   try {
     _runBootImpl = impl;
     k.Log.d('bridge_boot', 'runBoot impl installed');
@@ -154,21 +163,23 @@ void setRunBootImpl(
 /// 零副作用安装自检（register.dart 用）：桥已持有真实 impl 则为 true。
 bool get bootBridgeReady => _runBootImpl != null;
 
-dynamic runBootImpl(
-    {bool bypassIntegrity = false,
-    String? rootDir,
-    dynamic manifest,
-    Map<String, List<int>>? moduleBytes}) {
+dynamic runBootImpl({
+  bool bypassIntegrity = false,
+  String? rootDir,
+  dynamic manifest,
+  Map<String, List<int>>? moduleBytes,
+}) {
   try {
     final impl = _runBootImpl;
     if (impl == null) {
       throw StateError('runBoot impl not installed (bootloader must register)');
     }
     return impl(
-        bypassIntegrity: bypassIntegrity,
-        rootDir: rootDir,
-        manifest: manifest,
-        moduleBytes: moduleBytes);
+      bypassIntegrity: bypassIntegrity,
+      rootDir: rootDir,
+      manifest: manifest,
+      moduleBytes: moduleBytes,
+    );
   } catch (e, st) {
     k.Log.e('bridge_boot', 'runBootImpl failed', e, st);
     return bootFailure('runBootImpl failed', e);

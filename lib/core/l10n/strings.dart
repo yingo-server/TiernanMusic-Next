@@ -240,7 +240,16 @@ class TnStrings {
 
   /// 已实装语言（10 语全量）。
   static const List<String> supportedCodes = <String>[
-    'zh', 'zh_Hant', 'en', 'ja', 'ko', 'es', 'fr', 'de', 'pt', 'ru',
+    'zh',
+    'zh_Hant',
+    'en',
+    'ja',
+    'ko',
+    'es',
+    'fr',
+    'de',
+    'pt',
+    'ru',
   ];
 
   /// 目标清单（已全部达成，保留供设置页显示 N/N）。
@@ -282,7 +291,9 @@ class TnStrings {
       final lang = (language ?? '').toLowerCase();
       final sc = (script ?? '').toLowerCase();
       final cc = (country ?? '').toUpperCase();
-      if (lang == 'zh_hant' || lang == 'zh' && (sc == 'hant' || cc == 'TW' || cc == 'HK' || cc == 'MO')) {
+      if (lang == 'zh_hant' ||
+          lang == 'zh' &&
+              (sc == 'hant' || cc == 'TW' || cc == 'HK' || cc == 'MO')) {
         return 'zh_Hant';
       }
       for (final c in supportedCodes) {

@@ -10,17 +10,24 @@
 // 铁律：禁 surface/flutter、禁 IO 直连；每方法 try/catch + Log('logic.fm')；
 //   缓存 ns:'fm' schemaVer 1；失败返空/原值不静默吞。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' as ep show SongBrief, getFmPlay, getFmSongs;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SongBrief, buildKey, prefixOf;
+import '../../bridges/bridge_core.dart'
+    as ep
+    show SongBrief, getFmPlay, getFmSongs;
+import '../../bridges/bridge_core.dart'
+    show KugouClient, LruCache, SongBrief, buildKey, prefixOf;
+
 /// FM 域缓存 schema 版本。
 const int kFmCacheSchemaVer = 1;
 const String _tag = 'logic.fm', _ns = 'fm';
 const String _playPath = '/v1/fm/play', _songsPath = '/v1/fm/songs';
 const int _batchSize = 20;
+
 class FmLogic {
-  FmLogic({required KugouClient client,
-      required LruCache<String, dynamic> cache})
-      : _client = client, _cache = cache {
+  FmLogic({
+    required KugouClient client,
+    required LruCache<String, dynamic> cache,
+  }) : _client = client,
+       _cache = cache {
     Log.d(_tag, 'init capacity=${cache.capacity}');
   }
   final KugouClient _client;
@@ -28,13 +35,17 @@ class FmLogic {
   List<SongBrief> _batch = const <SongBrief>[];
   int _batchNo = 0;
   final Set<String> _liked = <String>{}, _disliked = <String>{};
+
   /// 首批 FM 歌曲：重置批次号 → getFmPlay（needs probe 时返回空）。供「随便听听」入口。
   Future<List<SongBrief>> start() async {
     try {
       _batchNo = 0;
       _batch = const <SongBrief>[];
       final key = _key(_playPath, const <String, Object?>{
-        'mode': 'normal', 'action': 'play', 'batch': 0});
+        'mode': 'normal',
+        'action': 'play',
+        'batch': 0,
+      });
       final hit = _cache.get(key);
       if (hit is List<SongBrief>) {
         _batch = _filter(hit);
@@ -49,6 +60,7 @@ class FmLogic {
       return const <SongBrief>[];
     }
   }
+
   /// 下一批/跳过：批次 >1 首则丢头曲（不打网）；余 0/1 首按 offset 取下一批。
   Future<List<SongBrief>> next() async {
     try {
@@ -60,7 +72,10 @@ class FmLogic {
       _batchNo++;
       final offset = _batchNo * _batchSize;
       final key = _key(_songsPath, <String, Object?>{
-        'offset': offset, 'size': _batchSize, 'batch': _batchNo});
+        'offset': offset,
+        'size': _batchSize,
+        'batch': _batchNo,
+      });
       final hit = _cache.get(key);
       if (hit is List<SongBrief>) {
         _batch = _filter(hit);
@@ -69,8 +84,13 @@ class FmLogic {
       }
       // fmid/fmtype 未实测：留空、不猜枚举；端点层按 needs probe 留痕。
       final where = 'next batch=$_batchNo';
-      _batch = _filter(await _load(key,
-          ep.getFmSongs(_client, offset: offset, size: _batchSize), where));
+      _batch = _filter(
+        await _load(
+          key,
+          ep.getFmSongs(_client, offset: offset, size: _batchSize),
+          where,
+        ),
+      );
       Log.d(_tag, '$where got=${_batch.length}');
       return _currentBatch();
     } catch (e, st) {
@@ -78,6 +98,7 @@ class FmLogic {
       return _currentBatch();
     }
   }
+
   /// 当前批次快照（不可变）；空批次 = needs probe / 无更多 FM 歌曲。
   List<SongBrief> _currentBatch() {
     try {
@@ -87,6 +108,7 @@ class FmLogic {
       return const <SongBrief>[];
     }
   }
+
   Set<String> get likedHashes => Set<String>.unmodifiable(_liked);
   Set<String> get dislikedHashes => Set<String>.unmodifiable(_disliked);
 
@@ -102,13 +124,21 @@ class FmLogic {
       return 0;
     }
   }
+
   String _key(String path, Map<String, Object?> params) => buildKey(
-      ns: _ns, userid: _client.session.userid, path: path,
-      params: params, schemaVer: kFmCacheSchemaVer);
+    ns: _ns,
+    userid: _client.session.userid,
+    path: path,
+    params: params,
+    schemaVer: kFmCacheSchemaVer,
+  );
 
   /// 空结果不落缓存：needs probe 恒空，避免实测后仍命中空缓存。
   Future<List<SongBrief>> _load(
-      String key, Future<List<SongBrief>> future, String where) async {
+    String key,
+    Future<List<SongBrief>> future,
+    String where,
+  ) async {
     try {
       final items = await future;
       if (items.isEmpty) {
@@ -123,10 +153,14 @@ class FmLogic {
       return const <SongBrief>[];
     }
   }
+
   List<SongBrief> _filter(List<SongBrief> items) {
     try {
-      return List<SongBrief>.unmodifiable(items.where((s) =>
-          s.hash.isNotEmpty && !_disliked.contains(s.hash.toLowerCase())));
+      return List<SongBrief>.unmodifiable(
+        items.where(
+          (s) => s.hash.isNotEmpty && !_disliked.contains(s.hash.toLowerCase()),
+        ),
+      );
     } catch (e, st) {
       Log.e(_tag, 'filter failed', e, st);
       return const <SongBrief>[];

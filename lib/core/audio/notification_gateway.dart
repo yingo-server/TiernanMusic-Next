@@ -26,11 +26,7 @@ class NotificationMeta {
 
 /// 控制回调（由 session 绑定，避免 handler 反向 import 上层）。
 class NotificationControls {
-  const NotificationControls({
-    this.onNext,
-    this.onPrev,
-    this.onSeek,
-  });
+  const NotificationControls({this.onNext, this.onPrev, this.onSeek});
   final Future<void> Function()? onNext;
   final Future<void> Function()? onPrev;
   final Future<void> Function(int ms)? onSeek;
@@ -48,14 +44,16 @@ class MusicAudioHandler extends BaseAudioHandler {
   void bind(NotificationControls controls) {
     try {
       _controls = controls;
-      playbackState.add(playbackState.value.copyWith(
-        controls: [
-          MediaControl.skipToPrevious,
-          MediaControl.play,
-          MediaControl.pause,
-          MediaControl.skipToNext,
-        ],
-      ));
+      playbackState.add(
+        playbackState.value.copyWith(
+          controls: [
+            MediaControl.skipToPrevious,
+            MediaControl.play,
+            MediaControl.pause,
+            MediaControl.skipToNext,
+          ],
+        ),
+      );
       Log.d(_tag, 'controls bound');
     } catch (e, st) {
       Log.e(_tag, 'bind failed', e, st);
@@ -64,32 +62,37 @@ class MusicAudioHandler extends BaseAudioHandler {
 
   void _bind() {
     try {
-      _player.playbackEventStream.listen((event) {
-        final playing = _player.playing;
-        playbackState.add(playbackState.value.copyWith(
-          controls: [
-            MediaControl.skipToPrevious,
-            MediaControl.play,
-            MediaControl.pause,
-            MediaControl.skipToNext,
-          ],
-          androidCompactActionIndices: const [0, 1, 3],
-          systemActions: const {MediaAction.seek},
-          processingState: const {
-            ProcessingState.idle: AudioProcessingState.idle,
-            ProcessingState.loading: AudioProcessingState.loading,
-            ProcessingState.buffering: AudioProcessingState.buffering,
-            ProcessingState.ready: AudioProcessingState.ready,
-            ProcessingState.completed: AudioProcessingState.completed,
-          }[event.processingState]!,
-          playing: playing,
-          updatePosition: event.updatePosition,
-          bufferedPosition: event.bufferedPosition,
-          speed: _player.speed,
-        ));
-      }, onError: (Object e, StackTrace st) {
-        Log.e(_tag, 'event stream failed', e, st);
-      });
+      _player.playbackEventStream.listen(
+        (event) {
+          final playing = _player.playing;
+          playbackState.add(
+            playbackState.value.copyWith(
+              controls: [
+                MediaControl.skipToPrevious,
+                MediaControl.play,
+                MediaControl.pause,
+                MediaControl.skipToNext,
+              ],
+              androidCompactActionIndices: const [0, 1, 3],
+              systemActions: const {MediaAction.seek},
+              processingState: const {
+                ProcessingState.idle: AudioProcessingState.idle,
+                ProcessingState.loading: AudioProcessingState.loading,
+                ProcessingState.buffering: AudioProcessingState.buffering,
+                ProcessingState.ready: AudioProcessingState.ready,
+                ProcessingState.completed: AudioProcessingState.completed,
+              }[event.processingState]!,
+              playing: playing,
+              updatePosition: event.updatePosition,
+              bufferedPosition: event.bufferedPosition,
+              speed: _player.speed,
+            ),
+          );
+        },
+        onError: (Object e, StackTrace st) {
+          Log.e(_tag, 'event stream failed', e, st);
+        },
+      );
     } catch (e, st) {
       Log.e(_tag, '_bind failed', e, st);
     }
@@ -98,15 +101,17 @@ class MusicAudioHandler extends BaseAudioHandler {
   /// 推元数据（歌名/歌手/封面/时长）。
   Future<void> updateMetadata(NotificationMeta meta) async {
     try {
-      mediaItem.add(MediaItem(
-        id: meta.title.hashCode.toString(),
-        title: meta.title,
-        artist: meta.artist,
-        artUri: meta.artUri == null ? null : Uri.parse(meta.artUri!),
-        duration: meta.durationMs > 0
-            ? Duration(milliseconds: meta.durationMs)
-            : null,
-      ));
+      mediaItem.add(
+        MediaItem(
+          id: meta.title.hashCode.toString(),
+          title: meta.title,
+          artist: meta.artist,
+          artUri: meta.artUri == null ? null : Uri.parse(meta.artUri!),
+          duration: meta.durationMs > 0
+              ? Duration(milliseconds: meta.durationMs)
+              : null,
+        ),
+      );
     } catch (e, st) {
       Log.e(_tag, 'updateMetadata failed', e, st);
     }

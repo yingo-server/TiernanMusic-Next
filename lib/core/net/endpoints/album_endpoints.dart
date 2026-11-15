@@ -5,14 +5,7 @@ import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
 import '../signing.dart' show KugouSign;
 import 'models.dart'
-    show
-        SongBrief,
-        TrackPage,
-        PlaylistBrief,
-        safeInt,
-        safeStr,
-        dataOf,
-        listOf;
+    show SongBrief, TrackPage, PlaylistBrief, safeInt, safeStr, dataOf, listOf;
 import 'cover_url.dart' show normalizeCoverUrl;
 
 const String _tag = 'ep.album';
@@ -54,7 +47,7 @@ Future<AlbumDetail> getAlbumDetail(KugouClient client, String albumId) async {
       <String, Object?>{},
       body: <String, Object?>{
         'data': [
-          <String, Object?>{'album_id': id}
+          <String, Object?>{'album_id': id},
         ],
       },
     );
@@ -110,8 +103,12 @@ Future<TrackPage> getAlbumSongs(
       },
     );
     final data = dataOf(res);
-    final raw = data['songs'] ?? data['list'] ?? data['info'] ??
-        res['songs'] ?? res['list'];
+    final raw =
+        data['songs'] ??
+        data['list'] ??
+        data['info'] ??
+        res['songs'] ??
+        res['list'];
     final items = listOf(raw)
         .map(SongBrief.fromAlbumLite)
         .where((s) => s.hash.isNotEmpty)
@@ -164,7 +161,7 @@ Future<List<PlaylistBrief>> getSimilarPlaylists(
         'show_list': 1,
         'need_songs': 1,
         'data': [
-          <String, Object?>{'global_collection_id': id}
+          <String, Object?>{'global_collection_id': id},
         ],
       },
     );

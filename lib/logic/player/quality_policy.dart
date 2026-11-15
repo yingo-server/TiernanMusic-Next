@@ -130,8 +130,11 @@ PlayDecision decide(QualityAttempt a) {
       return PlayDecision.downgrade;
     }
     // 其它：一律降档，不冒充成功。
-    Log.w(kTag, 'decide: downgrade(other) '
-        'quality=${a.quality} status=${a.status}');
+    Log.w(
+      kTag,
+      'decide: downgrade(other) '
+      'quality=${a.quality} status=${a.status}',
+    );
     return PlayDecision.downgrade;
   } catch (e, st) {
     logW(kTag, 'decide failed err=$e st=$st');

@@ -40,7 +40,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-
 import '../../bridges/bridge_kernel.dart' show Log;
 
 const String _tag = 'core.qr';
@@ -231,8 +230,12 @@ Uint8List _buildMatrix(int version, Uint8List codewords, bool ecLevelM) {
         final x = ox + dx, y = oy + dy;
         if (x < 0 || y < 0 || x >= size || y >= size) continue;
         final inFinder = dx >= 0 && dx <= 6 && dy >= 0 && dy <= 6;
-        final dark = inFinder &&
-            (dx == 0 || dx == 6 || dy == 0 || dy == 6 ||
+        final dark =
+            inFinder &&
+            (dx == 0 ||
+                dx == 6 ||
+                dy == 0 ||
+                dy == 6 ||
                 (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4));
         setv(x, y, dark ? 3 : 2);
       }
@@ -297,7 +300,8 @@ Uint8List _buildMatrix(int version, Uint8List codewords, bool ecLevelM) {
       for (final x in pair) {
         if (x < 0 || x >= size) continue;
         if (at(x, y) != 0) continue; // 功能/格式模块跳过
-        final dark = bitIdx < totalBits &&
+        final dark =
+            bitIdx < totalBits &&
             ((codewords[bitIdx >> 3] >> (7 - (bitIdx & 7))) & 1) == 1;
         bitIdx++;
         setv(x, y, (dark != ((x + y) % 2 == 0)) ? 6 : 5); // mask 0

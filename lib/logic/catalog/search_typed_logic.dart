@@ -6,8 +6,11 @@
 // export SearchTypedLogic 暴露给 surface；surface 不直接 import 本文件。
 // 铁律：禁 surface/flutter、禁 IO 直连；每方法 try/catch + Log('logic.search.typed')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' as ep show searchComplexV6, searchTypePath, searchTyped;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SearchResult, SearchType, buildKey, prefixOf;
+import '../../bridges/bridge_core.dart'
+    as ep
+    show searchComplexV6, searchTypePath, searchTyped;
+import '../../bridges/bridge_core.dart'
+    show KugouClient, LruCache, SearchResult, SearchType, buildKey, prefixOf;
 
 /// 搜索分类域缓存 schema 版本（模型变更升版自动失效老键）。
 const int kSearchTypedCacheSchemaVer = 1;
@@ -20,8 +23,8 @@ class SearchTypedLogic {
   SearchTypedLogic({
     required KugouClient client,
     required LruCache<String, SearchResult> cache,
-  })  : _client = client,
-        _cache = cache {
+  }) : _client = client,
+       _cache = cache {
     Log.d(_tag, 'init capacity=${cache.capacity}');
   }
 
@@ -30,8 +33,12 @@ class SearchTypedLogic {
 
   /// 六类分类搜索（page 从 1 起）。缓存键含 type/page/pagesize 全维度。
   /// 命中直接返回；未命中调 searchTyped 后 put（空结果也落缓存防重复打网）。
-  Future<SearchResult> typed(SearchType type, String keyword, int page,
-      {int pageSize = _defaultPageSize}) async {
+  Future<SearchResult> typed(
+    SearchType type,
+    String keyword,
+    int page, {
+    int pageSize = _defaultPageSize,
+  }) async {
     try {
       final kw = keyword.trim();
       if (kw.isEmpty) {
@@ -45,7 +52,10 @@ class SearchTypedLogic {
         userid: _client.session.userid,
         path: ep.searchTypePath(type),
         params: <String, Object?>{
-          'type': type.name, 'kw': kw, 'page': p, 'pagesize': ps,
+          'type': type.name,
+          'kw': kw,
+          'page': p,
+          'pagesize': ps,
         },
         schemaVer: kSearchTypedCacheSchemaVer,
       );
@@ -56,13 +66,19 @@ class SearchTypedLogic {
       }
       final res = await ep.searchTyped(_client, type, kw, p, ps);
       _cache.put(key, res);
-      Log.d(_tag,
-          'typed miss→network type=${type.name} kw=$kw page=$p '
-          'got=${res.items.length} cacheSize=${_cache.length}');
+      Log.d(
+        _tag,
+        'typed miss→network type=${type.name} kw=$kw page=$p '
+        'got=${res.items.length} cacheSize=${_cache.length}',
+      );
       return res;
     } catch (e, st) {
-      Log.e(_tag, 'typed failed type=${type.name} kw=$keyword page=$page',
-          e, st);
+      Log.e(
+        _tag,
+        'typed failed type=${type.name} kw=$keyword page=$page',
+        e,
+        st,
+      );
       return const SearchResult();
     }
   }
@@ -102,7 +118,10 @@ class SearchTypedLogic {
   int invalidatePrefix({String userid = ''}) {
     try {
       final removed = _cache.invalidatePrefix(prefixOf(_ns, userid));
-      Log.d(_tag, 'invalidatePrefix ns=$_ns uid=$userid removed=${removed.length}');
+      Log.d(
+        _tag,
+        'invalidatePrefix ns=$_ns uid=$userid removed=${removed.length}',
+      );
       return removed.length;
     } catch (e, st) {
       Log.e(_tag, 'invalidatePrefix failed', e, st);

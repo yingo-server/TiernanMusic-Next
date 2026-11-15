@@ -5,8 +5,8 @@ import 'models_util.dart';
 import 'cover_url.dart' show normalizeCoverUrl;
 import 'song_models.dart' show SongBrief;
 
-
 const String _tag = 'net.models.playlist';
+
 class PlaylistBrief {
   const PlaylistBrief({
     this.id = '',
@@ -33,21 +33,33 @@ class PlaylistBrief {
     try {
       return PlaylistBrief(
         id: safeStr(
-            m['global_collection_id'] ?? m['specialid'] ?? m['listid'] ??
-                m['id'] ?? ''),
+          m['global_collection_id'] ??
+              m['specialid'] ??
+              m['listid'] ??
+              m['id'] ??
+              '',
+        ),
         listid: safeStr(m['listid'] ?? m['id'] ?? ''),
-        name: safeStr(m['specialname'] ?? m['name'] ??
-            m['collection_name'] ?? ''),
+        name: safeStr(
+          m['specialname'] ?? m['name'] ?? m['collection_name'] ?? '',
+        ),
         // 批N1-C 实测（API_FIELDS_TRUTH.md A2-2/A2-3/A2-4）：
         // - recommend special_list[]：cover 键 imgurl（recommend 命中），搜索
         //   special 命中是 img；play_count（下划线）、song_count。
         // - detail 首项：cover 键 pic（无 imgurl）、count、creator 键
         //   list_create_username（无 username）。tags 为逗号分隔字符串。
-        cover: normalizeCoverUrl(safeStr(m['imgurl'] ?? m['pic'] ?? m['img'] ?? m['cover'] ?? '')),
+        cover: normalizeCoverUrl(
+          safeStr(m['imgurl'] ?? m['pic'] ?? m['img'] ?? m['cover'] ?? ''),
+        ),
         playCount: safeInt(m['playcount'] ?? m['play_count']),
         trackCount: safeInt(m['count'] ?? m['song_count'] ?? m['track_count']),
-        creator: safeStr(m['username'] ?? m['list_create_username'] ??
-            m['user_name'] ?? m['nickname'] ?? ''),
+        creator: safeStr(
+          m['username'] ??
+              m['list_create_username'] ??
+              m['user_name'] ??
+              m['nickname'] ??
+              '',
+        ),
         intro: safeStr(m['intro'] ?? ''),
       );
     } catch (e, st) {
@@ -57,9 +69,14 @@ class PlaylistBrief {
   }
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'id': id, 'name': name, 'cover': cover, 'playCount': playCount,
-        'trackCount': trackCount, 'creator': creator, 'intro': intro,
-      };
+    'id': id,
+    'name': name,
+    'cover': cover,
+    'playCount': playCount,
+    'trackCount': trackCount,
+    'creator': creator,
+    'intro': intro,
+  };
 }
 
 /// 歌单详情（playlist_detail data[] 首项）。
@@ -85,6 +102,7 @@ class PlaylistDetail {
   final String intro;
   final String creator;
   final List<String> tags;
+
   /// 批N3-B 实测（A2-2）：get_list_info data[0].list_ver 歌单内容版本号，
   /// 写操作请求体 list_ver 须与服务器一致。detail 成功后写入 _listVerCache。
   final int listVer;
@@ -94,10 +112,16 @@ class PlaylistDetail {
   final String specialId;
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'id': id, 'name': name, 'cover': cover, 'playCount': playCount,
-        'trackCount': trackCount, 'intro': intro, 'creator': creator,
-        'tags': tags, 'listVer': listVer,
-      };
+    'id': id,
+    'name': name,
+    'cover': cover,
+    'playCount': playCount,
+    'trackCount': trackCount,
+    'intro': intro,
+    'creator': creator,
+    'tags': tags,
+    'listVer': listVer,
+  };
 }
 
 /// 歌单曲目分页（playlistTracks：data.info[] + data.count）。
@@ -123,10 +147,12 @@ class TrackPage {
   }
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'total': total, 'beginIdx': beginIdx, 'pageSize': pageSize,
-        'hasMore': hasMore,
-        'items': items.map((s) => s.toMap()).toList(growable: false),
-      };
+    'total': total,
+    'beginIdx': beginIdx,
+    'pageSize': pageSize,
+    'hasMore': hasMore,
+    'items': items.map((s) => s.toMap()).toList(growable: false),
+  };
 }
 
 /// 排行榜条目（rank list data.info[]）。
@@ -156,8 +182,12 @@ class RankBrief {
         cover: normalizeCoverUrl(safeStr(m['imgurl'] ?? m['img'] ?? '')),
         // 批N1-C 实测（A2-4 rank/list info[]）：更新时间键是
         // rank_id_publish_date；另有 update_frequency（频率描述）。
-        updateTime: safeStr(m['rank_id_publish_date'] ??
-            m['updatetime'] ?? m['update_frequency'] ?? ''),
+        updateTime: safeStr(
+          m['rank_id_publish_date'] ??
+              m['updatetime'] ??
+              m['update_frequency'] ??
+              '',
+        ),
         intro: safeStr(m['intro'] ?? ''),
       );
     } catch (e, st) {
@@ -167,8 +197,10 @@ class RankBrief {
   }
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'rankId': rankId, 'name': name, 'cover': cover,
-        'updateTime': updateTime, 'intro': intro,
-      };
+    'rankId': rankId,
+    'name': name,
+    'cover': cover,
+    'updateTime': updateTime,
+    'intro': intro,
+  };
 }
-

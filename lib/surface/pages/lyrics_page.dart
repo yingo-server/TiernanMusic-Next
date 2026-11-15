@@ -93,8 +93,11 @@ class _LyricsPageState extends State<LyricsPage> {
         final trans = _translation;
         List<DisplayLine> display = const <DisplayLine>[];
         if (trans != null) {
-          display = trans.displayFor(result, LyricsDisplayMode.bilingual,
-              songHash: song.hash);
+          display = trans.displayFor(
+            result,
+            LyricsDisplayMode.bilingual,
+            songHash: song.hash,
+          );
         }
         var has = false;
         for (var i = 0; i < lines.length; i++) {
@@ -150,10 +153,10 @@ class _LyricsPageState extends State<LyricsPage> {
   void _scrollTo(int idx) {
     if (idx < 0 || !_scroll.hasClients) return;
     // 逐行高度近似 44px，居中偏移半屏。
-    final target =
-        (idx * 44.0 - 160.0).clamp(0.0, _scroll.position.maxScrollExtent).toDouble();
-    _scroll.animateTo(target,
-        duration: Sp.normal, curve: Sp.curve);
+    final target = (idx * 44.0 - 160.0)
+        .clamp(0.0, _scroll.position.maxScrollExtent)
+        .toDouble();
+    _scroll.animateTo(target, duration: Sp.normal, curve: Sp.curve);
   }
 
   @override
@@ -172,32 +175,31 @@ class _LyricsPageState extends State<LyricsPage> {
   }
 
   Widget _topBar() => Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: Sp.gapM, vertical: Sp.gapS),
-        child: Row(
-          children: <Widget>[
-            IconButton(
-              onPressed: () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-              color: Sp.text,
-              tooltip: '返回',
-            ),
-            const Spacer(),
-            // 无译文数据时只显示原文（翻译开关禁用）。
-            SegmentedButton<bool>(
-              showSelectedIcon: false,
-              segments: const <ButtonSegment<bool>>[
-                ButtonSegment<bool>(value: false, label: Text('原文')),
-                ButtonSegment<bool>(value: true, label: Text('翻译')),
-              ],
-              selected: <bool>{_bilingual},
-              onSelectionChanged: _hasTranslation
-                  ? (s) => setState(() => _bilingual = s.first)
-                  : null,
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(horizontal: Sp.gapM, vertical: Sp.gapS),
+    child: Row(
+      children: <Widget>[
+        IconButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          color: Sp.text,
+          tooltip: '返回',
         ),
-      );
+        const Spacer(),
+        // 无译文数据时只显示原文（翻译开关禁用）。
+        SegmentedButton<bool>(
+          showSelectedIcon: false,
+          segments: const <ButtonSegment<bool>>[
+            ButtonSegment<bool>(value: false, label: Text('原文')),
+            ButtonSegment<bool>(value: true, label: Text('翻译')),
+          ],
+          selected: <bool>{_bilingual},
+          onSelectionChanged: _hasTranslation
+              ? (s) => setState(() => _bilingual = s.first)
+              : null,
+        ),
+      ],
+    ),
+  );
 
   Widget _body() {
     if (_loading) {
@@ -220,7 +222,9 @@ class _LyricsPageState extends State<LyricsPage> {
     return ListView.builder(
       controller: _scroll,
       padding: const EdgeInsets.symmetric(
-          horizontal: Sp.pagePad, vertical: Sp.gapXL),
+        horizontal: Sp.pagePad,
+        vertical: Sp.gapXL,
+      ),
       itemCount: _rows.length,
       itemBuilder: (context, i) {
         final r = _rows[i];
@@ -275,5 +279,6 @@ class LyricsPageModule extends SurfaceModule {
   NavEntry? get navEntry => null;
 
   @override
-  WidgetBuilder? get builder => (_) => const LyricsPage();
+  WidgetBuilder? get builder =>
+      (_) => const LyricsPage();
 }

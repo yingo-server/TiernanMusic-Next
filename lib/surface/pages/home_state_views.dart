@@ -2,7 +2,7 @@
 // 从 home_page.dart 拆出（≤500 行门禁）；本文件无业务逻辑。
 import 'package:flutter/material.dart';
 
-import 'home_page.dart' show Sp;
+import '../design/tokens.dart';
 
 /// 骨架占位。
 class HomeSkeletonBox extends StatelessWidget {

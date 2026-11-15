@@ -26,7 +26,8 @@ import 'dart:convert';
 
 import '../../../bridges/bridge_kernel.dart' show Log;
 import '../kugou_client.dart';
-import '../crypto_rsa.dart' show rsaEncrypt2;
+import '../crypto_rsa.dart'
+    show rsaEncrypt2, playlistAesEncrypt, playlistAesDecrypt;
 import '../signing.dart' show KugouSign, md5Hex;
 import 'models.dart' show safeInt, safeStr, dataOf, listOf;
 import 'cover_url.dart' show normalizeCoverUrl;

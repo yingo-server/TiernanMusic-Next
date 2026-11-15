@@ -1,5 +1,6 @@
-batch=6
-stage=fixing
-checks=covered_by_lineC
-last_commit=fd29c50
-note=批6=网络专项+发布收口。真实缺口集中 kugou_client.dart：cacheKey body/token 稳定摘要、dfid/mid 入键、rawBody 单飞键、登出失效钩子。按新规矩主线直接修；全门禁后整理提交→六批完成→stable=true LTS。
+batch=7
+stage=release_dispatched
+last_commit=e195289
+stable_dispatch=HTTP 204
+verify_timer=4b82b435-7dcd-4038-b54f-a8c537f39c30
+note=六批全部完成；workflow_dispatch stable=true 已触发；LTS 终验 9 分钟后瞬时检查 prerelease=false + 3 APK + verification.json。

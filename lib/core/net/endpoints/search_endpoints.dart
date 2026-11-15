@@ -23,15 +23,18 @@ Future<SearchResult> searchSongs(
     }
     final p = page < 1 ? 1 : page;
     final ps = pageSize < 1 ? 30 : pageSize;
-    final res = await client.request(EndpointRegistry.searchSong, <String, Object?>{
-      'keyword': kw,
-      'page': p,
-      'pagesize': ps,
-      'albumhide': 0,
-      'iscorrection': 1,
-      'nocollect': 0,
-      'platform': 'AndroidFilter',
-    });
+    final res = await client.request(
+      EndpointRegistry.searchSong,
+      <String, Object?>{
+        'keyword': kw,
+        'page': p,
+        'pagesize': ps,
+        'albumhide': 0,
+        'iscorrection': 1,
+        'nocollect': 0,
+        'platform': 'AndroidFilter',
+      },
+    );
     final data = dataOf(res);
     final lists = listOf(data['lists']);
     final items = lists.map(SongBrief.fromSearchList).toList(growable: false);
@@ -53,14 +56,16 @@ Future<List<SearchSuggestItem>> searchSuggest(
     final kw = keyword.trim();
     if (kw.isEmpty) return const <SearchSuggestItem>[];
     final res = await client.request(
-        EndpointRegistry.searchSuggest, <String, Object?>{
-      'keyword': kw,
-      'AlbumTipCount': 10,
-      'CorrectTipCount': 10,
-      'MVTipCount': 10,
-      'MusicTipCount': 10,
-      'radiotip': 1,
-    });
+      EndpointRegistry.searchSuggest,
+      <String, Object?>{
+        'keyword': kw,
+        'AlbumTipCount': 10,
+        'CorrectTipCount': 10,
+        'MVTipCount': 10,
+        'MusicTipCount': 10,
+        'radiotip': 1,
+      },
+    );
     final data = dataOf(res);
     final out = <SearchSuggestItem>[];
     // 批N1-A 实测（A1-2）：data 是数组，每组 {RecordDatas[], RecordCount, LableName}
@@ -105,20 +110,23 @@ Future<List<SearchSuggestItem>> searchSuggest(
 /// 热搜榜（/api/v3/search/hot_tab）：取 music / special 标签下的热词。
 Future<List<SearchSuggestItem>> searchHot(KugouClient client) async {
   try {
-    final res = await client.request(EndpointRegistry.searchHot,
-        <String, Object?>{'navid': 1, 'plat': 2});
+    final res = await client.request(
+      EndpointRegistry.searchHot,
+      <String, Object?>{'navid': 1, 'plat': 2},
+    );
     final data = dataOf(res);
     final out = <SearchSuggestItem>[];
     // 批N1-A 实测（A1-3）：分组容器 data.list[]，组字段 {name, keywords[]}，
     // 热词在 keywords[].keyword（另有 reason 上榜理由）；无 tabname 键。
     for (final group in listOf(data['list'])) {
-      final gName =
-          safeStr(group is Map<String, dynamic> ? group['name'] : '', 'hot');
-      for (final item in listOf(group is Map<String, dynamic>
-          ? group['keywords']
-          : null)) {
-        final kw = safeStr(
-            item is Map<String, dynamic> ? item['keyword'] : '');
+      final gName = safeStr(
+        group is Map<String, dynamic> ? group['name'] : '',
+        'hot',
+      );
+      for (final item in listOf(
+        group is Map<String, dynamic> ? group['keywords'] : null,
+      )) {
+        final kw = safeStr(item is Map<String, dynamic> ? item['keyword'] : '');
         if (kw.isNotEmpty) {
           out.add(SearchSuggestItem(keyword: kw, type: gName));
         }

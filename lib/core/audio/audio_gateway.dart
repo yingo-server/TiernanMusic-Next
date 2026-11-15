@@ -55,13 +55,14 @@ class NullAudioEngine implements AudioEngine {
 /// just_audio 实现。构造注入 [onEvent]；可注入 [player] 便于测试。
 class JustAudioEngine implements AudioEngine {
   JustAudioEngine({required this.onEvent, AudioPlayer? player})
-      : _player = player ?? AudioPlayer() {
+    : _player = player ?? AudioPlayer() {
     _bind();
   }
 
   final void Function(AudioEvent event) onEvent;
   final AudioPlayer _player;
   bool _disposed = false;
+
   /// just_audio 的 PlayerState 流；用 dynamic 避免与 L5 PlayerState 同名歧义。
   StreamSubscription<dynamic>? _stateSub;
   StreamSubscription<Duration?>? _durationSub;
@@ -71,33 +72,47 @@ class JustAudioEngine implements AudioEngine {
 
   void _bind() {
     try {
-      _stateSub = _player.playerStateStream.listen((s) {
-        if (_disposed) return;
-        if (s.processingState == ProcessingState.completed) {
-          onEvent(const AudioEvent(AudioEventType.completed));
-        } else if (s.playing) {
-          onEvent(const AudioEvent(AudioEventType.playing,
-              durationMs: -1));
-        } else {
-          onEvent(const AudioEvent(AudioEventType.paused));
-        }
-      }, onError: (Object e, StackTrace st) {
-        Log.e(_tag, 'state stream failed', e, st);
-      });
-      _positionSub = _player.positionStream.listen((d) {
-        if (_disposed) return;
-        onEvent(AudioEvent(AudioEventType.progress,
-            positionMs: d.inMilliseconds));
-      }, onError: (Object e, StackTrace st) {
-        Log.e(_tag, 'position stream failed', e, st);
-      });
-      _durationSub = _player.durationStream.listen((d) {
-        if (_disposed) return;
-        onEvent(AudioEvent(AudioEventType.progress,
-            positionMs: -1, durationMs: d?.inMilliseconds ?? 0));
-      }, onError: (Object e, StackTrace st) {
-        Log.e(_tag, 'duration stream failed', e, st);
-      });
+      _stateSub = _player.playerStateStream.listen(
+        (s) {
+          if (_disposed) return;
+          if (s.processingState == ProcessingState.completed) {
+            onEvent(const AudioEvent(AudioEventType.completed));
+          } else if (s.playing) {
+            onEvent(const AudioEvent(AudioEventType.playing, durationMs: -1));
+          } else {
+            onEvent(const AudioEvent(AudioEventType.paused));
+          }
+        },
+        onError: (Object e, StackTrace st) {
+          Log.e(_tag, 'state stream failed', e, st);
+        },
+      );
+      _positionSub = _player.positionStream.listen(
+        (d) {
+          if (_disposed) return;
+          onEvent(
+            AudioEvent(AudioEventType.progress, positionMs: d.inMilliseconds),
+          );
+        },
+        onError: (Object e, StackTrace st) {
+          Log.e(_tag, 'position stream failed', e, st);
+        },
+      );
+      _durationSub = _player.durationStream.listen(
+        (d) {
+          if (_disposed) return;
+          onEvent(
+            AudioEvent(
+              AudioEventType.progress,
+              positionMs: -1,
+              durationMs: d?.inMilliseconds ?? 0,
+            ),
+          );
+        },
+        onError: (Object e, StackTrace st) {
+          Log.e(_tag, 'duration stream failed', e, st);
+        },
+      );
     } catch (e, st) {
       Log.e(_tag, 'bind failed', e, st);
     }

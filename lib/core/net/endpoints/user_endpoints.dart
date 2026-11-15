@@ -39,10 +39,12 @@ String rsaCryptoEncrypt(String plaintext) {
     mBytes.setRange(0, plain.length, plain);
     final l = <int>[];
     for (var i = 128; i > 0; i -= 4) {
-      l.add((mBytes[i - 4] << 24) |
-          (mBytes[i - 3] << 16) |
-          (mBytes[i - 2] << 8) |
-          mBytes[i - 1]);
+      l.add(
+        (mBytes[i - 4] << 24) |
+            (mBytes[i - 3] << 16) |
+            (mBytes[i - 2] << 8) |
+            mBytes[i - 1],
+      );
     }
     final c = BigIntL(l).modPow(BigIntL([65537]), n);
     return c.toHex(padBytes: 128).toUpperCase();
@@ -78,7 +80,13 @@ class UserProfile {
         // API_FIELDS_TRUTH.md §R1-A-1：实测主键为 pic（次选 k_pic/fx_pic），
         // avatar/user_pic 仅作历史别名兜底；与「data 平铺」层级一致。
         avatar: safeStr(
-            m['pic'] ?? m['k_pic'] ?? m['fx_pic'] ?? m['avatar'] ?? m['user_pic'] ?? ''),
+          m['pic'] ??
+              m['k_pic'] ??
+              m['fx_pic'] ??
+              m['avatar'] ??
+              m['user_pic'] ??
+              '',
+        ),
         vipType: safeInt(m['vip_type'] ?? m['vip_type_new']),
         level: safeInt(m['level'] ?? m['user_level']),
       );
@@ -89,9 +97,12 @@ class UserProfile {
   }
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'userid': userid, 'nickname': nickname, 'avatar': avatar,
-        'vipType': vipType, 'level': level,
-      };
+    'userid': userid,
+    'nickname': nickname,
+    'avatar': avatar,
+    'vipType': vipType,
+    'level': level,
+  };
 
   bool get isEmpty => userid.isEmpty && nickname.isEmpty;
 
@@ -123,7 +134,8 @@ Future<UserProfile> getUserDetail(KugouClient client) async {
     // 批R1-A 实测（2026-11-13）：p = cryptoRSAEncrypt({token,clienttime}) 大写
     // ——裸 RSA + 明文头部右补零（rsaCryptoEncrypt）；PKCS1/左补零均 20006。
     final pk = rsaCryptoEncrypt(
-        '{"token":"${client.session.token}","clienttime":$ct}');
+      '{"token":"${client.session.token}","clienttime":$ct}',
+    );
     final res = await client.request(
       EndpointRegistry.userDetail,
       <String, Object?>{'plat': 1},
@@ -138,16 +150,19 @@ Future<UserProfile> getUserDetail(KugouClient client) async {
     // status=1 / error_code=0（匿名 error_code=20018）；profile 字段
     // 与响应根平铺（探针「顶层即 data，无包裹」），dataOf 作为
     // {data:{…}} 包层容错，二者按实测层级合并，不互相误判。
-    if (safeInt(res['status'], -1) != 1 ||
-        safeInt(res['error_code'], 0) != 0) {
-      Log.w(_tag, 'getUserDetail not ok status=${res['status']} '
-          'error_code=${res['error_code']}');
+    if (safeInt(res['status'], -1) != 1 || safeInt(res['error_code'], 0) != 0) {
+      Log.w(
+        _tag,
+        'getUserDetail not ok status=${res['status']} '
+        'error_code=${res['error_code']}',
+      );
       return const UserProfile();
     }
     final d = dataOf(res);
     // 平铺为主（§R1-A-1），包层仅容错；显式 dynamic 泛型避免层级合并歧义。
-    final Map<String, dynamic> profile =
-        d.isEmpty ? res : <String, dynamic>{...res, ...d};
+    final Map<String, dynamic> profile = d.isEmpty
+        ? res
+        : <String, dynamic>{...res, ...d};
     final p = UserProfile.fromMap(profile);
     Log.d(_tag, 'getUserDetail uid=${p.userid} nick=${p.nickname}');
     return p;
@@ -164,8 +179,7 @@ Future<UserProfile> getUserDetail(KugouClient client) async {
 /// `data.songs[].code=1` 只是逐曲回执，**data 内无 status 字段**，
 /// 仅固化层级结论，成功判定式按实测显式拆开（语义不变）。
 /// 写操作：一次提交、失败不重试（防重复上报）。
-Future<bool> uploadPlayHistory(
-    KugouClient client, List<int> mixSongIds) async {
+Future<bool> uploadPlayHistory(KugouClient client, List<int> mixSongIds) async {
   try {
     if (mixSongIds.isEmpty) {
       Log.w(_tag, 'uploadPlayHistory empty ids, skip');
@@ -174,7 +188,7 @@ Future<bool> uploadPlayHistory(
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final songs = <Map<String, Object?>>[
       for (final mxid in mixSongIds)
-        <String, Object?>{'mxid': mxid, 'op': 1, 'ot': now, 'pc': 1}
+        <String, Object?>{'mxid': mxid, 'op': 1, 'ot': now, 'pc': 1},
     ];
     final res = await client.request(
       EndpointRegistry.playHistoryUpload,
@@ -193,8 +207,11 @@ Future<bool> uploadPlayHistory(
     final status = safeInt(res['status'], -1);
     final err = safeInt(res['error_code'], -1);
     final ok = status == 1 || err == 0;
-    Log.d(_tag, 'uploadPlayHistory n=${mixSongIds.length} '
-        'status=$status error_code=$err ok=$ok');
+    Log.d(
+      _tag,
+      'uploadPlayHistory n=${mixSongIds.length} '
+      'status=$status error_code=$err ok=$ok',
+    );
     return ok;
   } catch (e, st) {
     Log.e(_tag, 'uploadPlayHistory failed', e, st);
@@ -215,8 +232,10 @@ Future<String?> getSongClimax(KugouClient client, String hash) async {
       Log.w(_tag, 'getSongClimax empty hash, skip');
       return null;
     }
-    final res = await client.request(EndpointRegistry.songClimax,
-        <String, Object?>{'hash': h, 'album_audio_id': 0});
+    final res = await client.request(
+      EndpointRegistry.songClimax,
+      <String, Object?>{'hash': h, 'album_audio_id': 0},
+    );
     final data = res['data'];
     if (data is! List || data.isEmpty) {
       Log.d(_tag, 'getSongClimax empty data hash=$h');
@@ -252,8 +271,10 @@ Future<List<SongBrief>> getUserCloud(KugouClient client) async {
       Log.w(_tag, 'getUserCloud no token, skip');
       return const <SongBrief>[];
     }
-    final res = await client.request(EndpointRegistry.userCloud,
-        <String, Object?>{'page': 1, 'pagesize': 30});
+    final res = await client.request(
+      EndpointRegistry.userCloud,
+      <String, Object?>{'page': 1, 'pagesize': 30},
+    );
     final code = res['status'];
     final data = res['data'];
     if (data == null || data is String || code == 20010) {
@@ -301,7 +322,8 @@ Future<bool> reportListen(KugouClient client, String hash) async {
     // hash 仅作留痕，不臆造上报字段。
     final ct = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final pk = rsaCryptoEncrypt(
-        '{"clienttime":$ct,"token":"${client.session.token}"}');
+      '{"clienttime":$ct,"token":"${client.session.token}"}',
+    );
     final res = await client.request(
       EndpointRegistry.listenReport,
       <String, Object?>{'clienttime': ct, 'plat': 0},
@@ -314,8 +336,8 @@ Future<bool> reportListen(KugouClient client, String hash) async {
         'p': pk,
       },
     );
-    final ok = safeInt(res['status'], -1) == 1 ||
-        safeInt(res['error_code'], -1) == 0;
+    final ok =
+        safeInt(res['status'], -1) == 1 || safeInt(res['error_code'], -1) == 0;
     Log.d(_tag, 'reportListen hash=$h ok=$ok');
     return ok;
   } catch (e, st) {

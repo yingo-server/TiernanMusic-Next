@@ -20,7 +20,8 @@ import '../bridges/bridge_surface.dart'
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
-  final debugBypass = args.contains('--bypass-integrity') ||
+  final debugBypass =
+      args.contains('--bypass-integrity') ||
       const bool.fromEnvironment('NEXT_DEBUG_BYPASS');
 
   try {
@@ -45,16 +46,17 @@ Future<void> _boot({required bool debugBypass}) async {
   //    BootOutcome（见 bridge_boot）：init 层只认 BootOutcome 形状 + deps
   //    具名键，不再对 dynamic 做 .client 探测。
   registerBootloader();
-  final Object? raw = runBoot(
-      bypassIntegrity: debugBypass,
-      rootDir: rootDir);
-  final BootOutcome outcome =
-      raw is BootOutcome ? raw : BootOutcome.fromAny(raw);
+  final Object? raw = runBoot(bypassIntegrity: debugBypass, rootDir: rootDir);
+  final BootOutcome outcome = raw is BootOutcome
+      ? raw
+      : BootOutcome.fromAny(raw);
 
   if (outcome.rejected) {
     // 启动失败（桥归一化形状）：显示真实原因，不静默退出。
-    final reason = '${outcome.error.isEmpty ? 'boot failed' : outcome.error}'
-        '\n${outcome.detail}'.trim();
+    final reason =
+        '${outcome.error.isEmpty ? 'boot failed' : outcome.error}'
+                '\n${outcome.detail}'
+            .trim();
     debugPrint('main: boot failure: $reason');
     runApp(_BootErrorApp(message: '启动失败：$reason'));
     return;
@@ -65,12 +67,17 @@ Future<void> _boot({required bool debugBypass}) async {
   // 审查修复：全 dep 判空（旧代码只查 client/songDao，其余 5 个可为 null
   // 却被下游按非 null 用 → NPE）。缺任一走错误页，不静默降级。
   const requiredDeps = <String>[
-    'client', 'songDao', 'playlistDao', 'historyDao',
-    'downloadStore', 'settings', 'paths',
+    'client',
+    'songDao',
+    'playlistDao',
+    'historyDao',
+    'downloadStore',
+    'settings',
+    'paths',
   ];
   final missing = <String>[
     for (final k in requiredDeps)
-      if (deps[k] == null) k
+      if (deps[k] == null) k,
   ];
   if (missing.isNotEmpty) {
     debugPrint('main: core assembly incomplete, missing: $missing');
@@ -126,17 +133,23 @@ class _BootErrorApp extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.error_outline,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.primary),
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                   const SizedBox(height: 16),
-                  Text('TiernanMusicNext 无法启动',
-                      style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    'TiernanMusicNext 无法启动',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   const SizedBox(height: 8),
                   Text(message, textAlign: TextAlign.center),
                   const SizedBox(height: 24),
-                  Text('TiernanMusicNext LTS',
-                      style: Theme.of(context).textTheme.labelSmall),
+                  Text(
+                    'TiernanMusicNext LTS',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ],
               ),
             ),

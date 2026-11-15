@@ -14,10 +14,10 @@ class TranslatedLine {
   final int lineIndex;
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'original': original,
-        'translation': translation,
-        'lineIndex': lineIndex,
-      };
+    'original': original,
+    'translation': translation,
+    'lineIndex': lineIndex,
+  };
 
   @override
   String toString() => 'TranslatedLine(${toMap()})';
@@ -39,10 +39,10 @@ class TranslationResult {
   bool get isNotEmpty => lines.isNotEmpty;
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'lines': lines.map((l) => l.toMap()).toList(growable: false),
-        'sourceLang': sourceLang,
-        'targetLang': targetLang,
-      };
+    'lines': lines.map((l) => l.toMap()).toList(growable: false),
+    'sourceLang': sourceLang,
+    'targetLang': targetLang,
+  };
 
   @override
   String toString() => 'TranslationResult(${toMap()})';

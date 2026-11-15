@@ -25,12 +25,13 @@ void main() {
     _report();
     return;
   }
-  final dartFiles = lib
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((f) => f.path.endsWith('.dart'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final dartFiles =
+      lib
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
 
   var checked = 0;
   for (final f in dartFiles) {
@@ -146,10 +147,23 @@ void _checkBrackets(String rel, String src) {
 
 // ---------- b) 禁 import（强约束六五，与 layer_audit.py 同口径） ----------
 const _pkg = 'tiernan_music_next';
-const _layers = {'init': 1, 'bootloader': 2, 'kernel': 3, 'core': 4,
-                 'logic': 5, 'session': 6, 'surface': 7};
-const _bridgeNames = {'bridge_boot', 'bridge_kernel', 'bridge_core',
-                      'bridge_logic', 'bridge_session', 'bridge_surface'};
+const _layers = {
+  'init': 1,
+  'bootloader': 2,
+  'kernel': 3,
+  'core': 4,
+  'logic': 5,
+  'session': 6,
+  'surface': 7,
+};
+const _bridgeNames = {
+  'bridge_boot',
+  'bridge_kernel',
+  'bridge_core',
+  'bridge_logic',
+  'bridge_session',
+  'bridge_surface',
+};
 // 76 原则（76 原则）（docs/SEVEN_SIX_RULE.md）：session(L6) 是 surface(L7) 的底层。
 //   L6 session → 下五桥 + bridge_session
 //   L7 surface → bridge_surface + bridge_session（+ 现有下层桥白名单保留）
@@ -159,8 +173,13 @@ const _layerAllowedBridges = <int, Set<String>>{
   3: {'bridge_kernel'},
   4: {'bridge_kernel', 'bridge_core'},
   5: {'bridge_logic', 'bridge_core', 'bridge_kernel'},
-  6: {'bridge_boot', 'bridge_kernel', 'bridge_core',
-      'bridge_logic', 'bridge_session'},
+  6: {
+    'bridge_boot',
+    'bridge_kernel',
+    'bridge_core',
+    'bridge_logic',
+    'bridge_session',
+  },
   7: {'bridge_surface', 'bridge_session', 'bridge_logic', 'bridge_core'},
 };
 const _l7Extra = [
@@ -170,10 +189,14 @@ const _l7Extra = [
 ];
 
 String? _resolveTarget(String rel, String imp) {
-  if (imp.startsWith('package:$_pkg/')) return imp.substring('package:$_pkg/'.length);
+  if (imp.startsWith('package:$_pkg/'))
+    return imp.substring('package:$_pkg/'.length);
   if (imp.startsWith('../') || imp.startsWith('./')) {
     final parts = <String>[];
-    for (final seg in (rel.split('/')..removeLast()..addAll(imp.split('/')))) {
+    for (final seg
+        in (rel.split('/')
+          ..removeLast()
+          ..addAll(imp.split('/')))) {
       if (seg == '.' || seg.isEmpty) continue;
       if (seg == '..') {
         if (parts.isNotEmpty) parts.removeLast();
@@ -220,7 +243,10 @@ void _checkForbiddenImports(String rel, String src) {
           // 批10-A：显式层-桥白名单（同 layer_audit.py），非自动放宽。
           final allowed = _layerAllowedBridges[lvl] ?? const <String>{};
           if (!allowed.contains(base)) {
-            _fail(rel, '层 $lvl import 了非白名单桥 $imp（允许：${allowed.toList()..sort()}）');
+            _fail(
+              rel,
+              '层 $lvl import 了非白名单桥 $imp（允许：${allowed.toList()..sort()}）',
+            );
           }
         }
         continue;
@@ -251,7 +277,10 @@ void _checkForbiddenImports(String rel, String src) {
           // 批10-A：显式层-桥白名单（同 layer_audit.py），非自动放宽。
           final allowed = _layerAllowedBridges[lvl] ?? const <String>{};
           if (!allowed.contains(base)) {
-            _fail(rel, '层 $lvl import 了非白名单桥 $imp（允许：${allowed.toList()..sort()}）');
+            _fail(
+              rel,
+              '层 $lvl import 了非白名单桥 $imp（允许：${allowed.toList()..sort()}）',
+            );
           }
         }
       } else if (tLayer == null) {
@@ -267,21 +296,33 @@ void _checkForbiddenImports(String rel, String src) {
     }
 
     // 第三方包：L6 白名单 + L1 装配基础包 + L4 isar
-    const l1Extra = ['package:flutter/material.dart',
-        'package:flutter/services.dart',
-        'package:path_provider/path_provider.dart'];
-    const l4Extra = ['package:isar/isar.dart',
-        'package:just_audio/just_audio.dart',
-        'package:audio_service/audio_service.dart'];
-    const l6Extra = ['package:flutter_riverpod', 'package:riverpod',
-        'package:flutter/foundation.dart', 'package:flutter/widgets.dart'];
-    final allowed = (lvl == 7 && _l7Extra.any((p) => imp.startsWith(p))) ||
+    const l1Extra = [
+      'package:flutter/material.dart',
+      'package:flutter/services.dart',
+      'package:path_provider/path_provider.dart',
+    ];
+    const l4Extra = [
+      'package:isar/isar.dart',
+      'package:just_audio/just_audio.dart',
+      'package:audio_service/audio_service.dart',
+    ];
+    const l6Extra = [
+      'package:flutter_riverpod',
+      'package:riverpod',
+      'package:flutter/foundation.dart',
+      'package:flutter/widgets.dart',
+    ];
+    final allowed =
+        (lvl == 7 && _l7Extra.any((p) => imp.startsWith(p))) ||
         (lvl == 6 && l6Extra.any((p) => imp.startsWith(p))) ||
         (lvl == 1 && l1Extra.any((p) => imp.startsWith(p))) ||
         (lvl == 4 && l4Extra.any((p) => imp.startsWith(p)));
     if (!allowed) {
-      _fail(rel, '层 ${lvl ?? '?'} 禁止第三方包 import：$imp'
-          '（L6 UI 包 / L1 装配基础包 / L4 isar 之外的第三方包禁止）');
+      _fail(
+        rel,
+        '层 ${lvl ?? '?'} 禁止第三方包 import：$imp'
+        '（L6 UI 包 / L1 装配基础包 / L4 isar 之外的第三方包禁止）',
+      );
     }
   }
 }
@@ -332,12 +373,9 @@ void _report() {
   exitCode = 1;
 }
 
-
 /// 显式登记的跨层装配例外（与 tool/layer_audit.py 的 LAYER_EXCEPTIONS 同口径）。
 bool _isLayerException(String rel, String imp) {
-  const exceptions = <String>{
-    'init/main.dart:../bootloader/register.dart',
-  };
+  const exceptions = <String>{'init/main.dart:../bootloader/register.dart'};
   return exceptions.contains('$rel:$imp');
 }
 
@@ -352,15 +390,20 @@ void _checkDuplicateClassNames() {
     if (e is! File || !e.path.endsWith('.dart')) continue;
     final rel = e.path.replaceAll('\\', '/');
     final src = e.readAsStringSync();
-    for (final m in RegExp(r'^(?:abstract\s+)?class\s+(\w+)', multiLine: true)
-        .allMatches(src)) {
+    for (final m in RegExp(
+      r'^(?:abstract\s+)?class\s+(\w+)',
+      multiLine: true,
+    ).allMatches(src)) {
       map.putIfAbsent(m.group(1)!, () => <String>[]).add(rel);
     }
   }
   final dups = map.entries.where((e) => e.value.length > 1).toList()
     ..sort((a, b) => a.key.compareTo(b.key));
   for (final d in dups) {
-    _fail('lib/', '同名类 ${d.key} 定义于 ${d.value.length} 处（遮蔽风险）：${d.value.join(' / ')}');
+    _fail(
+      'lib/',
+      '同名类 ${d.key} 定义于 ${d.value.length} 处（遮蔽风险）：${d.value.join(' / ')}',
+    );
   }
 }
 
@@ -377,7 +420,8 @@ void _checkEmptyCatches(String rel, String src) {
     final body = <String>[];
     for (var j = i; j < lines.length && j < i + 20; j++) {
       body.add(lines[j]);
-      depth += '{'.allMatches(lines[j]).length - '}'.allMatches(lines[j]).length;
+      depth +=
+          '{'.allMatches(lines[j]).length - '}'.allMatches(lines[j]).length;
       if (depth <= 0 && j > i) break;
     }
     final blob = body.join('\n');
@@ -388,10 +432,9 @@ void _checkEmptyCatches(String rel, String src) {
   }
 }
 
-
-/// 单文件行数上限（铁律：≤500 行，便于审计与热插拔替换）。
+/// 单文件行数上限（V2 新规：超过 1500 行才按功能拆分；允许 dart format）。
 void _checkLineBudget(String rel, String src) {
-  const maxLines = 500;
+  const maxLines = 1500;
   final n = '\n'.allMatches(src).length + 1;
   if (n > maxLines) {
     _fail(rel, '文件 $n 行超过上限 $maxLines（需拆分）');

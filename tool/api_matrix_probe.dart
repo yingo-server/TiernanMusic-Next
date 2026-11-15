@@ -50,13 +50,13 @@ class ProbeRow {
   final String note;
 
   String get verdictLabel => switch (verdict) {
-        Verdict.ok => 'OK',
-        Verdict.noPriv => 'NO_PRIV',
-        Verdict.needVerify => 'NEED_VERIFY(20028)',
-        Verdict.empty => 'EMPTY',
-        Verdict.risk => 'RISK',
-        Verdict.skip => 'SKIP',
-      };
+    Verdict.ok => 'OK',
+    Verdict.noPriv => 'NO_PRIV',
+    Verdict.needVerify => 'NEED_VERIFY(20028)',
+    Verdict.empty => 'EMPTY',
+    Verdict.risk => 'RISK',
+    Verdict.skip => 'SKIP',
+  };
 
   /// CSV 行（RFC4180 转义）。
   String toCsv() {
@@ -77,9 +77,18 @@ class ProbeRow {
   }
 
   static List<String> header() => const [
-        'endpoint', 'method', 'url', 'state', 'http', 'ms',
-        'envelope_keys', 'success_expr', 'key_fields', 'verdict', 'note',
-      ];
+    'endpoint',
+    'method',
+    'url',
+    'state',
+    'http',
+    'ms',
+    'envelope_keys',
+    'success_expr',
+    'key_fields',
+    'verdict',
+    'note',
+  ];
 }
 
 /// CSV 写出器：UTF-8 BOM 便于 Excel 直接打开。
@@ -155,7 +164,8 @@ void checkCreds() {
     final f = File(s.credSource);
     final ok = f.existsSync();
     stdout.writeln(
-        '[creds] state=${s.label} source=${s.credSource} present=$ok');
+      '[creds] state=${s.label} source=${s.credSource} present=$ok',
+    );
   }
 }
 
@@ -164,8 +174,10 @@ void main(List<String> args) {
   stdout.writeln('====================================');
   stdout.writeln('用法: dart run tool/api_matrix_probe.dart [--out <csv-path>]');
   stdout.writeln('');
-  stdout.writeln('三态: anonymous(无凭据) / nonvip(.test_creds/cj_nonvip.txt) / '
-      'vip(.test_creds/cj_vip.txt)');
+  stdout.writeln(
+    '三态: anonymous(无凭据) / nonvip(.test_creds/cj_nonvip.txt) / '
+    'vip(.test_creds/cj_vip.txt)',
+  );
   stdout.writeln('凭据不进仓库；日志输出一律脱敏（只留键名/长度，不留 token/cookie/t1/mid/p/key）');
   stdout.writeln('');
   checkCreds();
@@ -176,22 +188,26 @@ void main(List<String> args) {
     stdout.writeln('  - $m');
   }
   stdout.writeln('');
-  stdout.writeln('骨架态：不发真实请求。网络层实现（L4 core/net）由主会话填充；'
-      '填充后逐端点×三态产生 ProbeRow 并经 MatrixWriter 落 CSV。');
+  stdout.writeln(
+    '骨架态：不发真实请求。网络层实现（L4 core/net）由主会话填充；'
+    '填充后逐端点×三态产生 ProbeRow 并经 MatrixWriter 落 CSV。',
+  );
 
   // --out: 演示写出骨架 CSV（仅清单行，verdict=SKIP 待实测）。
   final outIdx = args.indexOf('--out');
   if (outIdx >= 0 && outIdx + 1 < args.length) {
     final w = MatrixWriter(args[outIdx + 1]);
     for (final m in mods) {
-      w.add(ProbeRow(
-        endpoint: m,
-        method: '?',
-        url: '?',
-        state: TestState.anonymous,
-        verdict: Verdict.skip,
-        note: '待实测(骨架)',
-      ));
+      w.add(
+        ProbeRow(
+          endpoint: m,
+          method: '?',
+          url: '?',
+          state: TestState.anonymous,
+          verdict: Verdict.skip,
+          note: '待实测(骨架)',
+        ),
+      );
     }
     w.write();
   }

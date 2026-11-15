@@ -18,27 +18,27 @@ class DownloadCommitter {
   DownloadCommitter({
     required DownloadStore store,
     required SongDao songDao,
-    required void Function(DownloadTask task, DownloadStatus status, String? err)
-        mark,
-  })  : _store = store,
-        _songDao = songDao,
-        _mark = mark;
+    required void Function(
+      DownloadTask task,
+      DownloadStatus status,
+      String? err,
+    )
+    mark,
+  }) : _store = store,
+       _songDao = songDao,
+       _mark = mark;
 
   final DownloadStore _store;
   final SongDao _songDao;
-  final void Function(DownloadTask task, DownloadStatus status, String? err) _mark;
+  final void Function(DownloadTask task, DownloadStatus status, String? err)
+  _mark;
 
   /// 收尾提交：.dlpart 读回 bytes → commitDownload（rename + 索引由 core 层
   /// 完成）→ SongDao 建档/补 localPath。取消语义：abort 置位后不落盘。
-  Future<void> commit(
-    DownloadTask task,
-    String extName,
-    RunningJob job,
-  ) async {
+  Future<void> commit(DownloadTask task, String extName, RunningJob job) async {
     final hash = task.hash;
     try {
-      final part =
-          File('${_storeDir()}${Platform.pathSeparator}$hash.dlpart');
+      final part = File('${_storeDir()}${Platform.pathSeparator}$hash.dlpart');
       // 提交前复核中断标志：cancel 在提交阶段到达时不得落盘（否则任务已
       // 移出任务表却留下已提交文件与曲库记录）。
       if (job.abort) {

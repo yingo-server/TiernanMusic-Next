@@ -5,9 +5,9 @@
 // 运行：/opt/dart/bin/dart run tool/field_truth_test.dart → 全过输出 FIELD-TRUTH-OK，失败退出码 1。
 import 'dart:convert';
 import 'dart:io' show exitCode, ZLibCodec;
+
 import '../lib/core/net/endpoints/models.dart';
-import '../lib/core/net/endpoints/mv_endpoints.dart'
-    show MvBrief, MvQuality;
+import '../lib/core/net/endpoints/mv_endpoints.dart' show MvBrief, MvQuality;
 import '../lib/core/net/endpoints/artist_endpoints.dart'
     show ArtistDetail, ArtistBrief, AlbumBrief;
 import '../lib/core/net/endpoints/search_typed_endpoints.dart';
@@ -26,9 +26,8 @@ import '../lib/core/net/signing.dart' show KugouSign, Md5;
 String _md5(String s) => Md5.hex(s);
 
 /// 批N3-B 锚点辅助：动态 Map 规范化 + 布尔断言（失败计入 _fail）。
-Map<String, dynamic> castMap(Object? v) => v is Map
-    ? v.map((k, val) => MapEntry('$k', val))
-    : <String, dynamic>{};
+Map<String, dynamic> castMap(Object? v) =>
+    v is Map ? v.map((k, val) => MapEntry('$k', val)) : <String, dynamic>{};
 void _check(String name, bool ok) {
   if (ok) {
     _pass++;
@@ -52,7 +51,7 @@ void group(String name) => print('-- $name');
 
 void main() {
   // 封面契约更新（R2）：{size} 模板在模型层归一化为 240（cover_url.dart）。
-// ══ A5/A6 · 批N3-A 评论/收藏/FM 实测锚点（2026-11-12）══
+  // ══ A5/A6 · 批N3-A 评论/收藏/FM 实测锚点（2026-11-12）══
   group('N3-A comment/collect/FM field truth');
 
   final cmt = <String, dynamic>{
@@ -65,10 +64,12 @@ void main() {
     'user_pic': 'http://imge.kugou.com/a.jpg',
     'user_id': 88,
   };
-  eq('A5-1 like 是对象，取 like.count',
-      safeInt(cmt['like'] is Map ? cmt['like']['count'] : cmt['like']), 42);
-  eq('A5-1 addtime 是字符串非时间戳',
-      cmt['addtime'] is String, true);
+  eq(
+    'A5-1 like 是对象，取 like.count',
+    safeInt(cmt['like'] is Map ? cmt['like']['count'] : cmt['like']),
+    42,
+  );
+  eq('A5-1 addtime 是字符串非时间戳', cmt['addtime'] is String, true);
   eq('A5-1 用户名键 user_name', safeStr(cmt['user_name']), '听友');
 
   final cmtRes = <String, dynamic>{
@@ -83,10 +84,12 @@ void main() {
     ],
     'maxPage': 5000,
   };
-  eq('A5-1 评论在顶层 list[]（无 data 包层）',
-      listOf(cmtRes['list']).length, 1);
-  eq('A5-1 热词 hot_word_list[].content',
-      safeStr(listOf(cmtRes['hot_word_list']).first['content']), '晴天');
+  eq('A5-1 评论在顶层 list[]（无 data 包层）', listOf(cmtRes['list']).length, 1);
+  eq(
+    'A5-1 热词 hot_word_list[].content',
+    safeStr(listOf(cmtRes['hot_word_list']).first['content']),
+    '晴天',
+  );
   eq('A5-1 count 顶层', safeInt(cmtRes['count']), 711210);
 
   final favRes = <String, dynamic>{
@@ -116,20 +119,28 @@ void main() {
           'mixsongid': '32100650',
           'time_length': 269,
           'singerinfo': [
-            {'name': '周杰伦'}
+            {'name': '周杰伦'},
           ],
-        }
+        },
       ],
     },
   };
-  eq('A5-6 FM 列表键是 data.song_list（非 data.songs）',
-      listOf((fmRes['data'] as Map)['song_list']).length, 1);
-  eq('A5-6 FM mixsongid 是字符串',
-      listOf((fmRes['data'] as Map)['song_list']).first['mixsongid'] is String,
-      true);
+  eq(
+    'A5-6 FM 列表键是 data.song_list（非 data.songs）',
+    listOf((fmRes['data'] as Map)['song_list']).length,
+    1,
+  );
+  eq(
+    'A5-6 FM mixsongid 是字符串',
+    listOf((fmRes['data'] as Map)['song_list']).first['mixsongid'] is String,
+    true,
+  );
 
-  eq('A5-3 评论数必须传 hash（mixsongid 恒 0）',
-      safeInt(<String, dynamic>{'HASH': 711210}['HASH']), 711210);
+  eq(
+    'A5-3 评论数必须传 hash（mixsongid 恒 0）',
+    safeInt(<String, dynamic>{'HASH': 711210}['HASH']),
+    711210,
+  );
 
   // ══ A1 · search /v3/search/song（data.lists[]，实测留样 2026-11-12）══
   group('A1 search song');
@@ -165,12 +176,20 @@ void main() {
 
   final res1 = parseSearchItems(<String, dynamic>{
     'status': 1,
-    'data': {'total': 590, 'lists': [songItem, {'FileHash': '', 'FileName': ''}]},
+    'data': {
+      'total': 590,
+      'lists': [
+        songItem,
+        {'FileHash': '', 'FileName': ''},
+      ],
+    },
   });
   eq('parseSearchItems data.lists(空项滤除)', res1.length, 1);
   final res2 = parseSearchItems(<String, dynamic>{
     'status': 1,
-    'data': {'info': [songItem]},
+    'data': {
+      'info': [songItem],
+    },
   });
   eq('parseSearchItems info 兜底', res2.length, 1);
 
@@ -192,8 +211,11 @@ void main() {
   final pb1 = PlaylistBrief.fromMap(specialItem);
   eq('special.id(specialid)', pb1.id, '2255477');
   eq('special.name', pb1.name, '跑步必听｜超燃英文歌');
-  eq('special.cover(img 键，N1-C 修复)', pb1.cover,
-      'http://imge.kugou.com/soft/collection/280/20200324/x.jpg');
+  eq(
+    'special.cover(img 键，N1-C 修复)',
+    pb1.cover,
+    'http://imge.kugou.com/soft/collection/280/20200324/x.jpg',
+  );
   eq('special.trackCount(song_count，N1-C 修复)', pb1.trackCount, 23);
   eq('special.playCount(play_count，N1-C 修复)', pb1.playCount, 999999);
   eq('special.creator(nickname)', pb1.creator, '薛予安');
@@ -201,19 +223,59 @@ void main() {
   // album / author / mv 分类项无强类型模型（AlbumBrief/AuthorBrief/MvBrief 缺失），
   // 实测键集固化于 API_FIELDS_TRUTH.md §A1，批N2 补模型时以此为准。
   const albumKeys = [
-    'albumid', 'albumname', 'singer', 'singerid', 'img', 'publish_time',
-    'songcount', 'play_count', 'collect_count', 'company', 'intro', 'grade',
-    'privilege', 'language', 'singers', 'title', 'category',
+    'albumid',
+    'albumname',
+    'singer',
+    'singerid',
+    'img',
+    'publish_time',
+    'songcount',
+    'play_count',
+    'collect_count',
+    'company',
+    'intro',
+    'grade',
+    'privilege',
+    'language',
+    'singers',
+    'title',
+    'category',
   ];
   const authorKeys = [
-    'AuthorId', 'AuthorName', 'Avatar', 'AlbumCount', 'AudioCount', 'FansNum',
-    'Heat', 'Identity', 'IsReal', 'IsSettledAuthor', 'UserId', 'VideoCount',
-    'ComplexSongName', 'FirstFrameImage',
+    'AuthorId',
+    'AuthorName',
+    'Avatar',
+    'AlbumCount',
+    'AudioCount',
+    'FansNum',
+    'Heat',
+    'Identity',
+    'IsReal',
+    'IsSettledAuthor',
+    'UserId',
+    'VideoCount',
+    'ComplexSongName',
+    'FirstFrameImage',
   ];
   const mvKeys = [
-    'MvID', 'MvName', 'MvHash', 'FileName', 'FileHash', 'FileSize', 'Bitrate',
-    'Duration', 'Pic', 'SingerName', 'SingerID', 'MixSongID', 'AlbumID',
-    'AudioID', 'IsOfficial', 'PublishDate', 'Remark', 'Description',
+    'MvID',
+    'MvName',
+    'MvHash',
+    'FileName',
+    'FileHash',
+    'FileSize',
+    'Bitrate',
+    'Duration',
+    'Pic',
+    'SingerName',
+    'SingerID',
+    'MixSongID',
+    'AlbumID',
+    'AudioID',
+    'IsOfficial',
+    'PublishDate',
+    'Remark',
+    'Description',
   ];
   eq('album keys fixed', albumKeys.length, 17);
   eq('author keys fixed', authorKeys.length, 14);
@@ -234,10 +296,17 @@ void main() {
     'tags': ['英语', '兴奋', '运动'],
   };
   final pb2 = PlaylistBrief.fromMap(recItem);
-  eq('rec.id(global_collection_id 优先)', pb2.id, 'collection_1_486950678_2255477_0');
+  eq(
+    'rec.id(global_collection_id 优先)',
+    pb2.id,
+    'collection_1_486950678_2255477_0',
+  );
   eq('rec.name', pb2.name, '跑步必听｜超燃英文歌，助你轻松奔跑');
-  eq('rec.cover(imgurl 优先)', pb2.cover,
-      'http://imge.kugou.com/soft/collection/240/20200324/20200324024507285054.jpg');
+  eq(
+    'rec.cover(imgurl 优先)',
+    pb2.cover,
+    'http://imge.kugou.com/soft/collection/240/20200324/20200324024507285054.jpg',
+  );
   eq('rec.playCount(play_count，N1-C 修复)', pb2.playCount, 888888);
   eq('rec.creator(nickname)', pb2.creator, '薛予安');
 
@@ -262,13 +331,23 @@ void main() {
       {'tag_id': 20, 'tag_name': '英语'},
     ],
   };
-  eq('detail.name(实测 name)', detailItem['name'],
-      '跑步必听｜超燃英文歌，助你轻松奔跑');
-  eq('detail.cover(实测 pic)', detailItem['pic'],
-      'http://imge.kugou.com/soft/collection/240/20200324/20200324024507285054.jpg');
-  eq('detail.creator(实测 list_create_username)', detailItem['list_create_username'], '薛予安');
+  eq('detail.name(实测 name)', detailItem['name'], '跑步必听｜超燃英文歌，助你轻松奔跑');
+  eq(
+    'detail.cover(实测 pic)',
+    detailItem['pic'],
+    'http://imge.kugou.com/soft/collection/240/20200324/20200324024507285054.jpg',
+  );
+  eq(
+    'detail.creator(实测 list_create_username)',
+    detailItem['list_create_username'],
+    '薛予安',
+  );
   eq('detail.trackCount(count)', detailItem['count'], 23);
-  eq('detail.tags(逗号字符串拆分)', (detailItem['tags'] as String).split(',').length, 3);
+  eq(
+    'detail.tags(逗号字符串拆分)',
+    (detailItem['tags'] as String).split(',').length,
+    3,
+  );
 
   // ══ A2-3 · playlist tracks（data.songs[] + data.count）══
   group('A2-3 playlist tracks');
@@ -294,8 +373,11 @@ void main() {
   final t = SongBrief.fromTrackInfo(trackItem);
   eq('track.hash', t.hash, '48a4e22027ac783e4682b05543b75ddc');
   eq('track.name', t.name, 'Hawk Nelson、Jonathan Steingard - Sold Out');
-  eq('track.singer(singerinfo[] 聚合「、」，N1-C 修复)', t.singer,
-      'Hawk Nelson、Jonathan Steingard');
+  eq(
+    'track.singer(singerinfo[] 聚合「、」，N1-C 修复)',
+    t.singer,
+    'Hawk Nelson、Jonathan Steingard',
+  );
   eq('track.mixSongId', t.mixSongId, 32230859);
   eq('track.albumAudioId(audio_id 兜底)', t.albumAudioId, 11672407);
   eq('track.albumId(str)', t.albumId, '981208');
@@ -323,7 +405,11 @@ void main() {
   eq('rank.name', rb.name, 'TOP500');
   eq('rank.cover', rb.cover, 'http://imge.kugou.com/rank/240/top500.jpg');
   eq('rank.intro', rb.intro, '酷狗TOP500');
-  eq('rank.updateTime(update_frequency 兜底，无 updatetime)', rb.updateTime, '每天更新');
+  eq(
+    'rank.updateTime(update_frequency 兜底，无 updatetime)',
+    rb.updateTime,
+    '每天更新',
+  );
   // rank_info 实测：data.songinfo[] 仅 {album_audio_id, album_cover, songname} 三字段
   const rankSong = <String, dynamic>{
     'album_audio_id': 968734427,
@@ -354,8 +440,11 @@ void main() {
     'adjust': 30,
   };
   eq('lyricCand.id(safeInt 容错字符串)', safeInt(lyricCand['id']), 274944371);
-  eq('lyricCand.accesskey', safeStr(lyricCand['accesskey']),
-      '2A7B35884B3C20E9D3281686BA59A3F8');
+  eq(
+    'lyricCand.accesskey',
+    safeStr(lyricCand['accesskey']),
+    '2A7B35884B3C20E9D3281686BA59A3F8',
+  );
   eq('lyricCand.durationMs(毫秒)', safeInt(lyricCand['duration']), 269792);
   eq('lyricCand.contenttype(0=krc)', safeInt(lyricCand['contenttype']), 0);
 
@@ -395,24 +484,42 @@ void main() {
   // 错盐 57ae12ebac930836ebac6f064f95b046 → status=0 error="illegal key"(31833)。
   // 公式：md5(hash + 盐 + '1005' + mid + userid||0)。
   group('N2-C play_url key salt');
-  eq('signKeySalt 定稿', KugouSign.signKeySalt, '57ae12eb6890223e355ccfcb74edf70d');
-  eq('playKey 拼接顺序(hash+盐+appid+mid+userid)',
-      KugouSign.playKey('b3a52a7a958bf0aed0ebfba2e9a818b7', '281949768489412648962353822266799178366', ''),
-      _md5('b3a52a7a958bf0aed0ebfba2e9a818b7'
-          '57ae12eb6890223e355ccfcb74edf70d'
-          '1005'
-          '281949768489412648962353822266799178366'
-          '0'));
+  eq(
+    'signKeySalt 定稿',
+    KugouSign.signKeySalt,
+    '57ae12eb6890223e355ccfcb74edf70d',
+  );
+  eq(
+    'playKey 拼接顺序(hash+盐+appid+mid+userid)',
+    KugouSign.playKey(
+      'b3a52a7a958bf0aed0ebfba2e9a818b7',
+      '281949768489412648962353822266799178366',
+      '',
+    ),
+    _md5(
+      'b3a52a7a958bf0aed0ebfba2e9a818b7'
+      '57ae12eb6890223e355ccfcb74edf70d'
+      '1005'
+      '281949768489412648962353822266799178366'
+      '0',
+    ),
+  );
   // 成功响应顶层 22 键形态（VIP 实测留样）：flac 档 bitRate 恒 0（不可用 bitrate 判档）。
   const playOk = <String, dynamic>{
-    'status': 1, 'priv_status': 1, 'bitRate': 0, 'extName': 'flac',
-    'timeLength': 269, 'q': 'flac',
+    'status': 1,
+    'priv_status': 1,
+    'bitRate': 0,
+    'extName': 'flac',
+    'timeLength': 269,
+    'q': 'flac',
   };
   eq('playOk flac bitRate=0(实测不判档)', safeInt(playOk['bitRate']), 0);
   eq('playOk priv_status=1 权限位', safeInt(playOk['priv_status']), 1);
   // 匿名 20028 形态：顶层仅 errcode/error/fail_process/status，无 priv_status。
   const playAnon = <String, dynamic>{
-    'errcode': 20028, 'status': 2, 'error': '本次请求需要验证',
+    'errcode': 20028,
+    'status': 2,
+    'error': '本次请求需要验证',
     'fail_process': ['pkg'],
   };
   eq('playAnon 匿名 20028', safeInt(playAnon['errcode']), 20028);
@@ -432,7 +539,8 @@ void main() {
             'global_collection_id': 'collection_3_1210326444_15_0',
             'collection_name': '给身体来点电——燥起来吧',
             'cover': 'http://c1.kgimg.com/custom/150/20260330/x.jpg',
-            'flexible_cover': 'http://c1.kgimg.com/custom/{size}/20260330/x.jpg',
+            'flexible_cover':
+                'http://c1.kgimg.com/custom/{size}/20260330/x.jpg',
             'intro': '为运动和旅途准备的活力满满的歌单',
             'heat': '286', // 实测字符串
             'song_count': 52,
@@ -474,19 +582,29 @@ void main() {
   }
   eq('similar.data 是数组', simGroups.length, 1);
   eq('similar 平铺 collection_list 双层', simItems.length, 1);
-  eq('similar.id(global_collection_id)', simItems.first.id,
-      'collection_3_1210326444_15_0');
+  eq(
+    'similar.id(global_collection_id)',
+    simItems.first.id,
+    'collection_3_1210326444_15_0',
+  );
   eq('similar.name(collection_name)', simItems.first.name, '给身体来点电——燥起来吧');
-  eq('similar.cover(cover 完整URL)', simItems.first.cover,
-      'http://c1.kgimg.com/custom/150/20260330/x.jpg');
+  eq(
+    'similar.cover(cover 完整URL)',
+    simItems.first.cover,
+    'http://c1.kgimg.com/custom/150/20260330/x.jpg',
+  );
   eq('similar.trackCount(song_count)', simItems.first.trackCount, 52);
   eq('similar.creator(user_name)', simItems.first.creator, '貔貅');
   // 内嵌 songs[] 无 duration/album_audio_id——fromTrackInfo 容错取 0，不猜。
   final simSong = SongBrief.fromTrackInfo(
-      (similarResp['data'] as List)[0]['collection_list'][0]['songs'][0]
-          as Map<String, dynamic>);
-  eq('similar song.hash(小写化)', simSong.hash,
-      'd6c78fbd24b64fee6ce6da8a229bc8cf');
+    (similarResp['data'] as List)[0]['collection_list'][0]['songs'][0]
+        as Map<String, dynamic>,
+  );
+  eq(
+    'similar song.hash(小写化)',
+    simSong.hash,
+    'd6c78fbd24b64fee6ce6da8a229bc8cf',
+  );
   eq('similar song.mixSongId', simSong.mixSongId, 345871732);
   eq('similar song.durationSec(无键如实 0)', simSong.durationSec, 0);
 
@@ -519,14 +637,21 @@ void main() {
       {'author_name': '周杰伦', 'author_id': 3520},
     ],
     'mvdata': [
-      {'typ': 0, 'trk': '3', 'hash': '14F783AB3068B2CFB40B64F7A79763C8',
-       'id': '596344'},
+      {
+        'typ': 0,
+        'trk': '3',
+        'hash': '14F783AB3068B2CFB40B64F7A79763C8',
+        'id': '596344',
+      },
     ],
     'trans_param': {'musicpack_advance': 1},
   };
   final lite = SongBrief.fromAlbumLite(liteItem);
-  eq('lite.hash(audio_info.hash 小写)', lite.hash,
-      '16c8ab298231370293d16bcf9e5ff9b6');
+  eq(
+    'lite.hash(audio_info.hash 小写)',
+    lite.hash,
+    '16c8ab298231370293d16bcf9e5ff9b6',
+  );
   eq('lite.name(base.audio_name)', lite.name, '夜曲');
   eq('lite.singer(base.author_name)', lite.singer, '周杰伦');
   eq('lite.albumAudioId(base.album_audio_id)', lite.albumAudioId, 32029511);
@@ -566,8 +691,11 @@ void main() {
   final ab = AlbumBrief.fromMap(albumItem);
   eq('album.id(str)', ab.id, '958909');
   eq('album.name', ab.name, '十一月的萧邦');
-  eq('album.cover(sizable_cover 优先)', ab.cover,
-      'http://imge.kugou.com/stdmusic/240/20250125/x.jpg');
+  eq(
+    'album.cover(sizable_cover 优先)',
+    ab.cover,
+    'http://imge.kugou.com/stdmusic/240/20250125/x.jpg',
+  );
   eq('album.publishDate', ab.publishDate, '2005-11-01');
   eq('album.songCount(实测无键如实 0)', ab.songCount, 0);
 
@@ -576,7 +704,8 @@ void main() {
   const authorItem = <String, dynamic>{
     'author_id': 3520,
     'author_name': '周杰伦',
-    'sizable_avatar': 'http://singerimg.kugou.com/uploadpic/softhead/{size}/x.jpg',
+    'sizable_avatar':
+        'http://singerimg.kugou.com/uploadpic/softhead/{size}/x.jpg',
     'intro': '',
     'long_intro': '周杰伦（Jay Chou），1979年1月18日出生于台湾省新北市…',
     'album_count': 40,
@@ -591,17 +720,25 @@ void main() {
   final ad = ArtistDetail.fromMap(authorItem);
   eq('artist.id', ad.id, '3520');
   eq('artist.name', ad.name, '周杰伦');
-  eq('artist.avatar', ad.avatar,
-      'http://singerimg.kugou.com/uploadpic/softhead/{size}/x.jpg');
-  eq('artist.intro(空→long_intro 兜底)', ad.intro,
-      '周杰伦（Jay Chou），1979年1月18日出生于台湾省新北市…');
+  eq(
+    'artist.avatar',
+    ad.avatar,
+    'http://singerimg.kugou.com/uploadpic/softhead/{size}/x.jpg',
+  );
+  eq(
+    'artist.intro(空→long_intro 兜底)',
+    ad.intro,
+    '周杰伦（Jay Chou），1979年1月18日出生于台湾省新北市…',
+  );
   eq('artist.albumCount', ad.albumCount, 40);
   eq('artist.songCount', ad.songCount, 515);
   eq('artist.mvCount', ad.mvCount, 78);
   eq('artist.fans(fansnums)', ad.fans, 5810243);
   // 搜索域驼峰键兜底（A1-4 /v1/search/author）
   final abr = ArtistBrief.fromMap(<String, dynamic>{
-    'AuthorId': 3520, 'AuthorName': '周杰伦', 'FansNum': 5810243,
+    'AuthorId': 3520,
+    'AuthorName': '周杰伦',
+    'FansNum': 5810243,
     'Avatar': 'http://singerimg.kugou.com/x.jpg',
   });
   eq('artistSearch.id(AuthorId)', abr.id, '3520');
@@ -626,8 +763,11 @@ void main() {
   eq('mv.name(mv_name 实测键)', mv.name, '夜曲');
   eq('mv.singer', mv.singer, '周杰伦');
   eq('mv.durationMs', mv.durationMs, 231732);
-  eq('mv.coverUrl(hdpic 优先)', mv.coverUrl,
-      'http://imge.kugou.com/mvhdpic/240/20201126/x.jpg');
+  eq(
+    'mv.coverUrl(hdpic 优先)',
+    mv.coverUrl,
+    'http://imge.kugou.com/mvhdpic/240/20201126/x.jpg',
+  );
 
   // ── A5-2 · /v1/video data[0] 平铺档位（夜曲 MV 实测留样）──
   group('A5-2 mv qualities flat');
@@ -682,23 +822,35 @@ void main() {
         : ['${bucket0['downurl']}']),
     ...(bucket0['backupdownurl'] as List).map((u) => '$u'),
   ];
-  eq('mvUrl.downurl 单串主链', urls0[0],
-      'http://fsmvpc.tx.kugou.com/202611120720/a/v2/x/KGTX/CLTX002/x.mp4');
+  eq(
+    'mvUrl.downurl 单串主链',
+    urls0[0],
+    'http://fsmvpc.tx.kugou.com/202611120720/a/v2/x/KGTX/CLTX002/x.mp4',
+  );
   eq('mvUrl.backupdownurl 备链数组', urls0.length, 2);
-  eq('mvUrl.filesize(str)', safeInt(
-      (bucket0 as Map)['filesize']), 32952294);
+  eq('mvUrl.filesize(str)', safeInt((bucket0 as Map)['filesize']), 32952294);
   // key 盐负对照锚点（批N2-B 实测）：缺 key/错 cmd → 40003 Empty key/Bad cmd；
   // key 公式 = md5(hash + signKeySalt + appid + mid + userid||0)（同 play_url 盐）。
-  eq('mvKey.signKeySalt 与 play_url 同盐',
-      KugouSign.signKeySalt, '57ae12eb6890223e355ccfcb74edf70d');
-  eq('mvKey.playKey 拼接顺序', KugouSign.playKey(
+  eq(
+    'mvKey.signKeySalt 与 play_url 同盐',
+    KugouSign.signKeySalt,
+    '57ae12eb6890223e355ccfcb74edf70d',
+  );
+  eq(
+    'mvKey.playKey 拼接顺序',
+    KugouSign.playKey(
       '14f783ab3068b2cfb40b64f7a79763c8',
-      '281949768489412648962353822266799178366', ''),
-      _md5('14f783ab3068b2cfb40b64f7a79763c8'
-          '57ae12eb6890223e355ccfcb74edf70d'
-          '1005'
-          '281949768489412648962353822266799178366'
-          '0'));
+      '281949768489412648962353822266799178366',
+      '',
+    ),
+    _md5(
+      '14f783ab3068b2cfb40b64f7a79763c8'
+      '57ae12eb6890223e355ccfcb74edf70d'
+      '1005'
+      '281949768489412648962353822266799178366'
+      '0',
+    ),
+  );
 
   // ── A4-5 · /kmr/v1/audio_group/author data[] 平铺（批N3-C 实测留样）──
   group('N3-C artist audios field truth');
@@ -722,12 +874,10 @@ void main() {
     'trans_param': {'musicpack_advance': 1},
   };
   final au = SongBrief.fromTrackInfo(audiosItem);
-  eq('artistAudios.hash(小写化)', au.hash,
-      '1f7e7659b9fff4fb6f71562a61bbc25f');
+  eq('artistAudios.hash(小写化)', au.hash, '1f7e7659b9fff4fb6f71562a61bbc25f');
   eq('artistAudios.name(audio_name)', au.name, '发如雪');
   eq('artistAudios.singer(author_name 兜底)', au.singer, '周杰伦');
-  eq('artistAudios.mixSongId(实测无 mixsongid，songid 不映射如实 0)',
-      au.mixSongId, 0);
+  eq('artistAudios.mixSongId(实测无 mixsongid，songid 不映射如实 0)', au.mixSongId, 0);
   eq('artistAudios.albumAudioId(album_audio_id)', au.albumAudioId, 32029513);
   eq('artistAudios.durationSec(timelength ms→s)', au.durationSec, 299);
   eq('artistAudios.albumId(int→str)', au.albumId, '958909');
@@ -736,10 +886,12 @@ void main() {
   eq('artistAudios.isVip(trans_param.musicpack_advance)', au.isVip, true);
   // 平铺数组取数锚点：data 即列表（非 songs[] 包裹），dataOf 返回空 Map、
   // listOf(res['data']) 命中（_pickList 平铺分支语义）。
-  final flatData = {'status': 1, 'data': [audiosItem]};
+  final flatData = {
+    'status': 1,
+    'data': [audiosItem],
+  };
   eq('artistAudios data 平铺取数', listOf(flatData['data']).length, 1);
-  eq('artistAudios dataOf 平铺回空 Map(设计语义)',
-      dataOf(flatData).isEmpty, true);
+  eq('artistAudios dataOf 平铺回空 Map(设计语义)', dataOf(flatData).isEmpty, true);
 
   // ══ 批2-C · 端点声明/取数路径窄复核锚点（2026-11-13）══
   group('batch2-C endpoint narrow recheck');
@@ -759,12 +911,17 @@ void main() {
     ],
   };
   eq('A2-2 data[] 数组取首项', listOf(detailArr['data']).length, 1);
-  eq('A2-2 dataOf 对数组 data 回空 Map(旧 bug 根因)',
-      dataOf(detailArr).isEmpty, true);
-  eq('A2-2 name(实测键 name)',
-      safeStr(listOf(detailArr['data']).first['name']), '跑步必听｜超燃英文歌');
-  eq('A2-2 无 playcount 键(playCount 如实 0)',
-      listOf(detailArr['data']).first.containsKey('playcount'), false);
+  eq('A2-2 dataOf 对数组 data 回空 Map(旧 bug 根因)', dataOf(detailArr).isEmpty, true);
+  eq(
+    'A2-2 name(实测键 name)',
+    safeStr(listOf(detailArr['data']).first['name']),
+    '跑步必听｜超燃英文歌',
+  );
+  eq(
+    'A2-2 无 playcount 键(playCount 如实 0)',
+    listOf(detailArr['data']).first.containsKey('playcount'),
+    false,
+  );
   // §R1-A-8：searchSuggest 的 data 是数组分组，data['records'] 恒 null。
   final suggestArr = <String, dynamic>{
     'status': 1,
@@ -780,55 +937,67 @@ void main() {
   };
   final sugGroups = listOf(suggestArr['data']);
   eq('R1-A-8 data[] 数组分组', sugGroups.length, 1);
-  eq('R1-A-8 词条在 RecordDatas[].HintInfo',
-      safeStr(listOf(sugGroups.first['RecordDatas']).first['HintInfo']), '晴天');
-  eq('R1-A-8 dataOf 对数组 data 回空 Map',
-      dataOf(suggestArr).isEmpty, true);
+  eq(
+    'R1-A-8 词条在 RecordDatas[].HintInfo',
+    safeStr(listOf(sugGroups.first['RecordDatas']).first['HintInfo']),
+    '晴天',
+  );
+  eq('R1-A-8 dataOf 对数组 data 回空 Map', dataOf(suggestArr).isEmpty, true);
   // §A3-1（批N2-A）：非 VIP 带 key 的失败形态顶层 error_code=35104。
   final play35104 = <String, dynamic>{
-    'status': 0, 'error_code': 35104, 'error': 'Hash not found',
+    'status': 0,
+    'error_code': 35104,
+    'error': 'Hash not found',
   };
-  eq('A3-1 35104 失败形态取 error_code',
-      safeInt(play35104['errcode'] ?? play35104['error_code']), 35104);
+  eq(
+    'A3-1 35104 失败形态取 error_code',
+    safeInt(play35104['errcode'] ?? play35104['error_code']),
+    35104,
+  );
 
   // ══ 批3-F2 · 网络层诚实化新契约（旧锚点全部保留，仅追加）══
   group('F2 network honesty contract');
   const plainPage = CommentPage();
-  eq('F2 CommentPage 旧构造 blockedReason 默认 null',
-      plainPage.blockedReason, null);
-  eq('F2 CommentPage toMap 含 blockedReason 键',
-      plainPage.toMap().containsKey('blockedReason'), true);
+  eq('F2 CommentPage 旧构造 blockedReason 默认 null', plainPage.blockedReason, null);
+  eq(
+    'F2 CommentPage toMap 含 blockedReason 键',
+    plainPage.toMap().containsKey('blockedReason'),
+    true,
+  );
   final blocked = CommentPage(blockedReason: '接口返回非 JSON');
-  eq('F2 受限页 blockedReason 透传', blocked.blockedReason,
-      '接口返回非 JSON');
-  eq('F2 受限页 toMap 保留原因',
-      blocked.toMap()['blockedReason'], '接口返回非 JSON');
+  eq('F2 受限页 blockedReason 透传', blocked.blockedReason, '接口返回非 JSON');
+  eq('F2 受限页 toMap 保留原因', blocked.toMap()['blockedReason'], '接口返回非 JSON');
   final waf = commentBlockedReason(
-      KugouApiException(-3, 'invalid json from commentMusic: Access Deny !!!'));
-  eq('F2 WAF 非 JSON(-3) 原因含「非 JSON」',
-      waf.contains('非 JSON'), true);
-  eq('F2 WAF 原因含「安全策略拦截」',
-      waf.contains('安全策略拦截'), true);
-  eq('F2 WAF 原因含原始 WAF 文案',
-      waf.contains('Access Deny !!!'), true);
-  eq('F2 其他异常原因不冒充 WAF',
-      commentBlockedReason(KugouApiException(403, 'http 403: blocked'))
-          .contains('接口响应异常'),
-      true);
+    KugouApiException(-3, 'invalid json from commentMusic: Access Deny !!!'),
+  );
+  eq('F2 WAF 非 JSON(-3) 原因含「非 JSON」', waf.contains('非 JSON'), true);
+  eq('F2 WAF 原因含「安全策略拦截」', waf.contains('安全策略拦截'), true);
+  eq('F2 WAF 原因含原始 WAF 文案', waf.contains('Access Deny !!!'), true);
+  eq(
+    'F2 其他异常原因不冒充 WAF',
+    commentBlockedReason(KugouApiException(403, 'http 403: blocked'))
+        .contains('接口响应异常'),
+    true,
+  );
   final okState = DailyRecommendResult.ok(const <SongBrief>[]);
-  eq('F2 每日推荐空列表 → empty 态', okState.state,
-      DailyRecommendState.empty);
-  eq('F2 每日推荐 200103 → loginRequired 态',
-      DailyRecommendResult.loginRequired().state,
-      DailyRecommendState.loginRequired);
-  eq('F2 loginRequired 不可写缓存',
-      DailyRecommendResult.loginRequired().cacheable, false);
-  eq('F2 error 不可写缓存',
-      DailyRecommendResult.error().cacheable, false);
-  eq('F2 empty 可写缓存',
-      DailyRecommendResult.ok(const <SongBrief>[]).cacheable, true);
-  eq('F2 结果仍是 List<SongBrief>（home_page 零改动）',
-      okState is List<Object>, true);
+  eq('F2 每日推荐空列表 → empty 态', okState.state, DailyRecommendState.empty);
+  eq(
+    'F2 每日推荐 200103 → loginRequired 态',
+    DailyRecommendResult.loginRequired().state,
+    DailyRecommendState.loginRequired,
+  );
+  eq(
+    'F2 loginRequired 不可写缓存',
+    DailyRecommendResult.loginRequired().cacheable,
+    false,
+  );
+  eq('F2 error 不可写缓存', DailyRecommendResult.error().cacheable, false);
+  eq(
+    'F2 empty 可写缓存',
+    DailyRecommendResult.ok(const <SongBrief>[]).cacheable,
+    true,
+  );
+  eq('F2 结果仍是 List<SongBrief>（home_page 零改动）', okState is List<Object>, true);
 
   // ══ 批N3-B · A6 用户域歌单写锚点（原 main 收尾后独立函数）══
   n3b_playlist_write_truth();
@@ -850,28 +1019,59 @@ Map<String, dynamic> _cm(Object? v) =>
 void n3b_playlist_write_truth() {
   // A6-2 建歌单：listid 路径 = data.info.listid（data.listid 不存在，旧假设证伪）。
   final addList = {
-    'status': 1, 'error_code': 0,
-    'data': {'info': {'listid': 41, 'list_create_listid': 41,
-      'global_collection_id': 'collection_3_1666835066_41_0',
-      'name': 'N3B实测vip40241', 'status': 1, 'code': 1, 'count': 0,
-      'list_ver': 0, 'type': 0, 'source': 1},
-      'list_count': 1, 'total_ver': 1, 'userid': 1666835066},
+    'status': 1,
+    'error_code': 0,
+    'data': {
+      'info': {
+        'listid': 41,
+        'list_create_listid': 41,
+        'global_collection_id': 'collection_3_1666835066_41_0',
+        'name': 'N3B实测vip40241',
+        'status': 1,
+        'code': 1,
+        'count': 0,
+        'list_ver': 0,
+        'type': 0,
+        'source': 1,
+      },
+      'list_count': 1,
+      'total_ver': 1,
+      'userid': 1666835066,
+    },
   };
   final al = dataOf(_cm(addList));
   final info = _cm(al['info']);
   eq('A6-2 info.listid==41', safeInt(info['listid']), 41);
-  eq('A6-2 info.list_create_listid==41', safeInt(info['list_create_listid']), 41);
+  eq(
+    'A6-2 info.list_create_listid==41',
+    safeInt(info['list_create_listid']),
+    41,
+  );
   eq('A6-2 data.listid 不存在', al['listid'], null);
 
   // A6-3 加歌回执 data.info[] 逐曲（fileid/audio_id/hash 大写回显）。
   final addSong = {
-    'status': 1, 'error_code': 0,
-    'data': {'listid': 41, 'cursor': '202611|131071', 'status': 1,
-      'pre_list_ver': 0, 'list_ver': 1, 'del_fileids': null,
-      'info': [{'fileid': 1, 'number': 1,
-        'hash': 'FAB30A43449D8C12528DD9D83A7693E7',
-        'name': '贝瓦儿歌 - 一只哈巴狗.mp3', 'audio_id': 1049676742,
-        'language': '国语', 'csong': 0}]},
+    'status': 1,
+    'error_code': 0,
+    'data': {
+      'listid': 41,
+      'cursor': '202611|131071',
+      'status': 1,
+      'pre_list_ver': 0,
+      'list_ver': 1,
+      'del_fileids': null,
+      'info': [
+        {
+          'fileid': 1,
+          'number': 1,
+          'hash': 'FAB30A43449D8C12528DD9D83A7693E7',
+          'name': '贝瓦儿歌 - 一只哈巴狗.mp3',
+          'audio_id': 1049676742,
+          'language': '国语',
+          'csong': 0,
+        },
+      ],
+    },
   };
   final asd = dataOf(_cm(addSong));
   final items = listOf(asd['info']);
@@ -880,9 +1080,18 @@ void n3b_playlist_write_truth() {
   eq('A6-3 fileid', safeInt(_cm(items[0])['fileid']), 1);
 
   // A6-4 删歌 data.list_ver 递增 + count。
-  final delSongs = {'status': 1, 'error_code': 0,
-    'data': {'listid': 41, 'pre_list_ver': 1, 'list_ver': 1, 'count': 1,
-      'status': 1, 'cursor': '202611|131071'}};
+  final delSongs = {
+    'status': 1,
+    'error_code': 0,
+    'data': {
+      'listid': 41,
+      'pre_list_ver': 1,
+      'list_ver': 1,
+      'count': 1,
+      'status': 1,
+      'cursor': '202611|131071',
+    },
+  };
   final ds = dataOf(_cm(delSongs));
   eq('A6-4 count==1', safeInt(ds['count']), 1);
   eq('A6-4 list_ver==1', safeInt(ds['list_ver']), 1);
@@ -893,24 +1102,55 @@ void n3b_playlist_write_truth() {
 
   // A6-1 user_playlist item 41 键锚点子集（无 specialname/imgurl 旧口径）。
   final upItem = <String, dynamic>{
-    'listid': 1, 'global_collection_id': 'collection_3_1666835066_1_0',
-    'name': '我喜欢', 'pic': 'http://imge.kugou.com/x.jpg', 'count': 25,
-    'type': 0, 'status': 1, 'is_def': 1, 'is_mine': 1, 'is_pri': 0,
-    'is_publish': 1, 'incr_sync': 1, 'list_ver': 7,
-    'list_create_userid': 1666835066, 'list_create_listid': 1,
-    'list_create_username': '云淡风清', 'create_time': 1700000000,
-    'update_time': 1794440000, 'tags': '', 'musiclib_tags': <dynamic>[],
-    'trans_param': <String, dynamic>{}, 'per_num': 0, 'pub_new': 0,
-    'pub_type': 0, 'source': 0, 'sort': 0, 'sound_quality': 0,
-    'radio_id': 0, 'kq_talent': 0, 'm_count': 0, 'per_count': 0,
-    'pub_time': 0, 'is_del': 0, 'is_drop': 0, 'is_edit': 1,
-    'is_per': 0, 'is_featured': 0, 'is_custom_pic': 1, 'intro': '',
-    'create_user_pic': 'http://imge.kugou.com/y.jpg', 'list_create_gid': 0,
+    'listid': 1,
+    'global_collection_id': 'collection_3_1666835066_1_0',
+    'name': '我喜欢',
+    'pic': 'http://imge.kugou.com/x.jpg',
+    'count': 25,
+    'type': 0,
+    'status': 1,
+    'is_def': 1,
+    'is_mine': 1,
+    'is_pri': 0,
+    'is_publish': 1,
+    'incr_sync': 1,
+    'list_ver': 7,
+    'list_create_userid': 1666835066,
+    'list_create_listid': 1,
+    'list_create_username': '云淡风清',
+    'create_time': 1700000000,
+    'update_time': 1794440000,
+    'tags': '',
+    'musiclib_tags': <dynamic>[],
+    'trans_param': <String, dynamic>{},
+    'per_num': 0,
+    'pub_new': 0,
+    'pub_type': 0,
+    'source': 0,
+    'sort': 0,
+    'sound_quality': 0,
+    'radio_id': 0,
+    'kq_talent': 0,
+    'm_count': 0,
+    'per_count': 0,
+    'pub_time': 0,
+    'is_del': 0,
+    'is_drop': 0,
+    'is_edit': 1,
+    'is_per': 0,
+    'is_featured': 0,
+    'is_custom_pic': 1,
+    'intro': '',
+    'create_user_pic': 'http://imge.kugou.com/y.jpg',
+    'list_create_gid': 0,
   };
   eq('A6-1 listid', safeInt(upItem['listid']), 1);
   eq('A6-1 无 specialname 旧口径', upItem.containsKey('specialname'), false);
   eq('A6-1 无 imgurl 旧口径（是 pic）', upItem.containsKey('imgurl'), false);
   eq('A6-1 41键全（实测键数）', upItem.length, 41);
-  eq('A6-1 global_collection_id 前缀',
-      (upItem['global_collection_id'] as String).startsWith('collection_'), true);
+  eq(
+    'A6-1 global_collection_id 前缀',
+    (upItem['global_collection_id'] as String).startsWith('collection_'),
+    true,
+  );
 }

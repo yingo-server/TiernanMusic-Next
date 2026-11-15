@@ -27,17 +27,21 @@ List<TranslatedLine> alignTranslation(
     final a = originalLines;
     final b = translatedLines;
     if (a.length != b.length) {
-      Log.w('ep.translation',
-          'line count mismatch orig=${a.length} trans=${b.length}, align min only');
+      Log.w(
+        'ep.translation',
+        'line count mismatch orig=${a.length} trans=${b.length}, align min only',
+      );
     }
     final n = a.length < b.length ? a.length : b.length;
     final out = <TranslatedLine>[];
     for (var i = 0; i < n; i++) {
-      out.add(TranslatedLine(
-        original: safeStr(a[i]),
-        translation: safeStr(b[i]),
-        lineIndex: i,
-      ));
+      out.add(
+        TranslatedLine(
+          original: safeStr(a[i]),
+          translation: safeStr(b[i]),
+          lineIndex: i,
+        ),
+      );
     }
     Log.d(_tag, 'alignTranslation aligned=$n');
     return List<TranslatedLine>.unmodifiable(out);

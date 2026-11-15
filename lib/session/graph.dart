@@ -1,15 +1,41 @@
 // L6 session · 装配图（依赖 core/logic 单例；纯数据，无业务逻辑）
 // 纯契约（NavEntry/SurfaceModule）在 contracts.dart，本文件只放有依赖的部分。
 import '../bridges/bridge_core.dart'
-    show KugouClient, SongDao, PlaylistDao, HistoryDao, DownloadStore,
-        KeyValueSettings, StoragePaths, CacheService, NotificationMeta,
-        NotificationControls, MusicAudioHandler;
+    show
+        KugouClient,
+        SongDao,
+        PlaylistDao,
+        HistoryDao,
+        DownloadStore,
+        KeyValueSettings,
+        StoragePaths,
+        CacheService,
+        NotificationMeta,
+        NotificationControls,
+        MusicAudioHandler;
 import '../bridges/bridge_logic.dart'
-    show SearchLogic, PlaylistLogic, RankLogic, AuthLogic, LyricsLogic,
-        PlaybackService, HistoryRecorder, DownloadManager, RecommendLogic,
-        ArtistLogic, FmLogic, SearchTypedLogic, PlaylistWriteLogic, UserLogic,
-        CollectLogic, CommentLogic, MvLogic, AlbumLogic, AccountLogic,
-        VerificationLogic, TranslationLogic;
+    show
+        SearchLogic,
+        PlaylistLogic,
+        RankLogic,
+        AuthLogic,
+        LyricsLogic,
+        PlaybackService,
+        HistoryRecorder,
+        DownloadManager,
+        RecommendLogic,
+        ArtistLogic,
+        FmLogic,
+        SearchTypedLogic,
+        PlaylistWriteLogic,
+        UserLogic,
+        CollectLogic,
+        CommentLogic,
+        MvLogic,
+        AlbumLogic,
+        AccountLogic,
+        VerificationLogic,
+        TranslationLogic;
 import 'contracts.dart' show NavEntry, SurfaceModule;
 
 export 'contracts.dart' show NavEntry, SurfaceModule;
@@ -78,11 +104,11 @@ class AppGraph {
   });
 
   factory AppGraph.empty() => const AppGraph(
-        modules: const <String>[],
-        songDao: null,
-        historyDao: null,
-        client: null,
-      );
+    modules: const <String>[],
+    songDao: null,
+    historyDao: null,
+    client: null,
+  );
 
   final List<String> modules;
   final SearchLogic? search;

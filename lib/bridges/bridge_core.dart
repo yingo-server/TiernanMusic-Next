@@ -13,17 +13,31 @@ export '../core/database/dao.dart'
 export '../core/database/entities.dart'
     show SongRecord, PlaylistMeta, PlayHistoryEntry;
 export '../core/net/endpoints/models.dart'
-    show SongBrief, SearchResult, PlaylistBrief, PlaylistDetail, TrackPage, LyricResult;
+    show
+        SongBrief,
+        SearchResult,
+        PlaylistBrief,
+        PlaylistDetail,
+        TrackPage,
+        LyricResult;
 // R3-C #3：PlaylistDetail 已含实测字段 listVer（models.dart re-export 自
 // playlist_models.dart），无需重复 export。
 // MV 域模型（批1-B · GAP #16）：ep.mv 端点强类型结果经 core 桥转出。
 export '../core/net/endpoints/mv_endpoints.dart'
     show MvBrief, MvQuality, MvPlayResult;
-export '../core/memory/lru_cache.dart' show LruCache, CacheStats, LruEvictCallback;
+export '../core/memory/lru_cache.dart'
+    show LruCache, CacheStats, LruEvictCallback;
 export '../core/memory/cache_keys.dart'
-    show buildKey, prefixOf, namespacePrefixOf, parseKey, CacheKeyInfo, sortedQuery;
+    show
+        buildKey,
+        prefixOf,
+        namespacePrefixOf,
+        parseKey,
+        CacheKeyInfo,
+        sortedQuery;
 // L6 surface 装配所需（app_root 组装 logic 单例时的构造参数类型）
-export '../core/net/kugou_client.dart' show KugouClient, KugouSession, KugouApiException, EndpointRegistry;
+export '../core/net/kugou_client.dart'
+    show KugouClient, KugouSession, KugouApiException, EndpointRegistry;
 export '../core/storage/settings_store.dart' show KeyValueSettings;
 
 // ── 封面取色（动态主题）：只取字节，解码在 surface ──
@@ -34,15 +48,22 @@ export '../core/algorithms/color_extract.dart'
     show ColorSeed, ThemePalette, extractDominant, fromSeed;
 export '../core/l10n/strings.dart' show TnStrings;
 // ── V2：缓存 ⊃ 预读 统一服务（L6 session 经本桥取） ──
-export '../core/cache/cache_service.dart'
-    show CacheService, CacheOrigin;
+export '../core/cache/cache_service.dart' show CacheService, CacheOrigin;
 // V2：session 构造预读请求需要 Endpoint 类型与注册表（core 内部数据类型，经桥转出）。
 export '../core/net/kugou_client.dart' show Endpoint, EndpointRegistry;
 // ── V2：core/audio 成熟库网关（L6 session 经本桥取引擎，L7 不碰引擎） ──
 export '../core/audio/audio_gateway.dart'
-    show AudioEngine, NullAudioEngine, JustAudioEngine, AudioEvent, AudioEventType;
+    show
+        AudioEngine,
+        NullAudioEngine,
+        JustAudioEngine,
+        AudioEvent,
+        AudioEventType;
 export '../core/audio/notification_gateway.dart'
-    show MusicAudioHandler, NotificationMeta, NotificationControls,
+    show
+        MusicAudioHandler,
+        NotificationMeta,
+        NotificationControls,
         initNotification;
 // 数据库开启函数 DatabaseOpener（bootloader await 用，避免 DAO 首访 fail-fast）
 export '../core/net/database_opener.dart' show openDatabase;
@@ -56,7 +77,12 @@ export '../core/database/dao.dart' show AccountDao;
 export '../core/net/endpoints/translation_models.dart'
     show TranslatedLine, TranslationResult, LyricsDisplayMode;
 export '../core/net/endpoints/translation_endpoints.dart'
-    show alignTranslation, extractOriginalLines, fetchTranslation, fetchTranslationFromContent, extractEmbeddedTranslatedLines;
+    show
+        alignTranslation,
+        extractOriginalLines,
+        fetchTranslation,
+        fetchTranslationFromContent,
+        extractEmbeddedTranslatedLines;
 // ── 收藏域数据层（批2-C）：写操作结果模型经 core 桥转出 ──
 export '../core/net/endpoints/collect_endpoints.dart' show CollectResult;
 // ── 音质档位 + 每日推荐（功能对齐批3-C · GAP #30 / #20）──
@@ -80,8 +106,15 @@ export '../core/net/endpoints/artist_endpoints.dart'
     show ArtistBrief, ArtistDetail, AlbumBrief;
 // ── 认证域（功能对齐批5-A · GAP #31）：短信登录结果模型经 core 桥转出 ──
 export '../core/net/endpoints/auth_endpoints.dart'
-    show SmsLoginResult, LoginResult, maskMobile,
-        sendSmsCode, smsLogin, loginByPwd, loginByToken, devLogout;
+    show
+        SmsLoginResult,
+        LoginResult,
+        maskMobile,
+        sendSmsCode,
+        smsLogin,
+        loginByPwd,
+        loginByToken,
+        devLogout;
 // ── 六类分类搜索类型枚举（功能对齐批5-C）：SearchType 经 core 桥转出 ──
 export '../core/net/endpoints/search_typed_endpoints.dart' show SearchType;
 // ── 用户域（批6-A）：UserProfile 强类型模型经 core 桥转出 ──
@@ -121,9 +154,12 @@ export '../core/net/endpoints/artist_endpoints.dart'
         kArtistDetailPath,
         kArtistListPath;
 export '../core/net/endpoints/collect_endpoints.dart'
-    show cancelCollectByHash, collectSongByHash, favoriteListId, getFavoriteCount;
-export '../core/net/endpoints/fm_endpoints.dart'
-    show getFmPlay, getFmSongs;
+    show
+        cancelCollectByHash,
+        collectSongByHash,
+        favoriteListId,
+        getFavoriteCount;
+export '../core/net/endpoints/fm_endpoints.dart' show getFmPlay, getFmSongs;
 export '../core/net/endpoints/mv_endpoints.dart'
     show getMvBySong, getVideoQualities, getVideoUrl;
 export '../core/net/endpoints/search_typed_endpoints.dart'
@@ -140,4 +176,3 @@ export '../core/net/endpoints/user_endpoints.dart'
 // 与 bridge_logic 的出口存在重复符号。按76 原则双桥唯一通道要求暂保留本行，后续统一收敛至单一出口。
 export '../core/net/endpoints/comment_endpoints.dart'
     show getMusicComments, getCommentFloor, getCommentCount;
-

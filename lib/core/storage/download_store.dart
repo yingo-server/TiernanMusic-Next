@@ -27,24 +27,24 @@ class DownloadRecord {
   final bool complete; // 是否已完整提交（rename 成功）
 
   Map<String, dynamic> toJson() => {
-        'hash': hash,
-        'fileName': fileName,
-        'relativePath': relativePath,
-        'bytes': bytes,
-        'downloadedAt': downloadedAt,
-        'quality': quality,
-        'complete': complete,
-      };
+    'hash': hash,
+    'fileName': fileName,
+    'relativePath': relativePath,
+    'bytes': bytes,
+    'downloadedAt': downloadedAt,
+    'quality': quality,
+    'complete': complete,
+  };
 
   static DownloadRecord fromJson(Map<String, dynamic> j) => DownloadRecord(
-        hash: j['hash'] as String? ?? '',
-        fileName: j['fileName'] as String? ?? '',
-        relativePath: j['relativePath'] as String? ?? '',
-        bytes: (j['bytes'] as num?)?.toInt() ?? 0,
-        downloadedAt: j['downloadedAt'] as String? ?? '',
-        quality: j['quality'] as String? ?? '',
-        complete: j['complete'] as bool? ?? false,
-      );
+    hash: j['hash'] as String? ?? '',
+    fileName: j['fileName'] as String? ?? '',
+    relativePath: j['relativePath'] as String? ?? '',
+    bytes: (j['bytes'] as num?)?.toInt() ?? 0,
+    downloadedAt: j['downloadedAt'] as String? ?? '',
+    quality: j['quality'] as String? ?? '',
+    complete: j['complete'] as bool? ?? false,
+  );
 }
 
 /// 下载存储门面。
@@ -225,7 +225,9 @@ class DownloadStore {
   /// 打开记录对应实体文件的绝对路径；不存在返回 null。
   String? absolutePathOf(DownloadRecord r) {
     try {
-      final f = File('${_downloadsDir.path}${Platform.pathSeparator}${r.relativePath}');
+      final f = File(
+        '${_downloadsDir.path}${Platform.pathSeparator}${r.relativePath}',
+      );
       return f.existsSync() ? f.path : null;
     } catch (e, st) {
       Log.e('dlstore', 'absolutePathOf(${r.hash}) failed', e, st);
@@ -238,8 +240,9 @@ class DownloadStore {
     try {
       final rec = _index[hash] ?? getByHash(hash);
       if (rec != null) {
-        final f =
-            File('${_downloadsDir.path}${Platform.pathSeparator}${rec.relativePath}');
+        final f = File(
+          '${_downloadsDir.path}${Platform.pathSeparator}${rec.relativePath}',
+        );
         if (f.existsSync()) f.deleteSync();
       }
       remove(hash);

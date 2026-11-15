@@ -16,8 +16,7 @@ enum NetworkPhase { idle, resolving, buffering }
 
 /// 一次阶段切换事件。
 class NetworkPhaseEvent {
-  NetworkPhaseEvent(this.phase, {this.detail = ''})
-      : at = DateTime.now();
+  NetworkPhaseEvent(this.phase, {this.detail = ''}) : at = DateTime.now();
 
   final NetworkPhase phase;
 

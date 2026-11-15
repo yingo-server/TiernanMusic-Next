@@ -27,8 +27,7 @@ const String kKugouRsaPemBase64Playlist =
 
 const String _b64Chars =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-const String _randLower =
-    'abcdefghijklmnopqrstuvwxyz0123456789';
+const String _randLower = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
 String _base64EncodePadded(List<int> bytes) {
   final sb = StringBuffer();
@@ -73,15 +72,14 @@ String rsaEncrypt2(String plaintext, {String? pemBase64}) {
     // 大端字节 → limb（低 limb 在前），模幂 e=65537。
     final l = <int>[];
     for (var i = kLen; i > 0; i -= 4) {
-      l.add((em[i - 4] << 24) |
-          (em[i - 3] << 16) |
-          (em[i - 2] << 8) |
-          em[i - 1]);
+      l.add(
+        (em[i - 4] << 24) | (em[i - 3] << 16) | (em[i - 2] << 8) | em[i - 1],
+      );
     }
-    final modulusHex =
-        RsaRaw.modulusHexFromPem(pemBase64 ?? kKugouRsaPemBase64Playlist);
-    final c = BigIntL(l)
-        .modPow(BigIntL([65537]), BigIntL.fromHex(modulusHex));
+    final modulusHex = RsaRaw.modulusHexFromPem(
+      pemBase64 ?? kKugouRsaPemBase64Playlist,
+    );
+    final c = BigIntL(l).modPow(BigIntL([65537]), BigIntL.fromHex(modulusHex));
     return c.toHex(padBytes: kLen).toUpperCase();
   } catch (e, st) {
     Log.e(_tag, 'rsaEncrypt2 failed (plaintext not logged)', e, st);
@@ -92,20 +90,25 @@ String rsaEncrypt2(String plaintext, {String? pemBase64}) {
 /// playlistAesEncrypt 等价实现结果。
 class PlaylistAesResult {
   PlaylistAesResult(this.key, this.cipherBase64);
+
   /// 随机 6 位小写种子（明文侧参与 rsaEncrypt2 的 aes 字段）。
   final String key;
+
   /// Base64(AES-128-CBC-PKCS7(JSON))。
   final String cipherBase64;
 }
 
 /// playlistAesEncrypt：key=randomString(6) 小写；encryptKey=md5(key)[0,16)、
 /// iv=md5(key)[16,32)；AES-128-CBC PKCS7；输出 Base64。
-PlaylistAesResult playlistAesEncrypt(Map<String, Object?> data,
-    {Random? rng}) {
+PlaylistAesResult playlistAesEncrypt(Map<String, Object?> data, {Random? rng}) {
   try {
     final r = rng ?? Random.secure();
     final key = String.fromCharCodes(
-        List<int>.generate(6, (_) => _randLower.codeUnitAt(r.nextInt(_randLower.length))));
+      List<int>.generate(
+        6,
+        (_) => _randLower.codeUnitAt(r.nextInt(_randLower.length)),
+      ),
+    );
     final digest = md5Hex(key);
     // 批R1-A 实测（2026-11-13）：上游 CryptoJS utf8WordArray(md5hex 字符串)
     // → key/iv 是 **md5 hex 字符串的 ASCII 字节**（AES-128 取前/后 16 字符），
@@ -114,7 +117,10 @@ PlaylistAesResult playlistAesEncrypt(Map<String, Object?> data,
     final iv = digest.substring(16, 32);
     final plain = utf8.encode(jsonEncode(data));
     final cipher = AesCbc.encrypt(
-        Uint8List.fromList(plain), _asciiBytes(encKey), _asciiBytes(iv));
+      Uint8List.fromList(plain),
+      _asciiBytes(encKey),
+      _asciiBytes(iv),
+    );
     return PlaylistAesResult(key, _base64EncodePadded(cipher));
   } catch (e, st) {
     Log.e(_tag, 'playlistAesEncrypt failed', e, st);
@@ -129,8 +135,11 @@ String playlistAesDecrypt(String cipherBase64, String key) {
     final digest = md5Hex(key);
     final encKey = digest.substring(0, 16);
     final iv = digest.substring(16, 32);
-    final out = AesCbc.decrypt(_b64ToBytes(cipherBase64),
-        _asciiBytes(encKey), _asciiBytes(iv));
+    final out = AesCbc.decrypt(
+      _b64ToBytes(cipherBase64),
+      _asciiBytes(encKey),
+      _asciiBytes(iv),
+    );
     return utf8.decode(out, allowMalformed: true);
   } catch (e, st) {
     Log.e(_tag, 'playlistAesDecrypt failed', e, st);

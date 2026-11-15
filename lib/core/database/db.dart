@@ -101,7 +101,10 @@ class DatabaseService {
         removed++;
         Log.d(_tag, 'removed isar file=$name');
       }
-      Log.w(_tag, 'deleted $removed isar file(s) dir=$dir (settings.json kept)');
+      Log.w(
+        _tag,
+        'deleted $removed isar file(s) dir=$dir (settings.json kept)',
+      );
     } catch (e, st) {
       Log.e(_tag, 'deleteAll failed dir=$dir', e, st);
       rethrow;

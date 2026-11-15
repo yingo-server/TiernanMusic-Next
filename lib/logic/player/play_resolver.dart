@@ -114,15 +114,17 @@ class PlayResolver {
         }
 
         final parsed = parse(res);
-        final decision = decide(QualityAttempt(
-          quality: q,
-          status: parsed.status,
-          privStatus: parsed.privStatus,
-          hasUrl: parsed.urls.isNotEmpty,
-          // priv_status 键缺失时不得当作 0（匿名免费曲）
-          privKnown: res.containsKey('priv_status') &&
-              res['priv_status'] != null,
-        ));
+        final decision = decide(
+          QualityAttempt(
+            quality: q,
+            status: parsed.status,
+            privStatus: parsed.privStatus,
+            hasUrl: parsed.urls.isNotEmpty,
+            // priv_status 键缺失时不得当作 0（匿名免费曲）
+            privKnown:
+                res.containsKey('priv_status') && res['priv_status'] != null,
+          ),
+        );
 
         if (decision == PlayDecision.needVerify ||
             decision == PlayDecision.noPrivilege) {
@@ -143,23 +145,19 @@ class PlayResolver {
         if (decision == PlayDecision.play) {
           var urls = parsed.urls;
           if (checkHealth && healthChecker != null) {
-            final healthy = await healthChecker!.firstHealthy(
-              <String>[...parsed.urls, ...parsed.backupUrls],
-              maxTries: 3,
-            );
+            final healthy = await healthChecker!.firstHealthy(<String>[
+              ...parsed.urls,
+              ...parsed.backupUrls,
+            ], maxTries: 3);
             if (healthy == null) {
               lastError = 'all urls unhealthy($q)';
               Log.w(_tag, 'resolve $q: all urls unhealthy, downgrade');
               continue; // 断链 → 降一档
             }
             // 命中项前置，其余保序保留（播放器仍可自行回退）
-            urls = <String>[
-              healthy,
-              ...parsed.urls.where((u) => u != healthy),
-            ];
+            urls = <String>[healthy, ...parsed.urls.where((u) => u != healthy)];
           }
-          Log.d(_tag,
-              'resolve ok q=$q urls=${urls.length} attempts=$attempts');
+          Log.d(_tag, 'resolve ok q=$q urls=${urls.length} attempts=$attempts');
           return PlayResolveResult(
             decision: PlayDecision.play,
             quality: q,
@@ -174,7 +172,8 @@ class PlayResolver {
         }
 
         // downgrade：继续下一档
-        lastError = 'status=${parsed.status} priv=${parsed.privStatus} no url($q)';
+        lastError =
+            'status=${parsed.status} priv=${parsed.privStatus} no url($q)';
         Log.d(_tag, 'resolve $q → downgrade');
       }
       Log.w(_tag, 'resolve exhausted after $attempts attempts');

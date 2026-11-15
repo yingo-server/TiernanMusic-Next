@@ -5,6 +5,7 @@
 
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' show SongBrief;
+
 const String kDownloadModelsTag = 'logic.download';
 
 /// 下载任务状态。
@@ -67,7 +68,9 @@ class DownloadTask {
   /// 展示名："歌手 - 标题"，空则回退 hash。
   String get displayName {
     try {
-      final raw = song.singer.isEmpty ? song.name : '${song.singer} - ${song.name}';
+      final raw = song.singer.isEmpty
+          ? song.name
+          : '${song.singer} - ${song.name}';
       return raw.trim().isEmpty ? hash : raw.trim();
     } catch (e, st) {
       Log.e(kDownloadModelsTag, 'DownloadTask.displayName failed', e, st);

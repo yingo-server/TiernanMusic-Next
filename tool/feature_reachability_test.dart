@@ -35,21 +35,55 @@ void main() {
   final registered = endpoints;
 
   // ① 端点声明 = 注册
-  check('endpoints declared == registered (${endpoints.length})',
-      endpoints.difference(registered).isEmpty);
+  check(
+    'endpoints declared == registered (${endpoints.length})',
+    endpoints.difference(registered).isEmpty,
+  );
 
   // ② 核心功能点的端点必须齐备
   const required = <String>[
-    'searchSong', 'searchSuggest', 'searchHot', 'playUrlV5', 'privilegeLite',
-    'playlistRecommend', 'playlistDetail', 'playlistTracks', 'rankList',
-    'rankInfo', 'lyricSearch', 'lyricDownload', 'artistDetail', 'artistAudios',
-    'albumDetail', 'albumSongs', 'playlistSimilar', 'recommendSongs',
-    'personalFm', 'fmSongs', 'mvDetail', 'videoDetail', 'videoUrl',
-    'loginQrKey', 'loginQrCheck', 'loginToken', 'smsLogin', 'sendSmsCode',
-    'commentMusic', 'commentFloor', 'commentCount', 'favoriteCount',
-    'userDetail', 'userCloud', 'songClimax', 'playHistoryUpload',
-    'playlistCreate', 'playlistDelete', 'playlistAddSongs', 'playlistDelSongs',
-    'playlistTags', 'userPlaylists',
+    'searchSong',
+    'searchSuggest',
+    'searchHot',
+    'playUrlV5',
+    'privilegeLite',
+    'playlistRecommend',
+    'playlistDetail',
+    'playlistTracks',
+    'rankList',
+    'rankInfo',
+    'lyricSearch',
+    'lyricDownload',
+    'artistDetail',
+    'artistAudios',
+    'albumDetail',
+    'albumSongs',
+    'playlistSimilar',
+    'recommendSongs',
+    'personalFm',
+    'fmSongs',
+    'mvDetail',
+    'videoDetail',
+    'videoUrl',
+    'loginQrKey',
+    'loginQrCheck',
+    'loginToken',
+    'smsLogin',
+    'sendSmsCode',
+    'commentMusic',
+    'commentFloor',
+    'commentCount',
+    'favoriteCount',
+    'userDetail',
+    'userCloud',
+    'songClimax',
+    'playHistoryUpload',
+    'playlistCreate',
+    'playlistDelete',
+    'playlistAddSongs',
+    'playlistDelSongs',
+    'playlistTags',
+    'userPlaylists',
   ];
   for (final e in required) {
     check('endpoint present: $e', endpoints.contains(e));
@@ -89,48 +123,63 @@ void main() {
   final bridgeLogic = read('lib/bridges/bridge_logic.dart');
 
   // 每个端点文件里的公开函数（top-level Future/返回类型函数）都必须被引用
-  final funcRe = RegExp(r'^(?:Future<[^>]*>|Future<void>|int|bool|String|List<[^>]*>)\s+(\w+)\s*\(',
-      multiLine: true);
+  final funcRe = RegExp(
+    r'^(?:Future<[^>]*>|Future<void>|int|bool|String|List<[^>]*>)\s+(\w+)\s*\(',
+    multiLine: true,
+  );
   var orphanCount = 0;
   for (final f in endpointFiles) {
     final src = read(f);
     for (final m in funcRe.allMatches(src)) {
       final name = m.group(1)!;
       if (name.startsWith('_') || name == 'main') continue;
-      final used = has(logicSrc, name) ||
+      final used =
+          has(logicSrc, name) ||
           has(surfaceSrc, name) ||
           has(bridgeCore, name) ||
           has(endpointSrc.replaceAll('Future<$name>', ''), '$name(');
       if (!used) {
         orphanCount++;
-        print('FAIL  endpoint function not referenced: $name (${f.split('/').last})');
+        print(
+          'FAIL  endpoint function not referenced: $name (${f.split('/').last})',
+        );
       }
     }
   }
   check('no orphan endpoint functions ($orphanCount)', orphanCount == 0);
 
   // ④ V2：logic 单例必须进 session 装配图且经桥暴露
-  for (final m in RegExp(r'final (\w+) = (?:step|_step)\(').allMatches(assembly)) {
+  for (final m in RegExp(
+    r'final (\w+) = (?:step|_step)\(',
+  ).allMatches(assembly)) {
     final name = m.group(1)!;
     check('logic wired in session: $name', true);
   }
-  check('session has logic steps',
-      RegExp(r"(?:step|_step)\(").allMatches(assembly).length >= 10);
+  check(
+    'session has logic steps',
+    RegExp(r"(?:step|_step)\(").allMatches(assembly).length >= 10,
+  );
 
   // ⑤ V2：L7 surface 仅占位（页面由独立 UI 模型重写），校验 session 模块注册表。
-  check('surface pages rebuilt',
-      File('lib/surface/app_root.dart').existsSync() &&
-      File('lib/surface/pages/home_page.dart').existsSync() &&
-      File('lib/surface/pages/player_page.dart').existsSync());
-  check('session registry installed',
-      has(assembly, 'ModuleRegistry.instance.install') ||
-      has(sessionSrc, 'ModuleRegistry'));
+  check(
+    'surface pages rebuilt',
+    File('lib/surface/app_root.dart').existsSync() &&
+        File('lib/surface/pages/home_page.dart').existsSync() &&
+        File('lib/surface/pages/player_page.dart').existsSync(),
+  );
+  check(
+    'session registry installed',
+    has(assembly, 'ModuleRegistry.instance.install') ||
+        has(sessionSrc, 'ModuleRegistry'),
+  );
 
   // ⑥ 零 needsProbe 恒空分支（占位即失败）
   final netAndLogic = endpointSrc + logicSrc;
-  check('no hardcoded needsProbe placeholders in net/logic',
-      !RegExp(r'needs probe', caseSensitive: false).hasMatch(netAndLogic) ||
-      RegExp(r'k\w*Probed\s*=\s*true').hasMatch(netAndLogic));
+  check(
+    'no hardcoded needsProbe placeholders in net/logic',
+    !RegExp(r'needs probe', caseSensitive: false).hasMatch(netAndLogic) ||
+        RegExp(r'k\w*Probed\s*=\s*true').hasMatch(netAndLogic),
+  );
 
   // ⑦ M3 与 miuix 现状
   final miuixImport = RegExp('^import\\s+.*miuix', multiLine: true);
@@ -139,34 +188,60 @@ void main() {
       .whereType<File>()
       .map((f) => read(f.path))
       .join('\n');
-  check('miuix fully removed (no import)',
-      !miuixImport.hasMatch(surfaceSrc) && !miuixImport.hasMatch(initSrc));
+  check(
+    'miuix fully removed (no import)',
+    !miuixImport.hasMatch(surfaceSrc) && !miuixImport.hasMatch(initSrc),
+  );
 
   // ── 10 语 i18n 全量（逐键同集）──
   final arbDir = Directory('lib/l10n');
-  final arbs = arbDir.listSync().whereType<File>()
-      .where((f) => f.path.endsWith('.arb')).map((f) => jsonDecode(read(f.path)) as Map)
+  final arbs = arbDir
+      .listSync()
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.arb'))
+      .map((f) => jsonDecode(read(f.path)) as Map)
       .toList();
   check('10 language arb files', arbs.length == 10);
-  final baseKeys = (arbs.first.keys.where((k) => !k.startsWith('@')).toList()..sort()).join(',');
-  check('arb 20 keys, all languages identical', baseKeys.split(',').length == 20 &&
-      arbs.every((m) {
-        final k = m.keys.where((x) => !x.startsWith('@')).toList()..sort();
-        return k.join(',') == baseKeys;
-      }));
-  check('TnStrings 10 supported languages', has(sessionSrc, 'supportedCodes') ||
-      has(read('lib/core/l10n/strings.dart'), "supportedCodes"));
-  check('locale persisted', has(read('lib/core/l10n/strings.dart'), 'ui.locale'));
+  final baseKeys =
+      (arbs.first.keys.where((k) => !k.startsWith('@')).toList()..sort()).join(
+        ',',
+      );
+  check(
+    'arb 20 keys, all languages identical',
+    baseKeys.split(',').length == 20 &&
+        arbs.every((m) {
+          final k = m.keys.where((x) => !x.startsWith('@')).toList()..sort();
+          return k.join(',') == baseKeys;
+        }),
+  );
+  check(
+    'TnStrings 10 supported languages',
+    has(sessionSrc, 'supportedCodes') ||
+        has(read('lib/core/l10n/strings.dart'), "supportedCodes"),
+  );
+  check(
+    'locale persisted',
+    has(read('lib/core/l10n/strings.dart'), 'ui.locale'),
+  );
 
-  check('favorites via 我喜欢 playlist (not deprecated 默认收藏)',
-      has(read('lib/core/net/endpoints/collect_endpoints.dart'), '我喜欢') &&
-      has(read('lib/core/net/endpoints/collect_endpoints.dart'), 'addSongsToPlaylist'));
-  check('playlistAddSongs uses x-router /v6/add_song',
-      has(client, "path: '/v6/add_song'"));
+  check(
+    'favorites via 我喜欢 playlist (not deprecated 默认收藏)',
+    has(read('lib/core/net/endpoints/collect_endpoints.dart'), '我喜欢') &&
+        has(
+          read('lib/core/net/endpoints/collect_endpoints.dart'),
+          'addSongsToPlaylist',
+        ),
+  );
+  check(
+    'playlistAddSongs uses x-router /v6/add_song',
+    has(client, "path: '/v6/add_song'"),
+  );
 
-  check('M3 ColorScheme in theme',
-      has(read('lib/surface/theme/tn_theme.dart'), 'ColorScheme.fromSeed') ||
-      has(sessionSrc, 'ColorScheme.fromSeed'));
+  check(
+    'M3 ColorScheme in theme',
+    has(read('lib/surface/theme/tn_theme.dart'), 'ColorScheme.fromSeed') ||
+        has(sessionSrc, 'ColorScheme.fromSeed'),
+  );
 
   print('pass=$pass fail=$fail');
   if (fail == 0) {

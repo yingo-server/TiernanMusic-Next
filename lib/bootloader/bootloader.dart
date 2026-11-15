@@ -108,12 +108,13 @@ class Bootstrap {
     final Future<bool> dbOpenFuture = core
         .openDatabase(paths.db().path)
         .then((opened) {
-      Log.d('boot', 'db opened=$opened');
-      return opened;
-    }).catchError((Object e, StackTrace st) {
-      Log.e('boot', 'db open failed', e, st);
-      throw StateError('db open failed: $e');
-    });
+          Log.d('boot', 'db opened=$opened');
+          return opened;
+        })
+        .catchError((Object e, StackTrace st) {
+          Log.e('boot', 'db open failed', e, st);
+          throw StateError('db open failed: $e');
+        });
 
     // 3) core 单例 + AuthLogic 单例（每步 try/catch 由 run 外层兜底留痕）。
     // 客户端带 L2 磁盘缓存 + 单飞合并（批R2）：
@@ -160,9 +161,11 @@ class Bootstrap {
 // init 调用点已不传这些实参。
 void installBootBridge() {
   bb.setRunBootImpl(
-      ({bool bypassIntegrity = false,
-        String? rootDir,
-        dynamic manifest,
-        Map<String, List<int>>? moduleBytes}) =>
-          Bootstrap.run(bypassIntegrity: bypassIntegrity, rootDir: rootDir));
+    ({
+      bool bypassIntegrity = false,
+      String? rootDir,
+      dynamic manifest,
+      Map<String, List<int>>? moduleBytes,
+    }) => Bootstrap.run(bypassIntegrity: bypassIntegrity, rootDir: rootDir),
+  );
 }

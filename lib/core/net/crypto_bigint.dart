@@ -4,7 +4,7 @@ import 'crypto_aes.dart' show CryptoException;
 
 class BigIntL {
   BigIntL(List<int> limbs, {bool littleEndian = true})
-      : limbs = _normalize(List<int>.from(limbs));
+    : limbs = _normalize(List<int>.from(limbs));
 
   /// 每元素 0..0xffffffff，低 limb 在前。
   final List<int> limbs;

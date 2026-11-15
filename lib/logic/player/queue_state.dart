@@ -51,7 +51,12 @@ class QueueState {
     }
   }
 
-  QueueState _with(List<SongBrief> newItems, int newIndex, {PlayMode? mode, int? seed}) {
+  QueueState _with(
+    List<SongBrief> newItems,
+    int newIndex, {
+    PlayMode? mode,
+    int? seed,
+  }) {
     try {
       return QueueState(
         items: List.unmodifiable(newItems),
@@ -195,8 +200,12 @@ class QueueState {
     }
   }
 
-  QueueState copyWith({List<SongBrief>? items, int? index, PlayMode? mode, int? seed}) =>
-      _with(items ?? this.items, index ?? this.index, mode: mode, seed: seed);
+  QueueState copyWith({
+    List<SongBrief>? items,
+    int? index,
+    PlayMode? mode,
+    int? seed,
+  }) => _with(items ?? this.items, index ?? this.index, mode: mode, seed: seed);
 
   @override
   String toString() {

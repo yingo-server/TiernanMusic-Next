@@ -45,12 +45,25 @@ export '../logic/catalog/mv_logic.dart' show MvLogic, kMvCacheSchemaVer;
 // MV 模型经 bridge_core 转出（mv_endpoints.dart 在 core/net/endpoints）
 // catalog 模型类型经 bridge_core 转出（models.dart 在 core/net/endpoints）
 export '../core/net/endpoints/models.dart'
-    show SongBrief, SearchResult, SearchSuggestItem, PlaylistBrief, PlaylistDetail, TrackPage, RankBrief, LyricResult;
+    show
+        SongBrief,
+        SearchResult,
+        SearchSuggestItem,
+        PlaylistBrief,
+        PlaylistDetail,
+        TrackPage,
+        RankBrief,
+        LyricResult;
 // ── comment logic 门面（评论域，批1-A） ──
 export '../logic/catalog/comment_logic.dart'
     show CommentLogic, kCommentCacheSchemaVer;
 export '../core/net/endpoints/comment_endpoints.dart'
-    show CommentItem, CommentPage, getMusicComments, getCommentFloor, getCommentCount;
+    show
+        CommentItem,
+        CommentPage,
+        getMusicComments,
+        getCommentFloor,
+        getCommentCount;
 
 // ── 收藏体系 logic 门面（功能对齐批2-C：登录守卫 + 本地镜像 + 防重锁） ──
 export '../logic/catalog/collect_logic.dart' show CollectLogic;
@@ -75,7 +88,13 @@ export '../logic/download/download_manager.dart' show DownloadManager;
 // ── lyrics logic 门面（歌词域，批3-A） ──
 export '../logic/lyrics/lyrics_logic.dart' show LyricsLogic;
 export '../logic/lyrics/lyrics_parser.dart'
-    show LyricParseResult, LrcLine, KrcWord, parseLyrics, applyOffset, findLineIndex;
+    show
+        LyricParseResult,
+        LrcLine,
+        KrcWord,
+        parseLyrics,
+        applyOffset,
+        findLineIndex;
 
 // ── kernel 门面（上层统一 Log；session 已依赖此导出） ──
 export '../kernel/kernel.dart' show Log;
@@ -124,4 +143,3 @@ class LogicFacade {
     }
   }
 }
-

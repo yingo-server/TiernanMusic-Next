@@ -23,8 +23,10 @@ Future<void> main() async {
   final canSign = pem.contains('-----BEGIN');
   if (!canSign) {
     // 用户原则：无法验证时警报即可，不阻塞——降级为仅哈希清单继续构建。
-    stderr.writeln('gen_verification: WARN — RSA4096_PRIVATE_PEM missing; '
-        'emitting hash-only manifest (signed:false), NOT blocking the build.');
+    stderr.writeln(
+      'gen_verification: WARN — RSA4096_PRIVATE_PEM missing; '
+      'emitting hash-only manifest (signed:false), NOT blocking the build.',
+    );
   }
 
   // ① 逐模块加盐 md5/sha512（openssl 子进程，流式避免大文件进参数）。
@@ -45,9 +47,7 @@ Future<void> main() async {
     'algo': 'salted_md5+salted_sha512+rsa4096_sig',
     'salt': salt,
     'version': Platform.environment['VER'] ?? '',
-    'modules': {
-      for (final k in sortedKeys) k: modules[k],
-    },
+    'modules': {for (final k in sortedKeys) k: modules[k]},
   });
 
   // ③ RSA-4096 签名（私钥写临时文件 → openssl dgst -sha512 -sign）；不可用时跳过。
@@ -57,9 +57,14 @@ Future<void> main() async {
     keyFile.writeAsStringSync(pem, flush: true);
     final payloadFile = File('/tmp/verification_payload.json');
     payloadFile.writeAsStringSync(payload, flush: true);
-    sigB64 = await _run(
-        ['openssl', 'dgst', '-sha512', '-sign', keyFile.path, payloadFile.path],
-        binary: true);
+    sigB64 = await _run([
+      'openssl',
+      'dgst',
+      '-sha512',
+      '-sign',
+      keyFile.path,
+      payloadFile.path,
+    ], binary: true);
   }
 
   // ④ 输出。
@@ -70,23 +75,25 @@ Future<void> main() async {
     if (canSign) 'signature': sigB64,
     'signature_algo': canSign ? 'RSA-4096/SHA-512' : 'none (warn only)',
     'version': Platform.environment['VER'] ?? '',
-    'modules': {
-      for (final k in sortedKeys) k: modules[k],
-    },
+    'modules': {for (final k in sortedKeys) k: modules[k]},
   });
   Directory('assets/integrity').createSync(recursive: true);
   File('assets/integrity/verification.json').writeAsStringSync(out);
   // 纯发布用副本（CI 上传 release assets）。
   File('verification.json').writeAsStringSync(out);
-  stdout.writeln('gen_verification: ${modules.length} modules, '
-      'rsa4096 signed, salt_set=${salt != fallbackSalt}');
+  stdout.writeln(
+    'gen_verification: ${modules.length} modules, '
+    'rsa4096 signed, salt_set=${salt != fallbackSalt}',
+  );
 }
 
 Future<String> _digest(String algo, File f, String salt) async {
   // 盐前缀到临时文件，与目标文件拼接摘要（等效 salted digest，避免命令行长度限制）。
   final tmp = File('/tmp/_digest_input.bin');
-  tmp.writeAsBytesSync([...utf8.encode(salt), ...f.readAsBytesSync()],
-      flush: true);
+  tmp.writeAsBytesSync([
+    ...utf8.encode(salt),
+    ...f.readAsBytesSync(),
+  ], flush: true);
   final out = await _run(['openssl', 'dgst', '-$algo', tmp.path]);
   // openssl 输出 "ALGO(path)= hex"
   final line = out.trim();
@@ -95,8 +102,11 @@ Future<String> _digest(String algo, File f, String salt) async {
 }
 
 Future<String> _run(List<String> args, {bool binary = false}) async {
-  final r = await Process.run(args.first, args.sublist(1),
-      stdoutEncoding: binary ? null : systemEncoding);
+  final r = await Process.run(
+    args.first,
+    args.sublist(1),
+    stdoutEncoding: binary ? null : systemEncoding,
+  );
   if (r.exitCode != 0) {
     throw StateError('openssl failed (${r.exitCode}): ${r.stderr}');
   }

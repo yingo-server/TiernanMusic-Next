@@ -4,7 +4,8 @@
 // 铁律：禁 surface/flutter；每方法 try/catch + Log('logic.user')。
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart' as user show UserProfile, getUserDetail;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, buildKey, prefixOf;
+import '../../bridges/bridge_core.dart'
+    show KugouClient, LruCache, buildKey, prefixOf;
 
 /// 用户域缓存 schema 版本。
 const int kUserCacheSchemaVer = 1;
@@ -17,8 +18,8 @@ class UserLogic {
   UserLogic({
     required KugouClient client,
     required LruCache<String, dynamic> cache,
-  })  : _client = client,
-        _cache = cache {
+  }) : _client = client,
+       _cache = cache {
     Log.d(_tag, 'init capacity=${cache.capacity}');
   }
 

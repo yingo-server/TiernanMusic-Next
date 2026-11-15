@@ -1,5 +1,6 @@
 // L7 surface/pages · 歌单页（Spotify 深色 + M3）。只画控件；数据只经 bridge_logic 的 logic 单例取；颜色/字号/间距只用 Sp.*。
 import 'package:flutter/material.dart';
+
 import '../../bridges/bridge_core.dart' show PlaylistMeta;
 import '../../bridges/bridge_logic.dart'
     show Log, SongBrief, PlaylistBrief, PlaylistDetail, TrackPage;
@@ -21,8 +22,11 @@ class PlaylistPageModule extends SurfaceModule {
   @override
   bool get enabled => true;
   @override
-  WidgetBuilder? get builder => (BuildContext ctx) => const PlaylistPage();
-}/// 歌单页：TabBar（推荐 / 我的）+ 网格 + 详情底部弹层。
+  WidgetBuilder? get builder =>
+      (BuildContext ctx) => const PlaylistPage();
+}
+
+/// 歌单页：TabBar（推荐 / 我的）+ 网格 + 详情底部弹层。
 class PlaylistPage extends StatelessWidget {
   const PlaylistPage({super.key});
   @override
@@ -40,7 +44,9 @@ class PlaylistPage extends StatelessWidget {
                 labelColor: Sp.text,
                 unselectedLabelColor: Sp.textSub,
                 labelStyle: TextStyle(
-                    fontSize: Sp.fSection, fontWeight: FontWeight.w700),
+                  fontSize: Sp.fSection,
+                  fontWeight: FontWeight.w700,
+                ),
                 unselectedLabelStyle: TextStyle(fontSize: Sp.fSection),
                 tabs: <Widget>[
                   Tab(text: '推荐'),
@@ -74,6 +80,7 @@ class _RecommendTabState extends State<_RecommendTab> {
     super.initState();
     _f = _load();
   }
+
   Future<List<PlaylistBrief>> _load() async {
     try {
       final pl = appGraph.playlist;
@@ -84,6 +91,7 @@ class _RecommendTabState extends State<_RecommendTab> {
       return const <PlaylistBrief>[];
     }
   }
+
   void _reload() => setState(() => _f = _load());
   void _open(PlaylistBrief brief) {
     try {
@@ -101,13 +109,16 @@ class _RecommendTabState extends State<_RecommendTab> {
       Log.e(_tag, 'open detail failed', e, st);
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<PlaylistBrief>>(
       future: _f,
       builder: (BuildContext c, AsyncSnapshot<List<PlaylistBrief>> snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator(color: Sp.green));
+          return const Center(
+            child: CircularProgressIndicator(color: Sp.green),
+          );
         }
         if (snap.hasError) {
           return PlaylistErrorRetry(message: '推荐歌单加载失败', onRetry: _reload);
@@ -118,7 +129,11 @@ class _RecommendTabState extends State<_RecommendTab> {
         }
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(
-              Sp.pagePad, Sp.gapM, Sp.pagePad, Sp.gapXL),
+            Sp.pagePad,
+            Sp.gapM,
+            Sp.pagePad,
+            Sp.gapXL,
+          ),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
             childAspectRatio: 0.72,
@@ -126,10 +141,8 @@ class _RecommendTabState extends State<_RecommendTab> {
             mainAxisSpacing: Sp.gapM,
           ),
           itemCount: items.length,
-          itemBuilder: (BuildContext c, int i) => PlaylistGridCard(
-            brief: items[i],
-            onTap: () => _open(items[i]),
-          ),
+          itemBuilder: (BuildContext c, int i) =>
+              PlaylistGridCard(brief: items[i], onTap: () => _open(items[i])),
         );
       },
     );
@@ -150,6 +163,7 @@ class _MineTabState extends State<_MineTab> {
     super.initState();
     _f = _load();
   }
+
   Future<List<PlaylistMeta>> _load() async {
     try {
       final pl = appGraph.playlist;
@@ -160,6 +174,7 @@ class _MineTabState extends State<_MineTab> {
       return const <PlaylistMeta>[];
     }
   }
+
   void _reload() => setState(() => _f = _load());
   void _open(PlaylistMeta meta) {
     try {
@@ -178,13 +193,16 @@ class _MineTabState extends State<_MineTab> {
       Log.e(_tag, 'open detail failed', e, st);
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<PlaylistMeta>>(
       future: _f,
       builder: (BuildContext c, AsyncSnapshot<List<PlaylistMeta>> snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator(color: Sp.green));
+          return const Center(
+            child: CircularProgressIndicator(color: Sp.green),
+          );
         }
         if (snap.hasError) {
           return PlaylistErrorRetry(message: '我的歌单加载失败', onRetry: _reload);
@@ -196,10 +214,8 @@ class _MineTabState extends State<_MineTab> {
         return ListView.builder(
           padding: const EdgeInsets.only(bottom: Sp.gapXL),
           itemCount: items.length,
-          itemBuilder: (BuildContext c, int i) => _MineRow(
-            meta: items[i],
-            onTap: () => _open(items[i]),
-          ),
+          itemBuilder: (BuildContext c, int i) =>
+              _MineRow(meta: items[i], onTap: () => _open(items[i])),
         );
       },
     );
@@ -231,6 +247,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
     super.initState();
     _f = _load();
   }
+
   Future<_SheetData> _load() async {
     try {
       final pl = appGraph.playlist;
@@ -252,6 +269,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
       return const _SheetData(null, TrackPage());
     }
   }
+
   void _play(int index) {
     try {
       PlaybackSession.instance.playAll(_data.tracks.items, index);
@@ -259,6 +277,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
       Log.e(_tag, 'playAll failed', e, st);
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -272,7 +291,8 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
             builder: (BuildContext c, AsyncSnapshot<_SheetData> snap) {
               if (snap.connectionState != ConnectionState.done) {
                 return const Center(
-                    child: CircularProgressIndicator(color: Sp.green));
+                  child: CircularProgressIndicator(color: Sp.green),
+                );
               }
               final _SheetData data =
                   snap.data ?? const _SheetData(null, TrackPage());
@@ -297,9 +317,11 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                                 : Image.network(
                                     widget.cover,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (BuildContext c, Object e,
-                                            StackTrace? s) =>
-                                        Container(color: Sp.cardHigh),
+                                    errorBuilder: (
+                                      BuildContext c,
+                                      Object e,
+                                      StackTrace? s,
+                                    ) => Container(color: Sp.cardHigh),
                                   ),
                           ),
                         ),
@@ -313,9 +335,10 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                    fontSize: Sp.fSection,
-                                    fontWeight: FontWeight.w700,
-                                    color: Sp.text),
+                                  fontSize: Sp.fSection,
+                                  fontWeight: FontWeight.w700,
+                                  color: Sp.text,
+                                ),
                               ),
                               const SizedBox(height: Sp.gapXS),
                               Text(
@@ -323,7 +346,9 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                                     ? '${items.length} 首'
                                     : '本地镜像 ${widget.localTrackCount} 首',
                                 style: const TextStyle(
-                                    fontSize: Sp.fSub, color: Sp.textSub),
+                                  fontSize: Sp.fSub,
+                                  color: Sp.textSub,
+                                ),
                               ),
                             ],
                           ),
@@ -374,9 +399,14 @@ class PlaylistGridCard extends StatelessWidget {
         aspectRatio: 1,
         child: brief.cover.isEmpty
             ? Container(color: Sp.cardHigh)
-            : Image.network(brief.cover, fit: BoxFit.cover,
+            : Image.network(
+                brief.cover,
+                fit: BoxFit.cover,
                 errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                    Container(color: Sp.cardHigh))));
+                    Container(color: Sp.cardHigh),
+              ),
+      ),
+    );
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -384,11 +414,19 @@ class PlaylistGridCard extends StatelessWidget {
         children: <Widget>[
           cover,
           const SizedBox(height: Sp.gapS),
-          Text(brief.name.isEmpty ? '未命名歌单' : brief.name,
-              maxLines: 2, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: Sp.fSub, color: Sp.text)),
-          Text(brief.trackCount > 0 ? '${brief.trackCount} 首' : '曲目数未知',
-              style: const TextStyle(fontSize: Sp.fTiny, color: Sp.textFaint))]));
+          Text(
+            brief.name.isEmpty ? '未命名歌单' : brief.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: Sp.fSub, color: Sp.text),
+          ),
+          Text(
+            brief.trackCount > 0 ? '${brief.trackCount} 首' : '曲目数未知',
+            style: const TextStyle(fontSize: Sp.fTiny, color: Sp.textFaint),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -406,19 +444,30 @@ class _MineRow extends StatelessWidget {
         height: Sp.tileCover,
         child: meta.coverUrl.isEmpty
             ? Container(color: Sp.cardHigh)
-            : Image.network(meta.coverUrl, fit: BoxFit.cover,
+            : Image.network(
+                meta.coverUrl,
+                fit: BoxFit.cover,
                 errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                    Container(color: Sp.cardHigh))));
+                    Container(color: Sp.cardHigh),
+              ),
+      ),
+    );
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
       leading: lead,
-      title: Text(meta.name.isEmpty ? '未命名歌单' : meta.name,
-          maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: Sp.fItem, color: Sp.text)),
-      subtitle: Text('${meta.songHashes.length} 首',
-          style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub)),
-      trailing: const Icon(Icons.chevron_right, color: Sp.textFaint));
+      title: Text(
+        meta.name.isEmpty ? '未命名歌单' : meta.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: Sp.fItem, color: Sp.text),
+      ),
+      subtitle: Text(
+        '${meta.songHashes.length} 首',
+        style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: Sp.textFaint),
+    );
   }
 }
 
@@ -441,14 +490,23 @@ class _TrackRow extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
       leading: SizedBox(
         width: 28,
-        child: Text('${index + 1}',
-            style: const TextStyle(fontSize: Sp.fSub, color: Sp.textFaint))),
-      title: Text(song.name.isEmpty ? '未知歌曲' : song.name,
-          maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: Sp.fItem, color: Sp.text)),
-      subtitle: Text(song.singer,
-          maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub)),
+        child: Text(
+          '${index + 1}',
+          style: const TextStyle(fontSize: Sp.fSub, color: Sp.textFaint),
+        ),
+      ),
+      title: Text(
+        song.name.isEmpty ? '未知歌曲' : song.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: Sp.fItem, color: Sp.text),
+      ),
+      subtitle: Text(
+        song.singer,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+      ),
       trailing: song.albumId.isEmpty
           ? null
           : IconButton(
@@ -456,7 +514,9 @@ class _TrackRow extends StatelessWidget {
               iconSize: 18,
               color: Sp.textFaint,
               onPressed: onAlbum,
-              icon: const Icon(Icons.album_outlined)));
+              icon: const Icon(Icons.album_outlined),
+            ),
+    );
   }
 }
 
@@ -473,10 +533,15 @@ class PlaylistEmptyBox extends StatelessWidget {
   final String message;
   @override
   Widget build(BuildContext context) => Padding(
-      padding:
-          const EdgeInsets.symmetric(horizontal: Sp.pagePad, vertical: Sp.gapXL),
-      child: Text(message,
-          style: const TextStyle(fontSize: Sp.fSub, color: Sp.textFaint)));
+    padding: const EdgeInsets.symmetric(
+      horizontal: Sp.pagePad,
+      vertical: Sp.gapXL,
+    ),
+    child: Text(
+      message,
+      style: const TextStyle(fontSize: Sp.fSub, color: Sp.textFaint),
+    ),
+  );
 }
 
 /// 错误 + 重试。
@@ -486,15 +551,26 @@ class PlaylistErrorRetry extends StatelessWidget {
   final VoidCallback onRetry;
   @override
   Widget build(BuildContext context) => Padding(
-      padding:
-          const EdgeInsets.symmetric(horizontal: Sp.pagePad, vertical: Sp.gapXL),
-      child: Row(children: <Widget>[
+    padding: const EdgeInsets.symmetric(
+      horizontal: Sp.pagePad,
+      vertical: Sp.gapXL,
+    ),
+    child: Row(
+      children: <Widget>[
         Expanded(
-            child: Text(message,
-                style: const TextStyle(fontSize: Sp.fSub, color: Sp.red))),
+          child: Text(
+            message,
+            style: const TextStyle(fontSize: Sp.fSub, color: Sp.red),
+          ),
+        ),
         TextButton(
-            onPressed: onRetry,
-            child: const Text('重试',
-                style: TextStyle(fontSize: Sp.fSub, color: Sp.green))),
-      ]));
+          onPressed: onRetry,
+          child: const Text(
+            '重试',
+            style: TextStyle(fontSize: Sp.fSub, color: Sp.green),
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -11,8 +11,7 @@ class Log {
       _emit('E', tag, '$msg ERR=$err ST=$st');
 
   static void _emit(String lvl, String tag, String msg) {
-    final line =
-        '${DateTime.now().toIso8601String()} $lvl/$tag: $msg';
+    final line = '${DateTime.now().toIso8601String()} $lvl/$tag: $msg';
     _buf.add(line);
     if (_buf.length > 2000) _buf.removeRange(0, 500);
     // ignore: avoid_print

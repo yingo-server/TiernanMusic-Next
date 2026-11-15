@@ -5,7 +5,7 @@ library;
 import 'package:flutter/material.dart';
 
 ThemeData spLightThemeData() => ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1DB954)),
-    );
+  useMaterial3: true,
+  brightness: Brightness.light,
+  colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1DB954)),
+);

@@ -70,9 +70,7 @@ String sortedQuery([Map<String, Object?>? params]) {
   try {
     final src = params ?? const <String, Object?>{};
     final keys = src.keys.toList()..sort();
-    return keys
-        .map((k) => '${_seg(k)}=${_seg(_render(src[k]))}')
-        .join('&');
+    return keys.map((k) => '${_seg(k)}=${_seg(_render(src[k]))}').join('&');
   } catch (e, st) {
     Log.e(_tag, 'sortedQuery failed', e, st);
     return '';
@@ -95,7 +93,8 @@ String buildKey({
     final uid = userid.trim();
     final p = path.trim().isEmpty ? '/' : path.trim();
     final version = schemaVer < 0 ? 0 : schemaVer;
-    final key = '$_scheme:${_seg(namespace)}:u=${_seg(uid)}:${_seg(p)}:'
+    final key =
+        '$_scheme:${_seg(namespace)}:u=${_seg(uid)}:${_seg(p)}:'
         '${sortedQuery(params)}:v$version';
     Log.d(_tag, 'buildKey ns=$namespace uid=$uid path=$p v=$version');
     return key;

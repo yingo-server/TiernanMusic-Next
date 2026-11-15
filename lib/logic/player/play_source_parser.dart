@@ -126,9 +126,11 @@ ParsedPlayUrl parse(Map<String, dynamic> res) {
       timeLengthSec: _safeInt(res['timeLength']),
       traceId: res['traceId'] is String ? res['traceId'] as String : '',
     );
-    Log.d(_tag,
-        'parse status=$status priv=$privStatus urls=${urls.length} '
-        'backup=${backupUrls.length} mp=$musicpackAdvance bit=${parsed.bitRate}');
+    Log.d(
+      _tag,
+      'parse status=$status priv=$privStatus urls=${urls.length} '
+      'backup=${backupUrls.length} mp=$musicpackAdvance bit=${parsed.bitRate}',
+    );
     return parsed;
   } catch (e, st) {
     Log.e(_tag, 'parse failed', e, st);

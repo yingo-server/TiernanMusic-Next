@@ -26,7 +26,8 @@ class StoragePaths {
   static StoragePaths get I {
     final inst = _instance;
     if (inst == null) {
-      const msg = 'StoragePaths not initialized: call StoragePaths.init(root) first';
+      const msg =
+          'StoragePaths not initialized: call StoragePaths.init(root) first';
       Log.e('paths', msg);
       throw StateError(msg);
     }
@@ -44,7 +45,9 @@ class StoragePaths {
   Directory resolveSub(String name) {
     try {
       if (!_subs.contains(name)) {
-        throw ArgumentError('unknown storage sub name: $name (allowed: $_subs)');
+        throw ArgumentError(
+          'unknown storage sub name: $name (allowed: $_subs)',
+        );
       }
       return _ensureDir(Directory(_join(rootDir.path, name)), name);
     } catch (e, st) {
@@ -83,5 +86,6 @@ class StoragePaths {
 }
 
 /// 纯路径拼接（不引入 package:path）。
-String _join(String a, String b) =>
-    a.endsWith(Platform.pathSeparator) ? '$a$b' : '$a${Platform.pathSeparator}$b';
+String _join(String a, String b) => a.endsWith(Platform.pathSeparator)
+    ? '$a$b'
+    : '$a${Platform.pathSeparator}$b';

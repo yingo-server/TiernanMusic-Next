@@ -3,8 +3,11 @@
 // 风格照 rank_logic.dart：缓存优先、每方法 try/catch + Log('logic.mv')。
 // 清晰度降级策略见 playUrl 文档注释。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' as mv show MvPlayResult, MvQuality, getVideoQualities, getVideoUrl;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, buildKey, prefixOf;
+import '../../bridges/bridge_core.dart'
+    as mv
+    show MvPlayResult, MvQuality, getVideoQualities, getVideoUrl;
+import '../../bridges/bridge_core.dart'
+    show KugouClient, LruCache, buildKey, prefixOf;
 
 /// MV 域缓存 schema 版本。
 const int kMvCacheSchemaVer = 1;
@@ -17,8 +20,8 @@ class MvLogic {
   MvLogic({
     required KugouClient client,
     required LruCache<String, dynamic> cache,
-  })  : _client = client,
-        _cache = cache {
+  }) : _client = client,
+       _cache = cache {
     Log.d(_tag, 'init capacity=${cache.capacity}');
   }
 
@@ -75,21 +78,27 @@ class MvLogic {
         return mv.MvPlayResult(title: title);
       }
       // size 降序 = 画质从高到低；requestedId 未命中或未指定 → 取最高档。
-      final sorted = quals.toList()
-        ..sort((a, b) => b.size.compareTo(a.size));
+      final sorted = quals.toList()..sort((a, b) => b.size.compareTo(a.size));
       var ordered = sorted;
       if (requestedId != null && requestedId.trim().isNotEmpty) {
         final idx = sorted.indexWhere(
-            (q) => q.id == requestedId.trim() || q.hash == requestedId.trim());
+          (q) => q.id == requestedId.trim() || q.hash == requestedId.trim(),
+        );
         if (idx >= 0) ordered = sorted.sublist(idx);
       }
       for (final q in ordered) {
-        final r = await mv.getVideoUrl(_client, q.hash,
-            quality: q.id, title: title);
+        final r = await mv.getVideoUrl(
+          _client,
+          q.hash,
+          quality: q.id,
+          title: title,
+        );
         if (r.playable) {
-          Log.d(_tag,
-              'playUrl hash=$h quality=${q.id} cdn=${r.urls.length} '
-              'degraded=${q.id != requestedId}');
+          Log.d(
+            _tag,
+            'playUrl hash=$h quality=${q.id} cdn=${r.urls.length} '
+            'degraded=${q.id != requestedId}',
+          );
           return r;
         }
         Log.w(_tag, 'playUrl quality=${q.id} empty urls, degrade next');

@@ -37,7 +37,12 @@ class AccountSection extends StatelessWidget {
             ),
             if (accounts.isEmpty)
               const Padding(
-                padding: EdgeInsets.fromLTRB(Sp.pagePad, 0, Sp.pagePad, Sp.gapM),
+                padding: EdgeInsets.fromLTRB(
+                  Sp.pagePad,
+                  0,
+                  Sp.pagePad,
+                  Sp.gapM,
+                ),
                 child: Text(
                   '暂无账号，登录后将自动保存到这里',
                   style: TextStyle(fontSize: Sp.fSub, color: Sp.textFaint),
@@ -61,7 +66,9 @@ class AccountSection extends StatelessWidget {
                   subtitle: Text(
                     '账号 ${rec.accountId}',
                     style: const TextStyle(
-                        fontSize: Sp.fSub, color: Sp.textFaint),
+                      fontSize: Sp.fSub,
+                      color: Sp.textFaint,
+                    ),
                   ),
                   trailing: IconButton(
                     icon: const Icon(

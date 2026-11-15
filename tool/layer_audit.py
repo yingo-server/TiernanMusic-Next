@@ -124,10 +124,15 @@ def check_bridge_try_catch(rel, src):
         # 表达式箭头函数跳过
         if '=>' in ln and '{' not in ln:
             continue
-        # 函数体：到下一个顶格 '}' 或文件尾
+        # 函数体：从签名行到下一个顶层函数声明或文件尾（避免函数类型参数
+        # 里的 { } 干扰配对计数）。只要区间内出现 try/catch 即视为留痕。
         body_end = len(lines)
         for j in range(idx + 1, len(lines)):
-            if lines[j].startswith('}'):
+            s = lines[j]
+            if s.startswith(('class ', 'abstract ', 'import ', 'export ',
+                             'typedef ', 'enum ', 'void ', 'Future', 'String ',
+                             'bool ', 'int ', 'Map', 'List', 'Object',
+                             'BootOutcome ', 'dynamic ')) and '(' in s:
                 body_end = j
                 break
         body = '\n'.join(lines[idx:body_end])

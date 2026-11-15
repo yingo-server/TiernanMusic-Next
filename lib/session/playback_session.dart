@@ -5,15 +5,38 @@
 import 'package:flutter/foundation.dart' show ChangeNotifier;
 
 import '../bridges/bridge_core.dart'
-    show SongBrief, AudioEngine, NullAudioEngine, JustAudioEngine,
-        AudioEvent, AudioEventType, MusicAudioHandler, NotificationMeta,
-        NotificationControls, initNotification;
+    show
+        SongBrief,
+        AudioEngine,
+        NullAudioEngine,
+        JustAudioEngine,
+        AudioEvent,
+        AudioEventType,
+        MusicAudioHandler,
+        NotificationMeta,
+        NotificationControls,
+        initNotification;
 import '../bridges/bridge_logic.dart'
-    show PlaybackService, HistoryRecorder, PlayMode, QueueState, PlayerState,
-        PlayerStatus, StartLoad, Playing, Paused, Progress, Completed,
-        ErrorAction, SeekTo, SetVolume, SetSpeed, Resume, Stop,
-        playbackReducer, Log;
-
+    show
+        PlaybackService,
+        HistoryRecorder,
+        PlayMode,
+        QueueState,
+        PlayerState,
+        PlayerStatus,
+        StartLoad,
+        Playing,
+        Paused,
+        Progress,
+        Completed,
+        ErrorAction,
+        SeekTo,
+        SetVolume,
+        SetSpeed,
+        Resume,
+        Stop,
+        playbackReducer,
+        Log;
 
 const String _tag = 'session.playback';
 
@@ -55,16 +78,17 @@ class PlaybackSession extends ChangeNotifier {
 
   /// 会话级 MV 兜底防死循环标记（每曲只试一次，批3-F3）。
   final Set<String> _mvTriedOnce = <String>{};
+
   /// 当前源类型（sourceKind 字段待批3-F2 落盘后随 PlayerState 透传）。
   String _sourceKind = 'kugou';
 
   PlaybackSnapshot get snapshot => PlaybackSnapshot(
-        queue: _queue,
-        player: _player,
-        mode: _queue.mode,
-        speed: _player.speed,
-        volume: _player.volume,
-      );
+    queue: _queue,
+    player: _player,
+    mode: _queue.mode,
+    speed: _player.speed,
+    volume: _player.volume,
+  );
 
   /// bootloader/session 装配唯一入口（引擎默认 NullAudioEngine，安全静音）。
   void attach({
@@ -83,17 +107,16 @@ class PlaybackSession extends ChangeNotifier {
         _engine = just;
         // 通知栏：成熟库 audio_service，控制回调绑定回本会话（无反向 import）。
         initNotification(
-          just.rawPlayer,
-          NotificationControls(
-            onNext: next,
-            onPrev: prev,
-          ),
-        ).then((h) {
-          _notification = h;
-          Log.d(_tag, 'notification ready=${h != null}');
-        }).catchError((Object e, StackTrace st) {
-          Log.w(_tag, 'notification unavailable: $e');
-        });
+              just.rawPlayer,
+              NotificationControls(onNext: next, onPrev: prev),
+            )
+            .then((h) {
+              _notification = h;
+              Log.d(_tag, 'notification ready=${h != null}');
+            })
+            .catchError((Object e, StackTrace st) {
+              Log.w(_tag, 'notification unavailable: $e');
+            });
       }
       _quality = quality.isEmpty ? '128' : quality;
       Log.d(_tag, 'attached quality=$_quality');
@@ -108,8 +131,10 @@ class PlaybackSession extends ChangeNotifier {
     try {
       switch (event.type) {
         case AudioEventType.progress:
-          onProgress(event.positionMs < 0 ? _player.positionMs : event.positionMs,
-              durationMs: event.durationMs);
+          onProgress(
+            event.positionMs < 0 ? _player.positionMs : event.positionMs,
+            durationMs: event.durationMs,
+          );
           break;
         case AudioEventType.playing:
           _emit(playbackReducer(_player, const Playing()));
@@ -121,8 +146,7 @@ class PlaybackSession extends ChangeNotifier {
           onCompleted();
           break;
         case AudioEventType.error:
-          _emit(playbackReducer(_player,
-              ErrorAction('引擎播放失败')));
+          _emit(playbackReducer(_player, ErrorAction('引擎播放失败')));
           break;
       }
     } catch (e, st) {
@@ -150,11 +174,16 @@ class PlaybackSession extends ChangeNotifier {
     if (songs.isEmpty) return;
     // 缓存 ⊃ 预读：队列变化即预热后续曲目（bootstrap 绑定 CacheService）。
     onQueueChanged?.call(
-        songs.map((s) => s.hash).where((h) => h.isNotEmpty).toList());
+      songs.map((s) => s.hash).where((h) => h.isNotEmpty).toList(),
+    );
     await _start(songs, start);
   }
 
-  Future<void> _start(List<SongBrief> songs, int start, {SongBrief? song}) async {
+  Future<void> _start(
+    List<SongBrief> songs,
+    int start, {
+    SongBrief? song,
+  }) async {
     try {
       final q = song != null
           ? const QueueState().replaceQueue(<SongBrief>[song], 0)
@@ -166,7 +195,8 @@ class PlaybackSession extends ChangeNotifier {
       final src = await _service?.resolvePlaySource(cur, _quality);
       if (src == null || !src.ok) {
         final errKind = src?.error?.toString() ?? '';
-        final canMv = errKind.contains('noPrivilege') ||
+        final canMv =
+            errKind.contains('noPrivilege') ||
             errKind.contains('needsVerification') ||
             errKind.contains('notFound');
         // 兜底编排（L6 策略层）：resolve 失败且属可兜错误类型，先试 MV 音频。
@@ -182,14 +212,19 @@ class PlaybackSession extends ChangeNotifier {
               _sourceKind = 'mv-audio';
               await _engine.play(mvUrl);
               _emit(playbackReducer(_player, Playing()), queue: q);
-              _history?.recordPlay(cur, 0).catchError(
-                  (Object e, StackTrace st) => Log.w(_tag, 'recordPlay: $e'));
-              _notification?.updateMetadata(NotificationMeta(
-                title: cur.name.isEmpty ? cur.hash : cur.name,
-                artist: cur.singer,
-                artUri: cur.cover.isEmpty ? null : cur.cover,
-                durationMs: mv.timeLengthSec * 1000,
-              ));
+              _history
+                  ?.recordPlay(cur, 0)
+                  .catchError(
+                    (Object e, StackTrace st) => Log.w(_tag, 'recordPlay: $e'),
+                  );
+              _notification?.updateMetadata(
+                NotificationMeta(
+                  title: cur.name.isEmpty ? cur.hash : cur.name,
+                  artist: cur.singer,
+                  artUri: cur.cover.isEmpty ? null : cur.cover,
+                  durationMs: (mv.timeLengthSec ?? 0) * 1000,
+                ),
+              );
               Log.d(_tag, 'mv-audio fallback ok ${cur.hash}');
               return;
             }
@@ -198,8 +233,12 @@ class PlaybackSession extends ChangeNotifier {
           }
         }
         _sourceKind = 'kugou';
-        _emit(playbackReducer(_player,
-            ErrorAction(src?.error?.toString() ?? '播放源不可播或需登录')));
+        _emit(
+          playbackReducer(
+            _player,
+            ErrorAction(src?.error?.toString() ?? '播放源不可播或需登录'),
+          ),
+        );
         return;
       }
       // 本地已下载优先，其次在线主链。
@@ -211,12 +250,14 @@ class PlaybackSession extends ChangeNotifier {
       _history?.recordPlay(cur, 0).catchError((Object e, StackTrace st) {
         Log.w(_tag, 'recordPlay failed: $e');
       });
-      _notification?.updateMetadata(NotificationMeta(
-        title: cur.name.isEmpty ? cur.hash : cur.name,
-        artist: cur.singer,
-        artUri: cur.cover.isEmpty ? null : cur.cover,
-        durationMs: src.timeLengthSec * 1000,
-      ));
+      _notification?.updateMetadata(
+        NotificationMeta(
+          title: cur.name.isEmpty ? cur.hash : cur.name,
+          artist: cur.singer,
+          artUri: cur.cover.isEmpty ? null : cur.cover,
+          durationMs: (src.timeLengthSec ?? 0) * 1000,
+        ),
+      );
     } catch (e, st) {
       Log.e(_tag, 'start failed', e, st);
       _emit(playbackReducer(_player, ErrorAction('$e')));
@@ -336,8 +377,16 @@ class PlaybackSession extends ChangeNotifier {
   }
 
   void onProgress(int positionMs, {int durationMs = -1, int bufferMs = -1}) {
-    _emit(playbackReducer(_player,
-        Progress(positionMs: positionMs, durationMs: durationMs, bufferMs: bufferMs)));
+    _emit(
+      playbackReducer(
+        _player,
+        Progress(
+          positionMs: positionMs,
+          durationMs: durationMs,
+          bufferMs: bufferMs,
+        ),
+      ),
+    );
   }
 
   void onCompleted() {

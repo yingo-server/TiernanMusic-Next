@@ -100,26 +100,34 @@ class ProbeRow {
   final Map<String, Object?>? rawSanitized;
 
   Map<String, Object?> toJson() => <String, Object?>{
-        'endpoint': endpoint,
-        'state': state,
-        'method': method,
-        'domain': domain,
-        'path': path,
-        'paramKeys': paramKeys,
-        'ok': ok,
-        'ms': ms,
-        'captured': captured,
-        if (error != null) 'error': error,
-        if (rawSanitized != null) 'raw': rawSanitized,
-      };
+    'endpoint': endpoint,
+    'state': state,
+    'method': method,
+    'domain': domain,
+    'path': path,
+    'paramKeys': paramKeys,
+    'ok': ok,
+    'ms': ms,
+    'captured': captured,
+    if (error != null) 'error': error,
+    if (rawSanitized != null) 'raw': rawSanitized,
+  };
 }
 
 /// 脱敏 play_url 原始响应：只留结构键与判定字段，URL 替换为占位。
 Map<String, Object?> _sanitizePlayRaw(Map<String, dynamic> res) {
   final out = <String, Object?>{};
   for (final k in <String>[
-    'status', 'priv_status', 'errcode', 'error_code', 'bitRate', 'extName',
-    'timeLength', 'IsFreePart', 'end_byte', 'traceId',
+    'status',
+    'priv_status',
+    'errcode',
+    'error_code',
+    'bitRate',
+    'extName',
+    'timeLength',
+    'IsFreePart',
+    'end_byte',
+    'traceId',
   ]) {
     if (res.containsKey(k)) out[k] = res[k];
   }
@@ -206,84 +214,147 @@ Future<void> main(List<String> args) async {
     stdout.writeln('== state=$state ==');
 
     // 1) 播放 URL（VIP 样曲）——走代码路径 getPlayUrlV5（含 key 计算）
-    rows.add(await _run(
-      endpoint: 'play_url_v5',
-      state: state,
-      ep: EndpointRegistry.playUrlV5,
-      params: const {'hash': '<vipSongHash>', 'quality': '128'},
-      call: () => getPlayUrlV5(client, _vipSongHash, '128'),
-      capture: (v) {
-        final r = v as PlayResult;
-        return <String, Object?>{
-          'status': r.status,
-          'priv_status': r.privStatus,
-          'errcode': r.errcode,
-          'urls': r.urls.length,
-          'backupUrls': r.backupUrls.length,
-          'host': _hostOf(r.urls),
-          'extName': r.extName,
-          'bitRate': r.bitrate,
-          'timeLengthSec': r.timeLengthSec,
-          'isFreePart': r.isFreePart,
-        };
-      },
-    ));
+    rows.add(
+      await _run(
+        endpoint: 'play_url_v5',
+        state: state,
+        ep: EndpointRegistry.playUrlV5,
+        params: const {'hash': '<vipSongHash>', 'quality': '128'},
+        call: () => getPlayUrlV5(client, _vipSongHash, '128'),
+        capture: (v) {
+          final r = v as PlayResult;
+          return <String, Object?>{
+            'status': r.status,
+            'priv_status': r.privStatus,
+            'errcode': r.errcode,
+            'urls': r.urls.length,
+            'backupUrls': r.backupUrls.length,
+            'host': _hostOf(r.urls),
+            'extName': r.extName,
+            'bitRate': r.bitrate,
+            'timeLengthSec': r.timeLengthSec,
+            'isFreePart': r.isFreePart,
+          };
+        },
+      ),
+    );
 
     // 2) 泛型只读端点
-    Future<void> add<T>(String name, Endpoint ep, List<String> keys,
-        Future<T> Function() call, Map<String, Object?> Function(T v) cap) async {
-      rows.add(await _run(
-        endpoint: name, state: state, ep: ep,
-        params: <String, Object?>{for (final k in keys) k: '<value>'},
-        call: call,
-        capture: (v) => cap(v as T),
-      ));
+    Future<void> add<T>(
+      String name,
+      Endpoint ep,
+      List<String> keys,
+      Future<T> Function() call,
+      Map<String, Object?> Function(T v) cap,
+    ) async {
+      rows.add(
+        await _run(
+          endpoint: name,
+          state: state,
+          ep: ep,
+          params: <String, Object?>{for (final k in keys) k: '<value>'},
+          call: call,
+          capture: (v) => cap(v as T),
+        ),
+      );
     }
 
-    await add('search_song', EndpointRegistry.searchSong, const ['keyword', 'page', 'pagesize'],
-        () => searchSongs(client, '周杰伦', 1, 10),
-        (r) => <String, Object?>{
-              'total': r.total,
-              'items': r.items.length,
-              'firstHash': r.items.isEmpty ? null : r.items.first.hash,
-              'firstName': r.items.isEmpty ? null : r.items.first.name,
-              'firstSinger': r.items.isEmpty ? null : r.items.first.singer,
-              'firstMixSongId': r.items.isEmpty ? null : r.items.first.mixSongId,
-            });
-    await add('search_suggest', EndpointRegistry.searchSuggest, const ['keyword'],
-        () => searchSuggest(client, '周杰伦'),
-        (r) => <String, Object?>{
-              'items': r.length,
-              'first': r.isEmpty ? null : r.first.keyword,
-            });
-    await add('search_hot', EndpointRegistry.searchHot, const [],
-        () => searchHot(client),
-        (r) => <String, Object?>{'items': r.length, 'first': r.isEmpty ? null : r.first.keyword});
-    await add('daily_recommend', EndpointRegistry.recommendSongs, const [],
-        () => getDailyRecommend(client),
-        (r) => <String, Object?>{'items': r.length, 'firstHash': r.isEmpty ? null : r.first.hash});
-    await add('rank_list', EndpointRegistry.rankList, const [],
-        () => rankList(client),
-        (r) => <String, Object?>{'items': r.length, 'first': r.isEmpty ? null : r.first.toString()});
-    await add('user_detail', EndpointRegistry.userDetail, const [],
-        () => getUserDetail(client),
-        (r) => <String, Object?>{
-              'nickname': r.nickname.isEmpty ? null : '<has-nickname>',
-              'vipType': r.vipType,
-              'avatar': r.avatar.isEmpty ? null : '<has-avatar>',
-            });
-    await add('favorite_count', EndpointRegistry.favoriteCount, const ['mixsongids'],
-        () => getFavoriteCount(client),
-        (r) => <String, Object?>{'count': r});
-    await add('song_climax', EndpointRegistry.songClimax, const ['hash'],
-        () => getSongClimax(client, _vipSongHash),
-        (r) => <String, Object?>{'hasResult': r != null && r.isNotEmpty});
-    await add('user_cloud', EndpointRegistry.userCloud, const [],
-        () => getUserCloud(client),
-        (r) => <String, Object?>{'items': r.length});
-    await add('fm_play', EndpointRegistry.personalFm, const [],
-        () => getFmPlay(client),
-        (r) => <String, Object?>{'items': r.length, 'firstHash': r.isEmpty ? null : r.first.hash});
+    await add(
+      'search_song',
+      EndpointRegistry.searchSong,
+      const ['keyword', 'page', 'pagesize'],
+      () => searchSongs(client, '周杰伦', 1, 10),
+      (r) => <String, Object?>{
+        'total': r.total,
+        'items': r.items.length,
+        'firstHash': r.items.isEmpty ? null : r.items.first.hash,
+        'firstName': r.items.isEmpty ? null : r.items.first.name,
+        'firstSinger': r.items.isEmpty ? null : r.items.first.singer,
+        'firstMixSongId': r.items.isEmpty ? null : r.items.first.mixSongId,
+      },
+    );
+    await add(
+      'search_suggest',
+      EndpointRegistry.searchSuggest,
+      const ['keyword'],
+      () => searchSuggest(client, '周杰伦'),
+      (r) => <String, Object?>{
+        'items': r.length,
+        'first': r.isEmpty ? null : r.first.keyword,
+      },
+    );
+    await add(
+      'search_hot',
+      EndpointRegistry.searchHot,
+      const [],
+      () => searchHot(client),
+      (r) => <String, Object?>{
+        'items': r.length,
+        'first': r.isEmpty ? null : r.first.keyword,
+      },
+    );
+    await add(
+      'daily_recommend',
+      EndpointRegistry.recommendSongs,
+      const [],
+      () => getDailyRecommend(client),
+      (r) => <String, Object?>{
+        'items': r.length,
+        'firstHash': r.isEmpty ? null : r.first.hash,
+      },
+    );
+    await add(
+      'rank_list',
+      EndpointRegistry.rankList,
+      const [],
+      () => rankList(client),
+      (r) => <String, Object?>{
+        'items': r.length,
+        'first': r.isEmpty ? null : r.first.toString(),
+      },
+    );
+    await add(
+      'user_detail',
+      EndpointRegistry.userDetail,
+      const [],
+      () => getUserDetail(client),
+      (r) => <String, Object?>{
+        'nickname': r.nickname.isEmpty ? null : '<has-nickname>',
+        'vipType': r.vipType,
+        'avatar': r.avatar.isEmpty ? null : '<has-avatar>',
+      },
+    );
+    await add(
+      'favorite_count',
+      EndpointRegistry.favoriteCount,
+      const ['mixsongids'],
+      () => getFavoriteCount(client),
+      (r) => <String, Object?>{'count': r},
+    );
+    await add(
+      'song_climax',
+      EndpointRegistry.songClimax,
+      const ['hash'],
+      () => getSongClimax(client, _vipSongHash),
+      (r) => <String, Object?>{'hasResult': r != null && r.isNotEmpty},
+    );
+    await add(
+      'user_cloud',
+      EndpointRegistry.userCloud,
+      const [],
+      () => getUserCloud(client),
+      (r) => <String, Object?>{'items': r.length},
+    );
+    await add(
+      'fm_play',
+      EndpointRegistry.personalFm,
+      const [],
+      () => getFmPlay(client),
+      (r) => <String, Object?>{
+        'items': r.length,
+        'firstHash': r.isEmpty ? null : r.first.hash,
+      },
+    );
   }
 
   // 交叉端点：用 VIP 搜索到的 id 继续测评论/MV/专辑（仅 vip 态）
@@ -292,72 +363,102 @@ Future<void> main(List<String> args) async {
     final sr = await searchSongs(vipClient, '周杰伦', 1, 1);
     if (sr.items.isNotEmpty) {
       final s = sr.items.first;
-      rows.add(await _run(
-        endpoint: 'comment_music', state: 'vip',
-        ep: EndpointRegistry.commentMusic,
-        params: const {'mixsongid': '<id>', 'page': 1},
-        call: () => getMusicComments(vipClient, s.mixSongId, 1, pageSize: 10),
-        capture: (v) {
-          final r = v as dynamic;
-          return <String, Object?>{'total': r.total, 'items': (r.items as List).length};
-        },
-      ));
-      rows.add(await _run(
-        endpoint: 'comment_count', state: 'vip',
-        ep: EndpointRegistry.commentCount,
-        params: const {'mixsongid': '<id>', 'hash': '<hash>'},
-        call: () => getCommentCount(vipClient, s.mixSongId, fileHash: s.hash),
-        capture: (v) => <String, Object?>{'count': v},
-      ));
-      rows.add(await _run(
-        endpoint: 'mv_by_song', state: 'vip',
-        ep: EndpointRegistry.mvDetail,
-        params: const {'album_audio_id': '<id>'},
-        call: () => getMvBySong(vipClient, s.albumAudioId),
-        capture: (v) {
-          final r = v as dynamic;
-          return <String, Object?>{'found': r != null};
-        },
-      ));
-      if (s.albumId.isNotEmpty) {
-        rows.add(await _run(
-          endpoint: 'album_detail', state: 'vip',
-          ep: EndpointRegistry.albumDetail,
-          params: const {'album_id': '<id>'},
-          call: () => getAlbumDetail(vipClient, s.albumId),
+      rows.add(
+        await _run(
+          endpoint: 'comment_music',
+          state: 'vip',
+          ep: EndpointRegistry.commentMusic,
+          params: const {'mixsongid': '<id>', 'page': 1},
+          call: () => getMusicComments(vipClient, s.mixSongId, 1, pageSize: 10),
           capture: (v) {
             final r = v as dynamic;
-            return <String, Object?>{'name': (r.name as String).isEmpty ? null : '<has-name>'};
+            return <String, Object?>{
+              'total': r.total,
+              'items': (r.items as List).length,
+            };
           },
-        ));
+        ),
+      );
+      rows.add(
+        await _run(
+          endpoint: 'comment_count',
+          state: 'vip',
+          ep: EndpointRegistry.commentCount,
+          params: const {'mixsongid': '<id>', 'hash': '<hash>'},
+          call: () => getCommentCount(vipClient, s.mixSongId, fileHash: s.hash),
+          capture: (v) => <String, Object?>{'count': v},
+        ),
+      );
+      rows.add(
+        await _run(
+          endpoint: 'mv_by_song',
+          state: 'vip',
+          ep: EndpointRegistry.mvDetail,
+          params: const {'album_audio_id': '<id>'},
+          call: () => getMvBySong(vipClient, s.albumAudioId),
+          capture: (v) {
+            final r = v as dynamic;
+            return <String, Object?>{'found': r != null};
+          },
+        ),
+      );
+      if (s.albumId.isNotEmpty) {
+        rows.add(
+          await _run(
+            endpoint: 'album_detail',
+            state: 'vip',
+            ep: EndpointRegistry.albumDetail,
+            params: const {'album_id': '<id>'},
+            call: () => getAlbumDetail(vipClient, s.albumId),
+            capture: (v) {
+              final r = v as dynamic;
+              return <String, Object?>{
+                'name': (r.name as String).isEmpty ? null : '<has-name>',
+              };
+            },
+          ),
+        );
       }
     }
   } catch (e) {
-    rows.add(ProbeRow(
-      endpoint: 'cross_endpoints', state: 'vip', method: 'GET',
-      domain: '-', path: '-', paramKeys: const [], ok: false, ms: 0,
-      error: e.toString(),
-    ));
+    rows.add(
+      ProbeRow(
+        endpoint: 'cross_endpoints',
+        state: 'vip',
+        method: 'GET',
+        domain: '-',
+        path: '-',
+        paramKeys: const [],
+        ok: false,
+        ms: 0,
+        error: e.toString(),
+      ),
+    );
   }
 
   // 落盘（按状态分文件）
   final dir = Directory(outDir)..createSync(recursive: true);
   final byState = <String, List<Map<String, Object?>>>{};
   for (final r in rows) {
-    byState.putIfAbsent(r.state, () => <Map<String, Object?>>[]).add(r.toJson());
-    stdout.writeln('${r.state.padRight(10)} ${r.endpoint.padRight(18)} '
-        'ok=${r.ok} ${r.ms}ms ${r.ok ? r.captured : r.error}');
+    byState
+        .putIfAbsent(r.state, () => <Map<String, Object?>>[])
+        .add(r.toJson());
+    stdout.writeln(
+      '${r.state.padRight(10)} ${r.endpoint.padRight(18)} '
+      'ok=${r.ok} ${r.ms}ms ${r.ok ? r.captured : r.error}',
+    );
   }
   for (final e in byState.entries) {
     File('${dir.path}/${e.key}.json')
         .writeAsStringSync(const JsonEncoder.withIndent('  ').convert(e.value));
   }
   File('${dir.path}/summary.json').writeAsStringSync(
-      const JsonEncoder.withIndent('  ').convert(<String, Object?>{
-    'generatedAt': DateTime.now().toUtc().toIso8601String(),
-    'vipSongHash': _vipSongHash,
-    'states': states.keys.toList(),
-    'rows': rows.map((r) => r.toJson()).toList(),
-  }));
+    const JsonEncoder.withIndent('  ').convert(<String, Object?>{
+      'generatedAt': DateTime.now().toUtc().toIso8601String(),
+      'vipSongHash': _vipSongHash,
+      'states': states.keys.toList(),
+      'rows': rows.map((r) => r.toJson()).toList(),
+    }),
+  );
   stdout.writeln('saved ${rows.length} rows → ${dir.path}');
 }

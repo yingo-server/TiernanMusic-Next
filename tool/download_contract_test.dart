@@ -40,18 +40,26 @@ void main() {
   check(aborted.toString() == 'aborted', 'DownloadAborted: toString=aborted');
 
   // 收尾置 paused 的判定：cancel 不置；已 resume 的任务也不置（保持 pending）
-  check(!shouldMarkPausedOnAbort(cancelled: true, alreadyResumed: false),
-      'cancel: 不置 paused');
-  check(shouldMarkPausedOnAbort(cancelled: false, alreadyResumed: false),
-      'pause: 置 paused');
-  check(!shouldMarkPausedOnAbort(cancelled: false, alreadyResumed: true),
-      '已 resume: 不回写 paused（保持 pending 可重新调度）');
+  check(
+    !shouldMarkPausedOnAbort(cancelled: true, alreadyResumed: false),
+    'cancel: 不置 paused',
+  );
+  check(
+    shouldMarkPausedOnAbort(cancelled: false, alreadyResumed: false),
+    'pause: 置 paused',
+  );
+  check(
+    !shouldMarkPausedOnAbort(cancelled: false, alreadyResumed: true),
+    '已 resume: 不回写 paused（保持 pending 可重新调度）',
+  );
 
   // done 信号可完成（cancel 等待它）
   final j2 = RunningJob();
   j2.done.complete();
   check(j2.done.isCompleted, 'RunningJob: done 可完成（cancel 等待它）');
 
-  print('---- download contract self-check: $_passed passed, $_failed failed ----');
+  print(
+    '---- download contract self-check: $_passed passed, $_failed failed ----',
+  );
   if (_failed > 0) throw StateError('download contract FAILED');
 }

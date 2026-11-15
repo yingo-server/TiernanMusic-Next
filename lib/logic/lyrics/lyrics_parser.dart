@@ -47,9 +47,11 @@ class LyricParseResult {
       'offset=$offsetMs, krc=$isKrc)';
 }
 
-final RegExp _timeTagRe =
-    RegExp(r'\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]');
-final RegExp _offsetTagRe = RegExp(r'^\[offset:\s*(-?\d+)\s*\]$', caseSensitive: false);
+final RegExp _timeTagRe = RegExp(r'\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]');
+final RegExp _offsetTagRe = RegExp(
+  r'^\[offset:\s*(-?\d+)\s*\]$',
+  caseSensitive: false,
+);
 final RegExp _krcHeaderRe = RegExp(r'^\[(\d+),(\d+)\]');
 final RegExp _krcWordRe = RegExp(r'<(\d+),(\d+),\d+>([^<]*)');
 
@@ -69,7 +71,8 @@ List<MapEntry<int, String>> _extractTimeTags(String line) {
     int end = 0;
     for (final m in matches) {
       if (m.start != end) break; // 标签必须连续开头
-      final ms = int.parse(m.group(1)!) * 60000 +
+      final ms =
+          int.parse(m.group(1)!) * 60000 +
           int.parse(m.group(2)!) * 1000 +
           _fracToMs(m.group(3));
       out.add(MapEntry(ms, ''));
@@ -159,7 +162,10 @@ LyricParseResult parseLyrics(String content) {
       offsetMs: offsetMs,
       isKrc: isKrc,
     );
-    Log.d(_tag, 'parseLyrics lines=${lrcLines.length} krc=$isKrc offset=$offsetMs');
+    Log.d(
+      _tag,
+      'parseLyrics lines=${lrcLines.length} krc=$isKrc offset=$offsetMs',
+    );
     return r;
   } catch (e, st) {
     Log.e(_tag, 'parseLyrics failed', e, st);
@@ -179,12 +185,19 @@ LyricParseResult applyOffset(LyricParseResult r) {
     final words = <int, List<KrcWord>>{};
     r.wordsByLine.forEach((k, v) {
       words[k] = v
-          .map((w) => KrcWord(startMs: w.startMs + d, durMs: w.durMs, word: w.word))
+          .map(
+            (w) =>
+                KrcWord(startMs: w.startMs + d, durMs: w.durMs, word: w.word),
+          )
           .toList(growable: false);
     });
     Log.d(_tag, 'applyOffset ${r.offsetMs}ms');
     return LyricParseResult(
-      lines: lines, wordsByLine: words, offsetMs: 0, isKrc: r.isKrc);
+      lines: lines,
+      wordsByLine: words,
+      offsetMs: 0,
+      isKrc: r.isKrc,
+    );
   } catch (e, st) {
     Log.e(_tag, 'applyOffset failed', e, st);
     return r;

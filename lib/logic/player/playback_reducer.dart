@@ -32,7 +32,11 @@ class Paused extends PlaybackAction {
 
 /// 播放进度推进。
 class Progress extends PlaybackAction {
-  const Progress({required this.positionMs, this.durationMs = -1, this.bufferMs = -1});
+  const Progress({
+    required this.positionMs,
+    this.durationMs = -1,
+    this.bufferMs = -1,
+  });
   final int positionMs;
   final int durationMs; // -1 = 不更新
   final int bufferMs; // -1 = 不更新
@@ -138,8 +142,8 @@ PlayerState playbackReducer(PlayerState state, PlaybackAction action) {
       if (state.status != PlayerStatus.playing) return state;
       // 审查修复：位置/时长/缓冲均未变时返回**同一实例**（引用稳定），
       // Riverpod watch 不通知 → MiniBar/播放页不再每 ~200ms 全树重建。
-      final bool samePos = action.positionMs < 0 ||
-          action.positionMs == state.positionMs;
+      final bool samePos =
+          action.positionMs < 0 || action.positionMs == state.positionMs;
       final bool sameDur =
           action.durationMs < 0 || action.durationMs == state.durationMs;
       final bool sameBuf =
@@ -174,7 +178,8 @@ PlayerState playbackReducer(PlayerState state, PlaybackAction action) {
       return state.copyWith(speed: _clamp(action.speed, 0.5, 2.0));
     }
     if (action is Resume) {
-      if (state.status == PlayerStatus.paused || state.status == PlayerStatus.completed) {
+      if (state.status == PlayerStatus.paused ||
+          state.status == PlayerStatus.completed) {
         return state.copyWith(status: PlayerStatus.playing);
       }
       Log.w(_tag, 'Resume ignored in status=${state.status}');
@@ -191,6 +196,9 @@ PlayerState playbackReducer(PlayerState state, PlaybackAction action) {
     return state;
   } catch (e, st) {
     Log.e(_tag, 'playbackReducer crashed on ${action.runtimeType}', e, st);
-    return state.copyWith(status: PlayerStatus.error, lastError: 'reducer crash: $e');
+    return state.copyWith(
+      status: PlayerStatus.error,
+      lastError: 'reducer crash: $e',
+    );
   }
 }

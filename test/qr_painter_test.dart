@@ -3,6 +3,7 @@
 // 反掩码 → 解析 mode/length/UTF-8），还原字符串与输入一致即证明编码自洽可扫。
 // 2026-11-10：批1-C 审查时以纯 Python 独立解码器交叉验证通过（酷狗登录 URL 48B / V3-L）。
 import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tiernan_music_next/core/algorithms/qr_codec.dart';
 

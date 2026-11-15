@@ -8,7 +8,8 @@ import 'dart:io' show File;
 import '../../bridges/bridge_kernel.dart' show Log;
 import 'lyrics_parser.dart';
 import '../../bridges/bridge_core.dart' as misc show lyricDownload, lyricSearch;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, LyricResult, SongBrief, StoragePaths;
+import '../../bridges/bridge_core.dart'
+    show KugouClient, LruCache, LyricResult, SongBrief, StoragePaths;
 
 const String _tag = 'logic.lyrics';
 const String _ns = 'lyrics';
@@ -19,9 +20,9 @@ class LyricsLogic {
     required KugouClient client,
     required StoragePaths paths,
     required LruCache<String, LyricResult> cache,
-  })  : _client = client,
-        _paths = paths,
-        _cache = cache {
+  }) : _client = client,
+       _paths = paths,
+       _cache = cache {
     Log.d(_tag, 'init capacity=${cache.capacity}');
   }
 
@@ -66,9 +67,17 @@ class LyricsLogic {
   }
 
   /// 网络拉取：search → candidates[0] → download（krc 优先，失败退 lrc）。
-  Future<LyricResult> _fetch(String hash, String keyword, int durationMs) async {
-    final candidates = await misc.lyricSearch(_client,
-        hash: hash, keyword: keyword, durationMs: durationMs);
+  Future<LyricResult> _fetch(
+    String hash,
+    String keyword,
+    int durationMs,
+  ) async {
+    final candidates = await misc.lyricSearch(
+      _client,
+      hash: hash,
+      keyword: keyword,
+      durationMs: durationMs,
+    );
     if (candidates.isEmpty) {
       Log.w(_tag, 'no candidates hash=$hash');
       return const LyricResult();
@@ -77,8 +86,12 @@ class LyricsLogic {
     final dl = await misc.lyricDownload(_client, c.id, c.accessKey, fmt: c.fmt);
     if (dl.content.isEmpty) {
       // krc 失败退回 lrc。
-      final dl2 =
-          await misc.lyricDownload(_client, c.id, c.accessKey, fmt: 'lrc');
+      final dl2 = await misc.lyricDownload(
+        _client,
+        c.id,
+        c.accessKey,
+        fmt: 'lrc',
+      );
       if (dl2.content.isNotEmpty) return dl2;
     }
     return dl;
@@ -105,16 +118,21 @@ class LyricsLogic {
         return file;
       }
       // 3. 网络。
-      final dl = await _fetch(hash, '${song.name} ${song.singer}'.trim(),
-          song.durationSec * 1000);
+      final dl = await _fetch(
+        hash,
+        '${song.name} ${song.singer}'.trim(),
+        song.durationSec * 1000,
+      );
       if (dl.content.isNotEmpty) {
         _cache.put(hash, dl);
         final parsed = parseLyrics(dl.content);
         if (parsed.lines.isNotEmpty) {
           _writeFile(hash, dl.content);
         }
-        Log.d(_tag,
-            'lyricsFor net hash=$hash lines=${parsed.lines.length} krc=${dl.isKrc}');
+        Log.d(
+          _tag,
+          'lyricsFor net hash=$hash lines=${parsed.lines.length} krc=${dl.isKrc}',
+        );
         return dl;
       }
       return const LyricResult();

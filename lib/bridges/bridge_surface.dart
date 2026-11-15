@@ -4,7 +4,8 @@
 library;
 
 import '../kernel/kernel.dart' show Log;
-import '../surface/app_root.dart' as root
+import '../surface/app_root.dart'
+    as root
     show SurfaceDeps, bootstrapApp, installServices;
 import '../surface/theme/tn_theme.dart' show spLightThemeData;
 import '../session/bootstrap.dart' as session;
@@ -16,11 +17,11 @@ export '../session/graph.dart' show AppGraph, SessionDeps;
 export '../session/contracts.dart' show NavEntry, SurfaceModule;
 export '../session/module_registry.dart' show ModuleRegistry;
 export '../session/nav_state.dart' show NavState;
-export '../session/playback_session.dart' show PlaybackSession, PlaybackSnapshot;
+export '../session/playback_session.dart'
+    show PlaybackSession, PlaybackSnapshot;
 
 /// L1 → L7 装配入口：先装配 L6 session，再由独立 UI 模型装配 L7。
-Future<void> installServices(
-    {required dynamic deps, dynamic engine}) async {
+Future<void> installServices({required dynamic deps, dynamic engine}) async {
   try {
     // ① session（非 UI 逻辑）先就位；失败即暴露。
     final d = deps as root.SurfaceDeps;

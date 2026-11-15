@@ -4,8 +4,7 @@
 // 本文件是 kernel 的上层出口：import '../kernel/kernel.dart' 合法。
 library;
 
-import '../kernel/kernel.dart'
-    show Kernel, KernelContext, Log;
+import '../kernel/kernel.dart' show Kernel, KernelContext, Log;
 
 // 日志系统载体：转出 kernel.Log 供下层经桥留痕（桥自身留痕用 _bridgeLog 兜底）。
 export '../kernel/kernel.dart' show Log;
@@ -14,8 +13,10 @@ export '../kernel/kernel.dart' show Log;
 void _bridgeLog(String level, String fn, Object err, StackTrace st) {
   try {
     // ignore: avoid_print
-    print('${DateTime.now().toIso8601String()} $level/bridge_kernel: '
-        '$fn failed ERR=$err ST=$st');
+    print(
+      '${DateTime.now().toIso8601String()} $level/bridge_kernel: '
+      '$fn failed ERR=$err ST=$st',
+    );
   } catch (e) {
     // 日志兜底失败：不再递归，静默终止（已尽力留痕）
   }

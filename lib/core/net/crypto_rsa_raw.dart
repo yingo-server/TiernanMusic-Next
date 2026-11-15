@@ -50,8 +50,7 @@ class RsaRaw {
   /// RSA no-padding 加密：明文左侧补零到 128 字节，modPow(e=65537, n)，输出 hex。
   static String encryptHex(String plaintext, {String? modulusHex}) {
     try {
-      final modHex =
-          modulusHex ?? modulusHexFromPem(kKugouRsaPemBase64);
+      final modHex = modulusHex ?? modulusHexFromPem(kKugouRsaPemBase64);
       final n = BigIntL.fromHex(modHex);
       final mBytes = Uint8List(128);
       final plain = Uint8List.fromList(utf8.encode(plaintext));
@@ -60,10 +59,12 @@ class RsaRaw {
       // 大端 → limb（低 limb 在前）。
       final l = <int>[];
       for (var i = 128; i > 0; i -= 4) {
-        l.add((mBytes[i - 4] << 24) |
-            (mBytes[i - 3] << 16) |
-            (mBytes[i - 2] << 8) |
-            mBytes[i - 1]);
+        l.add(
+          (mBytes[i - 4] << 24) |
+              (mBytes[i - 3] << 16) |
+              (mBytes[i - 2] << 8) |
+              mBytes[i - 1],
+        );
       }
       final c = BigIntL(l).modPow(BigIntL([65537]), n);
       return c.toHex(padBytes: 128);

@@ -76,22 +76,23 @@ class Sp {
       final Color divider = dark ? Sp.divider : _dividerLight;
       final Color text = dark ? Sp.text : _textLight;
       final Color textSub = dark ? Sp.textSub : _textSubLight;
-      final scheme = ColorScheme.fromSeed(
-        seedColor: green,
-        brightness: dark ? Brightness.dark : Brightness.light,
-      ).copyWith(
-        surface: bg,
-        onSurface: text,
-        onSurfaceVariant: textSub,
-        surfaceContainerLowest: bgElevated,
-        surfaceContainerLow: bgElevated,
-        surfaceContainer: card,
-        surfaceContainerHigh: cardHigh,
-        surfaceContainerHighest: divider,
-        primary: green,
-        onPrimary: Colors.black,
-        error: red,
-      );
+      final scheme =
+          ColorScheme.fromSeed(
+            seedColor: green,
+            brightness: dark ? Brightness.dark : Brightness.light,
+          ).copyWith(
+            surface: bg,
+            onSurface: text,
+            onSurfaceVariant: textSub,
+            surfaceContainerLowest: bgElevated,
+            surfaceContainerLow: bgElevated,
+            surfaceContainer: card,
+            surfaceContainerHigh: cardHigh,
+            surfaceContainerHighest: divider,
+            primary: green,
+            onPrimary: Colors.black,
+            error: red,
+          );
       return ThemeData(
         useMaterial3: true,
         brightness: dark ? Brightness.dark : Brightness.light,
@@ -106,7 +107,10 @@ class Sp {
           elevation: 0,
           centerTitle: false,
           titleTextStyle: TextStyle(
-            fontSize: fPageTitle, fontWeight: FontWeight.w700, color: text),
+            fontSize: fPageTitle,
+            fontWeight: FontWeight.w700,
+            color: text,
+          ),
           iconTheme: IconThemeData(color: text),
         ),
         navigationBarTheme: NavigationBarThemeData(
@@ -145,7 +149,10 @@ class Sp {
           style: FilledButton.styleFrom(
             backgroundColor: green,
             foregroundColor: Colors.black,
-            textStyle: const TextStyle(fontSize: fItem, fontWeight: FontWeight.w600),
+            textStyle: const TextStyle(
+              fontSize: fItem,
+              fontWeight: FontWeight.w600,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(rFull),
             ),
@@ -168,13 +175,17 @@ class Sp {
   }
 
   static TextTheme _text(ColorScheme s, {bool dark = true}) {
-    final base = TextStyle(
-        color: dark ? Sp.text : _textLight, fontSize: fItem);
+    final base = TextStyle(color: dark ? Sp.text : _textLight, fontSize: fItem);
     final sub = dark ? Sp.textSub : _textSubLight;
     return TextTheme(
       headlineSmall: base.copyWith(
-          fontSize: fPageTitle, fontWeight: FontWeight.w700),
-      titleLarge: base.copyWith(fontSize: fSection, fontWeight: FontWeight.w600),
+        fontSize: fPageTitle,
+        fontWeight: FontWeight.w700,
+      ),
+      titleLarge: base.copyWith(
+        fontSize: fSection,
+        fontWeight: FontWeight.w600,
+      ),
       titleMedium: base.copyWith(fontSize: fItem, fontWeight: FontWeight.w600),
       bodyMedium: base.copyWith(fontSize: fItem),
       bodySmall: base.copyWith(fontSize: fSub, color: sub),

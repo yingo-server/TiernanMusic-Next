@@ -1,8 +1,20 @@
 // L5 logic/catalog · 专辑域门面（功能对齐批4-B，主会话实现）
 // 契约：缓存优先（ns 'album' / 'similar'，schemaVer 1）；每方法 try/catch+Log。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' as ep show AlbumDetail, LruCache, PlaylistBrief, TrackPage, buildKey, getAlbumDetail, getAlbumSongs, getSimilarPlaylists, prefixOf;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, PlaylistBrief, TrackPage, buildKey, prefixOf;
+import '../../bridges/bridge_core.dart'
+    as ep
+    show
+        AlbumDetail,
+        LruCache,
+        PlaylistBrief,
+        TrackPage,
+        buildKey,
+        getAlbumDetail,
+        getAlbumSongs,
+        getSimilarPlaylists,
+        prefixOf;
+import '../../bridges/bridge_core.dart'
+    show KugouClient, LruCache, PlaylistBrief, TrackPage, buildKey, prefixOf;
 
 const String _tag = 'logic.album';
 const int kAlbumCacheSchemaVer = 1;
@@ -12,8 +24,8 @@ class AlbumLogic {
   AlbumLogic({
     required KugouClient client,
     required LruCache<String, dynamic> cache,
-  })  : _client = client,
-        _cache = cache;
+  }) : _client = client,
+       _cache = cache;
 
   final KugouClient _client;
   final LruCache<String, dynamic> _cache;
@@ -90,10 +102,15 @@ class AlbumLogic {
   int invalidatePrefix({String? userid}) {
     try {
       final removed = _cache.invalidatePrefix(
-          prefixOf('album', userid ?? _uid()));
+        prefixOf('album', userid ?? _uid()),
+      );
       final removed2 = _cache.invalidatePrefix(
-          prefixOf('similar', userid ?? _uid()));
-      Log.d(_tag, 'invalidatePrefix removed=${removed.length + removed2.length}');
+        prefixOf('similar', userid ?? _uid()),
+      );
+      Log.d(
+        _tag,
+        'invalidatePrefix removed=${removed.length + removed2.length}',
+      );
       return removed.length + removed2.length;
     } catch (e, st) {
       Log.e(_tag, 'invalidatePrefix failed', e, st);

@@ -10,7 +10,6 @@
 //       不 import core/logic/kernel 内部文件，不新增跨更高层依赖。
 import 'dart:math' as math;
 
-
 import '../../bridges/bridge_kernel.dart' show Log;
 
 const String _tag = 'core.color';
@@ -27,8 +26,8 @@ class ColorSeed {
   static const ColorSeed fallback = ColorSeed(0x7C, 0x4D, 0xFF);
 
   /// 纯 int ARGB（L7 自行包成 Color(value)）。
-  int get argb => 0xFF000000 |
-      ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
+  int get argb =>
+      0xFF000000 | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
 
   @override
   String toString() => 'ColorSeed($r,$g,$b)';
@@ -65,8 +64,11 @@ ColorSeed extractDominant(List<int> rgbaBytes, int width, int height) {
     }
     final int total = width * height;
     if (total <= 0 || rgbaBytes.length < total * 4) {
-      Log.w(_tag, 'extractDominant: malformed RGBA length '
-          '${rgbaBytes.length} < ${total * 4}, fallback purple');
+      Log.w(
+        _tag,
+        'extractDominant: malformed RGBA length '
+        '${rgbaBytes.length} < ${total * 4}, fallback purple',
+      );
       return ColorSeed.fallback;
     }
     int step = total ~/ 4096;
@@ -108,8 +110,11 @@ ColorSeed extractDominant(List<int> rgbaBytes, int width, int height) {
       winner.sumG ~/ winner.count,
       winner.sumB ~/ winner.count,
     );
-    Log.d(_tag, 'extractDominant: seed=$seed step=$step '
-        'samples=$sampled buckets=${buckets.length}');
+    Log.d(
+      _tag,
+      'extractDominant: seed=$seed step=$step '
+      'samples=$sampled buckets=${buckets.length}',
+    );
     return seed;
   } catch (e, st) {
     Log.e(_tag, 'extractDominant crashed', e, st);
@@ -137,16 +142,21 @@ class _Bucket {
 /// [dark] 命名参数默认 false（亮色）；由 L7 按主题档位传入。
 ThemePalette fromSeed(ColorSeed seed, {bool dark = false}) {
   try {
-    final List<double> hsl =
-        _rgbToHsl(seed.r & 0xFF, seed.g & 0xFF, seed.b & 0xFF);
+    final List<double> hsl = _rgbToHsl(
+      seed.r & 0xFF,
+      seed.g & 0xFF,
+      seed.b & 0xFF,
+    );
     final double h = hsl[0];
     final double s = math.min(0.92, math.max(0.36, hsl[1]));
     final double primaryL = dark ? 0.62 : 0.46;
     final int primary = _hslToArgb(h, s, primaryL);
-    final int onPrimary =
-        _hslToArgb(h, s * 0.18, primaryL > 0.55 ? 0.12 : 0.98);
-    final int primaryContainer =
-        _hslToArgb(h, s * 0.55, dark ? 0.28 : 0.88);
+    final int onPrimary = _hslToArgb(
+      h,
+      s * 0.18,
+      primaryL > 0.55 ? 0.12 : 0.98,
+    );
+    final int primaryContainer = _hslToArgb(h, s * 0.55, dark ? 0.28 : 0.88);
     final int surface = _hslToArgb(h, s * 0.10, dark ? 0.11 : 0.97);
     Log.d(_tag, 'fromSeed: seed=$seed dark=$dark');
     return ThemePalette(
@@ -164,13 +174,12 @@ ThemePalette fromSeed(ColorSeed seed, {bool dark = false}) {
 
 /// 推导失败时的品牌紫常量表（与 Sp 亮暗取值一致）。
 ThemePalette _fallbackPalette(bool dark) => ThemePalette(
-      primary: 0xFF7C4DFF,
-      onPrimary: 0xFFFFFFFF,
-      primaryContainer:
-          dark ? 0xFF372A5E : 0xFFEDE7FF,
-      surface: dark ? 0xFF14121C : 0xFFF7F5FC,
-      dark: dark,
-    );
+  primary: 0xFF7C4DFF,
+  onPrimary: 0xFFFFFFFF,
+  primaryContainer: dark ? 0xFF372A5E : 0xFFEDE7FF,
+  surface: dark ? 0xFF14121C : 0xFFF7F5FC,
+  dark: dark,
+);
 
 // ── HSL 工具（纯 Dart，无 dart:ui / 第三方依赖）──
 

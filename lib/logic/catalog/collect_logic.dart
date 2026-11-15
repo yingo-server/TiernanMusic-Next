@@ -6,7 +6,8 @@
 import 'dart:convert';
 
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' as ep
+import '../../bridges/bridge_core.dart'
+    as ep
     show
         CollectResult,
         cancelCollectByHash,
@@ -30,10 +31,10 @@ class CollectLogic {
     required KeyValueSettings settings,
     required bool Function() isLoggedIn,
     void Function()? onChanged,
-  })  : _client = client,
-        _settings = settings,
-        _isLoggedIn = isLoggedIn,
-        _onChanged = onChanged {
+  }) : _client = client,
+       _settings = settings,
+       _isLoggedIn = isLoggedIn,
+       _onChanged = onChanged {
     _load();
     Log.d(_tag, 'init size=${_favorites.length} count=$_count');
   }
@@ -114,8 +115,11 @@ class CollectLogic {
   /// - 空 hash：返回默认失败结果；
   /// - 同 hash 并发：putIfAbsent 复用同一 Future，whenComplete 释放锁；
   /// - 端点成功：更新镜像 + 计数 + _flush() + onChanged?；失败不写镜像。
-  Future<ep.CollectResult> toggle(String hash, int mixSongId,
-      {SongBrief? song}) {
+  Future<ep.CollectResult> toggle(
+    String hash,
+    int mixSongId, {
+    SongBrief? song,
+  }) {
     try {
       final h = _norm(hash);
       if (h.isEmpty) {
@@ -151,8 +155,11 @@ class CollectLogic {
   }
 
   /// 实际写流程（每个分支显式 return）。
-  Future<ep.CollectResult> _doToggle(String h, int mixSongId,
-      {SongBrief? song}) async {
+  Future<ep.CollectResult> _doToggle(
+    String h,
+    int mixSongId, {
+    SongBrief? song,
+  }) async {
     try {
       final wasCollected = _favorites.contains(h);
       final ep.CollectResult r;
@@ -166,17 +173,24 @@ class CollectLogic {
         final use = fid.isNotEmpty ? fid : '${song?.albumAudioId ?? 0}';
         r = await ep.cancelCollectByHash(_client, h, albumAudioId: use);
       } else {
-        r = await ep.collectSongByHash(_client, h, mixSongId,
-            name: song?.name ?? '',
-            albumAudioId: '${song?.albumAudioId ?? 0}',
-            size: '${song?.fileSize ?? 0}',
-            timelen: '${(song?.durationSec ?? 0) * 1000}',
-            bitrate: '${song?.bitrate ?? 0}',
-            albumId: song?.albumId ?? '');
+        r = await ep.collectSongByHash(
+          _client,
+          h,
+          mixSongId,
+          name: song?.name ?? '',
+          albumAudioId: '${song?.albumAudioId ?? 0}',
+          size: '${song?.fileSize ?? 0}',
+          timelen: '${(song?.durationSec ?? 0) * 1000}',
+          bitrate: '${song?.bitrate ?? 0}',
+          albumId: song?.albumId ?? '',
+        );
       }
       if (!r.ok) {
-        Log.w(_tag, 'toggle rejected hash=$h cancel=$wasCollected '
-            'count=${r.count} (mirror unchanged)');
+        Log.w(
+          _tag,
+          'toggle rejected hash=$h cancel=$wasCollected '
+          'count=${r.count} (mirror unchanged)',
+        );
         return r;
       }
       // 写成功后才动镜像：失败/未登录绝不落本地状态。
@@ -199,8 +213,11 @@ class CollectLogic {
       _count = r.count >= _favorites.length ? r.count : _favorites.length;
       final flushed = _flush();
       _notify();
-      Log.d(_tag, 'toggle ok hash=$h cancel=$wasCollected '
-          'size=${_favorites.length} count=$_count flushed=$flushed');
+      Log.d(
+        _tag,
+        'toggle ok hash=$h cancel=$wasCollected '
+        'size=${_favorites.length} count=$_count flushed=$flushed',
+      );
       return ep.CollectResult(ok: true, count: _count, fileId: r.fileId);
     } catch (e, st) {
       Log.e(_tag, '_doToggle failed hash=$h', e, st);
@@ -250,7 +267,10 @@ class CollectLogic {
           added++;
         }
       }
-      Log.d(_tag, 'backfill favorites from server added=$added total=${_favorites.length}');
+      Log.d(
+        _tag,
+        'backfill favorites from server added=$added total=${_favorites.length}',
+      );
       return added;
     } catch (e, st) {
       Log.e(_tag, '_backfillFromServer failed', e, st);
@@ -336,7 +356,9 @@ class CollectLogic {
   bool _flush() {
     try {
       final ok = _settings.setString(
-          _kFavoritesKey, jsonEncode(_favorites.toList(growable: false)));
+        _kFavoritesKey,
+        jsonEncode(_favorites.toList(growable: false)),
+      );
       if (!ok) Log.w(_tag, '_flush setString returned false');
       // 批5-F2：fileid 镜像另写一把（与 favorites 同维度、按账号隔离）。
       final okIds = _settings.setString(_kFileIdsKey, jsonEncode(_fileIds));

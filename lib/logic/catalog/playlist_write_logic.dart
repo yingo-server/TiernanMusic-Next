@@ -6,7 +6,15 @@
 // - 写成功后失效本地镜像缓存（触发注入的 onChanged 回调）+ Log 留痕。
 // 每方法 try/catch + Log('logic.playlist.write')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show KugouClient, PlaylistBrief, PlaylistDao, createPlaylist, deletePlaylist, getUserPlaylists, removeSongsFromPlaylist;
+import '../../bridges/bridge_core.dart'
+    show
+        KugouClient,
+        PlaylistBrief,
+        PlaylistDao,
+        createPlaylist,
+        deletePlaylist,
+        getUserPlaylists,
+        removeSongsFromPlaylist;
 
 const String _tag = 'logic.playlist.write';
 
@@ -15,9 +23,9 @@ class PlaylistWriteLogic {
     required KugouClient client,
     required PlaylistDao playlistDao,
     void Function()? onChanged,
-  })  : _client = client,
-        _dao = playlistDao,
-        _onChanged = onChanged {
+  }) : _client = client,
+       _dao = playlistDao,
+       _onChanged = onChanged {
     Log.d(_tag, 'init');
   }
 
@@ -31,9 +39,16 @@ class PlaylistWriteLogic {
 
   /// 我的歌单（登录态；未登录返回空列表）。
   /// 端点：getUserPlaylists（/v7/get_all_list 系，query plat/userid/token）。
-  Future<List<PlaylistBrief>> myPlaylists({int page = 1, int pageSize = 30}) async {
+  Future<List<PlaylistBrief>> myPlaylists({
+    int page = 1,
+    int pageSize = 30,
+  }) async {
     try {
-      final list = await getUserPlaylists(_client, page: page, pageSize: pageSize);
+      final list = await getUserPlaylists(
+        _client,
+        page: page,
+        pageSize: pageSize,
+      );
       Log.d(_tag, 'myPlaylists n=${list.length}');
       return list;
     } catch (e, st) {
@@ -117,11 +132,18 @@ class PlaylistWriteLogic {
         return false;
       }
       final lv = _listVerCache[id] ?? 0;
-      final ok = await removeSongsFromPlaylist(_client, id, fileIds,
-          listVer: lv);
+      final ok = await removeSongsFromPlaylist(
+        _client,
+        id,
+        fileIds,
+        listVer: lv,
+      );
       if (ok) {
         _listVerCache[id] = lv + 1;
-        Log.d(_tag, 'removeSongs ok id=$id n=${fileIds.length} listVer=${lv + 1}');
+        Log.d(
+          _tag,
+          'removeSongs ok id=$id n=${fileIds.length} listVer=${lv + 1}',
+        );
         await _invalidate(id);
       }
       return ok;

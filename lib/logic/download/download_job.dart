@@ -35,5 +35,4 @@ bool _shouldEmitPausedOnAbort({required bool cancelled}) => !cancelled;
 bool shouldMarkPausedOnAbort({
   required bool cancelled,
   required bool alreadyResumed,
-}) =>
-    _shouldEmitPausedOnAbort(cancelled: cancelled) && !alreadyResumed;
+}) => _shouldEmitPausedOnAbort(cancelled: cancelled) && !alreadyResumed;

@@ -66,8 +66,10 @@ Future<SearchResult> searchTyped(
     final ep = type == SearchType.song
         ? EndpointRegistry.searchSong
         : Endpoint(
-            id: 'search_${type.name}', path: path,
-            router: 'complexsearch.kugou.com');
+            id: 'search_${type.name}',
+            path: path,
+            router: 'complexsearch.kugou.com',
+          );
     final res = await client.request(ep, <String, Object?>{
       'keyword': kw,
       'page': p,
@@ -79,13 +81,19 @@ Future<SearchResult> searchTyped(
     });
     final items = parseSearchItems(res, type: type);
     final total = safeInt(dataOf(res)['total']);
-    Log.d(_tag,
-        'searchTyped type=${type.name} kw=$kw page=$p '
-        'got=${items.length} total=$total');
+    Log.d(
+      _tag,
+      'searchTyped type=${type.name} kw=$kw page=$p '
+      'got=${items.length} total=$total',
+    );
     return SearchResult(total: total, items: items);
   } catch (e, st) {
-    Log.e(_tag, 'searchTyped failed type=${type.name} kw=$keyword page=$page',
-        e, st);
+    Log.e(
+      _tag,
+      'searchTyped failed type=${type.name} kw=$keyword page=$page',
+      e,
+      st,
+    );
     return const SearchResult();
   }
 }
@@ -101,9 +109,11 @@ Future<SearchResult> searchComplexV6(
   int page,
 ) async {
   try {
-    Log.w(_tag,
-        'searchComplexV6 degraded: v6 complex unreachable(ec=152), '
-        'fallback to v3/song kw=$keyword page=$page');
+    Log.w(
+      _tag,
+      'searchComplexV6 degraded: v6 complex unreachable(ec=152), '
+      'fallback to v3/song kw=$keyword page=$page',
+    );
     return await searchTyped(client, SearchType.song, keyword, page, 30);
   } catch (e, st) {
     Log.e(_tag, 'searchComplexV6 degrade failed kw=$keyword page=$page', e, st);
@@ -114,8 +124,10 @@ Future<SearchResult> searchComplexV6(
 /// 列表字段容错解析：优先 data.lists[]，退 data.info[]，再退顶层 lists/info。
 /// type=song 用 SongBrief.fromSearchList；special/album 用下方专用映射
 ///（A1-2/A1-3 实测键集，不猜 v6 字段）。
-List<SongBrief> parseSearchItems(Map<String, dynamic> res,
-    {SearchType type = SearchType.song}) {
+List<SongBrief> parseSearchItems(
+  Map<String, dynamic> res, {
+  SearchType type = SearchType.song,
+}) {
   try {
     final data = dataOf(res);
     var lists = listOf(data['lists']);

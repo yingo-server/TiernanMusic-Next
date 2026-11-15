@@ -24,8 +24,8 @@ class VerificationLogic {
   VerificationLogic({
     required KugouClient client,
     required KeyValueSettings settings,
-  })  : _client = client,
-        _settings = settings {
+  }) : _client = client,
+       _settings = settings {
     Log.d(_tag, 'init');
   }
 
@@ -51,8 +51,10 @@ class VerificationLogic {
       }
       _state = VerificationState.required;
       _ssaCode = ssaCode;
-      Log.d(_tag,
-          'onVerificationRequired state=required ssaLen=${ssaCode.length}');
+      Log.d(
+        _tag,
+        'onVerificationRequired state=required ssaLen=${ssaCode.length}',
+      );
       return true;
     } catch (e, st) {
       Log.e(_tag, 'onVerificationRequired failed', e, st);
@@ -70,9 +72,11 @@ class VerificationLogic {
         Log.w(_tag, 'getVerifyInfo invalid state=$_state');
         return false;
       }
-      Log.w(_tag,
-          'getVerifyInfo needs probe: get/verify/info 端点 docs 零留样，'
-          '返回 false（不发网络请求、不猜参数结构）');
+      Log.w(
+        _tag,
+        'getVerifyInfo needs probe: get/verify/info 端点 docs 零留样，'
+        '返回 false（不发网络请求、不猜参数结构）',
+      );
       return false;
     } catch (e, st) {
       Log.e(_tag, 'getVerifyInfo failed', e, st);
@@ -93,9 +97,11 @@ class VerificationLogic {
         Log.w(_tag, 'submitVerification empty payload');
         return false;
       }
-      Log.w(_tag,
-          'submitVerification needs probe: 提交端点未实测，'
-          '预留不提交，置 solving 供 UI 感知');
+      Log.w(
+        _tag,
+        'submitVerification needs probe: 提交端点未实测，'
+        '预留不提交，置 solving 供 UI 感知',
+      );
       _state = VerificationState.solving;
       return false;
     } catch (e, st) {

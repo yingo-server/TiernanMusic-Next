@@ -2,6 +2,7 @@
 // 铁律：只画控件；数据只经 bridge_session.appGraph.mv 取；样式一律 Sp.*。
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+
 import '../../bridges/bridge_session.dart'
     show appGraph, ModuleRegistry, NavEntry, SurfaceModule;
 import '../design/components.dart' show SpStateView;
@@ -27,7 +28,8 @@ class MvPageModule extends SurfaceModule {
   @override
   NavEntry? get navEntry => null;
   @override
-  WidgetBuilder? get builder => (_) => const MvPage(songHash: '');
+  WidgetBuilder? get builder =>
+      (_) => const MvPage(songHash: '');
 }
 
 /// MV 内嵌播放页：qualities(hash) → 最低档（ld/sd 优先）→ playUrl。
@@ -105,11 +107,17 @@ class _MvPageState extends State<MvPage> {
       // 最低档优先：ld → sd → 按 size 取最小（避开 VIP 高画质档）。
       var low = quals.first;
       for (final q in quals) {
-        if (q.id == 'ld') { low = q; break; }
+        if (q.id == 'ld') {
+          low = q;
+          break;
+        }
       }
       if (low.id != 'ld') {
         for (final q in quals) {
-          if (q.id == 'sd') { low = q; break; }
+          if (q.id == 'sd') {
+            low = q;
+            break;
+          }
         }
       }
       if (low.id != 'ld' && low.id != 'sd') {
@@ -124,8 +132,9 @@ class _MvPageState extends State<MvPage> {
         _fail(_Phase.empty, 'MV 地址不可用（可能被权限拦截）');
         return;
       }
-      final raw = r.urls.firstWhere(
-        (u) => u.trim().isNotEmpty, orElse: () => '').trim();
+      final raw = r.urls
+          .firstWhere((u) => u.trim().isNotEmpty, orElse: () => '')
+          .trim();
       if (raw.isEmpty) {
         _fail(_Phase.empty, 'MV 地址为空');
         return;
@@ -181,7 +190,10 @@ class _MvPageState extends State<MvPage> {
     final c = _ctrl;
     if (c == null) return;
     try {
-      if (c.value.isPlaying) c.pause(); else c.play();
+      if (c.value.isPlaying)
+        c.pause();
+      else
+        c.play();
     } catch (e, st) {
       debugPrint('surface.mv: toggle failed: $e\n$st');
     }
@@ -189,72 +201,113 @@ class _MvPageState extends State<MvPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: Sp.bg,
-        appBar: AppBar(
-          backgroundColor: Sp.bg,
-          iconTheme: const IconThemeData(color: Sp.text),
-          title: const Text('MV',
-              style: TextStyle(fontSize: Sp.fSection, color: Sp.text)),
-        ),
-        body: SafeArea(child: _view()),
-      );
+    backgroundColor: Sp.bg,
+    appBar: AppBar(
+      backgroundColor: Sp.bg,
+      iconTheme: const IconThemeData(color: Sp.text),
+      title: const Text(
+        'MV',
+        style: TextStyle(fontSize: Sp.fSection, color: Sp.text),
+      ),
+    ),
+    body: SafeArea(child: _view()),
+  );
 
   Widget _view() {
     switch (_phase) {
       case _Phase.loading:
-        return Center(child: Column(mainAxisSize: MainAxisSize.min,
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-          const CircularProgressIndicator(color: Sp.green),
-          const SizedBox(height: Sp.gapM),
-          const Text('正在加载 MV…',
-              style: TextStyle(fontSize: Sp.fSub, color: Sp.textSub)),
-        ]));
+              const CircularProgressIndicator(color: Sp.green),
+              const SizedBox(height: Sp.gapM),
+              const Text(
+                '正在加载 MV…',
+                style: TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+              ),
+            ],
+          ),
+        );
       case _Phase.empty:
-        return SpStateView(icon: Icons.movie, title: '暂无 MV',
-            subtitle: _message, actionLabel: '重试', onAction: _load);
+        return SpStateView(
+          icon: Icons.movie,
+          title: '暂无 MV',
+          subtitle: _message,
+          actionLabel: '重试',
+          onAction: _load,
+        );
       case _Phase.error:
-        return SpStateView(icon: Icons.error_outline, title: 'MV 不可用',
-            subtitle: _message, actionLabel: '重试', onAction: _load);
+        return SpStateView(
+          icon: Icons.error_outline,
+          title: 'MV 不可用',
+          subtitle: _message,
+          actionLabel: '重试',
+          onAction: _load,
+        );
       case _Phase.ready:
         final c = _ctrl;
         if (c == null) {
-          return SpStateView(icon: Icons.error_outline, title: 'MV 不可用',
-              subtitle: '播放器已释放', actionLabel: '重试', onAction: _load);
+          return SpStateView(
+            icon: Icons.error_outline,
+            title: 'MV 不可用',
+            subtitle: '播放器已释放',
+            actionLabel: '重试',
+            onAction: _load,
+          );
         }
         final ar = c.value.aspectRatio > 0 ? c.value.aspectRatio : 1.0;
         return Padding(
           padding: const EdgeInsets.all(Sp.gapM),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(Sp.rCard),
-              child: ColoredBox(
-                color: Sp.bgElevated,
-                child: AspectRatio(aspectRatio: ar, child: VideoPlayer(c)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(Sp.rCard),
+                child: ColoredBox(
+                  color: Sp.bgElevated,
+                  child: AspectRatio(aspectRatio: ar, child: VideoPlayer(c)),
+                ),
               ),
-            ),
-            const SizedBox(height: Sp.gapM),
-            VideoProgressIndicator(c, allowScrubbing: true,
+              const SizedBox(height: Sp.gapM),
+              VideoProgressIndicator(
+                c,
+                allowScrubbing: true,
                 colors: const VideoProgressColors(
-                    playedColor: Sp.green, bufferedColor: Sp.textFaint,
-                    backgroundColor: Sp.divider)),
-            const SizedBox(height: Sp.gapS),
-            Row(children: <Widget>[
-              IconButton(
-                onPressed: _toggle,
-                icon: Icon(c.value.isPlaying ? Icons.pause : Icons.play_arrow),
-                color: Sp.green,
-                tooltip: c.value.isPlaying ? '暂停' : '播放',
+                  playedColor: Sp.green,
+                  bufferedColor: Sp.textFaint,
+                  backgroundColor: Sp.divider,
+                ),
               ),
-              const SizedBox(width: Sp.gapS),
-              Expanded(child: Text(
-                _note.isNotEmpty ? _note
-                    : (_quality.isEmpty ? 'MV 内嵌播放' : '档位 $_quality'),
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: Sp.fTiny, color: Sp.textSub),
-              )),
-            ]),
-          ]),
+              const SizedBox(height: Sp.gapS),
+              Row(
+                children: <Widget>[
+                  IconButton(
+                    onPressed: _toggle,
+                    icon: Icon(
+                      c.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                    ),
+                    color: Sp.green,
+                    tooltip: c.value.isPlaying ? '暂停' : '播放',
+                  ),
+                  const SizedBox(width: Sp.gapS),
+                  Expanded(
+                    child: Text(
+                      _note.isNotEmpty
+                          ? _note
+                          : (_quality.isEmpty ? 'MV 内嵌播放' : '档位 $_quality'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: Sp.fTiny,
+                        color: Sp.textSub,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         );
     }
   }

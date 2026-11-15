@@ -7,7 +7,8 @@
 import 'dart:convert';
 
 import '../../../bridges/bridge_kernel.dart' show Log;
-import '../crypto_rsa.dart' show playlistAesEncrypt, playlistAesDecrypt, rsaEncrypt2;
+import '../crypto_rsa.dart'
+    show playlistAesEncrypt, playlistAesDecrypt, rsaEncrypt2;
 import '../kugou_client.dart';
 import '../signing.dart' show KugouSign;
 import 'models.dart';
@@ -19,10 +20,11 @@ const String _tag = 'ep.playlist.write';
 /// field_truth 实测失败样本 {status:0,error_code:20010} 曾按 s==0 被误判成功。
 bool _ok(Map<String, dynamic> res) {
   final data = dataOf(res);
-  final s = safeInt(data['status'],
-      safeInt(res['status'], safeInt(res['error_code'], -1)));
-  final ec = safeInt(data['error_code'],
-      safeInt(res['error_code'], 0));
+  final s = safeInt(
+    data['status'],
+    safeInt(res['status'], safeInt(res['error_code'], -1)),
+  );
+  final ec = safeInt(data['error_code'], safeInt(res['error_code'], 0));
   final ok = s == 1 && ec == 0;
   if (!ok) {
     Log.d(_tag, 'not ok status=$s error_code=$ec');
@@ -39,27 +41,30 @@ Future<String?> createPlaylist(KugouClient client, String name) async {
       Log.w(_tag, 'createPlaylist empty name');
       return null;
     }
-    final res = await client.request(EndpointRegistry.playlistCreate,
-        <String, Object?>{
-      // ENDPOINT_TRUTH.md §4 playlist_add.js：type==0 自建时 query 显式
-      // last_time / last_area / userid / token（多参不缺参）。
-      'last_time': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      'last_area': 'gztx',
-      'userid': client.session.userid,
-      'token': client.session.token,
-    }, body: <String, Object?>{
-      'userid': client.session.userid,
-      'token': client.session.token,
-      'total_ver': 0,
-      'name': n,
-      'type': 0,
-      'source': 0,
-      'is_pri': 0,
-      'list_create_userid': 0,
-      'list_create_listid': 0,
-      'list_create_gid': 0,
-      'from_shupinmv': 0,
-    });
+    final res = await client.request(
+      EndpointRegistry.playlistCreate,
+      <String, Object?>{
+        // ENDPOINT_TRUTH.md §4 playlist_add.js：type==0 自建时 query 显式
+        // last_time / last_area / userid / token（多参不缺参）。
+        'last_time': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        'last_area': 'gztx',
+        'userid': client.session.userid,
+        'token': client.session.token,
+      },
+      body: <String, Object?>{
+        'userid': client.session.userid,
+        'token': client.session.token,
+        'total_ver': 0,
+        'name': n,
+        'type': 0,
+        'source': 0,
+        'is_pri': 0,
+        'list_create_userid': 0,
+        'list_create_listid': 0,
+        'list_create_gid': 0,
+        'from_shupinmv': 0,
+      },
+    );
     if (!_ok(res)) {
       Log.w(_tag, 'createPlaylist not ok name=$n');
       return null;
@@ -102,29 +107,26 @@ Future<bool> deletePlaylist(KugouClient client, String listid) async {
       return false;
     }
     final clienttime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    final dataMap = <String, Object?>{
-      'listid': id,
-      'total_ver': 0,
-      'type': 1,
-    };
+    final dataMap = <String, Object?>{'listid': id, 'total_ver': 0, 'type': 1};
     final aes = playlistAesEncrypt(dataMap);
-    final p = rsaEncrypt2(jsonEncode(<String, Object?>{
-      'aes': aes.key,
-      'uid': uid,
-      'token': token,
-    }));
-    final res = await client.request(EndpointRegistry.playlistDelete,
-        <String, Object?>{
-      // module/playlist_del.js paramsMap：clienttime/key/last_area/clientver/
-      // appid/last_time/p（key=signParamsKey，多参不缺参）。
-      'clienttime': clienttime,
-      'key': KugouSign.signParamsKey('$clienttime'),
-      'last_area': 'gztx',
-      'clientver': KugouSign.clientver,
-      'appid': KugouSign.appid,
-      'last_time': clienttime,
-      'p': p,
-    }, rawBody: aes.cipherBase64);
+    final p = rsaEncrypt2(
+      jsonEncode(<String, Object?>{'aes': aes.key, 'uid': uid, 'token': token}),
+    );
+    final res = await client.request(
+      EndpointRegistry.playlistDelete,
+      <String, Object?>{
+        // module/playlist_del.js paramsMap：clienttime/key/last_area/clientver/
+        // appid/last_time/p（key=signParamsKey，多参不缺参）。
+        'clienttime': clienttime,
+        'key': KugouSign.signParamsKey('$clienttime'),
+        'last_area': 'gztx',
+        'clientver': KugouSign.clientver,
+        'appid': KugouSign.appid,
+        'last_time': clienttime,
+        'p': p,
+      },
+      rawBody: aes.cipherBase64,
+    );
     // 响应为 AES 密文（非 JSON → _raw_text），同 key 派生解密后判 status。
     final rawText = '${res['_raw_text'] ?? ''}';
     if (rawText.isEmpty) {
@@ -159,7 +161,8 @@ Future<bool> deletePlaylist(KugouClient client, String listid) async {
 Future<List<Map<String, dynamic>>> addSongsToPlaylist(
   KugouClient client,
   String listid,
-  List<Map<String, String>> songs, { // {name, hash, albumId, mixsongid, size, timelen, bitrate}
+  List<Map<String, String>>
+  songs, { // {name, hash, albumId, mixsongid, size, timelen, bitrate}
   int listVer = 0, // R3-C #3：detail 缓存的 list_ver（实测字段，默认 0 兼容）
 }) async {
   try {
@@ -169,35 +172,38 @@ Future<List<Map<String, dynamic>>> addSongsToPlaylist(
       return const <Map<String, dynamic>>[];
     }
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    final res = await client.request(EndpointRegistry.playlistAddSongs,
-        <String, Object?>{
-      'last_time': now,
-      'last_area': 'gztx',
-      'userid': client.session.userid,
-      'token': client.session.token,
-    }, body: <String, Object?>{
-      'userid': client.session.userid,
-      'token': client.session.token,
-      'listid': id,
-      'list_ver': listVer,
-      'type': 0,
-      'slow_upload': 1,
-      'scene': 'false;null',
-      'data': [
-        for (var i = 0; i < songs.length; i++)
-          <String, Object?>{
-            'number': i + 1,
-            'name': songs[i]['name'] ?? '',
-            'hash': (songs[i]['hash'] ?? '').toLowerCase(),
-            'size': int.tryParse(songs[i]['size'] ?? '') ?? 0,
-            'sort': 0,
-            'timelen': int.tryParse(songs[i]['timelen'] ?? '') ?? 0,
-            'bitrate': int.tryParse(songs[i]['bitrate'] ?? '') ?? 0,
-            'album_id': int.tryParse(songs[i]['albumId'] ?? '') ?? 0,
-            'mixsongid': int.tryParse(songs[i]['mixsongid'] ?? '') ?? 0,
-          },
-      ],
-    });
+    final res = await client.request(
+      EndpointRegistry.playlistAddSongs,
+      <String, Object?>{
+        'last_time': now,
+        'last_area': 'gztx',
+        'userid': client.session.userid,
+        'token': client.session.token,
+      },
+      body: <String, Object?>{
+        'userid': client.session.userid,
+        'token': client.session.token,
+        'listid': id,
+        'list_ver': listVer,
+        'type': 0,
+        'slow_upload': 1,
+        'scene': 'false;null',
+        'data': [
+          for (var i = 0; i < songs.length; i++)
+            <String, Object?>{
+              'number': i + 1,
+              'name': songs[i]['name'] ?? '',
+              'hash': (songs[i]['hash'] ?? '').toLowerCase(),
+              'size': int.tryParse(songs[i]['size'] ?? '') ?? 0,
+              'sort': 0,
+              'timelen': int.tryParse(songs[i]['timelen'] ?? '') ?? 0,
+              'bitrate': int.tryParse(songs[i]['bitrate'] ?? '') ?? 0,
+              'album_id': int.tryParse(songs[i]['albumId'] ?? '') ?? 0,
+              'mixsongid': int.tryParse(songs[i]['mixsongid'] ?? '') ?? 0,
+            },
+        ],
+      },
+    );
     if (!_ok(res)) {
       Log.w(_tag, 'addSongsToPlaylist not ok listid=$listid');
       return const <Map<String, dynamic>>[];
@@ -235,8 +241,11 @@ Future<bool> removeSongsFromPlaylist(
     for (final h in hs) {
       final fid = int.tryParse(h) ?? 0;
       if (fid == 0) {
-        Log.w(_tag, 'removeSongsFromPlaylist skip invalid fileId=$h '
-            '(album_audio_id required)');
+        Log.w(
+          _tag,
+          'removeSongsFromPlaylist skip invalid fileId=$h '
+          '(album_audio_id required)',
+        );
         continue;
       }
       entries.add(<String, Object?>{'fileid': fid, 'number': 1});
@@ -245,20 +254,26 @@ Future<bool> removeSongsFromPlaylist(
       Log.w(_tag, 'removeSongsFromPlaylist all fileIds invalid');
       return false;
     }
-    final res = await client.request(EndpointRegistry.playlistDelSongs,
-        <String, Object?>{}, body: <String, Object?>{
-      // 批N3-B 实测：data:[{fileid}]，fileid=album_audio_id（audio_id），
-      // 非 hash；body {listid,userid,data,type:0,token,list_ver}。
-      'data': entries,
-      'type': 0,
-      'listid': id,
-      'userid': client.session.userid,
-      'token': client.session.token,
-      'list_ver': listVer,
-    });
+    final res = await client.request(
+      EndpointRegistry.playlistDelSongs,
+      <String, Object?>{},
+      body: <String, Object?>{
+        // 批N3-B 实测：data:[{fileid}]，fileid=album_audio_id（audio_id），
+        // 非 hash；body {listid,userid,data,type:0,token,list_ver}。
+        'data': entries,
+        'type': 0,
+        'listid': id,
+        'userid': client.session.userid,
+        'token': client.session.token,
+        'list_ver': listVer,
+      },
+    );
     final ok = _ok(res);
-    Log.d(_tag, 'removeSongsFromPlaylist id=$id n=${entries.length} '
-        'listVer=$listVer ok=$ok');
+    Log.d(
+      _tag,
+      'removeSongsFromPlaylist id=$id n=${entries.length} '
+      'listVer=$listVer ok=$ok',
+    );
     return ok;
   } catch (e, st) {
     Log.e(_tag, 'removeSongsFromPlaylist failed listid=$listid', e, st);
@@ -271,12 +286,15 @@ Future<bool> removeSongsFromPlaylist(
 /// son[] 子标签 {tag_id,tag_name,parent_id,sort}（tag_name 非 tagname）。
 Future<List<String>> getPlaylistTags(KugouClient client) async {
   try {
-    final res = await client.request(EndpointRegistry.playlistTags,
-        <String, Object?>{}, body: <String, Object?>{
-      'tag_type': 'collection',
-      'tag_id': 0,
-      'source': 3,
-    });
+    final res = await client.request(
+      EndpointRegistry.playlistTags,
+      <String, Object?>{},
+      body: <String, Object?>{
+        'tag_type': 'collection',
+        'tag_id': 0,
+        'source': 3,
+      },
+    );
     final data = dataOf(res);
     final raw = listOf(data['info'] ?? data['data'] ?? res['data'] ?? data);
     final tags = <String>[];
@@ -316,25 +334,33 @@ Future<List<PlaylistBrief>> getUserPlaylists(
     }
     final p = page < 1 ? 1 : page;
     final ps = pageSize < 1 ? 30 : pageSize;
-    final res = await client.request(EndpointRegistry.userPlaylists,
-        <String, Object?>{
-      // ENDPOINT_TRUTH.md §4 user_playlist.js：query plat/userid/token +
-      // 默认参数（多参不缺参）。
-      'plat': 1,
-      'userid': uid,
-      'token': client.session.token,
-    }, body: <String, Object?>{
-      'userid': uid,
-      'token': client.session.token,
-      'total_ver': 979,
-      'type': 2,
-      'page': p,
-      'pagesize': ps,
-    });
+    final res = await client.request(
+      EndpointRegistry.userPlaylists,
+      <String, Object?>{
+        // ENDPOINT_TRUTH.md §4 user_playlist.js：query plat/userid/token +
+        // 默认参数（多参不缺参）。
+        'plat': 1,
+        'userid': uid,
+        'token': client.session.token,
+      },
+      body: <String, Object?>{
+        'userid': uid,
+        'token': client.session.token,
+        'total_ver': 979,
+        'type': 2,
+        'page': p,
+        'pagesize': ps,
+      },
+    );
     final data = dataOf(res);
     // 批N3-B 实测：data.info[]（A6-1），list/data 兜底保留容错。
-    final raw = listOf(data['info'] ?? data['list'] ?? data['data'] ??
-        res['list'] ?? res['data']);
+    final raw = listOf(
+      data['info'] ??
+          data['list'] ??
+          data['data'] ??
+          res['list'] ??
+          res['data'],
+    );
     final items = raw.map(PlaylistBrief.fromMap).toList(growable: false);
     Log.d(_tag, 'getUserPlaylists page=$p got=${items.length}');
     return items;

@@ -24,8 +24,8 @@ class _LibraryPageState extends State<LibraryPage>
   Future<UserProfile>? _profile;
   Future<int>? _favCount;
   List<DownloadTask> _downloads = const <DownloadTask>[];
-  Future<List<SongBrief>>? _localSongs;
-  Future<List<SongBrief>>? _recentSongs;
+  Future<List<SongRecord>>? _localSongs;
+  Future<List<PlayHistoryEntry>>? _recentSongs;
 
   @override
   void initState() {
@@ -204,34 +204,40 @@ class _LibraryPageState extends State<LibraryPage>
   }
 
   /// 本地曲库：SongDao.list() 真数据（Future 在 initState 持有）。
-  Widget _localLibrary() => _songList(
+  Widget _localLibrary() => _list<SongRecord>(
     future: _localSongs,
     emptyTitle: '曲库还是空的',
     emptySubtitle: '下载或导入歌曲后会显示在这里',
     icon: Icons.library_music_outlined,
+    titleOf: (r) => r.fileName,
+    subtitleOf: (r) => r.singerName,
   );
 
   /// 最近播放：HistoryDao.recent() 真数据。
-  Widget _recentPlays() => _songList(
+  Widget _recentPlays() => _list<PlayHistoryEntry>(
     future: _recentSongs,
     emptyTitle: '还没有播放记录',
     emptySubtitle: '播放歌曲后会显示在这里',
     icon: Icons.history,
+    titleOf: (r) => r.fileName.isEmpty ? r.hash : r.fileName,
+    subtitleOf: (r) => r.singerName,
   );
 
-  /// 三态列表：加载 / 错误 / 空 / 数据（点击整列表 playAll）。
-  Widget _songList({
-    required Future<List<SongBrief>>? future,
+  /// 三态列表：加载 / 错误 / 空 / 数据（纯展示实体，不伪造 SongBrief）。
+  Widget _list<T>({
+    required Future<List<T>>? future,
     required String emptyTitle,
     required String emptySubtitle,
     required IconData icon,
+    required String Function(T) titleOf,
+    required String Function(T) subtitleOf,
   }) {
     if (future == null) {
       return SpStateView(icon: icon, title: '数据能力未装配', subtitle: emptySubtitle);
     }
-    return FutureBuilder<List<SongBrief>>(
+    return FutureBuilder<List<T>>(
       future: future,
-      builder: (BuildContext c, AsyncSnapshot<List<SongBrief>> snap) {
+      builder: (BuildContext c, AsyncSnapshot<List<T>> snap) {
         if (snap.connectionState != ConnectionState.done) {
           return const Center(child: LinearProgressIndicator());
         }
@@ -244,8 +250,8 @@ class _LibraryPageState extends State<LibraryPage>
             onAction: _reloadLists,
           );
         }
-        final songs = snap.data ?? const <SongBrief>[];
-        if (songs.isEmpty) {
+        final items = snap.data ?? <T>[];
+        if (items.isEmpty) {
           return SpStateView(
             icon: icon,
             title: emptyTitle,
@@ -253,10 +259,17 @@ class _LibraryPageState extends State<LibraryPage>
           );
         }
         return ListView.builder(
-          itemCount: songs.length,
-          itemBuilder: (BuildContext ctx, int i) => SpSongTile(
-            song: songs[i],
-            onTap: () => PlaybackSession.instance.playAll(songs, i),
+          itemCount: items.length,
+          itemBuilder: (BuildContext ctx, int i) => ListTile(
+            leading: const Icon(Icons.music_note, color: Sp.textFaint),
+            title: Text(
+              titleOf(items[i]),
+              style: const TextStyle(fontSize: Sp.fItem, color: Sp.text),
+            ),
+            subtitle: Text(
+              subtitleOf(items[i]),
+              style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+            ),
           ),
         );
       },

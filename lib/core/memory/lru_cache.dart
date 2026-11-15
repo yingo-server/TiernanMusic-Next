@@ -13,8 +13,8 @@ typedef LruEvictCallback<K, V> = void Function(K key, V value);
 /// get/put 均把键移动到尾部，超容量时从头淘汰并触发 onEvict。
 class LruCache<K, V> {
   LruCache({int capacity = 128, LruEvictCallback<K, V>? onEvict})
-      : _capacity = capacity > 0 ? capacity : 1,
-        _onEvict = onEvict {
+    : _capacity = capacity > 0 ? capacity : 1,
+      _onEvict = onEvict {
     try {
       Log.d(_tag, 'create capacity=$_capacity');
     } catch (e, st) {

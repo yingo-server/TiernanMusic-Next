@@ -313,7 +313,7 @@ class _SmsTabState extends State<_SmsTab> {
     }
     bool ok = false;
     try {
-      ok = await appGraph.auth.sendVerifyCode(phone);
+      ok = await appGraph.auth?.sendVerifyCode(phone) ?? false;
     } catch (e) {
       _msg = '验证码发送失败（接口待实测）';
       _toast(_msg);
@@ -339,7 +339,11 @@ class _SmsTabState extends State<_SmsTab> {
       return;
     }
     try {
-      final res = await appGraph.auth.signInByVerifyCode(phone, code);
+      final res = await appGraph.auth?.signInByVerifyCode(phone, code);
+      if (res == null) {
+        _toast('登录能力未装配');
+        return;
+      }
       if (!res.ok) {
         _toast(
           res.needsProbe

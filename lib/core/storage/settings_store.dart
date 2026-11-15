@@ -123,7 +123,9 @@ class KeyValueSettings {
     try {
       _ensureLoaded();
       final v = _cache[key];
-      return v is int ? v : (v is num ? v.toInt() : (v is String ? int.tryParse(v) : null));
+      return v is int
+          ? v
+          : (v is num ? v.toInt() : (v is String ? int.tryParse(v) : null));
     } catch (e, st) {
       Log.e('kvsettings', 'getInt($key) failed', e, st);
       return null;
@@ -147,7 +149,11 @@ class KeyValueSettings {
     try {
       _ensureLoaded();
       final v = _cache[key];
-      return v is double ? v : (v is num ? v.toDouble() : (v is String ? double.tryParse(v) : null));
+      return v is double
+          ? v
+          : (v is num
+                ? v.toDouble()
+                : (v is String ? double.tryParse(v) : null));
     } catch (e, st) {
       Log.e('kvsettings', 'getDouble($key) failed', e, st);
       return null;

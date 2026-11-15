@@ -104,7 +104,9 @@ class SongDao {
       final song = await getByHash(hash);
       if (song == null) return;
       song.playCount += 1;
-      song.lastPlayedAt = nowMs > 0 ? nowMs : DateTime.now().millisecondsSinceEpoch;
+      song.lastPlayedAt = nowMs > 0
+          ? nowMs
+          : DateTime.now().millisecondsSinceEpoch;
       await put(song);
     } catch (e, st) {
       Log.e(_tag, 'markPlayed $hash', e, st);
@@ -113,7 +115,11 @@ class SongDao {
   }
 
   /// 内存排序（本地曲库量级 ≤万条，避免依赖 codegen 阶段扩展方法）。
-  List<SongRecord> _sorted(List<SongRecord> list, SortKey key, SortOrder order) {
+  List<SongRecord> _sorted(
+    List<SongRecord> list,
+    SortKey key,
+    SortOrder order,
+  ) {
     final asc = order == SortOrder.asc;
     int cmp(SongRecord a, SongRecord b) {
       final av = switch (key) {
@@ -129,7 +135,9 @@ class SongDao {
         SortKey.fileName => 0,
       };
       if (key == SortKey.fileName) {
-        return asc ? a.fileName.compareTo(b.fileName) : b.fileName.compareTo(a.fileName);
+        return asc
+            ? a.fileName.compareTo(b.fileName)
+            : b.fileName.compareTo(a.fileName);
       }
       return asc ? av.compareTo(bv) : bv.compareTo(av);
     }
@@ -410,8 +418,9 @@ class AccountDao {
   /// 按 Isar id 删除账号；返回是否删除了记录。
   Future<bool> remove(Id id) async {
     try {
-      final removed =
-          await _isar.writeTxn(() => _isar.accountRecords.delete(id));
+      final removed = await _isar.writeTxn(
+        () => _isar.accountRecords.delete(id),
+      );
       Log.d(_tag, 'remove id=$id removed=$removed');
       return removed;
     } catch (e, st) {

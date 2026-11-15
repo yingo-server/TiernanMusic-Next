@@ -37,17 +37,24 @@ class CollectResult {
   // 缺失为 null（logic 层据此判定「fileid 未建档」）。
   final String? fileId;
 
-  CollectResult copyWith(
-          {bool? ok, bool? needsLogin, int? count, String? fileId}) =>
-      CollectResult(
-          ok: ok ?? this.ok,
-          needsLogin: needsLogin ?? this.needsLogin,
-          count: count ?? this.count,
-          fileId: fileId ?? this.fileId);
+  CollectResult copyWith({
+    bool? ok,
+    bool? needsLogin,
+    int? count,
+    String? fileId,
+  }) => CollectResult(
+    ok: ok ?? this.ok,
+    needsLogin: needsLogin ?? this.needsLogin,
+    count: count ?? this.count,
+    fileId: fileId ?? this.fileId,
+  );
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'ok': ok, 'needsLogin': needsLogin, 'count': count, 'fileId': fileId,
-      };
+    'ok': ok,
+    'needsLogin': needsLogin,
+    'count': count,
+    'fileId': fileId,
+  };
 
   @override
   String toString() {
@@ -64,13 +71,18 @@ class CollectResult {
 Map<String, Object?> _baseParams(KugouClient client) {
   try {
     return <String, Object?>{
-      'dfid': client.session.dfid, 'mid': client.session.mid,
-      'uuid': '-', 'plat': 1,
+      'dfid': client.session.dfid,
+      'mid': client.session.mid,
+      'uuid': '-',
+      'plat': 1,
     };
   } catch (e, st) {
     Log.e(_tag, '_baseParams failed', e, st);
     return const <String, Object?>{
-      'dfid': '-', 'mid': '', 'uuid': '-', 'plat': 1,
+      'dfid': '-',
+      'mid': '',
+      'uuid': '-',
+      'plat': 1,
     };
   }
 }
@@ -82,13 +94,16 @@ int _countOf(Map<String, dynamic> res) {
   try {
     final data = dataOf(res);
     for (final v in <Object?>[
-      data['count'], data['total'], res['count'], res['total'],
+      data['count'],
+      data['total'],
+      res['count'],
+      res['total'],
     ]) {
       final n = safeInt(v, -1);
       if (n >= 0) return n;
     }
-    return listOf(
-        data['lists'] ?? data['list'] ?? data['info'] ?? res['lists']).length;
+    return listOf(data['lists'] ?? data['list'] ?? data['info'] ?? res['lists'])
+        .length;
   } catch (e, st) {
     Log.e(_tag, '_countOf failed', e, st);
     return 0;
@@ -149,8 +164,11 @@ Future<CollectResult> collectSongByHash(
         if (aid != null) fileId = '$aid'.trim();
       }
     }
-    Log.d(_tag, 'collectSongByHash via 我喜欢 listid=$listid ok=$ok hash=$h '
-        'fileId=$fileId');
+    Log.d(
+      _tag,
+      'collectSongByHash via 我喜欢 listid=$listid ok=$ok hash=$h '
+      'fileId=$fileId',
+    );
     return CollectResult(ok: ok, count: ok ? 1 : 0, fileId: fileId);
   } catch (e, st) {
     Log.e(_tag, 'collectSongByHash failed hash=$hash', e, st);
@@ -224,19 +242,22 @@ Future<String?> favoriteListId(KugouClient client) async {
 /// tool/field_truth_test.dart），故**不设 status==1 门槛**，只按 data.list[]
 /// 层级容错计数；失败返回 0 且必 Log 留痕。
 /// 注：函数签名固定无 ids 入参，mixsongids 以空串占位并 Log.w（多参不缺参）。
-Future<int> getFavoriteCount(KugouClient client,
-    {String mixSongIds = ''}) async {
+Future<int> getFavoriteCount(
+  KugouClient client, {
+  String mixSongIds = '',
+}) async {
   try {
     if (mixSongIds.isEmpty) {
       Log.w(_tag, 'getFavoriteCount no mixsongids -> empty query');
     }
     final res = await client.request(
-        EndpointRegistry.favoriteCount,
-        <String, Object?>{
-          'mixsongids': mixSongIds,
-          ..._baseParams(client),
-          if (client.session.userid.isNotEmpty) 'userid': client.session.userid,
-        });
+      EndpointRegistry.favoriteCount,
+      <String, Object?>{
+        'mixsongids': mixSongIds,
+        ..._baseParams(client),
+        if (client.session.userid.isNotEmpty) 'userid': client.session.userid,
+      },
+    );
     final data = dataOf(res);
     var n = -1;
     final list = data['list'];
@@ -249,8 +270,13 @@ Future<int> getFavoriteCount(KugouClient client,
     }
     if (n < 0 && data['count'] != null) n = safeInt(data['count']);
     if (n < 0) n = _countOf(res);
-    final ec = safeInt(res['error_code'] ?? res['errcode'] ??
-        data['error_code'] ?? data['errcode'], 0);
+    final ec = safeInt(
+      res['error_code'] ??
+          res['errcode'] ??
+          data['error_code'] ??
+          data['errcode'],
+      0,
+    );
     if (ec != 0) Log.w(_tag, 'getFavoriteCount server ec=$ec');
     Log.d(_tag, 'getFavoriteCount count=$n');
     return n < 0 ? 0 : n;

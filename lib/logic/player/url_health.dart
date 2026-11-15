@@ -30,13 +30,13 @@ class UrlProbeResult {
   });
 
   const UrlProbeResult.unsupported(String url)
-      : this(
-          health: UrlHealth.unsupported,
-          statusCode: 0,
-          ms: 0,
-          finalUrl: url,
-          error: 'non-http(s) scheme',
-        );
+    : this(
+        health: UrlHealth.unsupported,
+        statusCode: 0,
+        ms: 0,
+        finalUrl: url,
+        error: 'non-http(s) scheme',
+      );
 }
 
 class UrlHealthChecker {
@@ -51,9 +51,7 @@ class UrlHealthChecker {
   }) : timeout = timeout ?? const Duration(seconds: 3);
 
   HttpClient _newClient() {
-    final c = clientFactory != null
-        ? clientFactory!()
-        : HttpClient();
+    final c = clientFactory != null ? clientFactory!() : HttpClient();
     c.connectionTimeout = timeout;
     c.autoUncompress = false;
     return c;
@@ -92,9 +90,7 @@ class UrlHealthChecker {
       } catch (e2, st2) {
         logE('UrlHealth', 'probe failed: $url', e2, st2);
         return UrlProbeResult(
-          health: sw.elapsed > timeout
-              ? UrlHealth.timeout
-              : UrlHealth.dead,
+          health: sw.elapsed > timeout ? UrlHealth.timeout : UrlHealth.dead,
           statusCode: 0,
           ms: sw.elapsedMilliseconds,
           error: '$e2',
@@ -142,18 +138,16 @@ class UrlHealthChecker {
           );
         }
         final next = Uri.parse(url).resolve(loc).toString();
-        return await _probeOnce(
-          next,
-          head: head,
-          redirects: redirects + 1,
-        );
+        return await _probeOnce(next, head: head, redirects: redirects + 1);
       }
 
       final health = (status >= 200 && status < 300)
           ? UrlHealth.healthy
           : UrlHealth.dead;
-      logD('UrlHealth',
-          'probe $url -> $status ($health, ${sw.elapsedMilliseconds}ms)');
+      logD(
+        'UrlHealth',
+        'probe $url -> $status ($health, ${sw.elapsedMilliseconds}ms)',
+      );
       return UrlProbeResult(
         health: health,
         statusCode: status,

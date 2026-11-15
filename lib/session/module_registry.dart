@@ -55,7 +55,8 @@ class ModuleRegistry {
   List<NavEntry> navEntries() {
     try {
       return List<NavEntry>.unmodifiable(
-          active().map((m) => m.navEntry).whereType<NavEntry>());
+        active().map((m) => m.navEntry).whereType<NavEntry>(),
+      );
     } catch (e, st) {
       Log.e(_tag, 'navEntries failed', e, st);
       return const <NavEntry>[];

@@ -22,8 +22,10 @@
 // 铁律：字段容错；每函数 try/catch + Log('ep.auth')；token/凭据不进日志
 //   （token 只打长度，mobile 打前 2 后 1 掩码）；只连酷狗官方域名。
 import '../../../bridges/bridge_kernel.dart' show Log;
+
 import 'dart:convert';
 import 'dart:math';
+
 import '../kugou_client.dart';
 import '../crypto_extra.dart';
 import '../signing.dart' show KugouSign, Md5;
@@ -51,9 +53,16 @@ const String kLoginPwdT2 = '';
 
 /// 通用登录结果（经 bridge_core 转出给 logic/surface）。
 class LoginResult {
-  const LoginResult({required this.ok, this.token = '', this.userid = '',
-      this.vipToken = '', this.vipType = '', this.t1 = '',
-      this.error = '', this.needsProbe = false});
+  const LoginResult({
+    required this.ok,
+    this.token = '',
+    this.userid = '',
+    this.vipToken = '',
+    this.vipType = '',
+    this.t1 = '',
+    this.error = '',
+    this.needsProbe = false,
+  });
   final bool ok;
   final String token;
   final String userid;
@@ -61,14 +70,20 @@ class LoginResult {
   final String vipType;
   final String t1;
   final String error;
+
   /// true 表示因端点未实测而语义失败（非网络/凭据错误）。
   final bool needsProbe;
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'ok': ok, 'token': token, 'userid': userid,
-        'vipToken': vipToken, 'vipType': vipType, 't1': t1,
-        'error': error, 'needsProbe': needsProbe,
-      };
+    'ok': ok,
+    'token': token,
+    'userid': userid,
+    'vipToken': vipToken,
+    'vipType': vipType,
+    't1': t1,
+    'error': error,
+    'needsProbe': needsProbe,
+  };
 
   @override
   String toString() {
@@ -86,9 +101,16 @@ class LoginResult {
 
 /// 短信登录结果（经 bridge_core 转出给 logic/surface）。
 class SmsLoginResult {
-  const SmsLoginResult({required this.ok, this.token = '', this.userid = '',
-      this.vipToken = '', this.vipType = '', this.t1 = '',
-      this.error = '', this.needsProbe = false});
+  const SmsLoginResult({
+    required this.ok,
+    this.token = '',
+    this.userid = '',
+    this.vipToken = '',
+    this.vipType = '',
+    this.t1 = '',
+    this.error = '',
+    this.needsProbe = false,
+  });
   final bool ok;
   final String token;
   final String userid;
@@ -96,14 +118,20 @@ class SmsLoginResult {
   final String vipType;
   final String t1;
   final String error;
+
   /// true 表示因端点未实测而语义失败（非网络/凭据错误）。
   final bool needsProbe;
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'ok': ok, 'token': token, 'userid': userid,
-        'vipToken': vipToken, 'vipType': vipType, 't1': t1,
-        'error': error, 'needsProbe': needsProbe,
-      };
+    'ok': ok,
+    'token': token,
+    'userid': userid,
+    'vipToken': vipToken,
+    'vipType': vipType,
+    't1': t1,
+    'error': error,
+    'needsProbe': needsProbe,
+  };
 
   @override
   String toString() {
@@ -123,11 +151,12 @@ class SmsLoginResult {
 /// crypto.js L134：16 位小写字母数字随机 tempKey。
 String _randomTempKey() {
   try {
-    const alphabet =
-        'abcdefghijklmnopqrstuvwxyz0123456789';
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
     final rnd = Random.secure();
     return List<String>.generate(
-        16, (_) => alphabet[rnd.nextInt(alphabet.length)]).join();
+      16,
+      (_) => alphabet[rnd.nextInt(alphabet.length)],
+    ).join();
   } catch (e, st) {
     Log.e(_tag, '_randomTempKey failed', e, st);
     return '';
@@ -192,10 +221,12 @@ String _jsonOf(Map<String, Object?> m) {
 /// login_cellphone.js L28 的 key 字段（C3 缺口③：已接入 smsLogin body）。
 String smsSignParamsKey(int clienttimeMs) {
   try {
-    return Md5.hex('${KugouSign.appid}'
-        'OIlwieks28dk2k092lksi2UIkp'
-        '${KugouSign.clientver}'
-        '$clienttimeMs');
+    return Md5.hex(
+      '${KugouSign.appid}'
+      'OIlwieks28dk2k092lksi2UIkp'
+      '${KugouSign.clientver}'
+      '$clienttimeMs',
+    );
   } catch (e, st) {
     Log.e(_tag, 'smsSignParamsKey failed', e, st);
     return '';
@@ -217,17 +248,16 @@ Future<bool> sendSmsCode(KugouClient client, String mobile) async {
     final res = await client.request(
       EndpointRegistry.sendSmsCode,
       <String, Object?>{'mid': client.session.mid},
-      body: <String, Object?>{
-        'businessid': 5,
-        'mobile': m,
-        'plat': 3,
-      },
+      body: <String, Object?>{'businessid': 5, 'mobile': m, 'plat': 3},
     );
-    final ok = safeInt(res['status'], -1) == 1 ||
-        safeInt(res['error_code'], -1) == 0;
+    final ok =
+        safeInt(res['status'], -1) == 1 || safeInt(res['error_code'], -1) == 0;
     // 脱敏：日志只打掩码手机号。
-    Log.d(_tag, 'sendSmsCode ok=$ok status=${res['status']} '
-        'mobile=${maskMobile(m)}');
+    Log.d(
+      _tag,
+      'sendSmsCode ok=$ok status=${res['status']} '
+      'mobile=${maskMobile(m)}',
+    );
     return ok;
   } catch (e, st) {
     Log.e(_tag, 'sendSmsCode failed', e, st);
@@ -242,7 +272,10 @@ Future<bool> sendSmsCode(KugouClient client, String mobile) async {
 /// 用 tempKey 派生 key 解密（缺口⑦）。UA Android16-1070-11440-130-0-LOGIN-wifi。
 /// ⚠️ 待实测：needsProbe 语义失败不伪造成功。
 Future<SmsLoginResult> smsLogin(
-    KugouClient client, String mobile, String code) async {
+  KugouClient client,
+  String mobile,
+  String code,
+) async {
   try {
     if (mobile.trim().isEmpty || code.trim().isEmpty) {
       Log.w(_tag, 'smsLogin empty mobile/code mobileLen=${mobile.length}');
@@ -256,18 +289,15 @@ Future<SmsLoginResult> smsLogin(
     }
     // 上游 payload 仅 {mobile, code}（login_cellphone.js L14）。
     final paramsCipher = AesCbc.encryptHex(
-        _jsonOf(<String, Object?>{
-          'mobile': mobile.trim(),
-          'code': code.trim(),
-        }),
-        aesPair.$1,
-        aesPair.$2);
+      _jsonOf(<String, Object?>{'mobile': mobile.trim(), 'code': code.trim()}),
+      aesPair.$1,
+      aesPair.$2,
+    );
     final keyField = smsSignParamsKey(ms);
     // pk = RSA({clienttime_ms, key}) 大写 hex（L29，textbook RSA 无填充）。
-    final pk = RsaRaw.encryptHex(_jsonOf(<String, Object?>{
-      'clienttime_ms': ms,
-      'key': keyField,
-    })).toUpperCase();
+    final pk = RsaRaw.encryptHex(
+      _jsonOf(<String, Object?>{'clienttime_ms': ms, 'key': keyField}),
+    ).toUpperCase();
     final body = <String, Object?>{
       'params': paramsCipher,
       'pk': pk,
@@ -278,14 +308,20 @@ Future<SmsLoginResult> smsLogin(
       't2': '0',
       't3': kT3Const,
     };
-    Log.d(_tag, 'smsLogin built mobile=${maskMobile(mobile)} '
-        'paramsLen=${paramsCipher.length} pkLen=${pk.length}');
-    final res = await client.request(EndpointRegistry.smsLogin,
-        <String, Object?>{
-          'dfid': client.session.dfid, 'mid': client.session.mid,
-          'clienttime_ms': ms,
-        },
-        body: body);
+    Log.d(
+      _tag,
+      'smsLogin built mobile=${maskMobile(mobile)} '
+      'paramsLen=${paramsCipher.length} pkLen=${pk.length}',
+    );
+    final res = await client.request(
+      EndpointRegistry.smsLogin,
+      <String, Object?>{
+        'dfid': client.session.dfid,
+        'mid': client.session.mid,
+        'clienttime_ms': ms,
+      },
+      body: body,
+    );
     final data = res['data'];
     final map = data is Map<String, dynamic> ? data : <String, dynamic>{};
     // 响应必须走 secu_params 解密链（缺口⑦）：解不出即判失败。
@@ -304,10 +340,13 @@ Future<SmsLoginResult> smsLogin(
     }
     Log.d(_tag, 'smsLogin ok uid=$userid tokenLen=${token.length}');
     return SmsLoginResult(
-        ok: true, token: token, userid: userid,
-        vipToken: '${dec['vip_token'] ?? ''}',
-        vipType: '${dec['vip_type'] ?? ''}',
-        t1: '${dec['t1'] ?? ''}');
+      ok: true,
+      token: token,
+      userid: userid,
+      vipToken: '${dec['vip_token'] ?? ''}',
+      vipType: '${dec['vip_type'] ?? ''}',
+      t1: '${dec['t1'] ?? ''}',
+    );
   } catch (e, st) {
     Log.e(_tag, 'smsLogin failed', e, st);
     return SmsLoginResult(ok: false, error: '$e');
@@ -316,8 +355,11 @@ Future<SmsLoginResult> smsLogin(
 
 // ── 2. 密码登录 /v9/login_by_pwd（login.js L11-48）──
 // ⚠️ 待实测：t1/t2 常量值未留样（发 '0' 兜底），降级候选 v9→v7→v6 未验证。
-Future<LoginResult> loginByPwd(KugouClient client, String pwd,
-    {String code = ''}) async {
+Future<LoginResult> loginByPwd(
+  KugouClient client,
+  String pwd, {
+  String code = '',
+}) async {
   try {
     if (pwd.isEmpty) {
       Log.w(_tag, 'loginByPwd empty pwd');
@@ -331,18 +373,14 @@ Future<LoginResult> loginByPwd(KugouClient client, String pwd,
     }
     // login.js L11：params = AES({pwd, code, clienttime_ms}) 随机 tempKey 派生。
     final paramsCipher = AesCbc.encryptHex(
-        _jsonOf(<String, Object?>{
-          'pwd': pwd,
-          'code': code,
-          'clienttime_ms': ms,
-        }),
-        aesPair.$1,
-        aesPair.$2);
+      _jsonOf(<String, Object?>{'pwd': pwd, 'code': code, 'clienttime_ms': ms}),
+      aesPair.$1,
+      aesPair.$2,
+    );
     // login.js L19：pk = RSA({clienttime_ms, key: tempKey}) 大写 hex。
-    final pk = RsaRaw.encryptHex(_jsonOf(<String, Object?>{
-      'clienttime_ms': ms,
-      'key': tempKey,
-    })).toUpperCase();
+    final pk = RsaRaw.encryptHex(
+      _jsonOf(<String, Object?>{'clienttime_ms': ms, 'key': tempKey}),
+    ).toUpperCase();
     final body = <String, Object?>{
       'params': paramsCipher,
       'pk': pk,
@@ -350,24 +388,35 @@ Future<LoginResult> loginByPwd(KugouClient client, String pwd,
       't2': kLoginPwdT2.isEmpty ? '0' : kLoginPwdT2,
       't3': kT3Const,
     };
-    Log.d(_tag, 'loginByPwd built paramsLen=${paramsCipher.length} '
-        'pkLen=${pk.length}');
-    final res = await client.request(EndpointRegistry.loginByPwd,
-        <String, Object?>{
-          'dfid': client.session.dfid, 'mid': client.session.mid,
-          'clienttime_ms': ms,
-        },
-        body: body);
+    Log.d(
+      _tag,
+      'loginByPwd built paramsLen=${paramsCipher.length} '
+      'pkLen=${pk.length}',
+    );
+    final res = await client.request(
+      EndpointRegistry.loginByPwd,
+      <String, Object?>{
+        'dfid': client.session.dfid,
+        'mid': client.session.mid,
+        'clienttime_ms': ms,
+      },
+      body: body,
+    );
     final data = res['data'];
     final map = data is Map<String, dynamic> ? data : <String, dynamic>{};
     // login.js L27-41：secu_params 用同一 tempKey 派生 key 解密。
     final secu = '${map['secu_params'] ?? res['secu_params'] ?? ''}';
     final dec = _decryptSecuParams(secu, tempKey);
     if (dec == null) {
-      Log.w(_tag, 'loginByPwd secu_params decrypt failed '
-          'status=${res['status']}');
+      Log.w(
+        _tag,
+        'loginByPwd secu_params decrypt failed '
+        'status=${res['status']}',
+      );
       return LoginResult(
-          ok: false, error: 'secu_params invalid (status=${res['status']})');
+        ok: false,
+        error: 'secu_params invalid (status=${res['status']})',
+      );
     }
     final token = '${dec['token'] ?? ''}';
     final userid = '${dec['userid'] ?? ''}';
@@ -377,10 +426,13 @@ Future<LoginResult> loginByPwd(KugouClient client, String pwd,
     }
     Log.d(_tag, 'loginByPwd ok uid=$userid tokenLen=${token.length}');
     return LoginResult(
-        ok: true, token: token, userid: userid,
-        vipToken: '${dec['vip_token'] ?? ''}',
-        vipType: '${dec['vip_type'] ?? ''}',
-        t1: '${dec['t1'] ?? ''}');
+      ok: true,
+      token: token,
+      userid: userid,
+      vipToken: '${dec['vip_token'] ?? ''}',
+      vipType: '${dec['vip_type'] ?? ''}',
+      t1: '${dec['t1'] ?? ''}',
+    );
   } catch (e, st) {
     Log.e(_tag, 'loginByPwd failed', e, st);
     return LoginResult(ok: false, error: '$e');
@@ -401,16 +453,20 @@ Future<LoginResult> loginByToken(KugouClient client) async {
     final sec = ms ~/ 1000;
     // login_token.js L38-44：p3 = AES(固定对){clienttime(秒), token}。
     final p3 = AesCbc.encryptHex(
-        _jsonOf(<String, Object?>{'clienttime': sec, 'token': token}),
-        kLoginTokenAesKey, kLoginTokenAesIv);
+      _jsonOf(<String, Object?>{'clienttime': sec, 'token': token}),
+      kLoginTokenAesKey,
+      kLoginTokenAesIv,
+    );
     // L27-28：encryptParams = 空对象 AES（固定对）；params = 其 str，
     // pk = RSA({clienttime_ms, key: encryptParams.key=固定key})。
     final paramsCipher = AesCbc.encryptHex(
-        _jsonOf(<String, Object?>{}), kLoginTokenAesKey, kLoginTokenAesIv);
-    final pk = RsaRaw.encryptHex(_jsonOf(<String, Object?>{
-      'clienttime_ms': ms,
-      'key': kLoginTokenAesKey,
-    })).toUpperCase();
+      _jsonOf(<String, Object?>{}),
+      kLoginTokenAesKey,
+      kLoginTokenAesIv,
+    );
+    final pk = RsaRaw.encryptHex(
+      _jsonOf(<String, Object?>{'clienttime_ms': ms, 'key': kLoginTokenAesKey}),
+    ).toUpperCase();
     final body = <String, Object?>{
       'dfid': client.session.dfid.isEmpty ? '-' : client.session.dfid,
       'p3': p3,
@@ -424,19 +480,26 @@ Future<LoginResult> loginByToken(KugouClient client) async {
       'clienttime_ms': ms,
     };
     Log.d(_tag, 'loginByToken built uid=$userid p3Len=${p3.length}');
-    final res = await client.request(EndpointRegistry.loginToken,
-        <String, Object?>{'clienttime_ms': ms},
-        body: body);
+    final res = await client.request(
+      EndpointRegistry.loginToken,
+      <String, Object?>{'clienttime_ms': ms},
+      body: body,
+    );
     final data = res['data'];
     final map = data is Map<String, dynamic> ? data : <String, dynamic>{};
     // L62-77：secu_params 用固定 key 解密（tempKey = 固定 key，md5 派生一致）。
     final secu = '${map['secu_params'] ?? res['secu_params'] ?? ''}';
     final dec = _decryptSecuParams(secu, kLoginTokenAesKey);
     if (dec == null) {
-      Log.w(_tag, 'loginByToken secu_params decrypt failed '
-          'status=${res['status']}');
+      Log.w(
+        _tag,
+        'loginByToken secu_params decrypt failed '
+        'status=${res['status']}',
+      );
       return LoginResult(
-          ok: false, error: 'secu_params invalid (status=${res['status']})');
+        ok: false,
+        error: 'secu_params invalid (status=${res['status']})',
+      );
     }
     final newToken = '${dec['token'] ?? ''}';
     if (newToken.isEmpty) {
@@ -445,10 +508,13 @@ Future<LoginResult> loginByToken(KugouClient client) async {
     }
     Log.d(_tag, 'loginByToken ok uid=$userid tokenLen=${newToken.length}');
     return LoginResult(
-        ok: true, token: newToken, userid: '${dec['userid'] ?? userid}',
-        vipToken: '${dec['vip_token'] ?? ''}',
-        vipType: '${dec['vip_type'] ?? ''}',
-        t1: '${dec['t1'] ?? ''}');
+      ok: true,
+      token: newToken,
+      userid: '${dec['userid'] ?? userid}',
+      vipToken: '${dec['vip_token'] ?? ''}',
+      vipType: '${dec['vip_type'] ?? ''}',
+      t1: '${dec['t1'] ?? ''}',
+    );
   } catch (e, st) {
     Log.e(_tag, 'loginByToken failed', e, st);
     return LoginResult(ok: false, error: '$e');
@@ -464,15 +530,13 @@ Future<bool> devLogout(KugouClient client) async {
       Log.w(_tag, 'devLogout anonymous session');
       return false;
     }
-    final res = await client.request(EndpointRegistry.devLogout,
-        <String, Object?>{
-          'dfid': client.session.dfid, 'mid': client.session.mid,
-        },
-        body: <String, Object?>{
-          'userid': client.session.userid,
-        });
-    final ok = safeInt(res['status'], -1) == 1 ||
-        safeInt(res['error_code'], -1) == 0;
+    final res = await client.request(
+      EndpointRegistry.devLogout,
+      <String, Object?>{'dfid': client.session.dfid, 'mid': client.session.mid},
+      body: <String, Object?>{'userid': client.session.userid},
+    );
+    final ok =
+        safeInt(res['status'], -1) == 1 || safeInt(res['error_code'], -1) == 0;
     Log.d(_tag, 'devLogout ok=$ok status=${res['status']}');
     return ok;
   } catch (e, st) {

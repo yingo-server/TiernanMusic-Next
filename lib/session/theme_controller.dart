@@ -6,15 +6,13 @@ library;
 
 import 'package:flutter/foundation.dart';
 
-import '../bridges/bridge_core.dart'
-    show KeyValueSettings, StoragePaths;
+import '../bridges/bridge_core.dart' show KeyValueSettings, StoragePaths;
 import '../bridges/bridge_kernel.dart' show Log;
 
 class ThemeController extends ValueNotifier<int> {
   ThemeController._() : super(2) {
     try {
-      final v = KeyValueSettings.shared(StoragePaths.I)
-          .getInt(kThemeModeKey);
+      final v = KeyValueSettings.shared(StoragePaths.I).getInt(kThemeModeKey);
       if (v != null && v >= 0 && v <= 3) value = v;
     } catch (e, st) {
       Log.e('theme_controller', 'init load mode failed', e, st);
@@ -35,8 +33,8 @@ class ThemeController extends ValueNotifier<int> {
         return;
       }
       value = mode;
-      final ok =
-          KeyValueSettings.shared(StoragePaths.I).setInt(kThemeModeKey, mode);
+      final ok = KeyValueSettings.shared(StoragePaths.I)
+          .setInt(kThemeModeKey, mode);
       if (!ok) {
         Log.w('theme_controller', 'persist mode failed: $mode');
       }

@@ -4,16 +4,16 @@
 // 铁律：每方法 try/catch + Log('logic.history')；可 import core/kernel；禁 import surface/flutter。
 
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show HistoryDao, SongBrief, SongDao, SongRecord;
+import '../../bridges/bridge_core.dart'
+    show HistoryDao, SongBrief, SongDao, SongRecord;
+
 const String _tag = 'logic.history';
 
 /// 播放历史记录器：注入 HistoryDao + SongDao。
 class HistoryRecorder {
-  HistoryRecorder({
-    required HistoryDao historyDao,
-    required SongDao songDao,
-  })  : _history = historyDao,
-        _songs = songDao;
+  HistoryRecorder({required HistoryDao historyDao, required SongDao songDao})
+    : _history = historyDao,
+      _songs = songDao;
 
   final HistoryDao _history;
   final SongDao _songs;

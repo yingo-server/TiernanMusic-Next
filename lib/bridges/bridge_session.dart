@@ -9,7 +9,8 @@ import '../session/graph.dart' show AppGraph;
 import '../session/contracts.dart' show SurfaceModule, NavEntry;
 import '../session/module_registry.dart' show ModuleRegistry;
 import '../session/nav_state.dart' show NavState;
-import '../session/playback_session.dart' show PlaybackSession, PlaybackSnapshot;
+import '../session/playback_session.dart'
+    show PlaybackSession, PlaybackSnapshot;
 
 export '../session/graph.dart' show AppGraph;
 export '../session/contracts.dart' show SurfaceModule, NavEntry;

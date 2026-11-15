@@ -13,7 +13,22 @@ import 'models.dart';
 const String _tag = 'ep.misc';
 
 const List<int> kKrcXorKey = <int>[
-  64, 71, 97, 119, 94, 50, 116, 71, 81, 54, 49, 45, 206, 210, 110, 105,
+  64,
+  71,
+  97,
+  119,
+  94,
+  50,
+  116,
+  71,
+  81,
+  54,
+  49,
+  45,
+  206,
+  210,
+  110,
+  105,
 ];
 
 /// krc 解码：输入 base64 内容；contenttype!=0（lrc）时仅 base64 解码。
@@ -46,8 +61,10 @@ String krcDecode(String base64Content, {bool isKrc = true}) {
 /// 排行榜列表（/ocean/v6/rank/list）：data.info[]。
 Future<List<RankBrief>> rankList(KugouClient client) async {
   try {
-    final res = await client.request(EndpointRegistry.rankList,
-        <String, Object?>{'plat': 2, 'withsong': 1, 'parentid': 0});
+    final res = await client.request(
+      EndpointRegistry.rankList,
+      <String, Object?>{'plat': 2, 'withsong': 1, 'parentid': 0},
+    );
     final data = dataOf(res);
     final items = listOf(data['info'] ?? data['list'])
         .map(RankBrief.fromMap)
@@ -65,27 +82,36 @@ Future<List<RankBrief>> rankList(KugouClient client) async {
 /// 曲目 hash 不在顶层：128k 在 audio_info.hash_128（deprecated.hash 兜底），
 /// 歌手 author_name / authors[]，时长 audio_info.duration_128（毫秒），
 /// 名次 business.sort。
-Future<List<SongBrief>> rankInfo(KugouClient client, int rankId,
-    {int page = 1, int pageSize = 30}) async {
+Future<List<SongBrief>> rankInfo(
+  KugouClient client,
+  int rankId, {
+  int page = 1,
+  int pageSize = 30,
+}) async {
   try {
-    final res = await client.request(EndpointRegistry.rankAudio,
-        <String, Object?>{}, body: <String, Object?>{
-      'show_portrait_mv': 1,
-      'show_type_total': 1,
-      'filter_original_remarks': 1,
-      'area_code': 1,
-      'pagesize': pageSize,
-      'rank_cid': 0,
-      'type': 1,
-      'page': page,
-      'rank_id': rankId,
-    });
+    final res = await client.request(
+      EndpointRegistry.rankAudio,
+      <String, Object?>{},
+      body: <String, Object?>{
+        'show_portrait_mv': 1,
+        'show_type_total': 1,
+        'filter_original_remarks': 1,
+        'area_code': 1,
+        'pagesize': pageSize,
+        'rank_cid': 0,
+        'type': 1,
+        'page': page,
+        'rank_id': rankId,
+      },
+    );
     final data = dataOf(res);
     final items = listOf(data['songlist'] ?? data['songs'] ?? data['list'])
         .map(SongBrief.fromRankAudio)
         .toList(growable: false);
-    Log.d(_tag,
-        'rankInfo(rank_audio) rankId=$rankId page=$page got=${items.length}');
+    Log.d(
+      _tag,
+      'rankInfo(rank_audio) rankId=$rankId page=$page got=${items.length}',
+    );
     return items;
   } catch (e, st) {
     Log.e(_tag, 'rankInfo failed rankId=$rankId', e, st);
@@ -113,26 +139,31 @@ Future<List<LyricResult>> lyricSearch(
       Log.w(_tag, 'lyricSearch empty hash');
       return const <LyricResult>[];
     }
-    final res = await client.request(EndpointRegistry.lyricSearch,
-        <String, Object?>{
-      'hash': h,
-      'keyword': keyword,
-      'duration': durationMs,
-      'album_audio_id': albumAudioId,
-      'lrctxt': 1,
-      'man': 'no',
-      // 批N2-A 实测（A3-3）：appid/clientver 参与签名必须显式在场；
-      // candidates[].id 实测为字符串，safeInt 容错。
-      'appid': KugouSign.appid,
-      'clientver': KugouSign.clientver,
-    });
+    final res = await client.request(
+      EndpointRegistry.lyricSearch,
+      <String, Object?>{
+        'hash': h,
+        'keyword': keyword,
+        'duration': durationMs,
+        'album_audio_id': albumAudioId,
+        'lrctxt': 1,
+        'man': 'no',
+        // 批N2-A 实测（A3-3）：appid/clientver 参与签名必须显式在场；
+        // candidates[].id 实测为字符串，safeInt 容错。
+        'appid': KugouSign.appid,
+        'clientver': KugouSign.clientver,
+      },
+    );
     // 批N2-A §A3-3 / 批N2-C §A3-2 实测：成功语义在「响应顶层」
     // status=200（errcode=200、info=OK），**不是** 网关通用 status=1；
     // 404=未命中也返回结构，须按失败处理，不把错误体当候选解析。
     final status = safeInt(res['status'], safeInt(res['errcode'], -1));
     if (status != 200) {
-      Log.w(_tag, 'lyricSearch not ok hash=$h status=$status '
-          'errcode=${res['errcode']} info=${res['info']}');
+      Log.w(
+        _tag,
+        'lyricSearch not ok hash=$h status=$status '
+        'errcode=${res['errcode']} info=${res['info']}',
+      );
       return const <LyricResult>[];
     }
     // 批N2-C §A3-2 / 批N2-A §A3-3 实测：candidates[] 在**响应顶层**
@@ -140,12 +171,14 @@ Future<List<LyricResult>> lyricSearch(
     // data.candidates 包层猜测，不再保留该兜底层级。
     final out = <LyricResult>[];
     for (final c in listOf(res['candidates'])) {
-      out.add(LyricResult(
-        id: safeInt(c['id']),
-        accessKey: safeStr(c['accesskey']),
-        fmt: safeStr(c['fmt'], 'krc'),
-        durationMs: safeInt(c['duration']),
-      ));
+      out.add(
+        LyricResult(
+          id: safeInt(c['id']),
+          accessKey: safeStr(c['accesskey']),
+          fmt: safeStr(c['fmt'], 'krc'),
+          durationMs: safeInt(c['duration']),
+        ),
+      );
     }
     Log.d(_tag, 'lyricSearch hash=$h status=$status got=${out.length}');
     return out;
@@ -173,15 +206,17 @@ Future<LyricResult> lyricDownload(
       Log.w(_tag, 'lyricDownload missing id/accesskey');
       return const LyricResult();
     }
-    final res = await client.request(EndpointRegistry.lyricDownload,
-        <String, Object?>{
-      'id': id,
-      'accesskey': accessKey.trim(),
-      'fmt': fmt,
-      'client': 'android',
-      'ver': 1,
-      'charset': 'utf8',
-    });
+    final res = await client.request(
+      EndpointRegistry.lyricDownload,
+      <String, Object?>{
+        'id': id,
+        'accesskey': accessKey.trim(),
+        'fmt': fmt,
+        'client': 'android',
+        'ver': 1,
+        'charset': 'utf8',
+      },
+    );
     final ct = safeInt(res['contenttype']);
     final isKrc = ct == 0;
     final content = krcDecode(safeStr(res['content']), isKrc: isKrc);

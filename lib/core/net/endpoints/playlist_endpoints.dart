@@ -20,38 +20,42 @@ Future<List<PlaylistBrief>> recommendPlaylists(
     final p = page < 1 ? 1 : page;
     final ps = pageSize < 1 ? 30 : pageSize;
     final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    final res = await client.request(EndpointRegistry.playlistRecommend,
-        <String, Object?>{}, body: <String, Object?>{
-      // 实测修正：body 必须全参（缺 mid/appid/clientver 或 key 用毫秒 → 200101/500）。
-      'appid': KugouSign.appid,
-      'mid': client.session.mid,
-      'clientver': KugouSign.clientver,
-      'special_recommend': <String, Object?>{
-        'categoryid': categoryId,
-        'withtag': 1,
-        'withsong': 1,
-        'sort': 1,
-        'ugc': 1,
-        'is_selected': 0,
-        'withrecommend': 1,
-        'area_code': 1,
+    final res = await client.request(
+      EndpointRegistry.playlistRecommend,
+      <String, Object?>{},
+      body: <String, Object?>{
+        // 实测修正：body 必须全参（缺 mid/appid/clientver 或 key 用毫秒 → 200101/500）。
+        'appid': KugouSign.appid,
+        'mid': client.session.mid,
+        'clientver': KugouSign.clientver,
+        'special_recommend': <String, Object?>{
+          'categoryid': categoryId,
+          'withtag': 1,
+          'withsong': 1,
+          'sort': 1,
+          'ugc': 1,
+          'is_selected': 0,
+          'withrecommend': 1,
+          'area_code': 1,
+        },
+        'page': p,
+        'pagesize': ps,
+        'module_id': 1,
+        'platform': 'android',
+        'clienttime': '$nowSec',
+        'userid': client.session.userid,
+        'key': KugouSign.signParamsKey('$nowSec'),
+        'req_multi': 1,
+        'retrun_min': 5,
+        'return_special_falg': 1,
       },
-      'page': p,
-      'pagesize': ps,
-      'module_id': 1,
-      'platform': 'android',
-      'clienttime': '$nowSec',
-      'userid': client.session.userid,
-      'key': KugouSign.signParamsKey('$nowSec'),
-      'req_multi': 1,
-      'retrun_min': 5,
-      'return_special_falg': 1,
-    });
+    );
     final data = dataOf(res);
     // 实测修正（批N1-C，A2-1）：响应在 data.special_list[]，列表项含
     // global_collection_id/specialid/specialname/imgurl/play_count/nickname。
-    final raw = listOf(data['special_list'] ?? data['special'] ??
-        data['list'] ?? data['info']);
+    final raw = listOf(
+      data['special_list'] ?? data['special'] ?? data['list'] ?? data['info'],
+    );
     final items = raw.map(PlaylistBrief.fromMap).toList(growable: false);
     Log.d(_tag, 'recommendPlaylists page=$p got=${items.length}');
     return items;
@@ -72,14 +76,17 @@ Future<PlaylistDetail> playlistDetail(
       Log.w(_tag, 'playlistDetail empty id');
       return const PlaylistDetail();
     }
-    final res = await client.request(EndpointRegistry.playlistDetail,
-        <String, Object?>{}, body: <String, Object?>{
-      'data': [
-        <String, Object?>{'global_collection_id': id},
-      ],
-      'userid': client.session.userid,
-      'token': client.session.token,
-    });
+    final res = await client.request(
+      EndpointRegistry.playlistDetail,
+      <String, Object?>{},
+      body: <String, Object?>{
+        'data': [
+          <String, Object?>{'global_collection_id': id},
+        ],
+        'userid': client.session.userid,
+        'token': client.session.token,
+      },
+    );
     final data = dataOf(res);
     // 批2-C 修正（docs/API_FIELDS_TRUTH.md §A2-2）：/v3/get_list_info 响应
     // `data` 是**数组**（data[] 首项）；dataOf() 只收 Map，旧写法
@@ -124,8 +131,10 @@ Future<PlaylistDetail> playlistDetail(
       playCount: safeInt(first['playcount'] ?? first['play_count']),
       trackCount: safeInt(first['count']),
       intro: safeStr(first['intro']),
-      creator: safeStr(first['list_create_username'],
-          safeStr(first['username'])),
+      creator: safeStr(
+        first['list_create_username'],
+        safeStr(first['username']),
+      ),
       tags: tags,
       // 批N3-B 实测（API_FIELDS_TRUTH.md A2-2）：data[0].list_ver 存在。
       listVer: safeInt(first['list_ver']),
@@ -157,24 +166,29 @@ Future<TrackPage> playlistTracks(
     // 防御：global_collection_id（collection_ 开头）非数字 id，实测 20010。
     // 上层必须传 detail.specialId；此处对明显错误形态留痕（不抛，返回空）。
     if (id.startsWith('collection_')) {
-      Log.e(_tag, 'playlistTracks got global_collection_id (must be numeric specialid): $id');
+      Log.e(
+        _tag,
+        'playlistTracks got global_collection_id (must be numeric specialid): $id',
+      );
       return const TrackPage();
     }
     final beginIdx = (p - 1) * ps;
-    final res = await client.request(EndpointRegistry.playlistTracks,
-        <String, Object?>{
-      // 实测修正（2026-11-10）：参数键必须是 specialid，
-      // 传 global_collection_id 一律 20010 get other list file fail。
-      'specialid': id,
-      'begin_idx': beginIdx,
-      'pagesize': ps,
-      'area_code': 1,
-      'plat': 1,
-      'type': 1,
-      'mode': 1,
-      'personal_switch': 1,
-      'extend_fields': 'abtags,hot_cmt,popularization',
-    });
+    final res = await client.request(
+      EndpointRegistry.playlistTracks,
+      <String, Object?>{
+        // 实测修正（2026-11-10）：参数键必须是 specialid，
+        // 传 global_collection_id 一律 20010 get other list file fail。
+        'specialid': id,
+        'begin_idx': beginIdx,
+        'pagesize': ps,
+        'area_code': 1,
+        'plat': 1,
+        'type': 1,
+        'mode': 1,
+        'personal_switch': 1,
+        'extend_fields': 'abtags,hot_cmt,popularization',
+      },
+    );
     final data = dataOf(res);
     // 实测修正：歌曲列表在 data.songs[]（hash/name/audio_id/size…），
     // 非 data.info[]；err=0 也可能空列表，总数看 data.count。
@@ -182,10 +196,16 @@ Future<TrackPage> playlistTracks(
         .map(SongBrief.fromTrackInfo)
         .toList(growable: false);
     final total = safeInt(data['count']);
-    Log.d(_tag,
-        'playlistTracks id=$id page=$p begin=$beginIdx got=${items.length}/$total');
+    Log.d(
+      _tag,
+      'playlistTracks id=$id page=$p begin=$beginIdx got=${items.length}/$total',
+    );
     return TrackPage(
-        total: total, beginIdx: beginIdx, pageSize: ps, items: items);
+      total: total,
+      beginIdx: beginIdx,
+      pageSize: ps,
+      items: items,
+    );
   } catch (e, st) {
     Log.e(_tag, 'playlistTracks failed id=$playlistId page=$page', e, st);
     return const TrackPage();

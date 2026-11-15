@@ -44,7 +44,11 @@ void main() {
   eq(p.isPlayable, true, 'parse.isPlayable');
 
   // 数字字符串也要能解析（上游偶发）
-  final p2 = parse(<String, dynamic>{'status': '1', 'priv_status': '1', 'url': 'http://a/x.mp3'});
+  final p2 = parse(<String, dynamic>{
+    'status': '1',
+    'priv_status': '1',
+    'url': 'http://a/x.mp3',
+  });
   eq(p2.status, 1, '字符串 status → int');
   eq(p2.urls.length, 1, '字符串 url → 列表');
 
@@ -54,20 +58,44 @@ void main() {
 
   // 决策：有 url 优先（匿名免费曲 priv 缺失）
   eq(
-      decide(const QualityAttempt(
-          quality: '320', status: 1, privStatus: 0, hasUrl: true, privKnown: false)),
-      PlayDecision.play,
-      'decide: 有url+priv未知 → play');
+    decide(
+      const QualityAttempt(
+        quality: '320',
+        status: 1,
+        privStatus: 0,
+        hasUrl: true,
+        privKnown: false,
+      ),
+    ),
+    PlayDecision.play,
+    'decide: 有url+priv未知 → play',
+  );
   eq(
-      decide(const QualityAttempt(
-          quality: '320', status: 1, privStatus: 0, hasUrl: false, privKnown: true)),
-      PlayDecision.noPrivilege,
-      'decide: priv=0 且无url → noPrivilege');
+    decide(
+      const QualityAttempt(
+        quality: '320',
+        status: 1,
+        privStatus: 0,
+        hasUrl: false,
+        privKnown: true,
+      ),
+    ),
+    PlayDecision.noPrivilege,
+    'decide: priv=0 且无url → noPrivilege',
+  );
   eq(
-      decide(const QualityAttempt(
-          quality: 'flac', status: 2, privStatus: 0, hasUrl: false, privKnown: false)),
-      PlayDecision.needVerify,
-      'decide: status=2 无url → needVerify');
+    decide(
+      const QualityAttempt(
+        quality: 'flac',
+        status: 2,
+        privStatus: 0,
+        hasUrl: false,
+        privKnown: false,
+      ),
+    ),
+    PlayDecision.needVerify,
+    'decide: status=2 无url → needVerify',
+  );
 
   print('---- play contract self-check: $_pass passed, $_fail failed ----');
   if (_fail > 0) throw StateError('play contract FAILED');

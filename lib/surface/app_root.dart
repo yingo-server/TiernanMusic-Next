@@ -3,10 +3,20 @@
 import 'package:flutter/material.dart';
 
 import '../bridges/bridge_core.dart'
-    show KugouClient, SongDao, PlaylistDao, HistoryDao, DownloadStore,
-        KeyValueSettings, StoragePaths;
+    show
+        KugouClient,
+        SongDao,
+        PlaylistDao,
+        HistoryDao,
+        DownloadStore,
+        KeyValueSettings,
+        StoragePaths;
 import '../bridges/bridge_session.dart'
-    show ModuleRegistry, NavEntry, SurfaceModule, PlaybackSession,
+    show
+        ModuleRegistry,
+        NavEntry,
+        SurfaceModule,
+        PlaybackSession,
         ThemeController;
 import 'design/tokens.dart';
 import 'shell.dart';

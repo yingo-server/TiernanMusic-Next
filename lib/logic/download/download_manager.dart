@@ -30,10 +30,10 @@ class DownloadManager {
     required SongDao songDao,
     required DownloadStore downloadStore,
     int maxConcurrent = 3,
-  })  : _playback = playbackService,
-        _songDao = songDao,
-        _store = downloadStore,
-        _maxConcurrent = maxConcurrent < 1 ? 1 : maxConcurrent;
+  }) : _playback = playbackService,
+       _songDao = songDao,
+       _store = downloadStore,
+       _maxConcurrent = maxConcurrent < 1 ? 1 : maxConcurrent;
 
   final PlaybackService _playback;
   final SongDao _songDao;
@@ -65,7 +65,8 @@ class DownloadManager {
   List<DownloadTask> listTasks() {
     try {
       return List.unmodifiable(
-          _order.map((h) => _tasks[h]).whereType<DownloadTask>().toList());
+        _order.map((h) => _tasks[h]).whereType<DownloadTask>().toList(),
+      );
     } catch (e, st) {
       Log.e(_tag, 'listTasks failed', e, st);
       return const [];
@@ -183,10 +184,12 @@ class DownloadManager {
         // 才删 .dlpart：运行体退出前删分片，会出现「运行体仍持 task 并写
         // .dlpart，manager 已删」的竞态，留下残留分片。
         var timedOut = false;
-        await job.done.future.timeout(const Duration(seconds: 10),
-            onTimeout: () {
-          timedOut = true;
-        });
+        await job.done.future.timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            timedOut = true;
+          },
+        );
         if (timedOut) {
           // 超时：运行体尚未退出，改为等它真正退出后再删（避免与写分片竞态）。
           job.done.future.whenComplete(() => _cleanupPartByHash(h));
@@ -253,14 +256,22 @@ class DownloadManager {
         next.status = DownloadStatus.running;
         Log.d(_tag, 'start ${next.hash} (running=${_running.length})');
         _emit(next);
-        _runOne(next, job).catchError((Object e) {
-          Log.e(_tag, 'runOne uncaught ${next.hash}', e, StackTrace.current);
-        }).whenComplete(() {
-          // 只有仍是本 job 时才移除，避免覆盖后的句柄被误删（pause→resume 竞态）。
-          if (identical(_running[next.hash], job)) _running.remove(next.hash);
-          job.done.complete();
-          _pump();
-        });
+        _runOne(next, job)
+            .catchError((Object e) {
+              Log.e(
+                _tag,
+                'runOne uncaught ${next.hash}',
+                e,
+                StackTrace.current,
+              );
+            })
+            .whenComplete(() {
+              // 只有仍是本 job 时才移除，避免覆盖后的句柄被误删（pause→resume 竞态）。
+              if (identical(_running[next.hash], job))
+                _running.remove(next.hash);
+              job.done.complete();
+              _pump();
+            });
       }
     } catch (e, st) {
       Log.e(_tag, '_pump failed', e, st);
@@ -325,7 +336,11 @@ class DownloadManager {
 
   /// 分块下载单个 URL：写 <hash>.dlpart 临时文件，每 chunk 刷新进度并 emit。
   Future<void> _downloadUrl(
-      DownloadTask task, RunningJob job, String url, String extName) async {
+    DownloadTask task,
+    RunningJob job,
+    String url,
+    String extName,
+  ) async {
     final http = HttpClient()
       ..userAgent = 'TiernanMusicNext'
       ..connectionTimeout = const Duration(seconds: 15);
@@ -341,7 +356,9 @@ class DownloadManager {
       }
       task.bytesTotal = res.contentLength > 0 ? res.contentLength : 0;
       task.bytesDownloaded = 0;
-      part = File('${(await _storeDir())}${Platform.pathSeparator}${task.hash}.dlpart');
+      part = File(
+        '${(await _storeDir())}${Platform.pathSeparator}${task.hash}.dlpart',
+      );
       if (part.existsSync()) part.deleteSync();
       sink = part.openWrite();
       await for (final chunk in res) {
@@ -400,7 +417,10 @@ class DownloadManager {
   /// 收尾提交（委托 DownloadCommitter）；提交期间到达的 cancel/pause
   /// 由 committer 负责不落盘，此处只补中断状态标记。
   Future<void> _finishCommit(
-      DownloadTask task, String extName, RunningJob job) async {
+    DownloadTask task,
+    String extName,
+    RunningJob job,
+  ) async {
     try {
       await _committer.commit(task, extName, job);
       if (job.abort) _markAborted(task, job);
@@ -419,9 +439,14 @@ class DownloadManager {
       // （否则任务卡在 paused 且不会重新调度）。
       final resumed = task.status == DownloadStatus.pending;
       if (!shouldMarkPausedOnAbort(
-          cancelled: job.cancelled, alreadyResumed: resumed)) {
-        Log.d(_tag, '${task.hash} aborted (cancelled=${job.cancelled} '
-            'resumed=$resumed, no mark)');
+        cancelled: job.cancelled,
+        alreadyResumed: resumed,
+      )) {
+        Log.d(
+          _tag,
+          '${task.hash} aborted (cancelled=${job.cancelled} '
+          'resumed=$resumed, no mark)',
+        );
         return;
       }
       _mark(task, DownloadStatus.paused, null);

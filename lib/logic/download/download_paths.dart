@@ -25,7 +25,9 @@ String resolveStoreDir(String targetDir) {
 /// 生成落盘文件名：「歌手 - 标题.ext」，非法字符替换为 _，空则回退 hash。
 String buildDownloadFileName(SongBrief song, String ext) {
   try {
-    final raw = song.singer.isEmpty ? song.name : '${song.singer} - ${song.name}';
+    final raw = song.singer.isEmpty
+        ? song.name
+        : '${song.singer} - ${song.name}';
     final cleaned = raw.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
     final name = cleaned.isEmpty ? song.hash : cleaned;
     final e = ext.trim().isEmpty ? 'mp3' : ext.trim().toLowerCase();

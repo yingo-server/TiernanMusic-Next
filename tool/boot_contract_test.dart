@@ -43,31 +43,41 @@ void main() {
   final o1 = BootOutcome.fromAny(failMap);
   check(o1.rejected, 'fromAny(Map失败形状): rejected=true');
   check(o1.error == 'runBootImpl failed', 'fromAny(Map失败形状): error 透传');
-  check(o1.detail.contains('not installed'),
-      'fromAny(Map失败形状): detail 透传');
+  check(o1.detail.contains('not installed'), 'fromAny(Map失败形状): detail 透传');
   check(identical(o1.dep('__raw'), failMap), 'fromAny(Map失败形状): __raw 保留原 Map');
 
   // 缺 error 键的失败 Map → 兜底 'boot failed'。
   final bareMap = <String, Object?>{'rejected': true};
   final o1b = BootOutcome.fromAny(bareMap);
-  check(o1b.rejected && o1b.error == 'boot failed',
-      'fromAny(缺error失败Map): 兜底 error=boot failed');
+  check(
+    o1b.rejected && o1b.error == 'boot failed',
+    'fromAny(缺error失败Map): 兜底 error=boot failed',
+  );
 
   // ── 路径2：成功对象（最小桩）──
   final stub = _StubBootResult();
   final o2 = BootOutcome.fromAny(stub);
   check(!o2.rejected, 'fromAny(成功对象): rejected=false');
-  check(o2.error.isEmpty && o2.detail.isEmpty,
-      'fromAny(成功对象): error/detail 为空');
-  check(identical(o2.dep('client'), stub.client), 'fromAny(成功对象): dep(client) 桩字段');
-  check(identical(o2.dep('settings'), stub.settings),
-      'fromAny(成功对象): dep(settings) 桩字段');
+  check(
+    o2.error.isEmpty && o2.detail.isEmpty,
+    'fromAny(成功对象): error/detail 为空',
+  );
+  check(
+    identical(o2.dep('client'), stub.client),
+    'fromAny(成功对象): dep(client) 桩字段',
+  );
+  check(
+    identical(o2.dep('settings'), stub.settings),
+    'fromAny(成功对象): dep(settings) 桩字段',
+  );
   check(identical(o2.dep('__raw'), stub), 'fromAny(成功对象): __raw 保留原对象');
 
   // 幂等：fromAny(BootOutcome) 原样返回。
   check(identical(BootOutcome.fromAny(o2), o2), 'fromAny(BootOutcome): 幂等原样返回');
 
-  stdout.writeln('---- boot contract self-check: '
-      '$_passed passed, $_failed failed ----');
+  stdout.writeln(
+    '---- boot contract self-check: '
+    '$_passed passed, $_failed failed ----',
+  );
   exit(_failed == 0 ? 0 : 1);
 }

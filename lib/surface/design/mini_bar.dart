@@ -29,8 +29,12 @@ class SpMiniBar extends StatelessWidget {
     );
   }
 
-  Widget _bar(BuildContext context, PlaybackSession session,
-      PlaybackSnapshot snap, SongBrief song) {
+  Widget _bar(
+    BuildContext context,
+    PlaybackSession session,
+    PlaybackSnapshot snap,
+    SongBrief song,
+  ) {
     final t = Theme.of(context).textTheme;
     final playing = snap.player.isPlaying;
     return Material(
@@ -53,7 +57,9 @@ class SpMiniBar extends StatelessWidget {
                       song.name.isEmpty ? song.hash : song.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                      style: t.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     if (song.singer.isNotEmpty)
                       Text(

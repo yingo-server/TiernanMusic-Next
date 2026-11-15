@@ -4,7 +4,17 @@
 // 缓存键经 core/memory/cache_keys.buildKey，schemaVer v1（顶部常量）。
 // 铁律：禁 surface/flutter；每方法 try/catch + Log('logic.search')。
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show KugouClient, LruCache, SearchResult, SearchSuggestItem, buildKey, prefixOf, searchHot, searchSongs, searchSuggest;
+import '../../bridges/bridge_core.dart'
+    show
+        KugouClient,
+        LruCache,
+        SearchResult,
+        SearchSuggestItem,
+        buildKey,
+        prefixOf,
+        searchHot,
+        searchSongs,
+        searchSuggest;
 
 /// 搜索域缓存 schema 版本：模型变更升版自动失效老键。
 const int kSearchCacheSchemaVer = 1;
@@ -17,8 +27,8 @@ class SearchLogic {
   SearchLogic({
     required KugouClient client,
     required LruCache<String, SearchResult> cache,
-  })  : _client = client,
-        _cache = cache {
+  }) : _client = client,
+       _cache = cache {
     Log.d(_tag, 'init capacity=${cache.capacity}');
   }
 
@@ -26,7 +36,11 @@ class SearchLogic {
   final LruCache<String, SearchResult> _cache;
 
   /// 关键词搜歌（page 从 1 起）。命中缓存直接返回，未命中调 searchSongs 后 put。
-  Future<SearchResult> search(String keyword, int page, {int pageSize = 30}) async {
+  Future<SearchResult> search(
+    String keyword,
+    int page, {
+    int pageSize = 30,
+  }) async {
     try {
       final kw = keyword.trim();
       if (kw.isEmpty) {
@@ -47,9 +61,11 @@ class SearchLogic {
       }
       final res = await searchSongs(_client, kw, page, pageSize);
       _cache.put(key, res);
-      Log.d(_tag,
-          'search miss→network kw=$kw page=$page got=${res.items.length} '
-          'cacheSize=${_cache.length}');
+      Log.d(
+        _tag,
+        'search miss→network kw=$kw page=$page got=${res.items.length} '
+        'cacheSize=${_cache.length}',
+      );
       return res;
     } catch (e, st) {
       Log.e(_tag, 'search failed kw=$keyword page=$page', e, st);
@@ -85,7 +101,10 @@ class SearchLogic {
   int invalidatePrefix({String userid = ''}) {
     try {
       final removed = _cache.invalidatePrefix(prefixOf(_ns, userid));
-      Log.d(_tag, 'invalidatePrefix ns=$_ns uid=$userid removed=${removed.length}');
+      Log.d(
+        _tag,
+        'invalidatePrefix ns=$_ns uid=$userid removed=${removed.length}',
+      );
       return removed.length;
     } catch (e, st) {
       Log.e(_tag, 'invalidatePrefix failed', e, st);

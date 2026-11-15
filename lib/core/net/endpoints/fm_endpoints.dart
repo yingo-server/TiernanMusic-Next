@@ -52,10 +52,11 @@ class FmTrack {
   SongBrief toSongBrief() {
     try {
       return SongBrief(
-          hash: hash.toLowerCase(),
-          name: name,
-          singer: singer,
-          mixSongId: mixSongId);
+        hash: hash.toLowerCase(),
+        name: name,
+        singer: singer,
+        mixSongId: mixSongId,
+      );
     } catch (e, st) {
       Log.e(_tag, 'FmTrack.toSongBrief failed', e, st);
       return const SongBrief();
@@ -63,11 +64,11 @@ class FmTrack {
   }
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'hash': hash,
-        'name': name,
-        'singer': singer,
-        'mixSongId': mixSongId,
-      };
+    'hash': hash,
+    'name': name,
+    'singer': singer,
+    'mixSongId': mixSongId,
+  };
 
   @override
   String toString() {
@@ -86,9 +87,16 @@ class FmTrack {
 List<SongBrief> _parseSongs(Map<String, dynamic> res) {
   try {
     final data = dataOf(res);
-    final raw = data['song_list'] ?? data['songs'] ?? data['list'] ??
-        data['info'] ?? data['lists'] ?? res['song_list'] ?? res['songs'] ??
-        res['list'] ?? res['data'];
+    final raw =
+        data['song_list'] ??
+        data['songs'] ??
+        data['list'] ??
+        data['info'] ??
+        data['lists'] ??
+        res['song_list'] ??
+        res['songs'] ??
+        res['list'] ??
+        res['data'];
     final items = listOf(raw)
         .map(FmTrack.fromMap)
         .map((t) => t.toSongBrief())
@@ -170,8 +178,12 @@ Future<List<SongBrief>> getFmPlay(
       'songid': 0,
       'playtime': 0,
     };
-    return await _fetch(client, EndpointRegistry.personalFm,
-        const <String, Object?>{}, body: body);
+    return await _fetch(
+      client,
+      EndpointRegistry.personalFm,
+      const <String, Object?>{},
+      body: body,
+    );
   } catch (e, st) {
     Log.e(_tag, 'getFmPlay failed mode=$mode action=$action', e, st);
     return const <SongBrief>[];

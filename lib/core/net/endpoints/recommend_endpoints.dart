@@ -27,15 +27,18 @@ enum DailyRecommendState { ok, loginRequired, empty, error }
 /// 同时暴露 .state/.loginRequired 供后续 UI 显示「需登录」，不静默冒充空推荐。
 class DailyRecommendResult extends ListBase<SongBrief> {
   DailyRecommendResult(this.state, List<SongBrief> items)
-      : _items = List<SongBrief>.unmodifiable(items);
+    : _items = List<SongBrief>.unmodifiable(items);
 
-  factory DailyRecommendResult.ok(List<SongBrief> items) => DailyRecommendResult(
+  factory DailyRecommendResult.ok(List<SongBrief> items) =>
+      DailyRecommendResult(
         items.isEmpty ? DailyRecommendState.empty : DailyRecommendState.ok,
         items,
       );
 
-  factory DailyRecommendResult.loginRequired() =>
-      DailyRecommendResult(DailyRecommendState.loginRequired, const <SongBrief>[]);
+  factory DailyRecommendResult.loginRequired() => DailyRecommendResult(
+    DailyRecommendState.loginRequired,
+    const <SongBrief>[],
+  );
 
   factory DailyRecommendResult.error() =>
       DailyRecommendResult(DailyRecommendState.error, const <SongBrief>[]);
@@ -46,8 +49,8 @@ class DailyRecommendResult extends ListBase<SongBrief> {
   bool get loginRequired => state == DailyRecommendState.loginRequired;
 
   /// 供 logic 层缓存判定：只有确实拿到列表才落缓存。
-  bool get cacheable => state == DailyRecommendState.ok ||
-      state == DailyRecommendState.empty;
+  bool get cacheable =>
+      state == DailyRecommendState.ok || state == DailyRecommendState.empty;
 
   @override
   int get length => _items.length;
@@ -63,7 +66,8 @@ class DailyRecommendResult extends ListBase<SongBrief> {
       throw UnsupportedError('DailyRecommendResult 只读');
 
   @override
-  void add(SongBrief element) => throw UnsupportedError('DailyRecommendResult 只读');
+  void add(SongBrief element) =>
+      throw UnsupportedError('DailyRecommendResult 只读');
 
   @override
   void addAll(Iterable<SongBrief> iterable) =>
@@ -99,11 +103,18 @@ Future<DailyRecommendResult> getDailyRecommend(
       'userid': session.userid,
       'token': session.token,
     };
-    final res = await client.request(EndpointRegistry.recommendSongs, params,
-        body: body);
+    final res = await client.request(
+      EndpointRegistry.recommendSongs,
+      params,
+      body: body,
+    );
     final data = dataOf(res);
-    final raw = data['songs'] ?? data['list'] ?? data['info'] ??
-        res['songs'] ?? res['list'];
+    final raw =
+        data['songs'] ??
+        data['list'] ??
+        data['info'] ??
+        res['songs'] ??
+        res['list'];
     final items = listOf(raw)
         .map(SongBrief.fromTrackInfo)
         .where((s) => s.hash.isNotEmpty)

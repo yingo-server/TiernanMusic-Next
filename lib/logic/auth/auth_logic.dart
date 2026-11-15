@@ -12,7 +12,14 @@
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart'
     as auth_ep
-    show LoginResult, SmsLoginResult, loginByPwd, loginByToken, devLogout;
+    show
+        LoginResult,
+        SmsLoginResult,
+        loginByPwd,
+        loginByToken,
+        smsLogin,
+        sendSmsCode,
+        devLogout;
 import '../../bridges/bridge_core.dart'
     show
         EndpointRegistry,
@@ -238,7 +245,8 @@ class AuthLogic {
         Log.d(_tag, 'refresh skip (no t1)');
         return;
       }
-      loginByToken(_client)
+      auth_ep
+          .loginByToken(_client)
           .then((r) async {
             try {
               if (r.ok && r.token.isNotEmpty) {
@@ -283,7 +291,7 @@ class AuthLogic {
       if (pwd.isEmpty) {
         throw KugouApiException(0, 'empty pwd');
       }
-      final r = await loginByPwd(_client, pwd, code: code);
+      final r = await auth_ep.loginByPwd(_client, pwd, code: code);
       if (r.ok) {
         await _applyCredentials(
           r.token,
@@ -310,7 +318,7 @@ class AuthLogic {
     String code,
   ) async {
     try {
-      final r = await smsLogin(_client, mobile, code);
+      final r = await auth_ep.smsLogin(_client, mobile, code);
       if (r.ok) {
         await _applyCredentials(
           r.token,
@@ -331,7 +339,7 @@ class AuthLogic {
   /// 发送短信验证码门面（60s 防重发由 UI 负责；端点待实测）。
   Future<bool> sendVerifyCode(String mobile) async {
     try {
-      return await sendSmsCode(_client, mobile);
+      return await auth_ep.sendSmsCode(_client, mobile);
     } catch (e, st) {
       Log.e(_tag, 'sendVerifyCode failed', e, st);
       rethrow;
@@ -341,7 +349,7 @@ class AuthLogic {
   /// token 续期门面（ep.auth.loginByToken，端点待实测）。
   Future<auth_ep.LoginResult> renewByToken() async {
     try {
-      final r = await loginByToken(_client);
+      final r = await auth_ep.loginByToken(_client);
       if (r.ok) {
         await _applyCredentials(
           r.token,
@@ -365,7 +373,7 @@ class AuthLogic {
   /// 再清本地凭据（原 logout 语义不变）。
   Future<bool> signOut() async {
     try {
-      final remote = await devLogout(_client);
+      final remote = await auth_ep.devLogout(_client);
       if (!remote) {
         Log.w(_tag, 'signOut remote devLogout failed (degraded to local)');
       }
