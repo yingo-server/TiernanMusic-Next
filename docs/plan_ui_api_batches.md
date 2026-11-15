@@ -83,3 +83,11 @@
    - 写操作（收藏/加歌/评论）批 8 是否允许真实外发，还是只到确认弹层为止。
    - MV downurl 为 http，需本地代理转 https 还是直接放行 http（Android 9+ 默认禁明文）。
 6. **停止条件**：子代理单批报告发现越层依赖/桥缺失 → 停批上报，不自行补桥；单文件将超 500 行 → 拆文件而非塞注释。
+
+## 6. 追加批次（用户指令 2026-11-15）：10 批完成后额外 2 批
+
+| 批 | A | B | C | 范围 |
+|---|---|---|---|---|
+| 11 缓存专项 | CacheService 门面与 ResourceCache 职责边界审计（缓存⊃预读是否真正统一；KugouClient 双缓存栈是否重复/竞态） | 键维度审计（cacheKey 是否含 body/token/uid/dfid；TTL 分级：歌词/搜索/榜单差异化；登出失效钩子） | 容量/并发修复（同步 IO 残留、cleanup 旧快照回写、tmp 唯一化、上限策略实测） | core/cache/**、core/storage/resource_cache.dart、core/net/kugou_client.dart、core/net/inflight.dart |
+| 12 网络专项 | 全 50 端点契约复核（registry 声明 vs 上游源码 vs 实测留样三方对齐；死声明/版本错位清理） | 传输层审计（签名三模式、clienttime 秒/毫秒、dfid 真随机、Cookie 拼接、UA、超时/重试/405 降级） | 三态留样收口（api_samples 脱敏矩阵补全；「待实测」端点探针脚本产出与执行结果登记） | core/net/**、core/cache 探针接口、tool/api_probe*.dart、docs/API_* |
+追加批次同样 3 检查+3 修复、文件边界不重叠、完成一批收敛一批；修复前检查报告落盘 docs/batch{11,12}_c*.md。
