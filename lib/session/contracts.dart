@@ -3,9 +3,12 @@
 
 /// 导航入口（纯数据；L7 自己画 NavigationDestination）。
 class NavEntry {
-  const NavEntry(this.label, this.icon);
+  const NavEntry(this.label, this.icon, {this.navOrder = 0});
   final String label;
   final String icon;
+
+  /// 导航栏排序权重：小者靠前；无 navEntry 的模块排最后。
+  final int navOrder;
 }
 
 /// 模块契约：L7 控件按 id/route 注册，session 只约定形状，不画控件。

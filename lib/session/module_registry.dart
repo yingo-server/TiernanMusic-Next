@@ -31,11 +31,20 @@ class ModuleRegistry {
     }
   }
 
-  /// 启用模块（按 id 稳定排序，供 L7 生成导航）。
+  /// 启用模块（navOrder 升序优先，id 字典序兜底；无 navEntry 排最后）。
   List<SurfaceModule> active() {
     try {
       final list = _modules.values.where((m) => m.enabled).toList()
-        ..sort((a, b) => a.id.compareTo(b.id));
+        ..sort((a, b) {
+          final ae = a.navEntry;
+          final be = b.navEntry;
+          if (ae == null && be == null) return a.id.compareTo(b.id);
+          if (ae == null) return 1;
+          if (be == null) return -1;
+          final byOrder = ae.navOrder.compareTo(be.navOrder);
+          if (byOrder != 0) return byOrder;
+          return a.id.compareTo(b.id);
+        });
       return List<SurfaceModule>.unmodifiable(list);
     } catch (e, st) {
       Log.e(_tag, 'active failed', e, st);

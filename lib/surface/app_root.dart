@@ -6,7 +6,8 @@ import '../bridges/bridge_core.dart'
     show KugouClient, SongDao, PlaylistDao, HistoryDao, DownloadStore,
         KeyValueSettings, StoragePaths;
 import '../bridges/bridge_session.dart'
-    show ModuleRegistry, NavEntry, SurfaceModule, PlaybackSession;
+    show ModuleRegistry, NavEntry, SurfaceModule, PlaybackSession,
+        ThemeController;
 import 'design/tokens.dart';
 import 'shell.dart';
 
@@ -31,17 +32,33 @@ class SurfaceDeps {
   StoragePaths get pathsOrI => paths ?? StoragePaths.I;
 }
 
-/// 根组件（唯一入口）。
-class AppRoot extends StatelessWidget {
+/// 根组件（唯一入口）。监听 L6 ThemeController，按档位给 theme/darkTheme/themeMode。
+class AppRoot extends StatefulWidget {
   const AppRoot({super.key});
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  State<AppRoot> createState() => _AppRootState();
+}
+
+class _AppRootState extends State<AppRoot> {
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: ThemeController.instance,
+      builder: (context, mode, _) => MaterialApp(
         title: 'TiernanMusicNext',
         debugShowCheckedModeBanner: false,
-        theme: Sp.theme(),
+        theme: Sp.theme(dark: false),
+        darkTheme: Sp.theme(dark: true),
+        // 0 系统 / 1 亮 / 2 暗 / 3 纯黑（纯黑暂用暗色板，TODO 更深色板）。
+        themeMode: switch (mode) {
+          1 => ThemeMode.light,
+          _ => ThemeMode.dark,
+        },
         home: const AppShell(),
-      );
+      ),
+    );
+  }
 }
 
 /// 装配入口（L1 → L7）。

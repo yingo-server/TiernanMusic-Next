@@ -1,5 +1,7 @@
 // L7 surface/design · 设计令牌（唯一真源，页面禁止硬编码颜色/字号）
-// 风格：Spotify 深色（近黑底 + 绿色主色），M3 组件规范。
+// 风格：Spotify（深色近黑底 + 绿色主色；批1-F1 增加亮色映射）。
+// 注意：Sp.bg / Sp.card 等仍为 static const，被 8 个文件 17 处 const 引用；
+// 页面 const 色值动态化留批后（亮色页面视觉允许暂不完美，本批不改页面）。
 import 'package:flutter/material.dart';
 
 /// 设计令牌（命名短、语义单一）。
@@ -19,6 +21,16 @@ class Sp {
   static const Color greenDim = Color(0xFF14833C);
   static const Color red = Color(0xFFE05B5B);
   static const Color orange = Color(0xFFF2A25C);
+
+  // ── 亮色映射（批1-F1：仅 ThemeData 工厂内部分流，const 令牌仍为深色值） ──
+  static const Color _bgLight = Colors.white;
+  static const Color _bgElevatedLight = Color(0xFFF7F8FA);
+  static const Color _cardLight = Color(0xFFF2F2F2);
+  static const Color _cardHighLight = Color(0xFFE8EAEE);
+  static const Color _dividerLight = Color(0xFFDCDFE4);
+  static const Color _textLight = Color(0xFF111111);
+  static const Color _textSubLight = Color(0xFF5F646D);
+  static const Color _textFaintLight = Color(0xFF9AA0AA);
 
   // ── 间距 ──
   static const double gapXS = 4;
@@ -54,12 +66,19 @@ class Sp {
   static const Duration normal = Duration(milliseconds: 220);
   static const Curve curve = Curves.easeOutCubic;
 
-  /// 主题（唯一工厂；AppRoot 只用它）。
-  static ThemeData theme() {
+  /// 主题（唯一工厂；AppRoot 只用它）。dark=false 时用亮色映射。
+  static ThemeData theme({bool dark = true}) {
     try {
+      final Color bg = dark ? Sp.bg : _bgLight;
+      final Color bgElevated = dark ? Sp.bgElevated : _bgElevatedLight;
+      final Color card = dark ? Sp.card : _cardLight;
+      final Color cardHigh = dark ? Sp.cardHigh : _cardHighLight;
+      final Color divider = dark ? Sp.divider : _dividerLight;
+      final Color text = dark ? Sp.text : _textLight;
+      final Color textSub = dark ? Sp.textSub : _textSubLight;
       final scheme = ColorScheme.fromSeed(
         seedColor: green,
-        brightness: Brightness.dark,
+        brightness: dark ? Brightness.dark : Brightness.light,
       ).copyWith(
         surface: bg,
         onSurface: text,
@@ -75,23 +94,20 @@ class Sp {
       );
       return ThemeData(
         useMaterial3: true,
-        brightness: Brightness.dark,
+        brightness: dark ? Brightness.dark : Brightness.light,
         colorScheme: scheme,
         scaffoldBackgroundColor: bg,
         dividerColor: divider,
         splashFactory: InkSparkle.splashFactory,
-        textTheme: _text(scheme),
+        textTheme: _text(scheme, dark: dark),
         appBarTheme: AppBarTheme(
           backgroundColor: bg,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           centerTitle: false,
-          titleTextStyle: const TextStyle(
-            fontSize: fPageTitle,
-            fontWeight: FontWeight.w700,
-            color: text,
-          ),
-          iconTheme: const IconThemeData(color: text),
+          titleTextStyle: TextStyle(
+            fontSize: fPageTitle, fontWeight: FontWeight.w700, color: text),
+          iconTheme: IconThemeData(color: text),
         ),
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: bgElevated,
@@ -114,13 +130,13 @@ class Sp {
         listTileTheme: ListTileThemeData(
           iconColor: textSub,
           textColor: text,
-          titleTextStyle: const TextStyle(fontSize: fItem, color: text),
-          subtitleTextStyle: const TextStyle(fontSize: fSub, color: textSub),
+          titleTextStyle: TextStyle(fontSize: fItem, color: text),
+          subtitleTextStyle: TextStyle(fontSize: fSub, color: textSub),
         ),
         chipTheme: ChipThemeData(
           backgroundColor: card,
-          side: const BorderSide(color: divider),
-          labelStyle: const TextStyle(fontSize: fSub, color: text),
+          side: BorderSide(color: divider),
+          labelStyle: TextStyle(fontSize: fSub, color: text),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(rFull),
           ),
@@ -135,7 +151,7 @@ class Sp {
             ),
           ),
         ),
-        snackBarTheme: const SnackBarThemeData(
+        snackBarTheme: SnackBarThemeData(
           backgroundColor: cardHigh,
           contentTextStyle: TextStyle(color: text, fontSize: fSub),
           behavior: SnackBarBehavior.floating,
@@ -151,16 +167,18 @@ class Sp {
     }
   }
 
-  static TextTheme _text(ColorScheme s) {
-    const base = TextStyle(color: text, fontSize: fItem);
+  static TextTheme _text(ColorScheme s, {bool dark = true}) {
+    final base = TextStyle(
+        color: dark ? Sp.text : _textLight, fontSize: fItem);
+    final sub = dark ? Sp.textSub : _textSubLight;
     return TextTheme(
       headlineSmall: base.copyWith(
           fontSize: fPageTitle, fontWeight: FontWeight.w700),
       titleLarge: base.copyWith(fontSize: fSection, fontWeight: FontWeight.w600),
       titleMedium: base.copyWith(fontSize: fItem, fontWeight: FontWeight.w600),
       bodyMedium: base.copyWith(fontSize: fItem),
-      bodySmall: base.copyWith(fontSize: fSub, color: textSub),
-      labelSmall: base.copyWith(fontSize: fTiny, color: textSub),
+      bodySmall: base.copyWith(fontSize: fSub, color: sub),
+      labelSmall: base.copyWith(fontSize: fTiny, color: sub),
     );
   }
 }

@@ -21,6 +21,8 @@ export '../session/playback_session.dart'
 /// L7 页面统一取装配图（唯一合法跨层入口：session/bootstrap.appGraph）。
 /// bootstrapSession 失败时为 null，页面按空态/错误态处理。
 export '../session/bootstrap.dart' show appGraph;
+// 批1-F1：主题模式控制器（L6 foundation ValueNotifier，持久化经 bridge_core）。
+export '../session/theme_controller.dart' show ThemeController;
 
 /// 创建默认装配图（失败返回空图并留痕，不抛给 L7）。
 AppGraph createAppGraph() {

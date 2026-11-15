@@ -7,8 +7,7 @@ import '../../bridges/bridge_core.dart' show AudioQuality, qualityParam, vipQual
 import '../../bridges/bridge_logic.dart' show AuthLogic, AccountLogic;
 import '../../bridges/bridge_session.dart'
     show playbackSession, SurfaceModule, NavEntry;
-// GAP(跨桥)：逻辑单例随 AppGraph 暴露，bridge_session 暂未导出实例出口。
-import '../../bridges/bridge_session.dart' show appGraph;
+import '../../bridges/bridge_session.dart' show appGraph, ThemeController;
 import '../design/tokens.dart';
 import '../design/components.dart';
 
@@ -28,8 +27,7 @@ class _SettingsPageState extends State<SettingsPage> {
     0.5, 0.75, 1.0, 1.25, 1.5, 2.0,
   ];
 
-  // 主题模式：当前无 L6 主题会话出口，先本地维护（TODO 接 theme 会话持久化）。
-  int _themeMode = 2; // 0 系统 / 1 亮 / 2 暗 / 3 纯黑
+  // 主题模式已上移 L6 ThemeController（批1-F1），本页不再持本地 state。
   String _nickname = '';
   bool _loggedIn = false;
 
@@ -180,19 +178,23 @@ class _SettingsPageState extends State<SettingsPage> {
                         const Text('主题模式',
                             style: TextStyle(fontSize: Sp.fItem, color: Sp.text)),
                         const SizedBox(height: Sp.gapM),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: SegmentedButton<int>(
-                            showSelectedIcon: false,
-                            segments: const <ButtonSegment<int>>[
-                              ButtonSegment<int>(value: 0, label: Text('跟随系统')),
-                              ButtonSegment<int>(value: 1, label: Text('亮')),
-                              ButtonSegment<int>(value: 2, label: Text('暗')),
-                              ButtonSegment<int>(value: 3, label: Text('纯黑')),
-                            ],
-                            selected: <int>{_themeMode},
-                            onSelectionChanged: (s) =>
-                                setState(() => _themeMode = s.first),
+                        ValueListenableBuilder<int>(
+                          valueListenable: ThemeController.instance,
+                          builder: (context, mode, _) =>
+                              SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: SegmentedButton<int>(
+                              showSelectedIcon: false,
+                              segments: const <ButtonSegment<int>>[
+                                ButtonSegment<int>(value: 0, label: Text('跟随系统')),
+                                ButtonSegment<int>(value: 1, label: Text('亮')),
+                                ButtonSegment<int>(value: 2, label: Text('暗')),
+                                ButtonSegment<int>(value: 3, label: Text('纯黑')),
+                              ],
+                              selected: <int>{mode},
+                              onSelectionChanged: (s) =>
+                                  ThemeController.instance.setMode(s.first),
+                            ),
                           ),
                         ),
                       ],
@@ -273,7 +275,7 @@ class SettingsPageModule extends SurfaceModule {
   String get route => '/settings';
 
   @override
-  NavEntry? get navEntry => const NavEntry('设置', 'settings');
+  NavEntry? get navEntry => const NavEntry('设置', 'settings', navOrder: 4);
 
   @override
   WidgetBuilder? get builder => (_) => const SettingsPage();

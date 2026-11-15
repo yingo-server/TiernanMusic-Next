@@ -17,7 +17,7 @@ class PlaylistPageModule extends SurfaceModule {
   @override
   String get route => '/playlist';
   @override
-  NavEntry? get navEntry => const NavEntry('歌单', 'playlist');
+  NavEntry? get navEntry => const NavEntry('歌单', 'playlist', navOrder: 2);
   @override
   bool get enabled => true;
   @override

@@ -1,12 +1,15 @@
 // L7 surface/pages · 首页（Spotify 深色 + M3）
 // 只画控件；数据只经 bridge_logic 的 logic 单例取；颜色/字号/间距只用 Sp.*。
 import 'package:flutter/material.dart';
+
 import '../../bridges/bridge_logic.dart'
-    show Log, SongBrief, PlaylistBrief, RankBrief, SearchSuggestItem;
+    show Log, SongBrief, PlaylistBrief, RankBrief;
 import '../../bridges/bridge_session.dart'
     show NavState, PlaybackSession, SurfaceModule, NavEntry;
 import '../../bridges/bridge_session.dart' show appGraph;
 import '../design/tokens.dart' show Sp;
+import 'home_state_views.dart'
+    show HomeSkeletonBox, HomeEmptyBox, HomeErrorRetry;
 import 'playlist_page.dart' show PlaylistDetailSheet;
 
 const String _tag = 'surface.home';
@@ -18,14 +21,15 @@ class HomePageModule extends SurfaceModule {
   @override
   String get route => '/home';
   @override
-  NavEntry? get navEntry => const NavEntry('首页', 'home');
+  NavEntry? get navEntry => const NavEntry('首页', 'home', navOrder: 0);
   @override
   bool get enabled => true;
   @override
-  WidgetBuilder? get builder => (BuildContext ctx) => const HomePage();
+  WidgetBuilder? get builder =>
+      (BuildContext ctx) => const HomePage();
 }
 
-/// 首页：每日推荐 / 推荐歌单 / 排行榜 / 热搜 四区块流。
+/// 首页：每日推荐 / 推荐歌单 / 排行榜 三区块流。
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
   @override
@@ -36,12 +40,12 @@ class _HomePageState extends State<HomePage> {
   late Future<List<SongBrief>> _dailyF;
   late Future<List<PlaylistBrief>> _playlistF;
   late Future<List<RankBrief>> _rankF;
-  late Future<List<SearchSuggestItem>> _hotF;
   @override
   void initState() {
     super.initState();
     _load();
   }
+
   /// 异步数据只在 initState 持有 future（禁止在 build 内新建 future）。
   void _load() {
     try {
@@ -50,15 +54,14 @@ class _HomePageState extends State<HomePage> {
       _playlistF =
           g.playlist?.recommend(1) ?? Future.value(const <PlaylistBrief>[]);
       _rankF = g.rank?.rankList() ?? Future.value(const <RankBrief>[]);
-      _hotF = g.search?.hotSearch() ?? Future.value(const <SearchSuggestItem>[]);
     } catch (e, st) {
       Log.e(_tag, 'load failed', e, st);
       _dailyF = Future.value(const <SongBrief>[]);
       _playlistF = Future.value(const <PlaylistBrief>[]);
       _rankF = Future.value(const <RankBrief>[]);
-      _hotF = Future.value(const <SearchSuggestItem>[]);
     }
   }
+
   void _reload() => setState(_load);
   void _play(List<SongBrief> songs, int index) {
     try {
@@ -67,6 +70,7 @@ class _HomePageState extends State<HomePage> {
       Log.e(_tag, 'playAll failed', e, st);
     }
   }
+
   void _openPlaylist(PlaylistBrief brief) {
     try {
       showModalBottomSheet<void>(
@@ -83,21 +87,26 @@ class _HomePageState extends State<HomePage> {
       Log.e(_tag, 'openPlaylist failed', e, st);
     }
   }
+
   /// 榜单卡：直接进入榜单曲目并播放（榜单详情走 rankInfo）。
   void _openRank(RankBrief rank) {
     try {
       final rk = appGraph.rank;
       if (rk == null) return;
-      rk.rankInfo(rank.rankId).then((List<SongBrief> songs) {
-        if (songs.isEmpty) return;
-        PlaybackSession.instance.playAll(songs, 0);
-      }).catchError((Object e, StackTrace st) {
-        Log.e(_tag, 'rankInfo failed id=${rank.rankId}', e, st);
-      });
+      rk
+          .rankInfo(rank.rankId)
+          .then((List<SongBrief> songs) {
+            if (songs.isEmpty) return;
+            PlaybackSession.instance.playAll(songs, 0);
+          })
+          .catchError((Object e, StackTrace st) {
+            Log.e(_tag, 'rankInfo failed id=${rank.rankId}', e, st);
+          });
     } catch (e, st) {
       Log.e(_tag, 'openRank failed', e, st);
     }
   }
+
   void _goSearch() {
     try {
       NavState.instance.requestTab('search');
@@ -105,6 +114,7 @@ class _HomePageState extends State<HomePage> {
       Log.e(_tag, 'requestTab failed', e, st);
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -116,11 +126,14 @@ class _HomePageState extends State<HomePage> {
               backgroundColor: Sp.bg,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
-              title: const Text('首页',
-                  style: TextStyle(
-                      fontSize: Sp.fHero,
-                      fontWeight: FontWeight.w700,
-                      color: Sp.text)),
+              title: const Text(
+                '首页',
+                style: TextStyle(
+                  fontSize: Sp.fHero,
+                  fontWeight: FontWeight.w700,
+                  color: Sp.text,
+                ),
+              ),
               actions: <Widget>[
                 IconButton(
                   tooltip: '搜索',
@@ -133,12 +146,11 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.only(bottom: Sp.gapXL),
-                itemCount: 4,
+                itemCount: 3,
                 itemBuilder: (BuildContext c, int i) {
                   if (i == 0) return _dailySection(c);
                   if (i == 1) return _playlistSection(c);
-                  if (i == 2) return _rankSection(c);
-                  return _hotSection(c);
+                  return _rankSection(c);
                 },
               ),
             ),
@@ -147,6 +159,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
   Widget _section(BuildContext c, String title, Widget child) {
     return Padding(
       padding: const EdgeInsets.only(top: Sp.gapXL, bottom: Sp.gapM),
@@ -155,11 +168,14 @@ class _HomePageState extends State<HomePage> {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
-            child: Text(title,
-                style: const TextStyle(
-                    fontSize: Sp.fSection,
-                    fontWeight: FontWeight.w700,
-                    color: Sp.text)),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: Sp.fSection,
+                fontWeight: FontWeight.w700,
+                color: Sp.text,
+              ),
+            ),
           ),
           const SizedBox(height: Sp.gapM),
           child,
@@ -167,6 +183,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
   Widget _dailySection(BuildContext c) {
     return FutureBuilder<List<SongBrief>>(
       future: _dailyF,
@@ -175,32 +192,34 @@ class _HomePageState extends State<HomePage> {
           return _section(c, '每日推荐', const HomeSkeletonBox(height: 176));
         }
         if (snap.hasError) {
-          return _section(c, '每日推荐',
-              HomeErrorRetry(message: '每日推荐加载失败', onRetry: _reload));
+          return _section(
+            c,
+            '每日推荐',
+            HomeErrorRetry(message: '每日推荐加载失败', onRetry: _reload),
+          );
         }
         final List<SongBrief> items = snap.data ?? const <SongBrief>[];
         if (items.isEmpty) {
-          return _section(c, '每日推荐',
-              const HomeEmptyBox('暂无每日推荐（登录后可能可见）'));
+          return _section(c, '每日推荐', const HomeEmptyBox('暂无每日推荐（登录后可能可见）'));
         }
         return _section(
-            c,
-            '每日推荐',
-            SizedBox(
-              height: 176,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
-                itemCount: items.length,
-                itemBuilder: (BuildContext c, int i) => _SongCard(
-                  song: items[i],
-                  onTap: () => _play(items, i),
-                ),
-              ),
-            ));
+          c,
+          '每日推荐',
+          SizedBox(
+            height: 176,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+              itemCount: items.length,
+              itemBuilder: (BuildContext c, int i) =>
+                  _SongCard(song: items[i], onTap: () => _play(items, i)),
+            ),
+          ),
+        );
       },
     );
   }
+
   Widget _playlistSection(BuildContext c) {
     return FutureBuilder<List<PlaylistBrief>>(
       future: _playlistF,
@@ -209,104 +228,71 @@ class _HomePageState extends State<HomePage> {
           return _section(c, '推荐歌单', const HomeSkeletonBox(height: 220));
         }
         if (snap.hasError) {
-          return _section(c, '推荐歌单',
-              HomeErrorRetry(message: '歌单加载失败', onRetry: _reload));
+          return _section(
+            c,
+            '推荐歌单',
+            HomeErrorRetry(message: '歌单加载失败', onRetry: _reload),
+          );
         }
         final List<PlaylistBrief> items = snap.data ?? const <PlaylistBrief>[];
         if (items.isEmpty) {
           return _section(c, '推荐歌单', const HomeEmptyBox('暂无推荐歌单'));
         }
         return _section(
-            c,
-            '推荐歌单',
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
+          c,
+          '推荐歌单',
+          SizedBox(
+            height: 210,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 0.72,
-                crossAxisSpacing: Sp.gapM,
-                mainAxisSpacing: Sp.gapM,
-              ),
               itemCount: items.length,
-              itemBuilder: (BuildContext c, int i) => HomePlaylistCard(
-                brief: items[i],
-                onTap: () => _openPlaylist(items[i]),
+              itemBuilder: (BuildContext c, int i) => SizedBox(
+                width: 150,
+                child: HomePlaylistCard(
+                  brief: items[i],
+                  onTap: () => _openPlaylist(items[i]),
+                ),
               ),
-            ));
+            ),
+          ),
+        );
       },
     );
   }
+
   Widget _rankSection(BuildContext c) {
     return FutureBuilder<List<RankBrief>>(
       future: _rankF,
       builder: (BuildContext c, AsyncSnapshot<List<RankBrief>> snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return _section(c, '排行榜', const HomeSkeletonBox(height: 150));
+          return _section(c, '排行榜', const HomeSkeletonBox(height: 110));
         }
         if (snap.hasError) {
-          return _section(c, '排行榜',
-              HomeErrorRetry(message: '榜单加载失败', onRetry: _reload));
+          return _section(
+            c,
+            '排行榜',
+            HomeErrorRetry(message: '榜单加载失败', onRetry: _reload),
+          );
         }
         final List<RankBrief> items = snap.data ?? const <RankBrief>[];
         if (items.isEmpty) {
           return _section(c, '排行榜', const HomeEmptyBox('暂无榜单数据'));
         }
         return _section(
-            c,
-            '排行榜',
-            SizedBox(
-              height: 150,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
-                itemCount: items.length,
-                itemBuilder: (BuildContext c, int i) => _RankCard(
-                  rank: items[i],
-                  onTap: () => _openRank(items[i]),
-                ),
-              ),
-            ));
-      },
-    );
-  }
-  Widget _hotSection(BuildContext c) {
-    return FutureBuilder<List<SearchSuggestItem>>(
-      future: _hotF,
-      builder: (BuildContext c, AsyncSnapshot<List<SearchSuggestItem>> snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return _section(c, '热搜', const HomeSkeletonBox(height: 60));
-        }
-        if (snap.hasError) {
-          return _section(c, '热搜',
-              HomeErrorRetry(message: '热搜加载失败', onRetry: _reload));
-        }
-        final List<SearchSuggestItem> items =
-            snap.data ?? const <SearchSuggestItem>[];
-        if (items.isEmpty) {
-          return _section(c, '热搜', const HomeEmptyBox('暂无热搜词'));
-        }
-        return _section(
-            c,
-            '热搜',
-            Padding(
+          c,
+          '排行榜',
+          SizedBox(
+            height: 110,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
-              child: Wrap(
-                spacing: Sp.gapS,
-                runSpacing: Sp.gapS,
-                children: <Widget>[
-                  for (final SearchSuggestItem it in items)
-                    ActionChip(
-                      label: Text(it.keyword,
-                          style: const TextStyle(fontSize: Sp.fSub)),
-                      backgroundColor: Sp.card,
-                      side: const BorderSide(color: Sp.divider),
-                      onPressed: _goSearch,
-                    ),
-                ],
-              ),
-            ));
+              itemCount: items.length,
+              itemBuilder: (BuildContext c, int i) =>
+                  _RankCard(rank: items[i], onTap: () => _openRank(items[i])),
+            ),
+          ),
+        );
       },
     );
   }
@@ -322,12 +308,18 @@ class _Cover extends StatelessWidget {
   Widget build(BuildContext context) {
     final Widget box = url.isEmpty
         ? Container(color: Sp.cardHigh)
-        : Image.network(url, width: size, height: size, fit: BoxFit.cover,
+        : Image.network(
+            url,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
             errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                Container(color: Sp.cardHigh));
+                Container(color: Sp.cardHigh),
+          );
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
-      child: SizedBox(width: size, height: size, child: box));
+      child: SizedBox(width: size, height: size, child: box),
+    );
   }
 }
 
@@ -406,8 +398,8 @@ class _RankCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 168,
-        padding: const EdgeInsets.all(Sp.gapM),
+        width: 120,
+        padding: const EdgeInsets.all(Sp.gapS),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(Sp.rCard),
           gradient: const LinearGradient(
@@ -425,9 +417,10 @@ class _RankCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                  fontSize: Sp.fSection,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black),
+                fontSize: Sp.fSection,
+                fontWeight: FontWeight.w700,
+                color: Colors.black,
+              ),
             ),
             Text(
               rank.updateTime.isEmpty ? '每周更新' : rank.updateTime,
@@ -440,61 +433,4 @@ class _RankCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 骨架占位。
-class HomeSkeletonBox extends StatelessWidget {
-  const HomeSkeletonBox({required this.height});
-  final double height;
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: height,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
-        itemCount: 3,
-        itemBuilder: (BuildContext c, int i) => Container(
-          width: 124,
-          margin: const EdgeInsets.only(right: Sp.gapM),
-          decoration: BoxDecoration(
-            color: Sp.card,
-            borderRadius: BorderRadius.circular(Sp.rCard),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 空态。
-class HomeEmptyBox extends StatelessWidget {
-  const HomeEmptyBox(this.message);
-  final String message;
-  @override
-  Widget build(BuildContext context) => Padding(
-      padding:
-          const EdgeInsets.symmetric(horizontal: Sp.pagePad, vertical: Sp.gapXL),
-      child: Text(message,
-          style: const TextStyle(fontSize: Sp.fSub, color: Sp.textFaint)));
-}
-
-/// 错误 + 重试。
-class HomeErrorRetry extends StatelessWidget {
-  const HomeErrorRetry({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-  @override
-  Widget build(BuildContext context) => Padding(
-      padding:
-          const EdgeInsets.symmetric(horizontal: Sp.pagePad, vertical: Sp.gapXL),
-      child: Row(children: <Widget>[
-        Expanded(
-            child: Text(message,
-                style: const TextStyle(fontSize: Sp.fSub, color: Sp.red))),
-        TextButton(
-            onPressed: onRetry,
-            child: const Text('重试',
-                style: TextStyle(fontSize: Sp.fSub, color: Sp.green))),
-      ]));
 }

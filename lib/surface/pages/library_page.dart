@@ -258,7 +258,7 @@ class LibraryPageModule extends SurfaceModule {
   String get route => '/library';
 
   @override
-  NavEntry? get navEntry => const NavEntry('音乐库', 'library_music');
+  NavEntry? get navEntry => const NavEntry('音乐库', 'library_music', navOrder: 3);
 
   @override
   WidgetBuilder? get builder => (_) => const LibraryPage();
