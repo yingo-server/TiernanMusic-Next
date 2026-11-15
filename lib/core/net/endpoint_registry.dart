@@ -238,6 +238,20 @@ class EndpointRegistry {
       id: 'login_token',
       base: 'http://login.user.kugou.com', path: '/v5/login_by_token',
       method: 'POST');
+  // loginByPwd：POST login.user.kugou.com/v9/login_by_pwd（出处 module/login.js
+  // L46，x-router 域 + encryptType android）。降级候选 v9→v7→v6 待实测。
+  // openplat（微信 /v6/login_by_openplat）按用户决策先不接：不加封装不加调用方。
+  static const loginByPwd = Endpoint(
+      id: 'login_by_pwd',
+      base: 'https://login.user.kugou.com', path: '/v9/login_by_pwd',
+      method: 'POST');
+  // devLogout：POST /loginservice/v1/dev_logout（出处
+  // research_legacy_login_url.md L7）。参数/签名待实测。
+  static const devLogout = Endpoint(
+      id: 'dev_logout',
+      base: 'https://loginservice.kugou.com',
+      path: '/loginservice/v1/dev_logout', method: 'POST',
+      signType: SignType.none, clearDefaultParams: true);
   // smsLogin：POST https://loginserviceretry.kugou.com/v7/login_by_verifycode
   // （出处 docs/KUGOU_API.md §3.8 login_cellphone.js：body params=AES 加密 hex
   // + pk=RSA hex，UA Android16-1070-11440-130-0-LOGIN-wifi —— UA 由端点封装

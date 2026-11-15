@@ -7,7 +7,9 @@ import '../../bridges/bridge_core.dart' show AudioQuality, qualityParam, vipQual
 import '../../bridges/bridge_logic.dart' show AuthLogic, AccountLogic;
 import '../../bridges/bridge_session.dart'
     show playbackSession, SurfaceModule, NavEntry;
-import '../../bridges/bridge_session.dart' show appGraph, ThemeController;
+import '../../bridges/bridge_session.dart'
+    show appGraph, navState, ThemeController;
+import 'login_sheet.dart' show showLoginSheet;
 import '../design/tokens.dart';
 import '../design/components.dart';
 
@@ -35,6 +37,18 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadAccount();
+    navState().addListener(_onAuthChanged);
+  }
+
+  /// 登录态广播（NavState.authVersion）：登录/登出/切号后重读账号卡。
+  void _onAuthChanged() {
+    _loadAccount();
+  }
+
+  @override
+  void dispose() {
+    navState().removeListener(_onAuthChanged);
+    super.dispose();
   }
 
   Future<void> _loadAccount() async {
@@ -63,6 +77,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _nickname = '';
     });
     _loadAccount();
+    navState().bumpAuth();
   }
 
   void _openQualitySheet() {
@@ -163,7 +178,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             child: const Text('登出'),
                           )
                         : FilledButton(
-                            onPressed: () => _toast('扫码登录入口待接入'),
+                            onPressed: () => showLoginSheet(context),
                             child: const Text('扫码登录'),
                           ),
                   ),

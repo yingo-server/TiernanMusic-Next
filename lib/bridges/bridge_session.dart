@@ -23,6 +23,8 @@ export '../session/playback_session.dart'
 export '../session/bootstrap.dart' show appGraph;
 // 批1-F1：主题模式控制器（L6 foundation ValueNotifier，持久化经 bridge_core）。
 export '../session/theme_controller.dart' show ThemeController;
+// 批2-F3：登录态会话（isLoggedIn/userid 快照 + onAuthChanged 订阅）。
+export '../session/auth_session.dart' show AuthSession;
 
 /// 创建默认装配图（失败返回空图并留痕，不抛给 L7）。
 AppGraph createAppGraph() {

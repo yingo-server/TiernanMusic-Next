@@ -15,6 +15,12 @@ class NavState {
   String _artistId = '';
   String _tabRequest = '';
 
+  /// 登录态版本号（批2-F2）：登录/登出/切号成功后 bumpAuth() 自增，
+  /// 各页（收藏/历史/设置）监听 NavState 变更后重读账号相关数据。
+  int _authVersion = 0;
+
+  int get authVersion => _authVersion;
+
   String get albumId => _albumId;
   String get artistId => _artistId;
   String get tabRequest => _tabRequest;
@@ -47,6 +53,17 @@ class NavState {
       }
     } catch (e, st) {
       Log.e(_tag, 'notify failed', e, st);
+    }
+  }
+
+  /// 登录态变更广播：自增版本并通知监听者（批2-F2）。
+  void bumpAuth() {
+    try {
+      _authVersion++;
+      _notify();
+      Log.d(_tag, 'authVersion=$_authVersion');
+    } catch (e, st) {
+      Log.e(_tag, 'bumpAuth failed', e, st);
     }
   }
 
