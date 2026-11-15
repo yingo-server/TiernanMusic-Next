@@ -12,7 +12,7 @@
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart'
     as auth_ep
-    show LoginResult, loginByPwd, loginByToken, devLogout;
+    show LoginResult, SmsLoginResult, loginByPwd, loginByToken, devLogout;
 import '../../bridges/bridge_core.dart'
     show
         EndpointRegistry,
@@ -275,7 +275,10 @@ class AuthLogic {
 
   /// 密码登录门面（bridge_core → ep.auth.loginByPwd，端点待实测）。
   /// 参数校验 + 失败不静默吞（rethrow 语义失败给调用方 UI 提示）+ 脱敏 Log。
-  Future<auth_ep.LoginResult> signInByPwd(String pwd, {String code = ''}) async {
+  Future<auth_ep.LoginResult> signInByPwd(
+    String pwd, {
+    String code = '',
+  }) async {
     try {
       if (pwd.isEmpty) {
         throw KugouApiException(0, 'empty pwd');
@@ -297,6 +300,40 @@ class AuthLogic {
       return r;
     } catch (e, st) {
       Log.e(_tag, 'signInByPwd failed', e, st);
+      rethrow;
+    }
+  }
+
+  /// 短信验证码登录门面（批2 收口：login_sheet 直接消费；端点待实测）。
+  Future<auth_ep.SmsLoginResult> signInByVerifyCode(
+    String mobile,
+    String code,
+  ) async {
+    try {
+      final r = await smsLogin(_client, mobile, code);
+      if (r.ok) {
+        await _applyCredentials(
+          r.token,
+          r.userid,
+          source: 'sms',
+          vipToken: r.vipToken,
+          vipType: r.vipType,
+          t1: r.t1,
+        );
+      }
+      return r;
+    } catch (e, st) {
+      Log.e(_tag, 'signInByVerifyCode failed', e, st);
+      rethrow;
+    }
+  }
+
+  /// 发送短信验证码门面（60s 防重发由 UI 负责；端点待实测）。
+  Future<bool> sendVerifyCode(String mobile) async {
+    try {
+      return await sendSmsCode(_client, mobile);
+    } catch (e, st) {
+      Log.e(_tag, 'sendVerifyCode failed', e, st);
       rethrow;
     }
   }
@@ -414,60 +451,5 @@ class AuthLogic {
   String _generateMid() {
     final src = 'tmn-${DateTime.now().microsecondsSinceEpoch}-${session.dfid}';
     return Md5.hex(src);
-  }
-
-  /// 密码登录门面（批2-F1：封装在 auth_endpoints.loginByPwd，标待实测）。
-  Future<auth_ep.LoginResult> loginByPwd(String account, String pwd) async {
-    try {
-      final res = await auth_ep.loginByPwd(this, pwd);
-      if (res.ok) {
-        _applyCredentials(
-          token: res.token,
-          userid: res.userid,
-          vipToken: res.vipToken,
-          vipType: res.vipType,
-          t1: res.t1,
-          cookie: res.cookie,
-          source: 'loginByPwd',
-        );
-      }
-      return res;
-    } catch (e, st) {
-      Log.e(_tag, 'loginByPwd failed', e, st);
-      rethrow;
-    }
-  }
-
-  /// token 续期门面（restoreSession 自动调用；失败静默降级旧凭据）。
-  Future<bool> loginByToken() async {
-    try {
-      final res = await auth_ep.loginByToken(this);
-      if (res.ok) {
-        _applyCredentials(
-          token: res.token,
-          userid: res.userid,
-          vipToken: res.vipToken,
-          vipType: res.vipType,
-          t1: res.t1,
-          cookie: res.cookie,
-          source: 'loginByToken',
-        );
-        return true;
-      }
-      return false;
-    } catch (e, st) {
-      Log.w(_tag, 'loginByToken refresh failed (fallback to stored creds)');
-      return false;
-    }
-  }
-
-  /// 设备登出门面（多账号管理用；标待实测）。
-  Future<bool> devLogoutDevice() async {
-    try {
-      return await auth_ep.devLogout(this);
-    } catch (e, st) {
-      Log.e(_tag, 'devLogout failed', e, st);
-      return false;
-    }
   }
 }

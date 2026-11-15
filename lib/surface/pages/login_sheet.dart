@@ -2,24 +2,27 @@
 // 76 原则：L7 只画控件；状态与意图全经 bridge_session(bootstrap.appGraph/navState)
 // 与 bridge_logic(AuthLogic/VerificationLogic/AccountLogic) 令牌。
 // 凭据安全：手机号日志/界面脱敏（138****1234）；token 不回显不进日志。
-// 批2-F2 GAP 备注：bridge_logic 未导出 sendSmsCode/smsLogin 顶层函数
-// （auth_endpoints.dart 仅 show SmsLoginResult），AuthLogic 尚无 loginByPwd；
-// 两处均以 dynamic 调用 + try/catch 兜底，后端/桥就绪后自动生效。
+// 批2 收口：sendSmsCode/smsLogin/loginByPwd 均已接 AuthLogic 真门面
+// （auth_endpoints 顶层封装，端点待实测；手机号/凭据一律脱敏）。
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../../bridges/bridge_core.dart' show AccountRecord;
+import '../../bridges/bridge_core.dart'
+    show AccountRecord, sendSmsCode, smsLogin, KugouApiException;
 import '../../bridges/bridge_logic.dart' show QrLoginState, QrLoginStatus;
 import '../../bridges/bridge_session.dart' show appGraph, navState;
 import '../design/tokens.dart';
+import 'login_account_section.dart' show AccountSection;
 
 /// 登录弹层入口：isScrollControlled + 约 70% 高度。
 /// [onAuthChanged]：登录成功后回调（在 pop 之前触发）。
-Future<void> showLoginSheet(BuildContext context,
-    {void Function()? onAuthChanged}) {
+Future<void> showLoginSheet(
+  BuildContext context, {
+  void Function()? onAuthChanged,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -34,8 +37,11 @@ Future<void> showLoginSheet(BuildContext context,
 /// 手机号脱敏：138****1234；异常输入原样截断尾部 4 位。
 String _maskPhone(String phone) {
   final p = phone.trim();
-  if (p.length >= 7) return '${p.substring(0, 3)}****${p.substring(p.length - 4)}';
-  return p.isEmpty ? '-' : '****${p.substring(p.length - 2 < 0 ? 0 : p.length - 2)}';
+  if (p.length >= 7)
+    return '${p.substring(0, 3)}****${p.substring(p.length - 4)}';
+  return p.isEmpty
+      ? '-'
+      : '****${p.substring(p.length - 2 < 0 ? 0 : p.length - 2)}';
 }
 
 /// 弹层面板：TabBar + 底部已登录账号区。
@@ -67,8 +73,9 @@ class _LoginSheetPanelState extends State<LoginSheetPanel> {
   Future<void> _switchTo(String accountId) async {
     final ok = await appGraph.account?.switchTo(accountId) ?? false;
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ok ? '已切换账号 $accountId' : '切换失败')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(ok ? '已切换账号 $accountId' : '切换失败')));
     if (ok) navState().bumpAuth();
     _reloadAccounts();
   }
@@ -76,8 +83,9 @@ class _LoginSheetPanelState extends State<LoginSheetPanel> {
   Future<void> _removeAccount(String accountId) async {
     final ok = await appGraph.account?.removeAccount(accountId) ?? false;
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ok ? '已移除账号 $accountId' : '移除失败')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(ok ? '已移除账号 $accountId' : '移除失败')));
     _reloadAccounts();
   }
 
@@ -97,15 +105,21 @@ class _LoginSheetPanelState extends State<LoginSheetPanel> {
       length: 3,
       child: Column(
         children: <Widget>[
-          const TabBar(tabs: <Tab>[
-            Tab(text: '扫码'), Tab(text: '验证码'), Tab(text: '密码'),
-          ]),
+          const TabBar(
+            tabs: <Tab>[
+              Tab(text: '扫码'),
+              Tab(text: '验证码'),
+              Tab(text: '密码'),
+            ],
+          ),
           Expanded(
-            child: TabBarView(children: <Widget>[
-              _QrTab(onLoginSuccess: _onLoginSuccess),
-              _SmsTab(onLoginSuccess: _onLoginSuccess),
-              _PwdTab(),
-            ]),
+            child: TabBarView(
+              children: <Widget>[
+                _QrTab(onLoginSuccess: _onLoginSuccess),
+                _SmsTab(onLoginSuccess: _onLoginSuccess),
+                _PwdTab(),
+              ],
+            ),
           ),
           _accountSection(activeUid),
         ],
@@ -114,46 +128,11 @@ class _LoginSheetPanelState extends State<LoginSheetPanel> {
   }
 
   Widget _accountSection(String activeUid) {
-    return Container(
-      decoration: const BoxDecoration(color: Sp.card),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Padding(
-            padding: EdgeInsets.fromLTRB(Sp.pagePad, Sp.gapM, Sp.pagePad, 4),
-            child: Text('已登录账号',
-                style: TextStyle(fontSize: Sp.fItem, color: Sp.textSub)),
-          ),
-          if (_accounts.isEmpty)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(Sp.pagePad, 0, Sp.pagePad, Sp.gapM),
-              child: Text('暂无账号，登录后将自动保存到这里',
-                  style: TextStyle(fontSize: Sp.fSub, color: Sp.textFaint)),
-            )
-          else
-            for (final AccountRecord rec in _accounts)
-              ListTile(
-                dense: true,
-                leading: Icon(
-                    rec.accountId == activeUid
-                        ? Icons.person
-                        : Icons.person_outline,
-                    color: rec.accountId == activeUid ? Sp.green : Sp.textSub,
-                    size: 20),
-                title: Text(rec.displayName,
-                    style: const TextStyle(fontSize: Sp.fItem, color: Sp.text)),
-                subtitle: Text('账号 ${rec.accountId}',
-                    style: const TextStyle(fontSize: Sp.fSub, color: Sp.textFaint)),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline,
-                      size: 20, color: Sp.textFaint),
-                  tooltip: '移除账号',
-                  onPressed: () => _removeAccount(rec.accountId),
-                ),
-                onTap: () => _switchTo(rec.accountId),
-              ),
-        ],
-      ),
+    return AccountSection(
+      accounts: _accounts,
+      activeUid: activeUid,
+      onSwitch: _switchTo,
+      onRemove: _removeAccount,
     );
   }
 }
@@ -193,16 +172,16 @@ class _QrTabState extends State<_QrTab> {
         _qr = st;
         _hint = '请使用酷狗音乐 App 扫码';
         try {
-          _img = st.qrImageB64.isEmpty
-              ? null
-              : base64Decode(st.qrImageB64);
+          _img = st.qrImageB64.isEmpty ? null : base64Decode(st.qrImageB64);
         } catch (_) {
           _img = null; // 官方图解码失败兜底为提示文案
         }
       });
       _timer?.cancel();
-      _timer = Timer.periodic(const Duration(milliseconds: 1500),
-          (_) => _poll(st.key));
+      _timer = Timer.periodic(
+        const Duration(milliseconds: 1500),
+        (_) => _poll(st.key),
+      );
     } catch (e) {
       if (mounted) {
         setState(() => _hint = '二维码获取失败，请重试');
@@ -257,22 +236,32 @@ class _QrTabState extends State<_QrTab> {
         const SizedBox(height: Sp.gapM),
         Center(
           child: _img != null
-              ? Image.memory(_img!, width: 200, height: 200, fit: BoxFit.contain)
+              ? Image.memory(
+                  _img!,
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.contain,
+                )
               : Container(
                   width: 200,
                   height: 200,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                      color: Sp.card,
-                      borderRadius: BorderRadius.circular(Sp.rCard)),
-                  child: const Text('二维码加载中',
-                      style: TextStyle(fontSize: Sp.fSub, color: Sp.textFaint)),
+                    color: Sp.card,
+                    borderRadius: BorderRadius.circular(Sp.rCard),
+                  ),
+                  child: const Text(
+                    '二维码加载中',
+                    style: TextStyle(fontSize: Sp.fSub, color: Sp.textFaint),
+                  ),
                 ),
         ),
         const SizedBox(height: Sp.gapM),
         Center(
-          child: Text(_hint,
-              style: const TextStyle(fontSize: Sp.fItem, color: Sp.textSub)),
+          child: Text(
+            _hint,
+            style: const TextStyle(fontSize: Sp.fItem, color: Sp.textSub),
+          ),
         ),
         const SizedBox(height: Sp.gapM),
         Center(
@@ -322,14 +311,11 @@ class _SmsTabState extends State<_SmsTab> {
       _toast('请输入手机号');
       return;
     }
-    // GAP：bridge_logic 未导出 sendSmsCode（仅 SmsLoginResult 类型），
-    // dynamic 兜底：桥补齐后自动走真实链路。
     bool ok = false;
     try {
-      final dynamic v = appGraph.verification;
-      ok = await v.sendSmsCode(phone) as bool;
+      ok = await appGraph.auth.sendVerifyCode(phone);
     } catch (e) {
-      _msg = '验证码发送链路未就绪（needs probe）';
+      _msg = '验证码发送失败（接口待实测）';
       _toast(_msg);
       return;
     }
@@ -353,16 +339,18 @@ class _SmsTabState extends State<_SmsTab> {
       return;
     }
     try {
-      final dynamic client = appGraph.client;
-      final dynamic res =
-          await client.authSmsLogin(phone, code); // 桥未导出时的兜底入口
-      if (res.ok != true) {
-        _toast('登录失败：${res.error ?? '未知错误'}');
+      final res = await appGraph.auth.signInByVerifyCode(phone, code);
+      if (!res.ok) {
+        _toast(
+          res.needsProbe
+              ? '验证码登录端点待实测（needs probe）'
+              : '登录失败：${res.error.isEmpty ? '未知错误' : res.error}',
+        );
         return;
       }
       widget.onLoginSuccess();
     } catch (e) {
-      _toast('验证码登录链路未就绪（needs probe）');
+      _toast('验证码登录失败：$e');
     }
   }
 
@@ -375,23 +363,27 @@ class _SmsTabState extends State<_SmsTab> {
           controller: _phone,
           keyboardType: TextInputType.phone,
           decoration: const InputDecoration(
-              labelText: '手机号', hintText: '用于登录酷狗账号'),
+            labelText: '手机号',
+            hintText: '用于登录酷狗账号',
+          ),
         ),
         const SizedBox(height: Sp.gapM),
-        Row(children: <Widget>[
-          Expanded(
-            child: TextField(
-              controller: _code,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: '验证码'),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: TextField(
+                controller: _code,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: '验证码'),
+              ),
             ),
-          ),
-          const SizedBox(width: Sp.gapM),
-          TextButton(
-            onPressed: _countdown > 0 ? null : _sendCode,
-            child: Text(_countdown > 0 ? '${_countdown}s' : '发送验证码'),
-          ),
-        ]),
+            const SizedBox(width: Sp.gapM),
+            TextButton(
+              onPressed: _countdown > 0 ? null : _sendCode,
+              child: Text(_countdown > 0 ? '${_countdown}s' : '发送验证码'),
+            ),
+          ],
+        ),
         const SizedBox(height: Sp.gapM),
         FilledButton(onPressed: _login, child: const Text('登录')),
       ],
@@ -428,11 +420,11 @@ class _PwdTabState extends State<_PwdTab> {
     }
     try {
       final dynamic auth = appGraph.auth;
-      await auth.loginByPwd(acc, pwd); // 方法未合入 → NoSuchMethodError
+      await auth.signInByPwd(pwd);
       // 就绪后此处接 onLoginSuccess（由批2-F1 定义返回形态）
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('密码登录待后端就绪')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('密码登录待后端就绪')));
     }
   }
 
