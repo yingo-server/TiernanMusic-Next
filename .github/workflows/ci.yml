@@ -322,6 +322,8 @@ jobs:
             '-keep class io.flutter.** { *; }' \
             '-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod' \
             '-dontwarn dev.isar.**' \
+            '-dontwarn com.google.android.play.core.**' \
+            '-dontwarn io.flutter.embedding.engine.deferredcomponents.**' \
             '-keepclassmembers class * { @dev.isar.* <fields>; }' \
             > android/app/proguard-rules.pro
           test -s android/app/proguard-rules.pro
