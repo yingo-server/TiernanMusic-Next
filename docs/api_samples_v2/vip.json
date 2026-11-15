@@ -1,0 +1,944 @@
+[
+  {
+    "endpoint": "search_song",
+    "state": "vip",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/v3/search/song",
+    "paramKeys": [
+      "keyword",
+      "page",
+      "pagesize",
+      "albumhide",
+      "iscorrection",
+      "nocollect",
+      "platform"
+    ],
+    "bodyKeys": [],
+    "ok": true,
+    "ms": 546,
+    "captured": {
+      "_topKeys": [
+        "status",
+        "error_code",
+        "error_msg",
+        "data",
+        "reco_aggre"
+      ],
+      "_topKeyCount": 5,
+      "_redactedTopKeys": 0,
+      "_fields": {
+        "status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 1
+        },
+        "error_code": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 0
+        },
+        "errcode": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "data": {
+          "present": true,
+          "type": "map",
+          "len": 19
+        },
+        "data.total": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 480
+        },
+        "data.lists": {
+          "present": true,
+          "type": "list",
+          "len": 10
+        },
+        "data.info": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        }
+      }
+    }
+  },
+  {
+    "endpoint": "search_suggest",
+    "state": "vip",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/v2/getSearchTip",
+    "paramKeys": [
+      "keyword",
+      "AlbumTipCount",
+      "CorrectTipCount",
+      "MVTipCount",
+      "MusicTipCount",
+      "radiotip"
+    ],
+    "bodyKeys": [],
+    "ok": true,
+    "ms": 470,
+    "captured": {
+      "_topKeys": [
+        "status",
+        "error_code",
+        "ErrorCode",
+        "data",
+        "SingerShortcut",
+        "Shortcuts"
+      ],
+      "_topKeyCount": 6,
+      "_redactedTopKeys": 0,
+      "_fields": {
+        "status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 1
+        },
+        "error_code": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 0
+        },
+        "data": {
+          "present": true,
+          "type": "list",
+          "len": 3
+        },
+        "data.0.RecordDatas": {
+          "present": true,
+          "type": "list",
+          "len": 20
+        },
+        "data.0.RecordCount": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 20
+        }
+      }
+    }
+  },
+  {
+    "endpoint": "search_hot",
+    "state": "vip",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/api/v3/search/hot_tab",
+    "paramKeys": [
+      "navid",
+      "plat"
+    ],
+    "bodyKeys": [],
+    "ok": true,
+    "ms": 135,
+    "captured": {
+      "_topKeys": [
+        "status",
+        "errcode",
+        "data",
+        "error"
+      ],
+      "_topKeyCount": 4,
+      "_redactedTopKeys": 0,
+      "_fields": {
+        "status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 1
+        },
+        "error_code": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "data": {
+          "present": true,
+          "type": "map",
+          "len": 2
+        },
+        "data.list": {
+          "present": true,
+          "type": "list",
+          "len": 9
+        },
+        "data.info": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        }
+      }
+    }
+  },
+  {
+    "endpoint": "rank_list",
+    "state": "vip",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/ocean/v6/rank/list",
+    "paramKeys": [
+      "plat",
+      "withsong",
+      "parentid"
+    ],
+    "bodyKeys": [],
+    "ok": true,
+    "ms": 433,
+    "captured": {
+      "_topKeys": [
+        "data",
+        "errcode",
+        "status",
+        "error"
+      ],
+      "_topKeyCount": 4,
+      "_redactedTopKeys": 0,
+      "_fields": {
+        "status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 1
+        },
+        "error_code": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "data": {
+          "present": true,
+          "type": "map",
+          "len": 5
+        },
+        "data.info": {
+          "present": true,
+          "type": "list",
+          "len": 56
+        },
+        "data.list": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        }
+      }
+    }
+  },
+  {
+    "endpoint": "daily_recommend",
+    "state": "vip",
+    "method": "POST",
+    "domain": "gateway.kugou.com",
+    "path": "/everyday_song_recommend",
+    "paramKeys": [
+      "platform",
+      "page",
+      "pagesize",
+      "<redacted-key>",
+      "<redacted-key>",
+      "<redacted-key>"
+    ],
+    "bodyKeys": [
+      "<redacted-key>",
+      "<redacted-key>"
+    ],
+    "ok": true,
+    "ms": 95,
+    "captured": {
+      "_topKeys": [
+        "data",
+        "status",
+        "error_code"
+      ],
+      "_topKeyCount": 3,
+      "_redactedTopKeys": 0,
+      "_fields": {
+        "status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 0
+        },
+        "errcode": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "error": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "data": {
+          "present": true,
+          "type": "string",
+          "len": 0,
+          "masked": true,
+          "domain": ""
+        },
+        "data.songs": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "data.list": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "data.errcode": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        }
+      }
+    }
+  },
+  {
+    "endpoint": "user_detail",
+    "state": "vip",
+    "method": "POST",
+    "domain": "gateway.kugou.com",
+    "path": "/v3/get_my_info",
+    "paramKeys": [
+      "plat"
+    ],
+    "bodyKeys": [
+      "visit_time",
+      "usertype",
+      "<redacted-key>",
+      "<redacted-key>"
+    ],
+    "ok": true,
+    "ms": 133,
+    "captured": {
+      "_topKeys": [
+        "error_code",
+        "status",
+        "data"
+      ],
+      "_topKeyCount": 3,
+      "_redactedTopKeys": 0,
+      "_fields": {
+        "status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 0
+        },
+        "error_code": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 20006
+        },
+        "data": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "nickname": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "pic": {
+          "present": false,
+          "type": "null",
+          "len": 0,
+          "masked": true,
+          "hosts": []
+        },
+        "vip_type": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "userid": {
+          "present": false,
+          "type": "null",
+          "len": 0,
+          "masked": true
+        },
+        "level": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        }
+      }
+    }
+  },
+  {
+    "endpoint": "favorite_count",
+    "state": "vip",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/count/v1/audio/mget_collect",
+    "paramKeys": [
+      "mixsongids",
+      "<redacted-key>",
+      "<redacted-key>",
+      "<redacted-key>",
+      "plat",
+      "<redacted-key>"
+    ],
+    "bodyKeys": [],
+    "ok": false,
+    "ms": 90,
+    "captured": {},
+    "skip": "SKIP: network"
+  },
+  {
+    "endpoint": "song_climax",
+    "state": "vip",
+    "method": "GET",
+    "domain": "expendablekmrcdn.kugou.com",
+    "path": "/v1/audio_climax/audio",
+    "paramKeys": [
+      "hash",
+      "album_audio_id"
+    ],
+    "bodyKeys": [],
+    "ok": true,
+    "ms": 322,
+    "captured": {
+      "_topKeys": [
+        "status",
+        "error_code",
+        "errcode",
+        "errmsg",
+        "data"
+      ],
+      "_topKeyCount": 5,
+      "_redactedTopKeys": 0,
+      "_fields": {
+        "status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 1
+        },
+        "error_code": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 0
+        },
+        "data": {
+          "present": true,
+          "type": "list",
+          "len": 0
+        },
+        "data.0.url": {
+          "present": false,
+          "type": "null",
+          "len": 0,
+          "masked": true,
+          "hosts": []
+        },
+        "data.0.start_time": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        }
+      }
+    }
+  },
+  {
+    "endpoint": "user_cloud",
+    "state": "vip",
+    "method": "POST",
+    "domain": "gateway.kugou.com",
+    "path": "/v1/user_cloud",
+    "paramKeys": [
+      "page",
+      "pagesize"
+    ],
+    "bodyKeys": [],
+    "ok": false,
+    "ms": 107,
+    "captured": {},
+    "skip": "SKIP: waf/non-json"
+  },
+  {
+    "endpoint": "fm_play",
+    "state": "vip",
+    "method": "POST",
+    "domain": "gateway.kugou.com",
+    "path": "/v1/fm/play",
+    "paramKeys": [
+      "<redacted-key>",
+      "<redacted-key>",
+      "<redacted-key>"
+    ],
+    "bodyKeys": [
+      "appid",
+      "clienttime",
+      "<redacted-key>",
+      "action",
+      "mode",
+      "recommend_source_locked",
+      "song_pool_id",
+      "callerid",
+      "m_type",
+      "platform",
+      "area_code",
+      "remain_songcnt",
+      "clientver",
+      "is_overplay",
+      "fakem",
+      "<redacted-key>",
+      "<redacted-key>",
+      "<redacted-key>",
+      "<redacted-key>",
+      "vip_type",
+      "hash",
+      "songid",
+      "playtime"
+    ],
+    "ok": false,
+    "ms": 114,
+    "captured": {},
+    "skip": "SKIP: waf/non-json"
+  },
+  {
+    "endpoint": "comment_music",
+    "state": "vip",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/mcomment/v1/cmtlist",
+    "paramKeys": [
+      "mixsongid",
+      "<redacted-key>",
+      "pagesize",
+      "code"
+    ],
+    "bodyKeys": [],
+    "ok": false,
+    "ms": 97,
+    "captured": {},
+    "skip": "SKIP: waf/non-json"
+  },
+  {
+    "endpoint": "comment_count",
+    "state": "vip",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/v1/comment/count",
+    "paramKeys": [
+      "code",
+      "hash"
+    ],
+    "bodyKeys": [],
+    "ok": false,
+    "ms": 98,
+    "captured": {},
+    "skip": "SKIP: network"
+  },
+  {
+    "endpoint": "mv_by_song",
+    "state": "vip",
+    "method": "POST",
+    "domain": "gateway.kugou.com",
+    "path": "/kmr/v1/audio/mv",
+    "paramKeys": [],
+    "bodyKeys": [
+      "data",
+      "fields"
+    ],
+    "ok": true,
+    "ms": 111,
+    "captured": {
+      "_topKeys": [
+        "status",
+        "error_code",
+        "errmsg",
+        "data"
+      ],
+      "_topKeyCount": 4,
+      "_redactedTopKeys": 0,
+      "_fields": {
+        "status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 1
+        },
+        "error_code": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 0
+        },
+        "data": {
+          "present": true,
+          "type": "list",
+          "len": 1
+        },
+        "data.data": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "data.list": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        }
+      }
+    }
+  },
+  {
+    "endpoint": "album_detail",
+    "state": "vip",
+    "method": "POST",
+    "domain": "gateway.kugou.com",
+    "path": "/kmr/v2/albums",
+    "paramKeys": [],
+    "bodyKeys": [
+      "data"
+    ],
+    "ok": true,
+    "ms": 80,
+    "captured": {
+      "_topKeys": [
+        "error_code",
+        "status",
+        "message"
+      ],
+      "_topKeyCount": 3,
+      "_redactedTopKeys": 0,
+      "_fields": {
+        "status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 0
+        },
+        "error_code": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 20006
+        },
+        "data": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "data.data": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "data.list": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        }
+      }
+    }
+  },
+  {
+    "endpoint": "lyric_search",
+    "state": "vip",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/v1/search",
+    "paramKeys": [
+      "hash",
+      "keyword",
+      "duration",
+      "album_audio_id",
+      "lrctxt",
+      "man",
+      "appid",
+      "clientver"
+    ],
+    "bodyKeys": [],
+    "ok": true,
+    "ms": 89,
+    "captured": {
+      "_topKeys": [
+        "status",
+        "info",
+        "errcode",
+        "errmsg",
+        "keyword",
+        "proposal",
+        "has_complete_right",
+        "companys",
+        "ugc",
+        "ugccount",
+        "expire",
+        "candidates",
+        "ugccandidates",
+        "artists",
+        "ai_candidates"
+      ],
+      "_topKeyCount": 15,
+      "_redactedTopKeys": 0,
+      "_fields": {
+        "status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 200
+        },
+        "errcode": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 200
+        },
+        "info": {
+          "present": true,
+          "type": "string",
+          "len": 2,
+          "masked": true,
+          "domain": ""
+        },
+        "candidates": {
+          "present": true,
+          "type": "list",
+          "len": 1
+        },
+        "candidates.0.id": {
+          "present": true,
+          "type": "string",
+          "len": 9,
+          "masked": true,
+          "domain": ""
+        },
+        "candidates.0.accesskey": {
+          "present": true,
+          "type": "string",
+          "len": 32,
+          "masked": true
+        }
+      }
+    }
+  },
+  {
+    "endpoint": "privilege_lite",
+    "state": "vip",
+    "method": "POST",
+    "domain": "gateway.kugou.com",
+    "path": "/v2/get_res_privilege/lite",
+    "paramKeys": [
+      "appid",
+      "clientver",
+      "area_code",
+      "behavior",
+      "need_hash_offset",
+      "relate",
+      "support_verify"
+    ],
+    "bodyKeys": [
+      "resource",
+      "qualities",
+      "appid",
+      "clientver",
+      "area_code",
+      "behavior"
+    ],
+    "ok": true,
+    "ms": 93,
+    "captured": {
+      "_topKeys": [
+        "status",
+        "error_code",
+        "message",
+        "appid_group",
+        "should_cache",
+        "data"
+      ],
+      "_topKeyCount": 6,
+      "_redactedTopKeys": 0,
+      "_fields": {
+        "status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 1
+        },
+        "error_code": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 0
+        },
+        "data": {
+          "present": true,
+          "type": "list",
+          "len": 1
+        },
+        "data.data": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "data.list": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        }
+      }
+    }
+  },
+  {
+    "endpoint": "play_url_v5",
+    "state": "vip",
+    "method": "GET",
+    "domain": "gateway.kugou.com",
+    "path": "/v5/url",
+    "paramKeys": [
+      "hash",
+      "quality",
+      "album_audio_id",
+      "album_id",
+      "area_code",
+      "behavior",
+      "ssa_flag",
+      "version",
+      "clientver",
+      "page_id",
+      "ppage_id",
+      "pid",
+      "cmd",
+      "pidversion",
+      "IsFreePart",
+      "cdnBackup"
+    ],
+    "bodyKeys": [],
+    "ok": true,
+    "ms": 109,
+    "captured": {
+      "_topKeys": [
+        "<redacted-key>",
+        "extName",
+        "classmap",
+        "status",
+        "volume",
+        "std_hash_time",
+        "<redacted-key>",
+        "<redacted-key>",
+        "std_hash",
+        "volume_peak",
+        "tracker_through",
+        "trans_param",
+        "fileHead",
+        "auth_through",
+        "timeLength",
+        "bitRate",
+        "priv_status",
+        "<redacted-key>",
+        "volume_gain",
+        "q",
+        "fileName",
+        "fileSize",
+        "hash"
+      ],
+      "_topKeyCount": 23,
+      "_redactedTopKeys": 4,
+      "_fields": {
+        "status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 1
+        },
+        "priv_status": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 1
+        },
+        "errcode": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "error_code": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "url": {
+          "present": true,
+          "type": "list",
+          "len": 2,
+          "masked": true,
+          "hosts": [
+            "fsandroid.kugou.com",
+            "fsmobile.tx.kugou.com"
+          ]
+        },
+        "backupUrl": {
+          "present": true,
+          "type": "list",
+          "len": 1,
+          "masked": true,
+          "hosts": [
+            "fsmobile.tx.kugou.com"
+          ]
+        },
+        "bitRate": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 128000
+        },
+        "extName": {
+          "present": true,
+          "type": "string",
+          "len": 3,
+          "masked": true,
+          "domain": ""
+        },
+        "timeLength": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 269
+        },
+        "IsFreePart": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "end_byte": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "hash_offset": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "fail_process": {
+          "present": false,
+          "type": "null",
+          "len": 0
+        },
+        "tracker_through.musicpack_advance": {
+          "present": true,
+          "type": "num",
+          "len": 1,
+          "value": 1
+        }
+      }
+    }
+  }
+]

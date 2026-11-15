@@ -63,9 +63,16 @@ KugouSession _sessionOf(Map<String, String>? c) {
 
 bool _isSensitive(String key) {
   final k = key.toLowerCase();
+  // 数字账号/手机号、32+ 位 hex（hash 型响应键）作键名亦掩码。
+  if (RegExp(r'^\d{6,}$').hasMatch(key) ||
+      RegExp(r'^[0-9a-f]{32,}$').hasMatch(k)) {
+    return true;
+  }
   return k.contains('token') ||
       k.contains('cookie') ||
       k.contains('userid') ||
+      k.contains('uid') ||
+      k.contains('guid') ||
       k == 'mid' ||
       k == 'dfid' ||
       k.contains('signature') ||
@@ -73,7 +80,7 @@ bool _isSensitive(String key) {
       k.contains('mobile') ||
       k.contains('query') ||
       k == 'p' ||
-      k.contains('accesskey');
+      k.endsWith('key');
 }
 
 bool _isUrlLike(String key) {
@@ -148,6 +155,12 @@ Map<String, Object?> _field(String key, Object? v) {
     return f;
   }
   if (v is num && _numericWhitelist.contains(leaf)) f['value'] = v;
+  if (v is bool && _numericWhitelist.contains(leaf)) f['value'] = v;
+  if (v is String && !_isUrlLike(key) && !_isUrlLike(leaf)) {
+    // 字符串值一律不落盘（昵称/名称/内容可能含个人数据）；长度已在 len。
+    f['masked'] = true;
+    f['domain'] = '';
+  }
   return f;
 }
 
@@ -172,6 +185,7 @@ Object? _at(Map<String, dynamic> res, String path) {
 Map<String, Object?> _capture(Map<String, dynamic> res, List<String> keys) =>
     <String, Object?>{
       '_topKeys': res.keys.map(_maskKey).toList(),
+
       '_topKeyCount': res.length,
       '_redactedTopKeys': res.keys.where((k) => _maskKey(k) != k).length,
       '_fields': <String, Object?>{
