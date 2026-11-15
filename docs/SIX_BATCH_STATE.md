@@ -1,5 +1,6 @@
-batch=4
-stage=checking
-checks=covered_by_live_mainline
-last_commit=ab94cec
-note=批4=UI功能补全。已主线完成：首页瘦身/热搜搬迁/主题四档/bar排序、login_sheet、library本地曲库+最近播放真数据、MV页+播放页MV/FM入口、账号区拆分。主线核查剩余小缺口；必要时才派1-2个代理。整理后→门禁→提交→批5。
+batch=5
+stage=summarize
+checks=covered_by_lineC
+fixes=covered_by_lineC
+last_commit=b671d9f
+note=批5=缓存专项。docs/autonomous_lineC.md / lineC_c.md / AUTONOMOUS_CACHE_NETWORK_AUDIT.md 与 3 源文件已完成；主线复核后直接整理→门禁→提交→推进批6。
