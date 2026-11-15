@@ -11,26 +11,10 @@ import 'models.dart';
 
 const String _tag = 'ep.play';
 
-/// 实测 22 顶层键补齐：hash_offset / end_byte / fail_process 目前被丢弃。
-/// 按登录态选权益，待三态实测：这三键仅作试听分片 / 断点 / 风控诊断，
-/// 以 extension + Expando 侧挂，避免改动 models.dart 的既有构造 ——
-/// 「可选字段」默认 null，默认不破坏现构造；urls 与 backupUrls 仍分开保留。
-class _PlayExtras {
-  const _PlayExtras(this.hashOffset, this.endByte, this.failProcess);
-  final int? hashOffset;
-  final int? endByte;
-  final int? failProcess;
-}
-
-final Expando<_PlayExtras> _playExtras = Expando<_PlayExtras>(
-  'PlayResult.extras',
-);
-
-extension PlayResultExtras on PlayResult {
-  int? get hashOffset => _playExtras[this]?.hashOffset;
-  int? get endByte => _playExtras[this]?.endByte;
-  int? get failProcess => _playExtras[this]?.failProcess;
-}
+/// 批1-F3：hash_offset / end_byte / fail_process 已真正落 PlayResult 公开字段
+///（见 play_models.dart）。Expando 侧挂 + PlayResultExtras 扩展整体退役：
+/// 公开实例字段天然可被 L5（playback_service，批3范围）直接读取，
+/// `result.hashOffset` / endByte / failProcess 读点零改动。
 
 /// 容错解析单条 privilege：privilege 字段是 int 标量（FINDINGS.md §10），
 /// 兼容数组形态但不依赖；hash 小写化。
@@ -140,6 +124,136 @@ Future<PlayResult> getPlayUrlV5(
     }
     final status = safeInt(res['status']);
     final priv = safeInt(res['priv_status']);
+    // ── 批1-F3：22 顶层键补齐（真正落 PlayResult 公开字段，L5 可读）──
+    // ① hash_offset / end_byte / fail_process（试听分片 / 断点 / 风控诊断）。
+    int? hashOffset;
+    int? endByte;
+    int? failProcess;
+    try {
+      if (res['hash_offset'] != null) hashOffset = safeInt(res['hash_offset']);
+      if (res['end_byte'] != null) endByte = safeInt(res['end_byte']);
+      if (res['fail_process'] != null) {
+        failProcess = safeInt(res['fail_process']);
+      }
+    } catch (e, st) {
+      Log.e(_tag, 'parse hash_offset/end_byte/fail_process failed', e, st);
+    }
+    // ② 响应 q：服务端实际回档。quality 回填优先用响应 q，缺省才用请求档，
+    //    避免服务端降档被请求档掩盖（C1 §F3 结论 1）。
+    var respQ = '';
+    try {
+      final qv = res['q'];
+      if (qv is num) {
+        respQ = '$qv';
+      } else if (qv is String && qv.trim().isNotEmpty) {
+        respQ = qv.trim();
+      }
+    } catch (e, st) {
+      Log.e(_tag, 'parse q failed', e, st);
+    }
+    // ③ fileSize / volume / classmap / fileName / fileHead / std_hash /
+    //    hash_token / trans_param.qualitymap / auth_through[] 容错读取。
+    //    safe* 风格：任何形态异常只落 Log.e，绝不抛到外层丢整包结果。
+    var fSize = 0;
+    var vol = 0.0;
+    final cmap = <String, String>{};
+    final transMap = <String, String>{};
+    final authList = <String>[];
+    var fileName = '';
+    var fileHead = '';
+    var stdH = '';
+    var hTok = '';
+    try {
+      fSize = safeInt(res['fileSize'] ?? res['filesize']);
+    } catch (e, st) {
+      Log.e(_tag, 'parse fileSize failed', e, st);
+    }
+    try {
+      final vv = res['volume'];
+      if (vv is num) {
+        vol = vv.toDouble();
+      } else if (vv is String && vv.trim().isNotEmpty) {
+        vol = double.tryParse(vv.trim()) ?? 0.0;
+      }
+    } catch (e, st) {
+      Log.e(_tag, 'parse volume failed', e, st);
+    }
+    try {
+      void flat(Object? src, Map<String, String> dst) {
+        if (src is! Map) return;
+        src.forEach((k, v) {
+          final key = safeStr(k);
+          if (key.isEmpty) return;
+          dst[key] = v is Map || v is List ? '$v' : safeStr(v);
+        });
+      }
+
+      final cm = res['classmap'];
+      if (cm is List) {
+        for (final item in cm) {
+          flat(item, cmap);
+        }
+      } else {
+        flat(cm, cmap);
+      }
+      // trans_param 常含 qualitymap 子 map；同样扁平化，避免丢档位映射。
+      final tp = res['trans_param'] ?? res['transParam'];
+      flat(tp, transMap);
+      if (tp is Map && tp['qualitymap'] is Map) {
+        flat(tp['qualitymap'], transMap);
+      }
+    } catch (e, st) {
+      Log.e(_tag, 'parse classmap/trans_param failed', e, st);
+    }
+    try {
+      final at = res['auth_through'] ?? res['authThrough'];
+      if (at is List) {
+        for (final v in at) {
+          final sv = v is Map || v is List ? '$v' : safeStr(v);
+          if (sv.isNotEmpty) authList.add(sv);
+        }
+      } else if (at != null) {
+        final sv = at is Map ? '$at' : safeStr(at);
+        if (sv.isNotEmpty) authList.add(sv);
+      }
+    } catch (e, st) {
+      Log.e(_tag, 'parse auth_through failed', e, st);
+    }
+    try {
+      fileName = safeStr(res['fileName'] ?? res['filename']);
+      fileHead = safeStr(res['fileHead'] ?? res['filehead']);
+      stdH = safeStr(res['std_hash'] ?? res['stdHash']);
+      hTok = safeStr(res['hash_token'] ?? res['hashToken']);
+    } catch (e, st) {
+      Log.e(_tag, 'parse fileName/fileHead/std_hash/hash_token failed', e, st);
+    }
+    // ④ 通用顶层键兜底：只留键名（脱敏）+ 已知 camelCase/下划线变体标量，
+    //    防止 q/fileSize/volume 等换壳后再次静默丢弃（仍严格 try/catch+Log）。
+    final topKeys = <String>[];
+    final variants = <String, String>{};
+    try {
+      for (final k in res.keys) {
+        final sk = safeStr(k);
+        if (sk.isNotEmpty) topKeys.add(sk);
+      }
+      for (final alias in const <String>[
+        'file_size',
+        'vol',
+        'volume_gain',
+        'q',
+        'bit_rate',
+        'time_length',
+      ]) {
+        final vv = res[alias];
+        if (vv != null && vv is! Map && vv is! List) {
+          variants[alias] = '$vv';
+        }
+      }
+    } catch (e, st) {
+      Log.e(_tag, 'parse topLevelKeys/variants failed', e, st);
+    }
+    // quality 优先按响应 q 回填；响应未带 q 才回退请求档（服务端降档可感知）。
+    final effectiveQuality = respQ.isNotEmpty ? respQ : q;
     final result = PlayResult(
       status: status,
       privStatus: priv,
@@ -157,30 +271,32 @@ Future<PlayResult> getPlayUrlV5(
       hash: h,
       // priv_status 缺失（匿名/错误响应）不得被 safeInt 折叠成 0 → 误判无权限。
       privKnown: res.containsKey('priv_status') && res['priv_status'] != null,
+      // 批1-F3 新增公开字段：全部带默认值，不破坏既有构造调用。
+      hashOffset: hashOffset,
+      endByte: endByte,
+      failProcess: failProcess,
+      responseQuality: effectiveQuality,
+      fileSizeBytes: fSize,
+      volume: vol,
+      classMap: Map<String, String>.unmodifiable(cmap),
+      transParam: Map<String, String>.unmodifiable(transMap),
+      authThrough: List<String>.unmodifiable(authList),
+      fileName: fileName,
+      fileHead: fileHead,
+      stdHash: stdH,
+      hashToken: hTok,
+      topLevelKeys: List<String>.unmodifiable(topKeys),
+      variantFields: Map<String, String>.unmodifiable(variants),
     );
-    // 按登录态选权益，待三态实测：补齐实测 22 顶层键中此前丢弃的三键，
-    // 侧挂到 PlayResult（可选字段默认 null，不破坏现构造）；
-    // backupUrl/bitRate/extName/timeLength 已解析，urls 与 backupUrls 分开保留。
-    try {
-      _playExtras[result] = _PlayExtras(
-        res.containsKey('hash_offset') && res['hash_offset'] != null
-            ? safeInt(res['hash_offset'])
-            : null,
-        res.containsKey('end_byte') && res['end_byte'] != null
-            ? safeInt(res['end_byte'])
-            : null,
-        res.containsKey('fail_process') && res['fail_process'] != null
-            ? safeInt(res['fail_process'])
-            : null,
-      );
-    } catch (e, st) {
-      Log.e(_tag, 'attach play extras failed', e, st);
-    }
     Log.d(
       _tag,
-      'getPlayUrlV5 hash=$h q=$q status=$status priv=$priv urls=${urls.length} '
+      'getPlayUrlV5 hash=$h q=$q respQ=$respQ effectiveQ=$effectiveQuality '
+      'status=$status priv=$priv urls=${urls.length} '
       'backups=${backups.length} bitRate=${result.bitrate} '
       'ext=${result.extName} len=${result.timeLengthSec} '
+      'fileSize=${result.fileSizeBytes} volume=${result.volume} '
+      'classmap=${cmap.length} transParam=${transMap.length} '
+      'authThrough=${authList.length} '
       'hashOffset=${result.hashOffset} endByte=${result.endByte} '
       'failProcess=${result.failProcess}',
     );
