@@ -6,9 +6,16 @@ import '../../bridges/bridge_core.dart'
     show AudioQuality, qualityParam, vipQualities;
 import '../../bridges/bridge_logic.dart' show PlayMode;
 import '../../bridges/bridge_session.dart'
-    show playbackSession, navState, SurfaceModule, NavEntry;
+    show
+        appGraph,
+        playbackSession,
+        navState,
+        PlaybackSession,
+        SurfaceModule,
+        NavEntry;
 import '../design/tokens.dart';
 import '../design/components.dart';
+import 'mv_page.dart' show MvPage, registerMvModule;
 
 /// 进度条：拖动只改本地预览，松手才 seek（严禁 onChanged 里直接 seek）。
 class _SeekSlider extends StatefulWidget {
@@ -38,15 +45,14 @@ class _SeekSliderState extends State<_SeekSlider> {
   Widget build(BuildContext context) {
     final dur = widget.durationMs;
     final max = dur <= 0 ? 1.0 : dur.toDouble();
-    final pos = _preview ?? widget.positionMs.toDouble().clamp(0, max).toDouble();
+    final pos =
+        _preview ?? widget.positionMs.toDouble().clamp(0, max).toDouble();
     return Slider(
       value: pos.clamp(0.0, max).toDouble(),
       max: max,
       activeColor: Sp.green,
       inactiveColor: Sp.divider,
-      onChanged: dur <= 0
-          ? null
-          : (v) => setState(() => _preview = v),
+      onChanged: dur <= 0 ? null : (v) => setState(() => _preview = v),
       onChangeEnd: dur <= 0
           ? null
           : (v) {
@@ -72,14 +78,14 @@ class _FavoriteButtonState extends State<FavoriteButton> {
 
   @override
   Widget build(BuildContext context) => IconButton(
-        onPressed: () {
-          setState(() => _fav = !_fav);
-          widget.onChanged?.call();
-        },
-        icon: Icon(_fav ? Icons.favorite : Icons.favorite_border),
-        color: _fav ? Sp.green : Sp.textSub,
-        tooltip: _fav ? '取消收藏' : '收藏',
-      );
+    onPressed: () {
+      setState(() => _fav = !_fav);
+      widget.onChanged?.call();
+    },
+    icon: Icon(_fav ? Icons.favorite : Icons.favorite_border),
+    color: _fav ? Sp.green : Sp.textSub,
+    tooltip: _fav ? '取消收藏' : '收藏',
+  );
 }
 
 /// 播放页。
@@ -91,9 +97,7 @@ class PlayerPage extends StatefulWidget {
 }
 
 class _PlayerPageState extends State<PlayerPage> {
-  static const List<double> _speeds = <double>[
-    0.5, 0.75, 1.0, 1.25, 1.5, 2.0,
-  ];
+  static const List<double> _speeds = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
   void _openSpeedSheet(double current) {
     showModalBottomSheet<void>(
@@ -106,7 +110,9 @@ class _PlayerPageState extends State<PlayerPage> {
             const SpSectionHeader(title: '播放速度'),
             for (final s in _speeds)
               ListTile(
-                title: Text('${s.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '')}x'),
+                title: Text(
+                  '${s.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '')}x',
+                ),
                 trailing: (s - current).abs() < 0.001
                     ? const Icon(Icons.check, color: Sp.green)
                     : null,
@@ -165,7 +171,10 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.mode_comment_outlined, color: Sp.textSub),
+              leading: const Icon(
+                Icons.mode_comment_outlined,
+                color: Sp.textSub,
+              ),
               title: const Text('评论'),
               onTap: () {
                 navState().requestTab('comment');
@@ -173,11 +182,42 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
             ListTile(
+              leading: const Icon(
+                Icons.video_library_outlined,
+                color: Sp.textSub,
+              ),
+              title: const Text('查看 MV'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                registerMvModule();
+                final hash = snap.player.current?.hash ?? '';
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => MvPage(hash: hash)),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.radio_outlined, color: Sp.textSub),
               title: const Text('个人 FM'),
-              onTap: () {
-                navState().requestTab('fm');
+              onTap: () async {
                 Navigator.of(ctx).pop();
+                try {
+                  final songs = await appGraph.fm?.start();
+                  if (songs != null && songs.isNotEmpty) {
+                    await PlaybackSession.instance.playAll(songs, 0);
+                  } else {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('FM 暂无可用曲目（端点待实测）')),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text('FM 启动失败：$e')));
+                  }
+                }
               },
             ),
           ],
@@ -211,9 +251,17 @@ class _PlayerPageState extends State<PlayerPage> {
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: Sp.pagePad, vertical: Sp.gapM),
+                      horizontal: Sp.pagePad,
+                      vertical: Sp.gapM,
+                    ),
                     children: <Widget>[
-                      Center(child: SpCover(url: song.cover, size: art, radius: Sp.rXL)),
+                      Center(
+                        child: SpCover(
+                          url: song.cover,
+                          size: art,
+                          radius: Sp.rXL,
+                        ),
+                      ),
                       const SizedBox(height: Sp.gapXL),
                       Text(
                         song.name.isEmpty ? song.hash : song.name,
@@ -232,14 +280,21 @@ class _PlayerPageState extends State<PlayerPage> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: Sp.fItem, color: Sp.textSub),
+                        style: const TextStyle(
+                          fontSize: Sp.fItem,
+                          color: Sp.textSub,
+                        ),
                       ),
                       if (snap.player.sourceKind == 'mv-audio') ...<Widget>[
                         const SizedBox(height: Sp.gapS),
-                        const Text('试听音源',
+                        const Text(
+                          '试听音源',
                           maxLines: 1,
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: Sp.fTiny, color: Sp.textFaint),
+                          style: TextStyle(
+                            fontSize: Sp.fTiny,
+                            color: Sp.textFaint,
+                          ),
                         ),
                       ],
                       const SizedBox(height: Sp.gapXL),
@@ -264,93 +319,98 @@ class _PlayerPageState extends State<PlayerPage> {
   }
 
   Widget _topBar() => Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: Sp.gapM, vertical: Sp.gapS),
-        child: Row(
-          children: <Widget>[
-            IconButton(
-              onPressed: () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.keyboard_arrow_down, size: 28),
-              color: Sp.text,
-              tooltip: '收起',
-            ),
-            const Spacer(),
-            const FavoriteButton(),
-            IconButton(
-              onPressed: _openMenu,
-              icon: const Icon(Icons.more_vert),
-              color: Sp.text,
-              tooltip: '更多',
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(horizontal: Sp.gapM, vertical: Sp.gapS),
+    child: Row(
+      children: <Widget>[
+        IconButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.keyboard_arrow_down, size: 28),
+          color: Sp.text,
+          tooltip: '收起',
         ),
-      );
+        const Spacer(),
+        const FavoriteButton(),
+        IconButton(
+          onPressed: _openMenu,
+          icon: const Icon(Icons.more_vert),
+          color: Sp.text,
+          tooltip: '更多',
+        ),
+      ],
+    ),
+  );
 
   Widget _timeRow(int posMs, int durMs) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: <Widget>[
-          Text(_fmt(posMs), style: _timeStyle),
-          Text(_fmt(durMs), style: _timeStyle),
-        ],
-      );
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: <Widget>[
+      Text(_fmt(posMs), style: _timeStyle),
+      Text(_fmt(durMs), style: _timeStyle),
+    ],
+  );
 
   static final TextStyle _timeStyle = const TextStyle(
-      fontSize: Sp.fTiny, color: Sp.textFaint);
+    fontSize: Sp.fTiny,
+    color: Sp.textFaint,
+  );
 
   Widget _controls(PlayMode mode) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: <Widget>[
-          SpRoundButton(
-            icon: Icons.shuffle,
-            active: mode == PlayMode.shuffle,
-            tooltip: '随机',
-            onTap: () {
-              final s = playbackSession();
-              s.setMode(mode == PlayMode.shuffle ? PlayMode.sequence : PlayMode.shuffle);
-            },
-          ),
-          SpRoundButton(
-            icon: Icons.skip_previous,
-            tooltip: '上一首',
-            onTap: () => playbackSession().prev(),
-          ),
-          SpPlayButton(
-            playing: playbackSession().snapshot.player.isPlaying,
-            onTap: () => playbackSession().toggle(),
-          ),
-          SpRoundButton(
-            icon: Icons.skip_next,
-            tooltip: '下一首',
-            onTap: () => playbackSession().next(),
-          ),
-          SpRoundButton(
-            icon: Icons.repeat,
-            active: mode == PlayMode.loopOne,
-            tooltip: '循环',
-            onTap: () {
-              final s = playbackSession();
-              s.setMode(mode == PlayMode.loopOne ? PlayMode.sequence : PlayMode.loopOne);
-            },
-          ),
-        ],
-      );
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: <Widget>[
+      SpRoundButton(
+        icon: Icons.shuffle,
+        active: mode == PlayMode.shuffle,
+        tooltip: '随机',
+        onTap: () {
+          final s = playbackSession();
+          s.setMode(
+            mode == PlayMode.shuffle ? PlayMode.sequence : PlayMode.shuffle,
+          );
+        },
+      ),
+      SpRoundButton(
+        icon: Icons.skip_previous,
+        tooltip: '上一首',
+        onTap: () => playbackSession().prev(),
+      ),
+      SpPlayButton(
+        playing: playbackSession().snapshot.player.isPlaying,
+        onTap: () => playbackSession().toggle(),
+      ),
+      SpRoundButton(
+        icon: Icons.skip_next,
+        tooltip: '下一首',
+        onTap: () => playbackSession().next(),
+      ),
+      SpRoundButton(
+        icon: Icons.repeat,
+        active: mode == PlayMode.loopOne,
+        tooltip: '循环',
+        onTap: () {
+          final s = playbackSession();
+          s.setMode(
+            mode == PlayMode.loopOne ? PlayMode.sequence : PlayMode.loopOne,
+          );
+        },
+      ),
+    ],
+  );
 
   Widget _badges(double speed) => Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          ActionChip(
-            avatar: const Icon(Icons.speed, size: 16, color: Sp.textSub),
-            label: Text('${speed.toStringAsFixed(2)}x'),
-            onPressed: () => _openSpeedSheet(speed),
-          ),
-          const SizedBox(width: Sp.gapM),
-          ActionChip(
-            avatar: const Icon(Icons.graphic_eq, size: 16, color: Sp.textSub),
-            label: const Text('音质'),
-            onPressed: () => _openQualitySheet('128'),
-          ),
-        ],
-      );
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: <Widget>[
+      ActionChip(
+        avatar: const Icon(Icons.speed, size: 16, color: Sp.textSub),
+        label: Text('${speed.toStringAsFixed(2)}x'),
+        onPressed: () => _openSpeedSheet(speed),
+      ),
+      const SizedBox(width: Sp.gapM),
+      ActionChip(
+        avatar: const Icon(Icons.graphic_eq, size: 16, color: Sp.textSub),
+        label: const Text('音质'),
+        onPressed: () => _openQualitySheet('128'),
+      ),
+    ],
+  );
 
   static String _fmt(int ms) {
     if (ms <= 0) return '00:00';
@@ -373,5 +433,6 @@ class PlayerPageModule extends SurfaceModule {
   NavEntry? get navEntry => null;
 
   @override
-  WidgetBuilder? get builder => (_) => const PlayerPage();
+  WidgetBuilder? get builder =>
+      (_) => const PlayerPage();
 }

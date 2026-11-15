@@ -1,16 +1,12 @@
 // L7 surface/pages · 音乐库页（Spotify 深色 + M3）
-// 数据只经桥取：AppGraph 内的 logic 单例（user/collect/downloads）。
-// 说明：本地曲库与最近播放需要 SongDao/HistoryDao 实例，
-// 目前它们只存在于 session 装配参数（SessionDeps），未随 AppGraph 暴露，
-// 因此这两页签显示空态而非假数据（待 DAOs 经桥暴露后接入）。
+// 数据只经桥取：AppGraph 内的 logic 单例与 songDao / historyDao。
+// 本地曲库与最近播放在 initState 持有 Future，由 FutureBuilder 渲染，
+// 播放意图统一走 PlaybackSession.playAll，build 内不新建 Future。
 import 'package:flutter/material.dart';
 
-import '../../bridges/bridge_core.dart' show UserProfile;
-import '../../bridges/bridge_logic.dart' show DownloadTask;
-import '../../bridges/bridge_session.dart' show SurfaceModule, NavEntry;
-// GAP(跨桥)：bridge_session 只导出 AppGraph 类型，未导出装配图实例，
-// 暂直接取 session 层的 appGraph 实例；后续由主会话在 bridge_session 补出口。
-import '../../bridges/bridge_session.dart' show appGraph;
+import '../../bridges/bridge_core.dart';
+import '../../bridges/bridge_logic.dart';
+import '../../bridges/bridge_session.dart';
 import '../design/tokens.dart';
 import '../design/components.dart';
 
@@ -28,10 +24,14 @@ class _LibraryPageState extends State<LibraryPage>
   Future<UserProfile>? _profile;
   Future<int>? _favCount;
   List<DownloadTask> _downloads = const <DownloadTask>[];
+  Future<List<SongBrief>>? _localSongs;
+  Future<List<SongBrief>>? _recentSongs;
 
   @override
   void initState() {
     super.initState();
+    _localSongs = appGraph.songDao?.list();
+    _recentSongs = appGraph.historyDao?.recent();
     _loadProfile();
     _loadDownloads();
   }
@@ -79,7 +79,9 @@ class _LibraryPageState extends State<LibraryPage>
               unselectedLabelColor: Sp.textSub,
               indicatorColor: Sp.green,
               labelStyle: const TextStyle(
-                  fontSize: Sp.fItem, fontWeight: FontWeight.w600),
+                fontSize: Sp.fItem,
+                fontWeight: FontWeight.w600,
+              ),
               tabs: const <Widget>[
                 Tab(text: '本地曲库'),
                 Tab(text: '最近播放'),
@@ -148,7 +150,9 @@ class _LibraryPageState extends State<LibraryPage>
                         Text(
                           'ID ${p.userid}',
                           style: const TextStyle(
-                              fontSize: Sp.fSub, color: Sp.textSub),
+                            fontSize: Sp.fSub,
+                            color: Sp.textSub,
+                          ),
                         ),
                         const SizedBox(width: Sp.gapM),
                         FutureBuilder<int>(
@@ -156,7 +160,9 @@ class _LibraryPageState extends State<LibraryPage>
                           builder: (context, c) => Text(
                             '我喜欢 ${c.data ?? 0}',
                             style: const TextStyle(
-                                fontSize: Sp.fSub, color: Sp.textSub),
+                              fontSize: Sp.fSub,
+                              color: Sp.textSub,
+                            ),
                           ),
                         ),
                       ],
@@ -197,19 +203,76 @@ class _LibraryPageState extends State<LibraryPage>
     );
   }
 
-  /// 本地曲库：DAO 未经桥暴露 → 空态（不造假数据）。
-  Widget _localLibrary() => const SpStateView(
-        icon: Icons.library_music_outlined,
-        title: '本地曲库暂不可用',
-        subtitle: '本地歌曲数据库能力尚未接入本页',
-      );
+  /// 本地曲库：SongDao.list() 真数据（Future 在 initState 持有）。
+  Widget _localLibrary() => _songList(
+    future: _localSongs,
+    emptyTitle: '曲库还是空的',
+    emptySubtitle: '下载或导入歌曲后会显示在这里',
+    icon: Icons.library_music_outlined,
+  );
 
-  /// 最近播放：播放历史 DAO 未经桥暴露 → 空态。
-  Widget _recentPlays() => const SpStateView(
-        icon: Icons.history,
-        title: '暂无最近播放',
-        subtitle: '播放历史能力尚未接入本页',
-      );
+  /// 最近播放：HistoryDao.recent() 真数据。
+  Widget _recentPlays() => _songList(
+    future: _recentSongs,
+    emptyTitle: '还没有播放记录',
+    emptySubtitle: '播放歌曲后会显示在这里',
+    icon: Icons.history,
+  );
+
+  /// 三态列表：加载 / 错误 / 空 / 数据（点击整列表 playAll）。
+  Widget _songList({
+    required Future<List<SongBrief>>? future,
+    required String emptyTitle,
+    required String emptySubtitle,
+    required IconData icon,
+  }) {
+    if (future == null) {
+      return SpStateView(icon: icon, title: '数据能力未装配', subtitle: emptySubtitle);
+    }
+    return FutureBuilder<List<SongBrief>>(
+      future: future,
+      builder: (BuildContext c, AsyncSnapshot<List<SongBrief>> snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: LinearProgressIndicator());
+        }
+        if (snap.hasError) {
+          return SpStateView(
+            icon: Icons.error_outline,
+            title: '加载失败',
+            subtitle: '${snap.error}',
+            actionLabel: '重试',
+            onAction: _reloadLists,
+          );
+        }
+        final songs = snap.data ?? const <SongBrief>[];
+        if (songs.isEmpty) {
+          return SpStateView(
+            icon: icon,
+            title: emptyTitle,
+            subtitle: emptySubtitle,
+          );
+        }
+        return ListView.builder(
+          itemCount: songs.length,
+          itemBuilder: (BuildContext ctx, int i) => SpSongTile(
+            song: songs[i],
+            onTap: () => PlaybackSession.instance.playAll(songs, i),
+          ),
+        );
+      },
+    );
+  }
+
+  void _reloadLists() {
+    try {
+      setState(() {
+        _localSongs = appGraph.songDao?.list();
+        _recentSongs = appGraph.historyDao?.recent();
+      });
+    } catch (e, st) {
+      debugPrint('library: reload failed: $e\n$st');
+    }
+  }
 
   /// 下载管理：走 DownloadManager.listTasks()（经桥暴露的 logic）。
   Widget _downloadsTab() {
@@ -233,10 +296,15 @@ class _LibraryPageState extends State<LibraryPage>
         final t = _downloads[i];
         return ListTile(
           leading: SpCover(url: t.song.cover, size: Sp.tileCover),
-          title: Text(t.displayName,
-              maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text('${t.quality} · ${t.status.name}',
-              style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub)),
+          title: Text(
+            t.displayName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            '${t.quality} · ${t.status.name}',
+            style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+          ),
           trailing: t.progress >= 0
               ? SizedBox(
                   width: 48,
@@ -261,5 +329,6 @@ class LibraryPageModule extends SurfaceModule {
   NavEntry? get navEntry => const NavEntry('音乐库', 'library_music', navOrder: 3);
 
   @override
-  WidgetBuilder? get builder => (_) => const LibraryPage();
+  WidgetBuilder? get builder =>
+      (_) => const LibraryPage();
 }

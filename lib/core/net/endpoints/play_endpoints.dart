@@ -11,6 +11,27 @@ import 'models.dart';
 
 const String _tag = 'ep.play';
 
+/// 实测 22 顶层键补齐：hash_offset / end_byte / fail_process 目前被丢弃。
+/// 按登录态选权益，待三态实测：这三键仅作试听分片 / 断点 / 风控诊断，
+/// 以 extension + Expando 侧挂，避免改动 models.dart 的既有构造 ——
+/// 「可选字段」默认 null，默认不破坏现构造；urls 与 backupUrls 仍分开保留。
+class _PlayExtras {
+  const _PlayExtras(this.hashOffset, this.endByte, this.failProcess);
+  final int? hashOffset;
+  final int? endByte;
+  final int? failProcess;
+}
+
+final Expando<_PlayExtras> _playExtras = Expando<_PlayExtras>(
+  'PlayResult.extras',
+);
+
+extension PlayResultExtras on PlayResult {
+  int? get hashOffset => _playExtras[this]?.hashOffset;
+  int? get endByte => _playExtras[this]?.endByte;
+  int? get failProcess => _playExtras[this]?.failProcess;
+}
+
 /// 容错解析单条 privilege：privilege 字段是 int 标量（FINDINGS.md §10），
 /// 兼容数组形态但不依赖；hash 小写化。
 PrivilegeItem parsePrivilegeItem(Map<String, dynamic> item) {
@@ -52,28 +73,35 @@ Future<PlayResult> getPlayUrlV5(
     }
     final q = quality.trim().isEmpty ? '128' : quality.trim();
     final magic = const {
-      'piano', 'acappella', 'subwoofer', 'ancient', 'dj', 'surnay',
+      'piano',
+      'acappella',
+      'subwoofer',
+      'ancient',
+      'dj',
+      'surnay',
     }.contains(q);
-    final res = await client.request(EndpointRegistry.playUrlV5,
-        <String, Object?>{
-      'hash': h,
-      'quality': magic ? '128' : q,
-      if (magic) 'magic_$q': 1,
-      'album_audio_id': 0,
-      'album_id': 0,
-      'area_code': 1,
-      'behavior': 'play',
-      'ssa_flag': 'is_fromtrack',
-      'version': 11430,
-      'clientver': 11430,
-      'page_id': 151369488,
-      'ppage_id': '463467626,350369493,788954147',
-      'pid': 2,
-      'cmd': 26,
-      'pidversion': 3001,
-      'IsFreePart': isFreePart ? 1 : 0,
-      'cdnBackup': 1,
-    });
+    final res = await client.request(
+      EndpointRegistry.playUrlV5,
+      <String, Object?>{
+        'hash': h,
+        'quality': magic ? '128' : q,
+        if (magic) 'magic_$q': 1,
+        'album_audio_id': 0,
+        'album_id': 0,
+        'area_code': 1,
+        'behavior': 'play',
+        'ssa_flag': 'is_fromtrack',
+        'version': 11430,
+        'clientver': 11430,
+        'page_id': 151369488,
+        'ppage_id': '463467626,350369493,788954147',
+        'pid': 2,
+        'cmd': 26,
+        'pidversion': 3001,
+        'IsFreePart': isFreePart ? 1 : 0,
+        'cdnBackup': 1,
+      },
+    );
     // 顶层即数据（无 data 包层）；err 时同层有 status/error/errcode。
     final urls = <String>[];
     final rawUrls = res['url'];
@@ -91,7 +119,8 @@ Future<PlayResult> getPlayUrlV5(
     try {
       if (rawBackup is List) {
         backups.addAll(
-            rawBackup.map((u) => safeStr(u)).where((u) => u.isNotEmpty));
+          rawBackup.map((u) => safeStr(u)).where((u) => u.isNotEmpty),
+        );
       } else if (rawBackup is String && rawBackup.isNotEmpty) {
         backups.add(rawBackup);
       }
@@ -129,8 +158,32 @@ Future<PlayResult> getPlayUrlV5(
       // priv_status 缺失（匿名/错误响应）不得被 safeInt 折叠成 0 → 误判无权限。
       privKnown: res.containsKey('priv_status') && res['priv_status'] != null,
     );
-    Log.d(_tag,
-        'getPlayUrlV5 hash=$h q=$q status=$status priv=$priv urls=${urls.length}');
+    // 按登录态选权益，待三态实测：补齐实测 22 顶层键中此前丢弃的三键，
+    // 侧挂到 PlayResult（可选字段默认 null，不破坏现构造）；
+    // backupUrl/bitRate/extName/timeLength 已解析，urls 与 backupUrls 分开保留。
+    try {
+      _playExtras[result] = _PlayExtras(
+        res.containsKey('hash_offset') && res['hash_offset'] != null
+            ? safeInt(res['hash_offset'])
+            : null,
+        res.containsKey('end_byte') && res['end_byte'] != null
+            ? safeInt(res['end_byte'])
+            : null,
+        res.containsKey('fail_process') && res['fail_process'] != null
+            ? safeInt(res['fail_process'])
+            : null,
+      );
+    } catch (e, st) {
+      Log.e(_tag, 'attach play extras failed', e, st);
+    }
+    Log.d(
+      _tag,
+      'getPlayUrlV5 hash=$h q=$q status=$status priv=$priv urls=${urls.length} '
+      'backups=${backups.length} bitRate=${result.bitrate} '
+      'ext=${result.extName} len=${result.timeLengthSec} '
+      'hashOffset=${result.hashOffset} endByte=${result.endByte} '
+      'failProcess=${result.failProcess}',
+    );
     return result;
   } catch (e, st) {
     Log.e(_tag, 'getPlayUrlV5 failed hash=$hash quality=$quality', e, st);
@@ -152,33 +205,38 @@ Future<List<PrivilegeItem>> getPrivilegeLite(
         .toSet()
         .toList(growable: false);
     if (clean.isEmpty) return const <PrivilegeItem>[];
-    final res = await client.request(EndpointRegistry.privilegeLite,
-        <String, Object?>{
-      'appid': KugouSign.appid,
-      'clientver': KugouSign.clientver,
-      'area_code': 1,
-      'behavior': 'play',
-      'need_hash_offset': 1,
-      'relate': 1,
-      'support_verify': 1,
-    }, body: <String, Object?>{
-      'resource': [
-        for (final h in clean)
-          <String, Object?>{
-            'type': 'audio',
-            'hash': h,
-            'album_id': '',
-            'page_id': 0,
-          },
-      ],
-      'qualities': const ['128', '320', 'flac', 'high'],
-      'appid': KugouSign.appid,
-      'clientver': KugouSign.clientver,
-      'area_code': 1,
-      'behavior': 'play',
-    });
+    final res = await client.request(
+      EndpointRegistry.privilegeLite,
+      <String, Object?>{
+        'appid': KugouSign.appid,
+        'clientver': KugouSign.clientver,
+        'area_code': 1,
+        'behavior': 'play',
+        'need_hash_offset': 1,
+        'relate': 1,
+        'support_verify': 1,
+      },
+      body: <String, Object?>{
+        'resource': [
+          for (final h in clean)
+            <String, Object?>{
+              'type': 'audio',
+              'hash': h,
+              'album_id': '',
+              'page_id': 0,
+            },
+        ],
+        'qualities': const ['128', '320', 'flac', 'high'],
+        'appid': KugouSign.appid,
+        'clientver': KugouSign.clientver,
+        'area_code': 1,
+        'behavior': 'play',
+      },
+    );
     final data = dataOf(res);
-    final out = listOf(data['data']).map(parsePrivilegeItem).toList(growable: false);
+    final out = listOf(data['data'])
+        .map(parsePrivilegeItem)
+        .toList(growable: false);
     Log.d(_tag, 'getPrivilegeLite n=${clean.length} got=${out.length}');
     return out;
   } catch (e, st) {

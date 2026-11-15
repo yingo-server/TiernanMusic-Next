@@ -10,7 +10,19 @@
 import 'dart:io';
 
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show DownloadStore, KugouClient, PlayResult, SongBrief, SongDao, getPlayUrlV5, getMvBySong, getVideoQualities, getVideoUrl, MvBrief;
+import '../../bridges/bridge_core.dart'
+    show
+        DownloadStore,
+        KugouClient,
+        PlayResult,
+        SongBrief,
+        SongDao,
+        getPlayUrlV5,
+        getMvBySong,
+        getVideoQualities,
+        getVideoUrl,
+        MvBrief;
+
 const String _tag = 'logic.playback';
 
 /// 播放失败语义枚举。
@@ -24,7 +36,7 @@ enum PlaybackError {
   /// 未找到：hash 无效 / 响应无 URL / status 非 1 且非上述两态。
   notFound,
 
-/// 网络异常：传输层失败（解析/HTTP 非 200）。
+  /// 网络异常：传输层失败（解析/HTTP 非 200）。
   network,
 }
 
@@ -65,18 +77,18 @@ class PlaySource {
   bool get ok => error == null && (localPath != null || urls.isNotEmpty);
 
   Map<String, Object?> toMap() => <String, Object?>{
-        'ok': ok,
-        'localPath': localPath,
-        'urls': urls,
-        'backupUrls': backupUrls,
-        'quality': quality,
-        'extName': extName,
-        'bitrate': bitrate,
-        'timeLengthSec': timeLengthSec,
-        'isFreePart': isFreePart,
-        'isFallback': isFallback,
-        'error': error?.name,
-      };
+    'ok': ok,
+    'localPath': localPath,
+    'urls': urls,
+    'backupUrls': backupUrls,
+    'quality': quality,
+    'extName': extName,
+    'bitrate': bitrate,
+    'timeLengthSec': timeLengthSec,
+    'isFreePart': isFreePart,
+    'isFallback': isFallback,
+    'error': error?.name,
+  };
 
   @override
   String toString() {
@@ -89,24 +101,87 @@ class PlaySource {
   }
 }
 
+/// 单次档位请求的成功候选（按 bitRate 选权益最大 URL 用）。
+class _Hit {
+  const _Hit(this.pr, this.quality);
+  final PlayResult pr;
+  final String quality;
+}
+
 /// 播放服务编排器：resolvePlaySource。
 /// 构造注入 KugouClient + DownloadStore（SongDao 保留装配兼容）。
+/// 按登录态选权益，待三态实测：新增可选 session 注入（session.vip_token /
+/// vip_type 或 {vip_token, vip_type} Map）；可选参数不破坏现构造，
+/// resolvePlaySource 公开签名保持不变。
 class PlaybackService {
   PlaybackService({
     required KugouClient client,
     required SongDao songDao,
     required DownloadStore downloadStore,
-  })  : _client = client,
-        _store = downloadStore;
+    Object? session,
+  }) : _client = client,
+       _store = downloadStore,
+       _session = session;
 
   final KugouClient _client;
   final DownloadStore _store;
+  final Object? _session;
+
+  /// 'flac' → '320' → '128' 降级链（L5 编排，不臆造端点/参数）。
+  static const List<String> _ladder = <String>['flac', '320', '128'];
+
+  static bool _truthy(Object? v) {
+    if (v == null) return false;
+    if (v is bool) return v;
+    if (v is num) return v > 0;
+    if (v is String) {
+      final t = v.trim();
+      return t.isNotEmpty && t != '0';
+    }
+    return false;
+  }
+
+  /// 按登录态选权益，待三态实测：有 vip_token 或 vip_type>0 视为有权益态；
+  /// 未注入 / 探测异常一律按匿名处理（不静默吞，异常落 Log.e）。
+  bool get _hasRights {
+    final s = _session;
+    if (s == null) return false;
+    try {
+      dynamic token;
+      dynamic vipType;
+      if (s is Map) {
+        token = s['vip_token'] ?? s['vipToken'];
+        vipType = s['vip_type'] ?? s['vipType'];
+      } else {
+        final d = s as dynamic;
+        token = d.vip_token;
+        vipType = d.vip_type;
+      }
+      return _truthy(token) || _truthy(vipType);
+    } catch (e, st) {
+      Log.e(_tag, '_hasRights probe failed', e, st);
+      return false;
+    }
+  }
+
+  /// 档位候选：有权益从最高档 flac 起（权益最大化）；失败降一档最多 2 次。
+  /// 匿名/非 VIP 不提档，从请求档向下；魔法音质/high 先按本身请求再按链兜底。
+  List<String> _qualityCandidates(String prefer) {
+    if (!_ladder.contains(prefer)) {
+      return <String>[prefer, ..._ladder].take(3).toList(growable: false);
+    }
+    final start = _hasRights ? 0 : _ladder.indexOf(prefer);
+    return _ladder.sublist(start).take(3).toList(growable: false);
+  }
 
   /// 解析播放源：
   /// 1) 先查 DownloadStore（complete 且实体文件存在）→ 本地路径优先；
   /// 2) 否则 getPlayUrlV5 按 hash+quality 取 URL；
   /// 3) status!=1 时映射语义错误（needsVerification / noPrivilege / notFound）。
-  Future<PlaySource> resolvePlaySource(SongBrief song, String preferQuality) async {
+  Future<PlaySource> resolvePlaySource(
+    SongBrief song,
+    String preferQuality,
+  ) async {
     final hash = song.hash.trim().toLowerCase();
     final quality = preferQuality.trim().isEmpty ? '128' : preferQuality.trim();
     try {
@@ -122,27 +197,72 @@ class PlaybackService {
         }
         Log.w(_tag, 'local record missing file, fallback online $hash');
       }
-      // 2) 在线取 URL。
-      final pr = await getPlayUrlV5(_client, hash, quality);
-      // 3) 语义错误映射（status!=1）。
-      if (pr.status != 1 || pr.urls.isEmpty) {
-        final err = _mapError(pr);
-        Log.w(_tag,
-            'resolvePlaySource failed $hash q=$quality status=${pr.status} '
-            'priv=${pr.privStatus} err=${pr.errcode} -> ${err.name}');
+      // 2) 在线取 URL：按登录态选权益，待三态实测。
+      // 有权益从最高档起，失败降一档最多 2 次；每档落日志，失败不静默吞。
+      final hits = <_Hit>[];
+      PlayResult? lastPr;
+      for (final q in _qualityCandidates(quality)) {
+        final pr = await getPlayUrlV5(_client, hash, q);
+        if (pr.status == 1 && pr.urls.isNotEmpty) {
+          hits.add(_Hit(pr, q));
+          continue;
+        }
+        lastPr = pr;
+        Log.w(
+          _tag,
+          'resolvePlaySource miss $hash q=$q status=${pr.status} '
+          'priv=${pr.privStatus} err=${pr.errcode} urls=${pr.urls.length}',
+        );
+        // 无权限 / 需验证是权益终态，继续降档也拿不到 URL，直接收口。
+        if (pr.errcode == 20028) break;
+        if (pr.status == 2 && pr.privKnown && pr.privStatus == 0) break;
+      }
+      // 匿名/非 VIP（priv_status=0 且无 url）不冒充成功：全档无出链即失败。
+      if (hits.isEmpty) {
+        final err = _mapError(lastPr ?? const PlayResult());
+        Log.w(
+          _tag,
+          'resolvePlaySource failed $hash q=$quality rights=$_hasRights '
+          'status=${lastPr?.status} priv=${lastPr?.privStatus} '
+          'err=${lastPr?.errcode} -> ${err.name}',
+        );
         return PlaySource(quality: quality, error: err);
       }
-      Log.d(_tag,
-          'resolvePlaySource online $hash q=$quality urls=${pr.urls.length} '
-          'ext=${pr.extName} free=${pr.isFreePart}');
+      // 按登录态选权益，待三态实测：bitRate 最高者主链优先，其余档 urls 续接，
+      // 最后按 backupUrls 顺序兜底（去重，urls 与 backupUrls 不混写）。
+      hits.sort((a, b) => b.pr.bitrate.compareTo(a.pr.bitrate));
+      final best = hits.first.pr;
+      final primary = <String>[];
+      final backups = <String>[];
+      void addAll(Iterable<String> src, List<String> dst) {
+        for (final u in src) {
+          if (u.isEmpty) continue;
+          if (primary.contains(u) || backups.contains(u)) continue;
+          dst.add(u);
+        }
+      }
+
+      addAll(best.urls, primary);
+      for (final h in hits.skip(1)) {
+        addAll(h.pr.urls, primary);
+      }
+      for (final h in hits) {
+        addAll(h.pr.backupUrls, backups);
+      }
+      Log.d(
+        _tag,
+        'resolvePlaySource online $hash q=${hits.first.quality} '
+        'rights=$_hasRights urls=${primary.length} backups=${backups.length} '
+        'bitRate=${best.bitrate} ext=${best.extName} free=${best.isFreePart}',
+      );
       return PlaySource(
-        urls: pr.urls,
-        backupUrls: pr.backupUrls,
-        quality: quality,
-        extName: pr.extName,
-        bitrate: pr.bitrate,
-        timeLengthSec: pr.timeLengthSec,
-        isFreePart: pr.isFreePart,
+        urls: List<String>.unmodifiable(primary),
+        backupUrls: List<String>.unmodifiable(backups),
+        quality: hits.first.quality,
+        extName: best.extName,
+        bitrate: best.bitrate,
+        timeLengthSec: best.timeLengthSec,
+        isFreePart: best.isFreePart,
       );
     } catch (e, st) {
       Log.e(_tag, 'resolvePlaySource $hash q=$quality', e, st);
@@ -189,9 +309,11 @@ class PlaybackService {
       for (final q in quals) {
         final r = await getVideoUrl(_client, q.hash, quality: q.id);
         if (!r.playable) continue;
-        Log.d(_tag,
-            'resolveMvAudioFallback aid=$aid quality=${q.id} '
-            'cdn=${r.urls.length} (mp4 音轨属推断，直接喂引擎)');
+        Log.d(
+          _tag,
+          'resolveMvAudioFallback aid=$aid quality=${q.id} '
+          'cdn=${r.urls.length} (mp4 音轨属推断，直接喂引擎)',
+        );
         return PlaySource(
           urls: r.urls,
           quality: 'mv-audio-low',
@@ -199,7 +321,10 @@ class PlaybackService {
           isFallback: true,
         );
       }
-      Log.w(_tag, 'resolveMvAudioFallback all qualities empty hash=${mvBrief.hash}');
+      Log.w(
+        _tag,
+        'resolveMvAudioFallback all qualities empty hash=${mvBrief.hash}',
+      );
       return const PlaySource(error: PlaybackError.notFound);
     } catch (e, st) {
       Log.e(_tag, 'resolveMvAudioFallback aid=${song.albumAudioId}', e, st);

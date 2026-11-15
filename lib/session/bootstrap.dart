@@ -149,6 +149,9 @@ Future<AppGraph> bootstrapSession({
       verification: verification,
       translation: translation,
       cache: cacheService,
+      songDao: songDao,
+      historyDao: historyDao,
+      client: client,
     );
     Log.d(_tag, 'session ready modules=${moduleIds.length}');
     return _graph!;

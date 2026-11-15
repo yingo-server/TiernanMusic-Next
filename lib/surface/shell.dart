@@ -9,6 +9,7 @@ import 'design/tokens.dart';
 import 'pages/home_page.dart' show HomePageModule;
 import 'pages/library_page.dart' show LibraryPageModule;
 import 'pages/lyrics_page.dart' show LyricsPageModule;
+import 'pages/mv_page.dart' show registerMvModule;
 import 'pages/player_page.dart' show PlayerPageModule;
 import 'pages/playlist_page.dart' show PlaylistPageModule;
 import 'pages/search_page.dart' show SearchPageModule;
@@ -26,6 +27,7 @@ void registerModules() {
       ..install(SettingsPageModule())
       ..install(PlayerPageModule())
       ..install(LyricsPageModule());
+    registerMvModule();
   } catch (e, st) {
     debugPrint('surface.shell: registerModules failed: $e\n$st');
   }
@@ -86,8 +88,10 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
-  List<SurfaceModule> get _modules =>
-      ModuleRegistry.instance.active().where((m) => m.navEntry != null).toList();
+  List<SurfaceModule> get _modules => ModuleRegistry.instance
+      .active()
+      .where((m) => m.navEntry != null)
+      .toList();
 
   @override
   Widget build(BuildContext context) {
@@ -95,8 +99,7 @@ class _AppShellState extends State<AppShell> {
     if (modules.isEmpty) {
       return Scaffold(
         body: Center(
-          child: Text('无可用模块',
-              style: Theme.of(context).textTheme.bodyMedium),
+          child: Text('无可用模块', style: Theme.of(context).textTheme.bodyMedium),
         ),
       );
     }
@@ -110,7 +113,8 @@ class _AppShellState extends State<AppShell> {
             Expanded(
               child: KeyedSubtree(
                 key: ValueKey<String>(current.id),
-                child: (current.builder as WidgetBuilder?)?.call(context) ??
+                child:
+                    (current.builder as WidgetBuilder?)?.call(context) ??
                     const Center(child: Text('模块未提供页面')),
               ),
             ),

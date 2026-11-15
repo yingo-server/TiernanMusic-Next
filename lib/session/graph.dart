@@ -72,9 +72,17 @@ class AppGraph {
     this.translation,
     this.cache,
     this.notification,
+    this.songDao,
+    this.historyDao,
+    this.client,
   });
 
-  factory AppGraph.empty() => const AppGraph();
+  factory AppGraph.empty() => const AppGraph(
+        modules: const <String>[],
+        songDao: null,
+        historyDao: null,
+        client: null,
+      );
 
   final List<String> modules;
   final SearchLogic? search;
@@ -104,6 +112,11 @@ class AppGraph {
 
   /// 通知栏网关（L4）。
   final MusicAudioHandler? notification;
+
+  /// 供 L7 取 DAO/Client（可选出口）。
+  final SongDao? songDao;
+  final HistoryDao? historyDao;
+  final KugouClient? client;
 
   bool get isReady => modules.isNotEmpty;
 }

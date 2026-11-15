@@ -14,15 +14,20 @@ import 'models.dart';
 
 const String _tag = 'ep.playlist.write';
 
-/// 从响应提取成功标志：data.status==1 优先，其次顶层 status==1 / error_code==0。
+/// 从响应提取成功标志：严格 status==1 且 error_code==0（批N3-B 三态实测收紧）。
+/// status 取 data.status ?? res.status ?? res.error_code 的既有级联逻辑保留；
+/// field_truth 实测失败样本 {status:0,error_code:20010} 曾按 s==0 被误判成功。
 bool _ok(Map<String, dynamic> res) {
   final data = dataOf(res);
   final s = safeInt(data['status'],
       safeInt(res['status'], safeInt(res['error_code'], -1)));
-  if (s == 1 || s == 0) return true;
-  // 未留样响应形态：error_code==0 或缺失 status 时按成功容错，留 Log 待实测。
-  Log.d(_tag, 'ambiguous success flag status=$s');
-  return s == 0;
+  final ec = safeInt(data['error_code'],
+      safeInt(res['error_code'], 0));
+  final ok = s == 1 && ec == 0;
+  if (!ok) {
+    Log.d(_tag, 'not ok status=$s error_code=$ec');
+  }
+  return ok;
 }
 
 /// 建歌单（POST /v2/add_playlist，待三态实测）。成功返回新歌单 listid，失败 null。
