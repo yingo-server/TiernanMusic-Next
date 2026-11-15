@@ -205,17 +205,21 @@ class EndpointRegistry {
   static const mvDetail = Endpoint(
       id: 'mv_detail', path: '/kmr/v1/audio/mv', method: 'POST',
       router: 'openapi.kugou.com', tid: '38');
-  // videoDetail（批N2-B 实测修正）：POST /v1/video，x-router:
-  // kmr.service.kugou.com；⚠️ 实测需 clearDefaultParams 全参 body：
-  // appid/clientver/clienttime(秒)/mid/uuid/dfid/token/key=signParamsKey(秒)/
-  // show_resolution=1/data:[{video_id}]（网关默认参数形态 404/502）。
-  // 响应 data[0] 平铺 ld/sd/hd/fhd/qhd 档位 hash/filesize/bitrate。
+  // videoDetail（批N2-B 实测修正，契约对齐 docs/batch3_c1.md §1.2 / batch3_c3.md §1）：
+  // POST /v1/video，x-router: kmr.service.kugou.com。⚠️ 上游 video_detail.js
+  // 契约：clearDefaultParams 全参 body —— data:[{video_id}], show_resolution:1,
+  // mid, uuid=md5(dfid+mid), key=signParamsKey(clienttime 秒), token,
+  // appid/clientver/clienttime（网关默认参数形态 404/502）。
+  // 注：r/ext/cmd/qualities 是 trackermv /v2/interface/index（video_url.js L4-10）
+  // 的参数，不是 /v1/video 的 body 参数，勿混入。
+  // 响应 data[0] 平铺 ld/sd/hd/fhd/qhd 档位 hash/filesize/bitrate
+  // （field_truth_test L600-617 固化 7 档）。
   static const videoDetail = Endpoint(
       id: 'video_detail', path: '/v1/video', method: 'POST',
       router: 'kmr.service.kugou.com', clearDefaultParams: true);
-  static const videoDetailKmrV2 = Endpoint(
-      id: 'video_detail_kmr_v2', path: '/kmr/v2/videos', method: 'POST',
-      router: 'kmr.service.kugou.com');
+  // videoDetailKmrV2（/kmr/v2/videos）【已弃用】：三态实测 404（research §3 表
+  // 「死代码」），批3-F1 已删除本声明与 mv_endpoints.getVideoQualities 的
+  // fallback 调用；如探针复活需重新三态实测后再加回。
   // videoUrl（批N2-B 实测修正）：GET /v2/interface/index，x-router:
   // trackermv.kugou.com，参数 backupdomain=1/cmd=123/ext=mp4/ismp3=0/pid=1/
   // type=1/hash；⚠️ encryptKey=true → KugouClient 自动注入
@@ -224,6 +228,37 @@ class EndpointRegistry {
   static const videoUrl = Endpoint(
       id: 'video_url', path: '/v2/interface/index',
       router: 'trackermv.kugou.com', encryptKey: true);
+  // anonymousSongUrl（批3-F1 新增声明，⚠️ 待实测）：匿名歌曲试听端点。
+  // 出处 batch3_c3.md §1 song_url.js（全 52 行）：GET /v5/url @
+  // trackercdn.kugou.com（L49），L51 notSign:true（无 android 签名），
+  // L50 encryptKey:true（key 照注入），L52 cookie 注入 dfid:randomString(24)
+  // （随机 dfid，无需注册）；L32 IsFreePart = free_part?1:0（试听片段开关，
+  // 匿名可拿 128 试听）。匿名风险：field_truth_test L403-408 实测匿名 20028
+  // fail_process:['pkg']（需 pkg 校验时失败）——匿名非无条件成功。
+  // signType: none（封装层不注 android 签名），参数由
+  // mv_endpoints.anonymousPlayUrl 构造（含随机 dfid cookie）。
+  static const anonymousSongUrl = Endpoint(
+      id: 'anonymous_song_url', path: '/v5/url',
+      router: 'trackercdn.kugou.com', encryptKey: true,
+      signType: SignType.none, clearDefaultParams: true,
+      cacheable: false); // 播放地址短时效，禁止缓存
+  // registerDevice（批3-F1 新增声明，⚠️ 待实测）：匿名设备注册取真实 dfid。
+  // 出处 batch3_c3.md §4 register_dev.js（131 行）：POST
+  // https://userservice.kugou.com/risk/v2/r_register_dev（L104-105）；
+  // body = playlistAesEncrypt(dataMap)（L98，30+ 设备指纹字段全有默认值，
+  // brand=Redmi/device=marble/manufacturer=Xiaomi/imei=uuid=cookie
+  // KUGOU_API_GUID，L13-96）；query part=1, platid=1(上游为 1；Dart 封装按
+  // android 链 platid=2 变体构造——见 mv_endpoints.registerDevice 注释，
+  // 以探针实测为准), p=rsaEncrypt2({aes,uid:'0',token:''})（L100）；
+  // 响应 arraybuffer AES 解密（L111-114），body.status==1 时 data.dfid
+  // 写入 cookie（L119-122）。可匿名（userid 0、token 空）。
+  // ⚠️ 响应为加密 arraybuffer：KugouClient.request 仅回退 _raw_text，
+  // 解密回写 dfid 由封装层完成（待实测）。
+  static const registerDevice = Endpoint(
+      id: 'register_device',
+      base: 'https://userservice.kugou.com',
+      path: '/risk/v2/r_register_dev', method: 'POST',
+      signType: SignType.none, clearDefaultParams: true);
 
   // ── 账号 ──
   static const loginQrKey = Endpoint(

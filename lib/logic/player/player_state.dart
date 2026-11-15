@@ -19,6 +19,7 @@ class PlayerState {
     this.speed = 1.0,
     this.current,
     this.lastError = '',
+    this.sourceKind = 'kugou',
   });
 
   final PlayerStatus status;
@@ -29,6 +30,10 @@ class PlayerState {
   final double speed; // 0.5 ~ 2.0
   final SongBrief? current;
   final String lastError;
+
+  /// 音源类型（批3-F2）：'kugou' = 常规酷狗音源；'mv-audio' = MV 音频兜底。
+  /// 其他取值视同 'kugou'；构造默认 'kugou' 不破坏现有调用。
+  final String sourceKind;
 
   bool get isPlaying {
     try {
@@ -64,6 +69,7 @@ class PlayerState {
     bool clearCurrent = false,
     String? lastError,
     bool clearError = false,
+    String? sourceKind,
   }) {
     try {
       return PlayerState(
@@ -75,6 +81,7 @@ class PlayerState {
         speed: speed ?? this.speed,
         current: clearCurrent ? null : (current ?? this.current),
         lastError: clearError ? '' : (lastError ?? this.lastError),
+        sourceKind: sourceKind ?? this.sourceKind,
       );
     } catch (e, st) {
       Log.e(_tag, 'copyWith failed', e, st);
@@ -87,7 +94,8 @@ class PlayerState {
     try {
       return 'PlayerState(status=$status, pos=$positionMs/$durationMs, '
           'buf=$bufferMs, vol=$volume, speed=$speed, '
-          'current=${current?.hash ?? '-'}, err=$lastError)';
+          'current=${current?.hash ?? '-'}, err=$lastError, '
+          'src=$sourceKind)';
     } catch (e, st) {
       Log.e(_tag, 'toString failed', e, st);
       return 'PlayerState(<unavailable>)';

@@ -234,6 +234,14 @@ class _PlayerPageState extends State<PlayerPage> {
                         textAlign: TextAlign.center,
                         style: const TextStyle(fontSize: Sp.fItem, color: Sp.textSub),
                       ),
+                      if (snap.player.sourceKind == 'mv-audio') ...<Widget>[
+                        const SizedBox(height: Sp.gapS),
+                        const Text('试听音源',
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: Sp.fTiny, color: Sp.textFaint),
+                        ),
+                      ],
                       const SizedBox(height: Sp.gapXL),
                       _SeekSlider(
                         positionMs: snap.player.positionMs,

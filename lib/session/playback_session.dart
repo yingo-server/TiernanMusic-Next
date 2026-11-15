@@ -53,6 +53,11 @@ class PlaybackSession extends ChangeNotifier {
   QueueState _queue = const QueueState();
   PlayerState _player = const PlayerState();
 
+  /// 会话级 MV 兜底防死循环标记（每曲只试一次，批3-F3）。
+  final Set<String> _mvTriedOnce = <String>{};
+  /// 当前源类型（sourceKind 字段待批3-F2 落盘后随 PlayerState 透传）。
+  String _sourceKind = 'kugou';
+
   PlaybackSnapshot get snapshot => PlaybackSnapshot(
         queue: _queue,
         player: _player,
@@ -160,12 +165,46 @@ class PlaybackSession extends ChangeNotifier {
       _emit(loading, queue: q);
       final src = await _service?.resolvePlaySource(cur, _quality);
       if (src == null || !src.ok) {
+        final errKind = src?.error?.toString() ?? '';
+        final canMv = errKind.contains('noPrivilege') ||
+            errKind.contains('needsVerification') ||
+            errKind.contains('notFound');
+        // 兜底编排（L6 策略层）：resolve 失败且属可兜错误类型，先试 MV 音频。
+        // _mvTriedOnce 会话级防死循环；失败维持原 ErrorAction，不静默连环跳曲。
+        if (canMv && !_mvTriedOnce.contains(cur.hash)) {
+          _mvTriedOnce.add(cur.hash);
+          try {
+            final mv = await _service?.resolveMvAudioFallback(cur);
+            final mvUrl = mv?.ok == true && (mv?.urls.isNotEmpty ?? false)
+                ? mv!.urls.first
+                : null;
+            if (mvUrl != null) {
+              _sourceKind = 'mv-audio';
+              await _engine.play(mvUrl);
+              _emit(playbackReducer(_player, Playing()), queue: q);
+              _history?.recordPlay(cur, 0).catchError(
+                  (Object e, StackTrace st) => Log.w(_tag, 'recordPlay: $e'));
+              _notification?.updateMetadata(NotificationMeta(
+                title: cur.name.isEmpty ? cur.hash : cur.name,
+                artist: cur.singer,
+                artUri: cur.cover.isEmpty ? null : cur.cover,
+                durationMs: mv.timeLengthSec * 1000,
+              ));
+              Log.d(_tag, 'mv-audio fallback ok ${cur.hash}');
+              return;
+            }
+          } catch (e, st) {
+            Log.w(_tag, 'fallback not ready: $e');
+          }
+        }
+        _sourceKind = 'kugou';
         _emit(playbackReducer(_player,
             ErrorAction(src?.error?.toString() ?? '播放源不可播或需登录')));
         return;
       }
       // 本地已下载优先，其次在线主链。
       final target = src.localPath ?? src.urls.first;
+      _sourceKind = src.localPath != null ? 'local' : 'kugou';
       await _engine.play(target);
       _emit(playbackReducer(_player, Playing()), queue: q);
       // 历史落库：fire-and-forget 但失败必须留痕，不静默丢。

@@ -10,7 +10,7 @@
 import 'dart:io';
 
 import '../../bridges/bridge_kernel.dart' show Log;
-import '../../bridges/bridge_core.dart' show DownloadStore, KugouClient, PlayResult, SongBrief, SongDao, getPlayUrlV5;
+import '../../bridges/bridge_core.dart' show DownloadStore, KugouClient, PlayResult, SongBrief, SongDao, getPlayUrlV5, getMvBySong, getVideoQualities, getVideoUrl, MvBrief;
 const String _tag = 'logic.playback';
 
 /// 播放失败语义枚举。
@@ -39,6 +39,7 @@ class PlaySource {
     this.bitrate = 0,
     this.timeLengthSec = 0,
     this.isFreePart = false,
+    this.isFallback = false,
     this.error,
   });
 
@@ -57,6 +58,10 @@ class PlaySource {
   /// 失败语义；null = 成功。
   final PlaybackError? error;
 
+  /// 兜底标记（批3-F2）：true = 本源来自 MV 音频兜底解析（resolveMvAudioFallback），
+  /// 非常规 kugou 音源。构造默认 false，不破坏现有调用。
+  final bool isFallback;
+
   bool get ok => error == null && (localPath != null || urls.isNotEmpty);
 
   Map<String, Object?> toMap() => <String, Object?>{
@@ -69,6 +74,7 @@ class PlaySource {
         'bitrate': bitrate,
         'timeLengthSec': timeLengthSec,
         'isFreePart': isFreePart,
+        'isFallback': isFallback,
         'error': error?.name,
       };
 
@@ -141,6 +147,63 @@ class PlaybackService {
     } catch (e, st) {
       Log.e(_tag, 'resolvePlaySource $hash q=$quality', e, st);
       return PlaySource(quality: quality, error: PlaybackError.network);
+    }
+  }
+
+  /// MV 音频兜底解析（批3-F2）。
+  /// 仅当主链失败且错误为 noPrivilege / needsVerification / notFound 时，
+  /// 由 L6 session 调用（本方法不判失败语义条件，只管解析——兜底编排归 session）。
+  ///
+  /// 步骤：mvDetail(song.albumAudioId) 拿 MV 明细 hash → getVideoQualities
+  /// （批3-F1 修正契约）取档位，按 ld/sd 优先选最低清晰度 → getVideoUrl 取
+  /// downurl/mp4 URL。
+  /// 注：MP4 直链含音频属推断（C3 证据评级：video/url 端点返回的 mp4 容器
+  /// 通常带音轨，just_audio 可播 mp4 音轨）；ext=mp4 的 URL 直接喂引擎，
+  /// 不做二次转封装。不臆造 trackermv/ismp3 等参数（C3 评级为推断，无实测）。
+  Future<PlaySource> resolveMvAudioFallback(SongBrief song) async {
+    try {
+      final aid = song.albumAudioId;
+      if (aid <= 0) {
+        Log.w(_tag, 'resolveMvAudioFallback invalid albumAudioId=$aid');
+        return const PlaySource(error: PlaybackError.notFound);
+      }
+      // 1) mvDetail 拿 MV 明细（现有 mv 端点）。
+      final mvBrief = await getMvBySong(_client, aid);
+      if (mvBrief == null || mvBrief.hash.isEmpty) {
+        Log.w(_tag, 'resolveMvAudioFallback no mv aid=$aid');
+        return const PlaySource(error: PlaybackError.notFound);
+      }
+      // 2) 清晰度档位（ld/sd 优先 = 最低清晰度，省流且成功率最高）。
+      final quals = await getVideoQualities(_client, mvBrief.hash);
+      final order = <String>['ld', 'sd', 'hd', 'fhd', 'qhd'];
+      quals.sort((a, b) {
+        final ia = order.indexOf(a.id.split('_').first);
+        final ib = order.indexOf(b.id.split('_').first);
+        return (ia < 0 ? 99 : ia).compareTo(ib < 0 ? 99 : ib);
+      });
+      if (quals.isEmpty) {
+        Log.w(_tag, 'resolveMvAudioFallback no qualities hash=${mvBrief.hash}');
+        return const PlaySource(error: PlaybackError.notFound);
+      }
+      // 3) 逐档取 downurl / mp4 URL，首个出链即用（多 CDN 备链全保留）。
+      for (final q in quals) {
+        final r = await getVideoUrl(_client, q.hash, quality: q.id);
+        if (!r.playable) continue;
+        Log.d(_tag,
+            'resolveMvAudioFallback aid=$aid quality=${q.id} '
+            'cdn=${r.urls.length} (mp4 音轨属推断，直接喂引擎)');
+        return PlaySource(
+          urls: r.urls,
+          quality: 'mv-audio-low',
+          extName: 'mp4',
+          isFallback: true,
+        );
+      }
+      Log.w(_tag, 'resolveMvAudioFallback all qualities empty hash=${mvBrief.hash}');
+      return const PlaySource(error: PlaybackError.notFound);
+    } catch (e, st) {
+      Log.e(_tag, 'resolveMvAudioFallback aid=${song.albumAudioId}', e, st);
+      return const PlaySource(error: PlaybackError.network);
     }
   }
 
