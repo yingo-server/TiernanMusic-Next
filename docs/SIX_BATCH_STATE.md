@@ -1,6 +1,6 @@
-batch=2
+batch=3
 stage=summarize
 checks=covered_by_existing
 fixes=covered_by_existing
-baseline=bf5cab0
-note=六批批2=登录链收口；已有 docs/batch2_c{1,2,3}.md 与 f{1,2,3}.md 完成检查/修复（端点5偏差、AuthLogic回写续期、login_sheet三Tab、settings接线、登录态会话）。主线rg复核剩余均为「待实测/needsProbe」，属实测缺口不伪造；按新规矩不派代理、不扩工具。定时器直接整理批2→全门禁→提交→推进批3。
+last_commit=dcb7e03
+note=批3=匿名/MV/权益播放链。已有 batch3_c{1,2,3}.md / f{1,2,3}.md / batch5_live.md / six_b1_f3.md 完成：videoDetail契约修正、registerDevice+anonymousPlayUrl待实测封装、resolveMvAudioFallback、session兜底+sourceKind徽标、权益最大URL/降档/备链。主线复核后直接整理→门禁→提交→推进批4。
