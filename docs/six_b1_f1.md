@@ -1,4 +1,4 @@
-# 批1-F1 · 三态只读字段捕获探针（实施中，2026-11-15）
+# 批1-F1 · 三态只读字段捕获探针（完成，2026-11-15）
 
 范围：仅 `tool/api_field_probe_v2.dart` + 实跑产出 `docs/api_samples_v2/{anonymous,nonvip,vip}.json`。报告归 F2，本文件只登记实施过程。
 

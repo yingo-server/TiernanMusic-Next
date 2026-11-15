@@ -2,6 +2,7 @@
 // 只画控件；数据只经 bridge_logic 的 logic 单例取；颜色/字号/间距只用 Sp.*。
 import 'package:flutter/material.dart';
 
+import '../../bridges/bridge_core.dart' show SearchType;
 import '../../bridges/bridge_logic.dart'
     show Log, SearchResult, SongBrief, SearchSuggestItem;
 import '../../bridges/bridge_session.dart'
@@ -28,8 +29,17 @@ class SearchPageModule extends SurfaceModule {
       (BuildContext ctx) => const SearchPage();
 }
 
-/// 结果分段：仅「歌曲」在当前 logic 层有可用端点，其余分段给空态说明。
+/// 结果分段显示名。
 const List<String> kSearchSegments = <String>['歌曲', '歌单', '专辑', '歌手', '歌词'];
+
+/// 结果分段 → 六类分类搜索端点（SearchType）。
+const List<SearchType> kSearchSegmentTypes = <SearchType>[
+  SearchType.song,
+  SearchType.special,
+  SearchType.album,
+  SearchType.author,
+  SearchType.lyric,
+];
 
 /// 热门分类（前端关键词触发对应歌曲搜索；不臆造服务端分类端点）。
 const List<String> kHotCategories = <String>[
@@ -68,10 +78,14 @@ class _SearchPageState extends State<SearchPage> {
     if (q.isEmpty) return;
     try {
       final se = appGraph.search;
+      final typed = appGraph.searchTyped;
+      final SearchType type = kSearchSegmentTypes[_segment];
       setState(() {
         _query = q;
         _suggestF = null;
-        _resultF = se?.search(q, 1) ?? Future.value(const SearchResult());
+        _resultF = (_segment == 0)
+            ? (se?.search(q, 1) ?? Future.value(const SearchResult()))
+            : (typed?.typed(type, q, 1) ?? Future.value(const SearchResult()));
       });
       _history
         ..remove(q)
@@ -287,7 +301,10 @@ class _SearchPageState extends State<SearchPage> {
               backgroundColor: Sp.card,
               selectedColor: Sp.green,
               side: const BorderSide(color: Sp.divider),
-              onSelected: (_) => setState(() => _segment = i),
+              onSelected: (_) {
+                setState(() => _segment = i);
+                if (_query.isNotEmpty) _doSearch(_query);
+              },
             ),
           );
         },
@@ -420,11 +437,6 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _resultBody() {
-    if (_segment != 0) {
-      return SearchEmptyBox(
-        '「${kSearchSegments[_segment]}」分类搜索在当前 logic 层未开放端点，暂不可用',
-      );
-    }
     final Future<SearchResult>? f = _resultF;
     if (f == null) return const SearchEmptyBox('暂无结果');
     return FutureBuilder<SearchResult>(
