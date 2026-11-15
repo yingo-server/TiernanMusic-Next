@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart' show SongBrief;
-import 'search_page.dart' show Sp;
+import '../design/tokens.dart';
 
 class SearchSongTile extends StatelessWidget {
   const SearchSongTile({

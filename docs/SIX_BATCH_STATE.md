@@ -1,6 +1,7 @@
 batch=7
-stage=release_dispatched
-last_commit=e195289
-stable_dispatch=HTTP 204
-verify_timer=4b82b435-7dcd-4038-b54f-a8c537f39c30
-note=六批全部完成；workflow_dispatch stable=true 已触发；LTS 终验 9 分钟后瞬时检查 prerelease=false + 3 APK + verification.json。
+stage=release_retry
+last_commit=db09368
+stable_dispatch_first=failed_ci_compile_errors
+fix=full-SDK compile errors + 1500-line rule
+retry_timer=fab23e0d-2996-4e8d-9c76-c18c24d9c02a
+note=首次 stable=true run 因并发代理遗留编译错失败；db09368 已修并推送。定时器在 push CI 绿后重发 stable=true，再终验 prerelease=false + 3 APK + verification.json。

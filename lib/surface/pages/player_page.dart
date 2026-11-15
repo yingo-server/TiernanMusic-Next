@@ -190,9 +190,13 @@ class _PlayerPageState extends State<PlayerPage> {
               onTap: () {
                 Navigator.of(ctx).pop();
                 registerMvModule();
-                final hash = snap.player.current?.hash ?? '';
+                final current =
+                    PlaybackSession.instance.snapshot.player.current;
+                final hash = current?.hash ?? '';
                 Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => MvPage(hash: hash)),
+                  MaterialPageRoute<void>(
+                    builder: (_) => MvPage(songHash: hash),
+                  ),
                 );
               },
             ),
