@@ -133,47 +133,48 @@ jobs:
         run: |
           V=ok
           # 语法闸：dart format 解析失败即语法错（不依赖 flutter SDK）
-          test "${{ steps.syntax.outcome }}" = success || V=fail
-          grep -qi "Could not format" /tmp/syntax.log && V=fail
+          # 判据失败时即时打印，避免「verdict 红了但不知哪条」反复排查。
+          mark() { echo "VERDICT-FAIL: $1"; V=fail; }
+          test "${{ steps.syntax.outcome }}" = success || mark syntax-outcome
+          grep -qi "Could not format" /tmp/syntax.log && mark syntax-format
           # analyze 必须真的跑过（有汇总行）+ 无 error；warning/info 不参与门禁。
-          # 不可用 steps.analyze.outcome：flutter analyze 只要有 warning 就 exit 1，
-          # 与批05-A「warning 仅计数」决策冲突，会造成本轮这种假红。
-          grep -qE "issues found|No issues found" /tmp/analyze.log || V=fail
-          grep -qE "error •|^\s*error" /tmp/analyze.log && V=fail
+          # 只认 analyzer 的 "error •" 行；##[error] 是 Actions 步骤壳，不算。
+          grep -qE "issues found|No issues found" /tmp/analyze.log || mark analyze-ran
+          grep -q "error •" /tmp/analyze.log && mark analyzer-errors
           # 批05-A: warning 仅计数可见，不参与 fail 门禁
           W=$(grep -cE "warning •|^\s*warning" /tmp/analyze.log || true)
           echo "analyzer warnings: $W"
           echo "warnings=$W" >> $GITHUB_OUTPUT
-          grep -qE "All tests (passed|passed!)|tests passed" /tmp/test.log || V=fail
-          grep -q "VIOLATION" /tmp/layer.log && V=fail
-          grep -q "PASS strict seven-six" /tmp/layer.log || V=fail
-          grep -q "REAL-ERRORS" /tmp/analyze_gate.log && V=fail
-          grep -q "^FAIL" /tmp/analyze_gate.log && V=fail
-          grep -q "Traceback" /tmp/analyze_gate.log && V=fail
-          grep -q "analyze_gate ok" /tmp/analyze_gate.log || V=fail
-          grep -q "^VIOLATION\|^FAIL" /tmp/smoke.log && V=fail
-          grep -q "PASS smoke_check" /tmp/smoke.log || V=fail
+          grep -qE "All tests (passed|passed!)|tests passed" /tmp/test.log || mark tests
+          grep -q "VIOLATION" /tmp/layer.log && mark layer-violation
+          grep -q "PASS strict seven-six" /tmp/layer.log || mark layer-pass
+          grep -q "REAL-ERRORS" /tmp/analyze_gate.log && mark gate-real-errors
+          grep -q "^FAIL" /tmp/analyze_gate.log && mark gate-fail
+          grep -q "Traceback" /tmp/analyze_gate.log && mark gate-traceback
+          grep -q "analyze_gate ok" /tmp/analyze_gate.log || mark gate-ok
+          grep -q "^VIOLATION\|^FAIL" /tmp/smoke.log && mark smoke-violation
+          grep -q "PASS smoke_check" /tmp/smoke.log || mark smoke-pass
           # md5 四向量：逐条正向 PASS（缺任一向量即 fail），FAIL 反向判据
-          grep -q "^PASS md5 empty:" /tmp/md5.log || V=fail
-          grep -q "^PASS md5 abc:" /tmp/md5.log || V=fail
-          grep -q "^PASS md5 fox:" /tmp/md5.log || V=fail
-          grep -q "^PASS md5 long:" /tmp/md5.log || V=fail
-          grep -q "^FAIL md5" /tmp/md5.log && V=fail
-          grep -q "FIELD-TRUTH-OK" /tmp/field_truth.log || V=fail
-          grep -q "FIELD-TRUTH-FAIL" /tmp/field_truth.log && V=fail
-          grep -q "FEATURE-REACHABILITY-OK" /tmp/reach.log || V=fail
-          grep -q "FEATURE-REACHABILITY-FAIL" /tmp/reach.log && V=fail
+          grep -q "^PASS md5 empty:" /tmp/md5.log || mark md5-empty
+          grep -q "^PASS md5 abc:" /tmp/md5.log || mark md5-abc
+          grep -q "^PASS md5 fox:" /tmp/md5.log || mark md5-fox
+          grep -q "^PASS md5 long:" /tmp/md5.log || mark md5-long
+          grep -q "^FAIL md5" /tmp/md5.log && mark md5-fail
+          grep -q "FIELD-TRUTH-OK" /tmp/field_truth.log || mark field-truth
+          grep -q "FIELD-TRUTH-FAIL" /tmp/field_truth.log && mark field-truth-fail
+          grep -q "FEATURE-REACHABILITY-OK" /tmp/reach.log || mark reach
+          grep -q "FEATURE-REACHABILITY-FAIL" /tmp/reach.log && mark reach-fail
           # 纯 Dart 契约自检：正向 self-check + 0 failed 两重判据（日志均已 tee）
-          grep -q "boot contract self-check" /tmp/boot_contract.log || V=fail
-          grep -q "0 failed" /tmp/boot_contract.log || V=fail
-          grep -q "session contract self-check" /tmp/session_contract.log || V=fail
-          grep -q "0 failed" /tmp/session_contract.log || V=fail
-          grep -q "resolve contract self-check" /tmp/resolve_contract.log || V=fail
-          grep -q "0 failed" /tmp/resolve_contract.log || V=fail
-          grep -q "play contract self-check" /tmp/play_contract.log || V=fail
-          grep -q "0 failed" /tmp/play_contract.log || V=fail
-          grep -q "download contract self-check" /tmp/download_contract.log || V=fail
-          grep -q "0 failed" /tmp/download_contract.log || V=fail
+          grep -q "boot contract self-check" /tmp/boot_contract.log || mark boot-selfcheck
+          grep -q "0 failed" /tmp/boot_contract.log || mark boot-zero
+          grep -q "session contract self-check" /tmp/session_contract.log || mark session-selfcheck
+          grep -q "0 failed" /tmp/session_contract.log || mark session-zero
+          grep -q "resolve contract self-check" /tmp/resolve_contract.log || mark resolve-selfcheck
+          grep -q "0 failed" /tmp/resolve_contract.log || mark resolve-zero
+          grep -q "play contract self-check" /tmp/play_contract.log || mark play-selfcheck
+          grep -q "0 failed" /tmp/play_contract.log || mark play-zero
+          grep -q "download contract self-check" /tmp/download_contract.log || mark download-selfcheck
+          grep -q "0 failed" /tmp/download_contract.log || mark download-zero
           echo "verdict=$V" >> $GITHUB_OUTPUT
           test "$V" = ok
 
