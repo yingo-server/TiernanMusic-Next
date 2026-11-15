@@ -3,7 +3,8 @@
 // 播放偏好经 PlaybackSession 意图方法。
 import 'package:flutter/material.dart';
 
-import '../../bridges/bridge_core.dart' show AudioQuality, qualityParam, vipQualities;
+import '../../bridges/bridge_core.dart'
+    show AudioQuality, qualityParam, vipQualities;
 import '../../bridges/bridge_logic.dart' show AuthLogic, AccountLogic;
 import '../../bridges/bridge_session.dart'
     show playbackSession, SurfaceModule, NavEntry;
@@ -25,9 +26,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  static const List<double> _speeds = <double>[
-    0.5, 0.75, 1.0, 1.25, 1.5, 2.0,
-  ];
+  static const List<double> _speeds = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
   // 主题模式已上移 L6 ThemeController（批1-F1），本页不再持本地 state。
   String _nickname = '';
@@ -72,6 +71,8 @@ class _SettingsPageState extends State<SettingsPage> {
     final AuthLogic? auth = appGraph.auth;
     if (auth == null) return;
     auth.logout();
+    // 登出即失效会话缓存/等待表（批6 网络专项：换号不复用旧 token 条目）。
+    appGraph.cache?.invalidateSession();
     setState(() {
       _loggedIn = false;
       _nickname = '';
@@ -143,8 +144,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _toast(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -163,14 +163,19 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SpSectionHeader(title: '账号'),
                 _group(<Widget>[
                   ListTile(
-                    leading: const Icon(Icons.person_outline, color: Sp.textSub),
+                    leading: const Icon(
+                      Icons.person_outline,
+                      color: Sp.textSub,
+                    ),
                     title: Text(_loggedIn ? '已登录' : '未登录'),
                     subtitle: Text(
                       _loggedIn
                           ? (_nickname.isEmpty ? '酷狗用户' : _nickname)
                           : '扫码登录后同步收藏与历史',
                       style: const TextStyle(
-                          fontSize: Sp.fSub, color: Sp.textSub),
+                        fontSize: Sp.fSub,
+                        color: Sp.textSub,
+                      ),
                     ),
                     trailing: _loggedIn
                         ? TextButton(
@@ -190,18 +195,22 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Text('主题模式',
-                            style: TextStyle(fontSize: Sp.fItem, color: Sp.text)),
+                        const Text(
+                          '主题模式',
+                          style: TextStyle(fontSize: Sp.fItem, color: Sp.text),
+                        ),
                         const SizedBox(height: Sp.gapM),
                         ValueListenableBuilder<int>(
                           valueListenable: ThemeController.instance,
-                          builder: (context, mode, _) =>
-                              SingleChildScrollView(
+                          builder: (context, mode, _) => SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: SegmentedButton<int>(
                               showSelectedIcon: false,
                               segments: const <ButtonSegment<int>>[
-                                ButtonSegment<int>(value: 0, label: Text('跟随系统')),
+                                ButtonSegment<int>(
+                                  value: 0,
+                                  label: Text('跟随系统'),
+                                ),
                                 ButtonSegment<int>(value: 1, label: Text('亮')),
                                 ButtonSegment<int>(value: 2, label: Text('暗')),
                                 ButtonSegment<int>(value: 3, label: Text('纯黑')),
@@ -221,31 +230,45 @@ class _SettingsPageState extends State<SettingsPage> {
                   ListTile(
                     leading: const Icon(Icons.graphic_eq, color: Sp.textSub),
                     title: const Text('音质'),
-                    subtitle: const Text('128（标准）',
-                        style: TextStyle(
-                            fontSize: Sp.fSub, color: Sp.textSub)),
-                    trailing: const Icon(Icons.chevron_right, color: Sp.textFaint),
+                    subtitle: const Text(
+                      '128（标准）',
+                      style: TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Sp.textFaint,
+                    ),
                     onTap: _openQualitySheet,
                   ),
                   ListTile(
                     leading: const Icon(Icons.speed, color: Sp.textSub),
                     title: const Text('倍速'),
-                    subtitle: Text('${speed}x',
-                        style: const TextStyle(
-                            fontSize: Sp.fSub, color: Sp.textSub)),
-                    trailing: const Icon(Icons.chevron_right, color: Sp.textFaint),
+                    subtitle: Text(
+                      '${speed}x',
+                      style: const TextStyle(
+                        fontSize: Sp.fSub,
+                        color: Sp.textSub,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Sp.textFaint,
+                    ),
                     onTap: () => _openSpeedSheet(speed),
                   ),
                 ]),
                 const SpSectionHeader(title: '存储'),
                 _group(<Widget>[
                   ListTile(
-                    leading: const Icon(Icons.cleaning_services_outlined,
-                        color: Sp.textSub),
+                    leading: const Icon(
+                      Icons.cleaning_services_outlined,
+                      color: Sp.textSub,
+                    ),
                     title: const Text('清理缓存'),
-                    subtitle: const Text('清理会话缓存与请求合并表',
-                        style: TextStyle(
-                            fontSize: Sp.fSub, color: Sp.textSub)),
+                    subtitle: const Text(
+                      '清理会话缓存与请求合并表',
+                      style: TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+                    ),
                     trailing: FilledButton(
                       onPressed: _clearCache,
                       child: const Text('清理'),
@@ -257,9 +280,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   ListTile(
                     leading: const Icon(Icons.info_outline, color: Sp.textSub),
                     title: const Text('版本'),
-                    trailing: Text(kAppVersion,
-                        style: const TextStyle(
-                            fontSize: Sp.fSub, color: Sp.textSub)),
+                    trailing: Text(
+                      kAppVersion,
+                      style: const TextStyle(
+                        fontSize: Sp.fSub,
+                        color: Sp.textSub,
+                      ),
+                    ),
                   ),
                 ]),
               ],
@@ -271,14 +298,14 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _group(List<Widget> children) => Container(
-        margin: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
-        decoration: BoxDecoration(
-          color: Sp.card,
-          borderRadius: BorderRadius.circular(Sp.rCard),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(children: children),
-      );
+    margin: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+    decoration: BoxDecoration(
+      color: Sp.card,
+      borderRadius: BorderRadius.circular(Sp.rCard),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: Column(children: children),
+  );
 }
 
 /// 设置模块（进底部导航）。
@@ -293,5 +320,6 @@ class SettingsPageModule extends SurfaceModule {
   NavEntry? get navEntry => const NavEntry('设置', 'settings', navOrder: 4);
 
   @override
-  WidgetBuilder? get builder => (_) => const SettingsPage();
+  WidgetBuilder? get builder =>
+      (_) => const SettingsPage();
 }

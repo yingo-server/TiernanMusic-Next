@@ -29,8 +29,12 @@ class KugouSession {
     if (_dfid.isEmpty) {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       final rnd = DateTime.now().microsecondsSinceEpoch;
-      _dfid = String.fromCharCodes(List.generate(
-          24, (i) => chars.codeUnitAt((rnd >> (i % 31)) % chars.length)));
+      _dfid = String.fromCharCodes(
+        List.generate(
+          24,
+          (i) => chars.codeUnitAt((rnd >> (i % 31)) % chars.length),
+        ),
+      );
     }
     return _dfid;
   }
@@ -40,10 +44,12 @@ class KugouSession {
 
 /// 端点注册表：所有端点在此声明，改 API 只改这里。
 class KugouClient {
-  KugouClient(this.session,
-      {ResourceCache? cache, InFlight<Map<String, dynamic>>? inflight})
-      : _cache = cache,
-        _inflight = inflight;
+  KugouClient(
+    this.session, {
+    ResourceCache? cache,
+    InFlight<Map<String, dynamic>>? inflight,
+  }) : _cache = cache,
+       _inflight = inflight;
   final KugouSession session;
 
   /// L2 磁盘缓存（可选；null = 不缓存）。
@@ -51,6 +57,7 @@ class KugouClient {
 
   /// 并发合并（可选；null = 不合并）。
   final InFlight<Map<String, dynamic>>? _inflight;
+
   /// 换号/登出时清等待表（不取消已发请求；磁盘键含 uid 天然隔离）。
   void clearInflight() {
     try {
@@ -77,8 +84,13 @@ class KugouClient {
     Map<String, Object?> body = const {},
     String? rawBody,
   }) async {
-    // 缓存/合并键：method + path + 排序 query + userid（键维度唯一真源）。
-    final String cacheKey = _cacheKeyOf(ep, params, body: body);
+    // 缓存/合并键：method + path + 排序 query + body/rawBody 摘要 + 身份/设备维度。
+    final String cacheKey = _cacheKeyOf(
+      ep,
+      params,
+      body: body,
+      rawBody: rawBody,
+    );
     final bool cacheable = ep.cacheable && _cache != null && rawBody == null;
     if (cacheable) {
       final hit = await _cache!.getJson(cacheKey);
@@ -88,12 +100,8 @@ class KugouClient {
       }
       Log.d('core.net', 'cache miss $cacheKey');
     }
-    Future<Map<String, dynamic>> run() => _requestRaw(
-          ep,
-          params,
-          body: body,
-          rawBody: rawBody,
-        );
+    Future<Map<String, dynamic>> run() =>
+        _requestRaw(ep, params, body: body, rawBody: rawBody);
     // 并发同键合并：只发一次真实请求，其余等待同一结果。
     final res = _inflight == null
         ? await run()
@@ -108,24 +116,41 @@ class KugouClient {
     return res;
   }
 
-  /// 缓存键：method + path + 排序后的 query + body 摘要 + userid + token 态。
-  /// 修复（批R2 审计）：旧键不含 body（同 query 不同 body 的 POST 会错误
-  /// 合并/命中）也不含 token 维度（匿名↔登录脏命中）。
-  String _cacheKeyOf(Endpoint ep, Map<String, Object?> params,
-      {Map<String, Object?> body = const {}}) {
+  /// 缓存/合并键：稳定内容摘要（非 hashCode）+ 身份维度 + 设备维度。
+  /// 批6 修复：body/token/rawBody 用 md5Hex(jsonEncode 排序键)，避免进程内
+  /// hashCode 漂移导致脏命中；dfid/mid 入键防换设备/换 mid 命中旧 URL。
+  String _cacheKeyOf(
+    Endpoint ep,
+    Map<String, Object?> params, {
+    Map<String, Object?> body = const {},
+    String? rawBody,
+  }) {
     try {
-      final keys = params.keys.toList()..sort();
-      final q = keys.map((k) => '$k=${params[k]}').join('&');
-      final b = body.isEmpty
+      final String q = _stable(params);
+      final String b = body.isEmpty ? '' : '&body=${_stable(body)}';
+      final String rb = rawBody == null || rawBody.isEmpty
           ? ''
-          : '&body=${body.hashCode}';
-      return '${ep.method} ${ep.base}${ep.path}?$q$b'
+          : '&raw=${md5Hex(rawBody)}';
+      final String tokenTag = session.token.isEmpty
+          ? 'anon'
+          : md5Hex(session.token).substring(0, 8);
+      return '${ep.method} ${ep.base}${ep.path}?$q$b$rb'
           '&uid=${session.userid}'
-          '&tk=${session.token.isEmpty ? 'anon' : session.token.hashCode}';
+          '&tk=$tokenTag'
+          '&dfid=${session.dfid}'
+          '&mid=${session.mid}';
     } catch (e, st) {
       Log.e('core.net', 'cacheKey build failed', e, st);
       return '${ep.method} ${ep.path}';
     }
+  }
+
+  /// Map 稳定摘要：键排序后 jsonEncode → md5（不依赖 Map.hashCode）。
+  String _stable(Map<String, Object?> m) {
+    if (m.isEmpty) return md5Hex('{}');
+    final keys = m.keys.toList()..sort();
+    final sorted = <String, Object?>{for (final k in keys) k: m[k]};
+    return md5Hex(jsonEncode(sorted));
   }
 
   /// 真实请求（不含缓存/合并）。
@@ -136,10 +161,10 @@ class KugouClient {
     String? rawBody,
   }) async {
     final p = Map<String, Object?>.from(params);
-    final bodyStr =
-        rawBody ?? (ep.method == 'POST' ? jsonEncode(body) : '');
+    final bodyStr = rawBody ?? (ep.method == 'POST' ? jsonEncode(body) : '');
     if (!ep.clearDefaultParams) {
-      p..putIfAbsent('dfid', () => session.dfid)
+      p
+        ..putIfAbsent('dfid', () => session.dfid)
         ..putIfAbsent('uuid', () => '-')
         ..putIfAbsent('appid', () => KugouSign.appid)
         ..putIfAbsent('clientver', () => KugouSign.clientver);
@@ -148,9 +173,12 @@ class KugouClient {
       if (ep.includeSrcappid) {
         p.putIfAbsent('srcappid', () => KugouSign.srcappid);
       }
-      p..putIfAbsent('mid', () => session.mid.isEmpty ? '0' : session.mid)
-        ..putIfAbsent('clienttime',
-            () => DateTime.now().millisecondsSinceEpoch ~/ 1000);
+      p
+        ..putIfAbsent('mid', () => session.mid.isEmpty ? '0' : session.mid)
+        ..putIfAbsent(
+          'clienttime',
+          () => DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        );
       if (session.token.isNotEmpty) p.putIfAbsent('token', () => session.token);
       if (session.userid.isNotEmpty) {
         p.putIfAbsent('userid', () => session.userid);
@@ -158,7 +186,10 @@ class KugouClient {
     }
     if (ep.encryptKey && p['hash'] != null) {
       p['key'] = KugouSign.playKey(
-          '${p['hash']}'.toLowerCase(), session.mid, session.userid);
+        '${p['hash']}'.toLowerCase(),
+        session.mid,
+        session.userid,
+      );
     }
     switch (ep.signType) {
       case SignType.android:
@@ -171,9 +202,11 @@ class KugouClient {
         break;
     }
     final q = p.entries
-        .map((e) =>
-            '${Uri.encodeQueryComponent(e.key)}='
-            '${Uri.encodeQueryComponent(e.value.toString())}')
+        .map(
+          (e) =>
+              '${Uri.encodeQueryComponent(e.key)}='
+              '${Uri.encodeQueryComponent(e.value.toString())}',
+        )
         .join('&');
     // 实测注意：签名串用原始类型（数字不带引号），发送统一字符串化。
     // 参数多参不缺参：默认参数恒显式在场并参与签名（FINDINGS.md §4-5）。
@@ -192,9 +225,10 @@ class KugouClient {
       ..set('kg-rf', 'B9EDA08A64250DEFFBCADDEE00F8F25F');
     // Cookie 一次性拼接（旧实现对每条 cookie 全量重写整头，效率低且易错）。
     if (session.cookies.isNotEmpty) {
-      req.headers.set('Cookie', session.cookies.entries
-          .map((e) => '${e.key}=${e.value}')
-          .join('; '));
+      req.headers.set(
+        'Cookie',
+        session.cookies.entries.map((e) => '${e.key}=${e.value}').join('; '),
+      );
     }
     if (bodyStr.isNotEmpty) {
       req.headers.contentType = ContentType.json;
@@ -206,17 +240,23 @@ class KugouClient {
     // 批2-F3：响应头阶段超时同样归一为 KugouApiException(-2)。旧版裸
     // timeout 抛 TimeoutException，与 body join 侧的 -2 语义不一致，上层
     // 无法按错误码分类重试；两段 15s 时长与 dfid 生成算法均不变。
-    final res = await req.close().timeout(responseTimeout, onTimeout: () {
-      Log.e('core.net', 'response header timeout ${ep.id}');
-      throw KugouApiException(-2, 'response header timeout (${ep.id})');
-    });
+    final res = await req.close().timeout(
+      responseTimeout,
+      onTimeout: () {
+        Log.e('core.net', 'response header timeout ${ep.id}');
+        throw KugouApiException(-2, 'response header timeout (${ep.id})');
+      },
+    );
     final text = await res
         .transform(utf8.decoder)
         .join()
-        .timeout(responseTimeout, onTimeout: () {
-      Log.e('core.net', 'response body timeout ${ep.id}');
-      throw KugouApiException(-2, 'response body timeout (${ep.id})');
-    });
+        .timeout(
+          responseTimeout,
+          onTimeout: () {
+            Log.e('core.net', 'response body timeout ${ep.id}');
+            throw KugouApiException(-2, 'response body timeout (${ep.id})');
+          },
+        );
     if (res.statusCode != 200) {
       throw KugouApiException(res.statusCode, 'http ${res.statusCode}: $text');
     }
@@ -226,9 +266,16 @@ class KugouClient {
     try {
       decoded = jsonDecode(text);
     } catch (e, st) {
-      Log.e('core.net', 'json decode failed ${ep.id} len=${text.length}', e, st);
-      throw KugouApiException(-3,
-          'invalid json from ${ep.id}: ${text.substring(0, text.length < 80 ? text.length : 80)}');
+      Log.e(
+        'core.net',
+        'json decode failed ${ep.id} len=${text.length}',
+        e,
+        st,
+      );
+      throw KugouApiException(
+        -3,
+        'invalid json from ${ep.id}: ${text.substring(0, text.length < 80 ? text.length : 80)}',
+      );
     }
     if (decoded is Map<String, dynamic>) return decoded;
     // rawBody 端点（加密响应如 delete_list）回退原文，由端点层解密。
