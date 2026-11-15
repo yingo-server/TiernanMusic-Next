@@ -222,7 +222,7 @@ class PlaybackSession extends ChangeNotifier {
                   title: cur.name.isEmpty ? cur.hash : cur.name,
                   artist: cur.singer,
                   artUri: cur.cover.isEmpty ? null : cur.cover,
-                  durationMs: (mv.timeLengthSec ?? 0) * 1000,
+                  durationMs: ((mv?.timeLengthSec) ?? 0) * 1000,
                 ),
               );
               Log.d(_tag, 'mv-audio fallback ok ${cur.hash}');
@@ -255,7 +255,7 @@ class PlaybackSession extends ChangeNotifier {
           title: cur.name.isEmpty ? cur.hash : cur.name,
           artist: cur.singer,
           artUri: cur.cover.isEmpty ? null : cur.cover,
-          durationMs: (src.timeLengthSec ?? 0) * 1000,
+          durationMs: ((src?.timeLengthSec) ?? 0) * 1000,
         ),
       );
     } catch (e, st) {
