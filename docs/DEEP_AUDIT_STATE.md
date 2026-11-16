@@ -7,7 +7,8 @@
 | 批 | 层 | 状态 | C1 | C2 | C3 | summary |
 |---|---|---|---|---|---|---|
 | A1 | init+bootloader+kernel | 🟢 完成 | ✅ | ✅ | ✅(503断收尾,正文可用) | ✅ |
-| A2 | core·net 底座 | 🔵 进行中 | 派 | 派 | 派 | — |
+| A2 | core·net 底座 | 🟢 完成 | ✅ | ✅ | ✅ | ✅(含FIPS复核) |
+| A3 | core·net endpoints | 🔵 进行中 | 派 | 派 | 派 | — |
 | A3 | core·net endpoints | ⚪ 未开始 | — | — | — | — |
 | A4 | core 非网络 | ⚪ 未开始 | — | — | — | — |
 | A5 | logic 全量 | ⚪ 未开始 | — | — | — | — |
