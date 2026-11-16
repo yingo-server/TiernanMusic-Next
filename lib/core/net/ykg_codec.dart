@@ -208,11 +208,11 @@ Map<String, String>? _parseCanonical(String plain) {
 }
 
 String _b64Url(List<int> bytes) =>
-    base64UrlEncode(bytes).replaceAll('=', '');
+    base64Url.encode(bytes).replaceAll('=', '');
 
 List<int> _b64UrlDecode(String s) {
   final pad = (4 - s.length % 4) % 4;
-  return base64UrlDecode(s + '=' * pad);
+  return base64Url.decode(s + '=' * pad);
 }
 
 class YkgException implements Exception {

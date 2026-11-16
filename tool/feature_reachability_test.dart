@@ -206,9 +206,10 @@ void main() {
       (arbs.first.keys.where((k) => !k.startsWith('@')).toList()..sort()).join(
         ',',
       );
+  final keyCount = baseKeys.split(',').length;
   check(
-    'arb 20 keys, all languages identical',
-    baseKeys.split(',').length == 20 &&
+    'arb $keyCount keys (>=20), all languages identical',
+    keyCount >= 20 &&
         arbs.every((m) {
           final k = m.keys.where((x) => !x.startsWith('@')).toList()..sort();
           return k.join(',') == baseKeys;

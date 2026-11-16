@@ -79,9 +79,10 @@ class _YkgSheetState extends State<_YkgSheet> {
   }
 
   Future<void> _doImport() async {
+    final s = S.of(context);
     final logic = appGraph.ykg;
     if (logic == null) {
-      _set(S.of(context).t('favoriteUnavailable'));
+      _set(s.t('favoriteUnavailable'));
       return;
     }
     final text = _link.text.trim();
