@@ -362,7 +362,15 @@ class ResourceCache {
           'lastAccess': now,
           if (ttl != null) 'ttlMs': ttl.inMilliseconds,
         };
-        await _saveIndex();
+        // 审查修复（阶段A A4 P1）：旧实现忽略返回值，索引写失败时
+        // 「数据文件已换、索引仍旧」的不一致无任何信号。此处显式留痕。
+        final bool saved = await _saveIndex();
+        if (!saved) {
+          bk.logE(
+            _tag,
+            'putString index persist failed key=$key (data file replaced, index stale)',
+          );
+        }
       });
       await _cleanupEnqueued();
     } catch (e, st) {

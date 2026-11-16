@@ -760,6 +760,7 @@ void main() {
     'album_audio_id': 32029511,
   };
   final mv = MvBrief.fromMap(mvItem);
+  eq('mv.videoId(video_id 实测键)', mv.videoId, 596344);
   eq('mv.name(mv_name 实测键)', mv.name, '夜曲');
   eq('mv.singer', mv.singer, '周杰伦');
   eq('mv.durationMs', mv.durationMs, 231732);

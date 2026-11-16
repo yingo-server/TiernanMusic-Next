@@ -562,6 +562,12 @@ int _gmul(int a, int b) {
 // ─── AES-128 核心（单块 ECB） ───
 
 /// 轮密钥扩展（AES-128 → 11 组 16 字节，共 176 字节）。
+/// 审查修复（阶段A A2 P0，FIPS-197 C.1 向量复核）：旧实现 Rcon 恒 0x01，
+/// 第 2~10 轮轮密钥全错、与标准 AES 不互通（自洽加解密测不出此 bug）。
+/// 按 FIPS-197 §5.2 取 10 个轮常量。
+const List<int> _kRcon = <int>[
+  0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36,
+];
 Uint8List _expandKey(Uint8List key) {
   if (key.length != 16) throw CryptoException('aes key must be 16 bytes');
   final w = List<int>.filled(176, 0);
@@ -569,9 +575,9 @@ Uint8List _expandKey(Uint8List key) {
   for (var i = 16; i < 176; i += 4) {
     var t0 = w[i - 4], t1 = w[i - 3], t2 = w[i - 2], t3 = w[i - 1];
     if (i % 16 == 0) {
-      // RotWord + SubWord + Rcon
+      // RotWord + SubWord + Rcon（按轮次取，i/16 = 1..10）。
       final tmp = t0;
-      t0 = _sbox[t1] ^ 0x01;
+      t0 = _sbox[t1] ^ _kRcon[(i ~/ 16) - 1];
       t1 = _sbox[t2];
       t2 = _sbox[t3];
       t3 = _sbox[tmp];

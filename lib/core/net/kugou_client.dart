@@ -107,13 +107,40 @@ class KugouClient {
         ? await run()
         : await _inflight!.run(cacheKey, run);
     if (cacheable) {
-      try {
-        await _cache!.putJson(cacheKey, res);
-      } catch (e, st) {
-        Log.e('core.net', 'cache store failed $cacheKey', e, st);
+      // 审查修复（阶段A A2/A4 P1）：只缓存「成功且非空」的业务响应。
+      // 旧实现无条件 putJson，一次限流/风控失败(status!=1 / error_code /
+      // 空 data)会被固化 7 天，换号也难自愈。
+      if (_cacheableSuccess(res)) {
+        try {
+          await _cache!.putJson(cacheKey, res);
+        } catch (e, st) {
+          Log.e('core.net', 'cache store failed $cacheKey', e, st);
+        }
+      } else {
+        Log.d('core.net', 'cache skip (non-success) $cacheKey');
       }
     }
     return res;
+  }
+
+  /// 业务成功判定（保守）：显式 error_code/status 失败一律不缓存；
+  /// 空 Map / 空 data 也不缓存。端点形态多样，宁可少缓存不可固化错误。
+  bool _cacheableSuccess(Map<String, dynamic> res) {
+    if (res.isEmpty) return false;
+    final ec = res['error_code'];
+    if (ec != null) {
+      final n = ec is int ? ec : int.tryParse('$ec') ?? -1;
+      if (n != 0) return false;
+    }
+    final st = res['status'];
+    if (st != null) {
+      final n = st is int ? st : int.tryParse('$st') ?? -1;
+      if (n != 1) return false;
+    }
+    final d = res['data'];
+    if (d is List && d.isEmpty) return false;
+    if (d is Map && d.isEmpty) return false;
+    return true;
   }
 
   /// 缓存/合并键：稳定内容摘要（非 hashCode）+ 身份维度 + 设备维度。
@@ -141,7 +168,11 @@ class KugouClient {
           '&mid=${session.mid}';
     } catch (e, st) {
       Log.e('core.net', 'cacheKey build failed', e, st);
-      return '${ep.method} ${ep.path}';
+      // 审查修复（阶段A A2 P1）：旧实现降级为 'method path' 宽键，会让
+      // 不同参数/不同用户塌缩到同一缓存。改为带唯一后缀的键，等价于
+      // 「本次不命中、不复用」，绝不收敛到公共键。
+      final nonce = DateTime.now().microsecondsSinceEpoch;
+      return '${ep.method} ${ep.path}?__nokey=$nonce';
     }
   }
 

@@ -35,6 +35,7 @@ const String _tag = 'ep.mv';
 /// MV 摘要（kmr/audio/mv data[0][0]）。
 class MvBrief {
   const MvBrief({
+    this.videoId = 0,
     this.hash = '',
     this.name = '',
     this.singer = '',
@@ -42,7 +43,11 @@ class MvBrief {
     this.coverUrl = '',
   });
 
-  final String hash; // MV hash（清晰度查询用）
+  /// 审查修复（阶段A A3 P0）：实测 A5-1 的 MV 摘要项标识键是数字
+  /// `video_id`（如 596344），**没有 hash 键**。旧实现只读 hash/mvhash/
+  /// video_hash，导致 getMvBySong 以 hash 非空为门槛而恒返回 null。
+  final int videoId;
+  final String hash; // MV hash（若有，来自歌曲侧 mvdata；档位查询用 videoId）
   final String name; // mv_name / filename
   final String singer; // singername / author_name
   final int durationMs; // duration（毫秒，实测 231732=3:51）
@@ -51,9 +56,9 @@ class MvBrief {
   factory MvBrief.fromMap(Map<String, dynamic> m) {
     try {
       return MvBrief(
-        // 批N2-B 实测（kmr/v1/audio/mv data[0][0]）：hash 键是 deprecated.hash /
-        // mvdata[].hash 携带于上层 song 项；MV 摘要项本身标识键是 video_id，
-        // hash 由上游 mvdata 传入 → 保留 hash/mvhash/video_hash 三兜底。
+        videoId: safeInt(m['video_id']),
+        // hash 在 MV 摘要项里实测不存在（A5-1）；保留三兜底仅为兼容
+        // 上层从歌曲 mvdata/deprecated 传入的情形，不再作为成功门槛。
         hash: safeStr(m['hash'] ?? m['mvhash'] ?? m['video_hash'])
             .toLowerCase(),
         // 实测键：mv_name（非 mvname/filename）。
@@ -85,6 +90,7 @@ class MvBrief {
   }
 
   Map<String, Object?> toMap() => <String, Object?>{
+    'videoId': videoId,
     'hash': hash,
     'name': name,
     'singer': singer,
@@ -281,10 +287,12 @@ Future<MvBrief?> getMvBySong(KugouClient client, int albumAudioId) async {
     final mv = MvBrief.fromMap(list.first);
     Log.d(
       _tag,
-      'getMvBySong aid=$albumAudioId '
+      'getMvBySong aid=$albumAudioId videoId=${mv.videoId} '
       'hash=${mv.hash.isEmpty ? '-' : mv.hash}',
     );
-    if (mv.hash.isEmpty) return null;
+    // 审查修复（阶段A A3 P0）：成功门槛改为实测标识 video_id，
+    // 旧门槛 `mv.hash.isEmpty` 在契约正确返回下恒真 → 恒返回 null。
+    if (mv.videoId <= 0) return null;
     return mv;
   } catch (e, st) {
     Log.e(_tag, 'getMvBySong failed aid=$albumAudioId', e, st);
@@ -300,12 +308,13 @@ Future<MvBrief?> getMvBySong(KugouClient client, int albumAudioId) async {
 /// （三态实测 404，registry 注「已弃用」）。
 Future<List<MvQuality>> getVideoQualities(
   KugouClient client,
-  String mvHash,
+  int videoId,
 ) async {
   try {
-    final h = mvHash.trim().toLowerCase();
-    if (h.isEmpty) {
-      Log.w(_tag, 'getVideoQualities empty hash');
+    // 审查修复（阶段A A3 P1）：/v1/video 的 data[0].video_id 是**数字
+    // MV id**（实测 596344），旧签名收 32 位 hash 串冒充 video_id 致档位恒空。
+    if (videoId <= 0) {
+      Log.w(_tag, 'getVideoQualities invalid videoId=$videoId');
       return const <MvQuality>[];
     }
     final clienttime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
@@ -321,7 +330,7 @@ Future<List<MvQuality>> getVideoQualities(
       'key': KugouSign.signParamsKey('$clienttime'),
       'show_resolution': 1,
       'data': <Object?>[
-        <String, Object?>{'video_id': h},
+        <String, Object?>{'video_id': videoId},
       ],
     };
     final res = await client.request(
@@ -343,14 +352,14 @@ Future<List<MvQuality>> getVideoQualities(
     if (items.isEmpty) {
       Log.w(
         _tag,
-        'getVideoQualities no flat tiers hash=$h '
+        'getVideoQualities no flat tiers videoId=$videoId '
         '(kmr/v2 fallback removed: 404 deprecated)',
       );
     }
-    Log.d(_tag, 'getVideoQualities hash=$h got=${items.length}');
+    Log.d(_tag, 'getVideoQualities videoId=$videoId got=${items.length}');
     return items;
   } catch (e, st) {
-    Log.e(_tag, 'getVideoQualities failed hash=$mvHash', e, st);
+    Log.e(_tag, 'getVideoQualities failed videoId=$videoId', e, st);
     return const <MvQuality>[];
   }
 }

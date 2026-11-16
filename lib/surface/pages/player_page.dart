@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart'
     show AudioQuality, qualityParam, vipQualities;
-import '../../bridges/bridge_logic.dart' show PlayMode;
+import '../../bridges/bridge_logic.dart' show PlayMode, SongBrief;
 import '../../bridges/bridge_session.dart'
     show
         appGraph,
@@ -15,6 +15,7 @@ import '../../bridges/bridge_session.dart'
         NavEntry;
 import '../design/tokens.dart';
 import '../design/components.dart';
+import '../l10n/s.dart' show S;
 import 'mv_page.dart' show MvPage, registerMvModule;
 
 /// 进度条：拖动只改本地预览，松手才 seek（严禁 onChanged 里直接 seek）。
@@ -63,7 +64,9 @@ class _SeekSliderState extends State<_SeekSlider> {
   }
 }
 
-/// 收藏按钮：状态本地维护（收藏域写端点尚未经桥暴露，故不写远端）。
+/// 收藏按钮：审查修复（阶段A A1/A3/A5/A7 P0）——旧实现是纯本地
+/// setState 假按钮，重启即丢、不落库、不请求。改为经 appGraph.collect
+/// 读真实镜像态 + 调真 toggle，失败给可见反馈。
 class FavoriteButton extends StatefulWidget {
   const FavoriteButton({super.key, this.onChanged});
 
@@ -74,18 +77,52 @@ class FavoriteButton extends StatefulWidget {
 }
 
 class _FavoriteButtonState extends State<FavoriteButton> {
-  bool _fav = false;
+  bool _busy = false;
 
   @override
-  Widget build(BuildContext context) => IconButton(
-    onPressed: () {
-      setState(() => _fav = !_fav);
+  Widget build(BuildContext context) {
+    final cur = PlaybackSession.instance.snapshot.player.current;
+    final hash = cur?.hash ?? '';
+    final collected =
+        hash.isEmpty ? false : (appGraph.collect?.isCollected(hash) ?? false);
+    return IconButton(
+      onPressed: _busy ? null : () => _toggle(cur),
+      icon: Icon(collected ? Icons.favorite : Icons.favorite_border),
+      color: collected ? Sp.green : Sp.textSub,
+      tooltip: collected ? '取消收藏' : '收藏',
+    );
+  }
+
+  Future<void> _toggle(SongBrief? cur) async {
+    final logic = appGraph.collect;
+    if (logic == null || cur == null) {
+      _msg(S.of(context).t('favoriteUnavailable'));
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final r = await logic.toggle(cur.hash, cur.mixSongId, song: cur);
+      if (!mounted) return;
+      if (r.needsLogin) {
+        _msg(S.of(context).t('favoriteNeedLogin'));
+      } else if (!r.ok) {
+        _msg(S.of(context).t('favoriteFailed'));
+      }
+      setState(() {}); // 刷新 isCollected 真实态
       widget.onChanged?.call();
-    },
-    icon: Icon(_fav ? Icons.favorite : Icons.favorite_border),
-    color: _fav ? Sp.green : Sp.textSub,
-    tooltip: _fav ? '取消收藏' : '收藏',
-  );
+    } catch (e) {
+      _msg('收藏失败：$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _msg(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
+    );
+  }
 }
 
 /// 播放页。
@@ -192,12 +229,49 @@ class _PlayerPageState extends State<PlayerPage> {
                 registerMvModule();
                 final current =
                     PlaybackSession.instance.snapshot.player.current;
-                final hash = current?.hash ?? '';
+                final aid = current?.albumAudioId ?? 0;
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => MvPage(songHash: hash),
+                    builder: (_) => MvPage(albumAudioId: aid),
                   ),
                 );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.download_outlined, color: Sp.textSub),
+              title: const Text('下载当前歌曲'),
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                final cur = PlaybackSession.instance.snapshot.player.current;
+                final mgr = appGraph.downloads;
+                if (cur == null || mgr == null) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(S.of(context).t('downloadUnavailable'))),
+                    );
+                  }
+                  return;
+                }
+                try {
+                  final task = await mgr.enqueue(cur, '128');
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          task == null
+                              ? S.of(context).t('errorGeneric')
+                              : S.of(context).t('downloadQueued'),
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('下载失败：$e')),
+                    );
+                  }
+                }
               },
             ),
             ListTile(

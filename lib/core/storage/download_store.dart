@@ -99,13 +99,16 @@ class DownloadStore {
     return Map.unmodifiable(_index);
   }
 
-  /// 保存索引（先写 .part 再原子 rename）。
+  /// 保存索引（先写 .part 再原子 rename 覆盖）。
+  /// 审查修复（阶段A A4 P1）：旧实现「先 deleteSync 旧索引再 rename」有
+  /// 崩溃空窗——删除后、rename 前进程被杀会丢全部下载记录。POSIX rename
+  /// 对已存在的目标是原子覆盖，直接 rename 即可，无需先删。
   bool saveIndex() {
     try {
       final arr = _index.values.map((r) => r.toJson()).toList();
       final tmp = File('${_indexFile.path}.part');
       tmp.writeAsStringSync(jsonEncode(arr), flush: true);
-      if (_indexFile.existsSync()) _indexFile.deleteSync();
+      // 原子覆盖：要么旧索引完整，要么新索引完整，无空窗。
       tmp.renameSync(_indexFile.path);
       Log.d('dlstore', 'index saved: ${arr.length} records');
       return true;

@@ -62,7 +62,19 @@ class BootOutcome {
         );
       }
       // 成功路径：L2 BootResult。逐字段动态读取（唯一允许的收口点）。
+      // 审查修复（阶段A A1/A6 P0）：BootResult 是类而非 Map，失败路径的
+      // `BootResult(rejected: true)` 会落到本分支。旧代码无条件返回「成功」，
+      // 导致 main 拿到全 null deps、显示误导性的「核心模块缺失」。
+      // 此处先探测 rejected，为真时转成失败 Map 归一（保留真实原因）。
       final d = any as dynamic;
+      final bool dynRejected = d.rejected == true;
+      if (dynRejected) {
+        return BootOutcome.fromAny(<String, Object?>{
+          'rejected': true,
+          'error': 'boot rejected',
+          'detail': 'core assembly failed (see boot log)',
+        });
+      }
       return BootOutcome._(false, '', '', <String, Object?>{
         'client': d.client,
         'songDao': d.songDao,

@@ -61,10 +61,18 @@ class Sp {
   static const double navH = 64;
   static const double artHero = 280;
 
-  // ── 动效 ──
-  static const Duration fast = Duration(milliseconds: 120);
-  static const Duration normal = Duration(milliseconds: 220);
-  static const Curve curve = Curves.easeOutCubic;
+  // ── 动效（审查修复：MD3 motion 分级令牌）──
+  // Material 3 规范：Emphasized 进入屏幕 400ms / 退出 200ms / 屏幕内 500ms；
+  // Standard 250 / 200 / 300ms。曲线用规范 cubic-bezier 的 Flutter 近似。
+  static const Duration fast = Duration(milliseconds: 200); // standard accelerate
+  static const Duration normal = Duration(milliseconds: 300); // standard
+  static const Duration enter = Duration(milliseconds: 400); // emphasized decelerate
+  static const Duration screen = Duration(milliseconds: 500); // emphasized
+  static const Curve curve = Curves.easeOutCubic; // 兼容旧调用
+  static const Curve standard = Curves.ease; // cubic-bezier(0.2,0,0,1)
+  static const Curve emphasized = Curves.easeOutCubic; // cubic-bezier(0.05,0.7,0.1,1)
+  static const Curve decelerate = Curves.decelerate; // 进入屏幕
+  static const Curve accelerate = Curves.easeIn; // 退出屏幕
 
   /// 主题（唯一工厂；AppRoot 只用它）。dark=false 时用亮色映射。
   static ThemeData theme({bool dark = true}) {
@@ -91,7 +99,10 @@ class Sp {
             surfaceContainerHighest: divider,
             primary: green,
             onPrimary: Colors.black,
+            primaryContainer: greenDim,
+            onPrimaryContainer: text,
             error: red,
+            onError: Colors.white,
           );
       return ThemeData(
         useMaterial3: true,

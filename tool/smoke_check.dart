@@ -305,6 +305,8 @@ void _checkForbiddenImports(String rel, String src) {
       'package:isar/isar.dart',
       'package:just_audio/just_audio.dart',
       'package:audio_service/audio_service.dart',
+      // YKG 链接登录：成熟密码学库仅 L4 core 可引用（算法不自研）。
+      'package:cryptography/cryptography.dart',
     ];
     const l6Extra = [
       'package:flutter_riverpod',

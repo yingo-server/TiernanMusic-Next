@@ -100,6 +100,8 @@ export '../logic/lyrics/lyrics_parser.dart'
 export '../kernel/kernel.dart' show Log;
 // ── 功能对齐批2 收尾：多账号 / 翻译显示门面 ──
 export '../logic/auth/account_logic.dart' show AccountLogic;
+// YKG 链接登录编排（L5；密码学在 L4 core/net/ykg_codec.dart）。
+export '../logic/auth/ykg_logic.dart' show YkgLogic;
 export '../logic/lyrics/translation_logic.dart'
     show TranslationLogic, DisplayLine;
 // ── 个人 FM logic 门面（功能对齐批4-C · GAP #21；端点 needs probe） ──

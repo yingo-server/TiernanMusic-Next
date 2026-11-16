@@ -1,16 +1,23 @@
 // L5 logic/catalog · MV 域门面（批1-B · GAP_ANALYSIS #16）
-// videoDetail/videoUrl 端点 + LruCache(ns:'mv')。schemaVer v1（顶部常量）。
+// videoDetail/videoUrl 端点 + LruCache(ns:'mv')。schemaVer v2（顶部常量）。
 // 风格照 rank_logic.dart：缓存优先、每方法 try/catch + Log('logic.mv')。
 // 清晰度降级策略见 playUrl 文档注释。
+// 审查修复（阶段A A3/A5）：/v1/video 需要**数字 video_id**（实测 596344），
+// 旧签名用 32 位歌曲 hash 冒充 → 档位恒空。qualities/playUrl 入参改 int。
 import '../../bridges/bridge_kernel.dart' show Log;
 import '../../bridges/bridge_core.dart'
     as mv
-    show MvPlayResult, MvQuality, getVideoQualities, getVideoUrl;
+    show
+        MvPlayResult,
+        MvQuality,
+        getMvBySong,
+        getVideoQualities,
+        getVideoUrl;
 import '../../bridges/bridge_core.dart'
     show KugouClient, LruCache, buildKey, prefixOf;
 
-/// MV 域缓存 schema 版本。
-const int kMvCacheSchemaVer = 1;
+/// MV 域缓存 schema 版本（v2：键改用 videoId，旧 hash 键条目自然失效）。
+const int kMvCacheSchemaVer = 2;
 
 const String _tag = 'logic.mv';
 const String _ns = 'mv';
@@ -28,56 +35,67 @@ class MvLogic {
   final KugouClient _client;
   final LruCache<String, dynamic> _cache;
 
-  /// MV 清晰度档位（video/detail）。缓存优先。
-  Future<List<mv.MvQuality>> qualities(String mvHash) async {
+  /// 按歌曲 albumAudioId 解析数字 videoId（两段式第一段）。
+  /// 端点 getMvBySong 现已按实测 video_id 返回 MvBrief（A3 P0 修复）；
+  /// 返回 0 表示该歌曲无 MV，调用方应给明确空态而不是发错误请求。
+  Future<int> videoIdOfSong(int albumAudioId) async {
     try {
-      final h = mvHash.trim().toLowerCase();
-      if (h.isEmpty) return const <mv.MvQuality>[];
+      if (albumAudioId <= 0) return 0;
+      final brief = await mv.getMvBySong(_client, albumAudioId);
+      final id = brief?.videoId ?? 0;
+      Log.d(_tag, 'videoIdOfSong aid=$albumAudioId videoId=$id');
+      return id;
+    } catch (e, st) {
+      Log.e(_tag, 'videoIdOfSong failed aid=$albumAudioId', e, st);
+      return 0;
+    }
+  }
+
+  /// MV 清晰度档位（video/detail）。缓存优先，入参为数字 videoId。
+  Future<List<mv.MvQuality>> qualities(int videoId) async {
+    try {
+      if (videoId <= 0) return const <mv.MvQuality>[];
       final key = buildKey(
         ns: _ns,
         userid: _client.session.userid,
         path: _pVideoDetail,
-        params: <String, Object?>{'hash': h},
+        params: <String, Object?>{'video_id': videoId},
         schemaVer: kMvCacheSchemaVer,
       );
       final hit = _cache.get(key);
       if (hit is List<mv.MvQuality>) {
-        Log.d(_tag, 'qualities cache hit hash=$h');
+        Log.d(_tag, 'qualities cache hit videoId=$videoId');
         return hit;
       }
-      final items = await mv.getVideoQualities(_client, h);
-      // 审查修复：空结果不落缓存——旧实现网络抖动一次即永久「不可播」。
+      final items = await mv.getVideoQualities(_client, videoId);
+      // 空结果不落缓存——网络抖动一次即永久「不可播」。
       if (items.isNotEmpty) _cache.put(key, items);
-      Log.d(_tag, 'qualities hash=$h got=${items.length}');
+      Log.d(_tag, 'qualities videoId=$videoId got=${items.length}');
       return items;
     } catch (e, st) {
-      Log.e(_tag, 'qualities failed hash=$mvHash', e, st);
+      Log.e(_tag, 'qualities failed videoId=$videoId', e, st);
       return const <mv.MvQuality>[];
     }
   }
 
-  /// 取 MV 播放地址。
+  /// 取 MV 播放地址（入参数字 videoId）。
   ///
   /// 清晰度降级策略：
   /// 1. 档位按 size 降序排列（size 大 ≈ 画质高），取 requestedId 对应档位；
-  /// 2. 请求档位 URL 为空（不可用，含 VIP 档被权限挡下）→ 沿降序自动降档，
-  ///    直到命中首个可出 URL 的档位（VIP 不可用自动降档语义）；
+  /// 2. 请求档位 URL 为空（不可用，含 VIP 档被权限挡下）→ 沿降序自动降档；
   /// 3. 全档皆空 → 返回空 MvPlayResult（调用方提示不可播）。
-  /// downurl 多 CDN 全量收集，调用方逐链容错。
   Future<mv.MvPlayResult> playUrl(
-    String mvHash, {
+    int videoId, {
     String? requestedId,
     String title = '',
   }) async {
     try {
-      final h = mvHash.trim().toLowerCase();
-      if (h.isEmpty) return const mv.MvPlayResult();
-      final quals = await qualities(h);
+      if (videoId <= 0) return const mv.MvPlayResult();
+      final quals = await qualities(videoId);
       if (quals.isEmpty) {
-        Log.w(_tag, 'playUrl no qualities hash=$h');
+        Log.w(_tag, 'playUrl no qualities videoId=$videoId');
         return mv.MvPlayResult(title: title);
       }
-      // size 降序 = 画质从高到低；requestedId 未命中或未指定 → 取最高档。
       final sorted = quals.toList()..sort((a, b) => b.size.compareTo(a.size));
       var ordered = sorted;
       if (requestedId != null && requestedId.trim().isNotEmpty) {
@@ -96,17 +114,17 @@ class MvLogic {
         if (r.playable) {
           Log.d(
             _tag,
-            'playUrl hash=$h quality=${q.id} cdn=${r.urls.length} '
+            'playUrl videoId=$videoId quality=${q.id} cdn=${r.urls.length} '
             'degraded=${q.id != requestedId}',
           );
           return r;
         }
         Log.w(_tag, 'playUrl quality=${q.id} empty urls, degrade next');
       }
-      Log.w(_tag, 'playUrl all qualities unavailable hash=$h');
+      Log.w(_tag, 'playUrl all qualities unavailable videoId=$videoId');
       return mv.MvPlayResult(title: title);
     } catch (e, st) {
-      Log.e(_tag, 'playUrl failed hash=$mvHash', e, st);
+      Log.e(_tag, 'playUrl failed videoId=$videoId', e, st);
       return mv.MvPlayResult(title: title);
     }
   }

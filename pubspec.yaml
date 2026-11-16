@@ -18,6 +18,10 @@ dependencies:
   isar_flutter_libs: ^3.1.0+1
   path_provider: ^2.1.4
   video_player: ^2.9.2
+  # YKG 链接登录：算法一律用成熟库（AES-256-GCM / PBKDF2-HMAC-SHA256 /
+  # HMAC / SHA-256），自研代码只负责报文封装与流程，见
+  # docs/YKG_LINK_CRYPTO_DESIGN.md。
+  cryptography: ^2.7.0
 
 dev_dependencies:
   flutter_test:

@@ -8,12 +8,12 @@ import '../../bridges/bridge_session.dart'
 import '../design/components.dart' show SpStateView;
 import '../design/tokens.dart';
 
-/// 幂等安装 MV 模块到 L6 注册表（id 已存在则不重复覆盖）。
+/// 安装 MV 模块到 L6 注册表（审查修复 A1/A6 P0）：install 本身是
+/// 「重复 id 覆盖」，旧守卫 `if (byId('mv') != null) return` 会让启动期
+/// 占位模块永久占住 id，真实 MV 模块永不注册。直接覆盖，无副作用。
 void registerMvModule() {
   try {
-    final reg = ModuleRegistry.instance;
-    if (reg.byId('mv') != null) return;
-    reg.install(MvPageModule());
+    ModuleRegistry.instance.install(MvPageModule());
   } catch (e, st) {
     debugPrint('surface.mv: registerMvModule failed: $e\n$st');
   }
@@ -29,13 +29,13 @@ class MvPageModule extends SurfaceModule {
   NavEntry? get navEntry => null;
   @override
   WidgetBuilder? get builder =>
-      (_) => const MvPage(songHash: '');
+      (_) => const MvPage(albumAudioId: 0);
 }
 
-/// MV 内嵌播放页：qualities(hash) → 最低档（ld/sd 优先）→ playUrl。
+/// MV 内嵌播放页：videoIdOfSong(albumAudioId) → qualities(videoId) → playUrl。
 class MvPage extends StatefulWidget {
-  const MvPage({super.key, required this.songHash});
-  final String songHash; // 当前曲 hash（兼作 MV 查询键）
+  const MvPage({super.key, required this.albumAudioId});
+  final int albumAudioId;
   @override
   State<MvPage> createState() => _MvPageState();
 }
@@ -58,7 +58,7 @@ class _MvPageState extends State<MvPage> {
   @override
   void didUpdateWidget(covariant MvPage old) {
     super.didUpdateWidget(old);
-    if (old.songHash == widget.songHash) return;
+    if (old.albumAudioId == widget.albumAudioId) return;
     _release();
     _phase = _Phase.loading;
     _message = _note = _quality = '';
@@ -87,9 +87,9 @@ class _MvPageState extends State<MvPage> {
   }
 
   Future<void> _load() async {
-    final hash = widget.songHash.trim().toLowerCase();
-    if (hash.isEmpty) {
-      _fail(_Phase.empty, '缺少歌曲 hash，无法查询 MV');
+    final aid = widget.albumAudioId;
+    if (aid <= 0) {
+      _fail(_Phase.empty, '缺少歌曲信息，无法查询 MV');
       return;
     }
     final logic = appGraph?.mv;
@@ -98,7 +98,15 @@ class _MvPageState extends State<MvPage> {
       return;
     }
     try {
-      final quals = await logic.qualities(hash);
+      // 审查修复（阶段A A3/A5/A6 P0）：两段式第一段——按 albumAudioId
+      // 解析数字 videoId（旧代码把歌曲 hash 直接当 video_id 送档位端点）。
+      final videoId = await logic.videoIdOfSong(aid);
+      if (!mounted) return;
+      if (videoId <= 0) {
+        _fail(_Phase.empty, '这首歌暂无可播 MV');
+        return;
+      }
+      final quals = await logic.qualities(videoId);
       if (!mounted) return;
       if (quals.isEmpty) {
         _fail(_Phase.empty, '这首歌暂无可播 MV');
@@ -126,7 +134,7 @@ class _MvPageState extends State<MvPage> {
         }
       }
       final requested = low.id.isNotEmpty ? low.id : low.hash;
-      final r = await logic.playUrl(hash, requestedId: requested);
+      final r = await logic.playUrl(videoId, requestedId: requested);
       if (!mounted) return;
       if (!r.playable) {
         _fail(_Phase.empty, 'MV 地址不可用（可能被权限拦截）');

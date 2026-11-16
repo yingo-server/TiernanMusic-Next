@@ -19,6 +19,9 @@ import '../bridges/bridge_core.dart'
 import '../bridges/bridge_logic.dart'
     show
         PlaybackService,
+        PlaySource,
+        PlaybackError,
+        VerificationLogic,
         HistoryRecorder,
         PlayMode,
         QueueState,
@@ -66,6 +69,7 @@ class PlaybackSession extends ChangeNotifier {
 
   PlaybackService? _service;
   HistoryRecorder? _history;
+  VerificationLogic? _verification;
   AudioEngine _engine = NullAudioEngine();
 
   /// 队列变化回调（bootstrap 接给 CacheService 做 upcoming 预读）。
@@ -96,10 +100,12 @@ class PlaybackSession extends ChangeNotifier {
     HistoryRecorder? history,
     AudioEngine? engine,
     String quality = '128',
+    VerificationLogic? verification,
   }) {
     try {
       _service = service;
       _history = history;
+      _verification = verification;
       if (engine != null) _engine = engine;
       // 成熟库 just_audio 默认接入；若外部已注入引擎（测试/替换）则尊重注入。
       if (engine == null && _engine is NullAudioEngine) {
@@ -194,11 +200,21 @@ class PlaybackSession extends ChangeNotifier {
       _emit(loading, queue: q);
       final src = await _service?.resolvePlaySource(cur, _quality);
       if (src == null || !src.ok) {
-        final errKind = src?.error?.toString() ?? '';
+        // 审查修复（阶段A A5/A6 P0）：旧代码靠 error.toString().contains()
+        // 判错，脆弱且完全不驱动唯一验证门面 VerificationLogic，用户遇
+        // 20028 必卡死。改为强类型枚举判定 + 触发验证门面状态机。
+        final err = src?.error ?? PlaybackError.notFound;
         final canMv =
-            errKind.contains('noPrivilege') ||
-            errKind.contains('needsVerification') ||
-            errKind.contains('notFound');
+            err == PlaybackError.noPrivilege ||
+            err == PlaybackError.needsVerification ||
+            err == PlaybackError.notFound;
+        if (err == PlaybackError.needsVerification) {
+          try {
+            _verification?.onVerificationRequired(20028, cur.hash);
+          } catch (e, st) {
+            Log.e(_tag, 'verification required notify failed', e, st);
+          }
+        }
         // 兜底编排（L6 策略层）：resolve 失败且属可兜错误类型，先试 MV 音频。
         // _mvTriedOnce 会话级防死循环；失败维持原 ErrorAction，不静默连环跳曲。
         if (canMv && !_mvTriedOnce.contains(cur.hash)) {
@@ -233,11 +249,15 @@ class PlaybackSession extends ChangeNotifier {
           }
         }
         _sourceKind = 'kugou';
+        // 失败语义映射为可读文案（不把 enum.toString() 的英文泄漏给 UI）。
+        final errText = switch (err) {
+          PlaybackError.needsVerification => '需要人机验证（20028）',
+          PlaybackError.noPrivilege => '该曲目需要会员权限',
+          PlaybackError.notFound => '未找到可播放源',
+          PlaybackError.network => '网络异常，请重试',
+        };
         _emit(
-          playbackReducer(
-            _player,
-            ErrorAction(src?.error?.toString() ?? '播放源不可播或需登录'),
-          ),
+          playbackReducer(_player, ErrorAction(errText)),
         );
         return;
       }

@@ -3,6 +3,8 @@
 // L1/bridge_surface 调 [bootstrapSession]；L7 surface 只经 bridge_session 消费结果。
 library;
 
+import 'auth_session.dart' show AuthSession;
+
 import '../bridges/bridge_core.dart'
     show
         KugouClient,
@@ -46,6 +48,7 @@ import '../bridges/bridge_logic.dart'
         AccountLogic,
         VerificationLogic,
         TranslationLogic,
+        YkgLogic,
         Log;
 import 'graph.dart' show AppGraph, SessionDeps, SurfaceModule;
 import 'module_registry.dart' show ModuleRegistry;
@@ -116,6 +119,13 @@ Future<AppGraph> bootstrapSession({
         client: client,
         songDao: songDao,
         downloadStore: downloadStore,
+        // 审查修复（阶段A A5 P1）：旧代码省略可选 session → _hasRights
+        // 恒 false → VIP 用户永远按匿名音质降级。VIP 凭据由 AuthLogic
+        // 登录时落入 settings，这里以 Map 形态注入（PlaybackService 支持）。
+        session: <String, Object?>{
+          'vip_token': settings.getString('auth.vip_token') ?? '',
+          'vip_type': settings.getString('auth.vip_type') ?? '',
+        },
       ),
     );
     final history = step(
@@ -186,6 +196,16 @@ Future<AppGraph> bootstrapSession({
       'VerificationLogic',
       () => VerificationLogic(client: client, settings: settings),
     );
+    // YKG 链接登录编排（L5）：注入 AuthLogic 供导入后复用 restoreSession。
+    final ykg = step(
+      'YkgLogic',
+      () => YkgLogic(
+        client: client,
+        settings: settings,
+        auth: auth,
+        onImported: () => AuthSession.instance.notifyAuthChanged(),
+      ),
+    );
 
     // 缓存 ⊃ 预读 统一服务：启动预热稳定入口数据（热搜/榜单）。
     // 单曲 play_url 端点 cacheable=false，不纳入预读（避免伪造 URL 缓存/风控）；
@@ -207,6 +227,7 @@ Future<AppGraph> bootstrapSession({
       service: playback,
       history: history,
       quality: settings.getString('preferred_quality') ?? '128',
+      verification: verification,
     );
 
     // 默认模块 id（L7 独立模型按这些 id 注册真实页面）。
@@ -250,6 +271,7 @@ Future<AppGraph> bootstrapSession({
       account: account,
       verification: verification,
       translation: translation,
+      ykg: ykg,
       cache: cacheService,
       songDao: songDao,
       historyDao: historyDao,

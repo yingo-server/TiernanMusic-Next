@@ -289,12 +289,14 @@ class PlaybackService {
       }
       // 1) mvDetail 拿 MV 明细（现有 mv 端点）。
       final mvBrief = await getMvBySong(_client, aid);
-      if (mvBrief == null || mvBrief.hash.isEmpty) {
+      // 审查修复（阶段A A3/A5 P0）：以实测 videoId 为成功门槛，
+      // 不再依赖恒空的 hash；档位查询改传数字 videoId。
+      if (mvBrief == null || mvBrief.videoId <= 0) {
         Log.w(_tag, 'resolveMvAudioFallback no mv aid=$aid');
         return const PlaySource(error: PlaybackError.notFound);
       }
       // 2) 清晰度档位（ld/sd 优先 = 最低清晰度，省流且成功率最高）。
-      final quals = await getVideoQualities(_client, mvBrief.hash);
+      final quals = await getVideoQualities(_client, mvBrief.videoId);
       final order = <String>['ld', 'sd', 'hd', 'fhd', 'qhd'];
       quals.sort((a, b) {
         final ia = order.indexOf(a.id.split('_').first);
@@ -302,7 +304,7 @@ class PlaybackService {
         return (ia < 0 ? 99 : ia).compareTo(ib < 0 ? 99 : ib);
       });
       if (quals.isEmpty) {
-        Log.w(_tag, 'resolveMvAudioFallback no qualities hash=${mvBrief.hash}');
+        Log.w(_tag, 'resolveMvAudioFallback no qualities videoId=${mvBrief.videoId}');
         return const PlaySource(error: PlaybackError.notFound);
       }
       // 3) 逐档取 downurl / mp4 URL，首个出链即用（多 CDN 备链全保留）。
@@ -323,7 +325,7 @@ class PlaybackService {
       }
       Log.w(
         _tag,
-        'resolveMvAudioFallback all qualities empty hash=${mvBrief.hash}',
+        'resolveMvAudioFallback all qualities empty videoId=${mvBrief.videoId}',
       );
       return const PlaySource(error: PlaybackError.notFound);
     } catch (e, st) {

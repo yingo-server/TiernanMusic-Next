@@ -35,7 +35,8 @@ import '../bridges/bridge_logic.dart'
         AlbumLogic,
         AccountLogic,
         VerificationLogic,
-        TranslationLogic;
+        TranslationLogic,
+        YkgLogic;
 import 'contracts.dart' show NavEntry, SurfaceModule;
 
 export 'contracts.dart' show NavEntry, SurfaceModule;
@@ -96,6 +97,7 @@ class AppGraph {
     this.account,
     this.verification,
     this.translation,
+    this.ykg,
     this.cache,
     this.notification,
     this.songDao,
@@ -132,6 +134,7 @@ class AppGraph {
   final AccountLogic? account;
   final VerificationLogic? verification;
   final TranslationLogic? translation;
+  final YkgLogic? ykg;
 
   /// 缓存 ⊃ 预读 统一服务（L4）。
   final CacheService? cache;

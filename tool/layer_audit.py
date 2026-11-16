@@ -62,7 +62,9 @@ L6_EXTRA = ('package:flutter_riverpod', 'package:riverpod',
 # L4 core 数据库域必需的 isar（存储/数据库四域之一）
 L4_EXTRA = ('package:isar/isar.dart',
             'package:just_audio/just_audio.dart',
-            'package:audio_service/audio_service.dart')
+            'package:audio_service/audio_service.dart',
+            # YKG 链接登录：成熟密码学库仅允许 L4 core 引用（算法不自研）。
+            'package:cryptography/cryptography.dart')
 
 violations = []
 file_count = 0

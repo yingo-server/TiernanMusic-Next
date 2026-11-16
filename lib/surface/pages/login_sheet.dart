@@ -15,7 +15,9 @@ import '../../bridges/bridge_core.dart'
 import '../../bridges/bridge_logic.dart' show QrLoginState, QrLoginStatus;
 import '../../bridges/bridge_session.dart' show appGraph, navState;
 import '../design/tokens.dart';
+import '../l10n/s.dart' show S;
 import 'login_account_section.dart' show AccountSection;
+import 'ykg_sheet.dart' show showYkgExport, showYkgImport;
 
 /// 登录弹层入口：isScrollControlled + 约 70% 高度。
 /// [onAuthChanged]：登录成功后回调（在 pop 之前触发）。
@@ -101,15 +103,17 @@ class _LoginSheetPanelState extends State<LoginSheetPanel> {
   @override
   Widget build(BuildContext context) {
     final activeUid = appGraph.auth?.session.userid ?? '';
+    final s = S.of(context);
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Column(
         children: <Widget>[
-          const TabBar(
+          TabBar(
             tabs: <Tab>[
-              Tab(text: '扫码'),
-              Tab(text: '验证码'),
-              Tab(text: '密码'),
+              Tab(text: s.t('qrLogin')),
+              Tab(text: s.t('smsLogin')),
+              Tab(text: s.t('pwdLogin')),
+              Tab(text: s.t('ykgTitle')),
             ],
           ),
           Expanded(
@@ -118,6 +122,7 @@ class _LoginSheetPanelState extends State<LoginSheetPanel> {
                 _QrTab(onLoginSuccess: _onLoginSuccess),
                 _SmsTab(onLoginSuccess: _onLoginSuccess),
                 _PwdTab(),
+                const _YkgTab(),
               ],
             ),
           ),
@@ -456,6 +461,44 @@ class _PwdTabState extends State<_PwdTab> {
         const SizedBox(height: Sp.gapM),
         FilledButton(onPressed: _login, child: const Text('登录')),
       ],
+    );
+  }
+}
+
+/// YKG 链接登录 Tab（导出 / 导入两个入口；弹层承载密码与风险提示）。
+class _YkgTab extends StatelessWidget {
+  const _YkgTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(Sp.gapL),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Icon(Icons.link, size: 48, color: Sp.textSub),
+          const SizedBox(height: Sp.gapM),
+          Text(
+            s.t('ykgRisk'),
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Sp.textSub),
+          ),
+          const SizedBox(height: Sp.gapL),
+          FilledButton.icon(
+            onPressed: () => showYkgImport(context),
+            icon: const Icon(Icons.download_outlined),
+            label: Text(s.t('ykgImport')),
+          ),
+          const SizedBox(height: Sp.gapS),
+          OutlinedButton.icon(
+            onPressed: () => showYkgExport(context),
+            icon: const Icon(Icons.upload_outlined),
+            label: Text(s.t('ykgExport')),
+          ),
+        ],
+      ),
     );
   }
 }

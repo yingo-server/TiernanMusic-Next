@@ -29,6 +29,8 @@ const String _tag = 'InFlight';
 /// 单飞合并器：同一 key 并发请求只执行一次。
 class InFlight<T> {
   final Map<String, Future<T>> _pending = <String, Future<T>>{};
+  /// 每次任务的身份 token（审查修复 A2 P1）：clear 后旧任务不得误删新条目。
+  final Map<String, Object> _tokens = <String, Object>{};
   // 统计计数（私有字段，经只读 getter 暴露；外部不可写）。
   int _started = 0;
   int _coalesced = 0;
@@ -59,6 +61,7 @@ class InFlight<T> {
     try {
       final int n = _pending.length;
       _pending.clear();
+      _tokens.clear();
       logD(_tag, 'clear: pending table emptied (was $n)');
     } catch (e, st) {
       logE(_tag, 'clear failed', e, st);
@@ -66,6 +69,8 @@ class InFlight<T> {
   }
 
   /// 执行或合并请求。timeout 仅作用于本次调用的等待侧。
+  /// 审查修复（阶段A A2 P1）：finally 的 remove 加身份校验，避免 clear()
+  /// 后旧任务完成时误删新登记的同 key 在飞条目（单飞失效）。
   Future<T> run(String key, Future<T> Function() task, {Duration? timeout}) {
     final Future<T>? existing = _pending[key];
     if (existing != null) {
@@ -75,14 +80,17 @@ class InFlight<T> {
     }
 
     _started++;
-    final Future<T> future = _execute(key, task);
-    // 立即登记：_execute 同步段内已注册失败钩子前，防止并发窗口二次创建。
+    // 先同步登记 token（async 闭包在首个 await 前同步执行，但 token 必须在
+    // _execute 之前就位，避免 task 立即完成时 finally 读到未登记状态）。
+    final Object token = Object();
+    _tokens[key] = token;
+    final Future<T> future = _execute(key, task, token);
     _pending[key] = future;
     logD(_tag, 'started key=$key (started=$_started)');
     return _awaitWithTimeout(key, future, timeout);
   }
 
-  Future<T> _execute(String key, Future<T> Function() task) {
+  Future<T> _execute(String key, Future<T> Function() task, Object token) {
     return () async {
       try {
         return await task();
@@ -91,8 +99,12 @@ class InFlight<T> {
         logE(_tag, 'task failed key=$key (failed=$_failed)', e, st);
         rethrow;
       } finally {
-        // 完成/失败一律移除；失败不缓存，后续请求重新执行。
-        _pending.remove(key);
+        // 完成/失败一律移除；但仅当本次任务仍是表中登记的那个（token 相同）。
+        // clear() 后旧任务完成时 _tokens[key] 已变/清空，不得误删新在飞条目。
+        if (identical(_tokens[key], token)) {
+          _pending.remove(key);
+          _tokens.remove(key);
+        }
       }
     }();
   }

@@ -176,3 +176,12 @@ export '../core/net/endpoints/user_endpoints.dart'
 // 与 bridge_logic 的出口存在重复符号。按76 原则双桥唯一通道要求暂保留本行，后续统一收敛至单一出口。
 export '../core/net/endpoints/comment_endpoints.dart'
     show getMusicComments, getCommentFloor, getCommentCount;
+// YKG 链接登录（L4 密码学封装；算法用成熟库，自研仅报文结构）。
+export '../core/net/ykg_codec.dart'
+    show
+        encodeYkgLink,
+        decodeYkgLink,
+        YkgLinkResult,
+        passwordVerifier,
+        newYkgVerifier,
+        kYkgScheme;

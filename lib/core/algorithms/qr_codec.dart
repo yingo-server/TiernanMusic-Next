@@ -283,7 +283,7 @@ Uint8List _buildMatrix(int version, Uint8List codewords, bool ecLevelM) {
   // 标准列对（右列，左列）：28/27, 26/25 … 8/7, 5/4, 3/2, 1/0。
   // col 6 为 timing 整列跳过，列对在 6 处断开（不是 (7,5)，也不含 (6,5)）。
   final pairs = <List<int>>[];
-  for (var right = size - 2; right >= 8; right -= 2) {
+  for (var right = size - 1; right >= 8; right -= 2) {
     pairs.add(<int>[right, right - 1]);
   }
   pairs.addAll(<List<int>>[
