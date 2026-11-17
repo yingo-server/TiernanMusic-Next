@@ -75,7 +75,7 @@ class _HomePageState extends State<HomePage> {
     try {
       showModalBottomSheet<void>(
         context: context,
-        backgroundColor: Sp.bgElevated,
+        backgroundColor: context.cs.surfaceContainerLow,
         isScrollControlled: true,
         builder: (BuildContext c) => PlaylistDetailSheet(
           playlistId: brief.id,
@@ -118,12 +118,12 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Sp.bg,
+      backgroundColor: context.cs.surface,
       body: SafeArea(
         child: Column(
           children: <Widget>[
             AppBar(
-              backgroundColor: Sp.bg,
+              backgroundColor: context.cs.surface,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               title: const Text(
@@ -131,14 +131,14 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(
                   fontSize: Sp.fHero,
                   fontWeight: FontWeight.w700,
-                  color: Sp.text,
+                  color: context.cs.onSurface,
                 ),
               ),
               actions: <Widget>[
                 IconButton(
                   tooltip: '搜索',
                   onPressed: _goSearch,
-                  icon: const Icon(Icons.search, color: Sp.text),
+                  icon: Icon(Icons.search, color: context.cs.onSurface),
                 ),
                 const SizedBox(width: Sp.gapS),
               ],
@@ -170,10 +170,10 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: Sp.fSection,
                 fontWeight: FontWeight.w700,
-                color: Sp.text,
+                color: context.cs.onSurface,
               ),
             ),
           ),
@@ -307,14 +307,14 @@ class _Cover extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Widget box = url.isEmpty
-        ? Container(color: Sp.cardHigh)
+        ? Container(color: context.cs.surfaceContainerHigh)
         : Image.network(
             url,
             width: size,
             height: size,
             fit: BoxFit.cover,
             errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                Container(color: Sp.cardHigh),
+                Container(color: context.cs.surfaceContainerHigh),
           );
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
@@ -343,13 +343,13 @@ class _SongCard extends StatelessWidget {
               song.name.isEmpty ? '未知歌曲' : song.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: Sp.fSub, color: Sp.text),
+              style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurface),
             ),
             Text(
               song.singer,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: Sp.fTiny, color: Sp.textSub),
+              style: TextStyle(fontSize: Sp.fTiny, color: context.cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -376,11 +376,11 @@ class HomePlaylistCard extends StatelessWidget {
             brief.name.isEmpty ? '未命名歌单' : brief.name,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: Sp.fSub, color: Sp.text),
+            style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurface),
           ),
           Text(
             brief.trackCount > 0 ? '${brief.trackCount} 首' : '曲目数未知',
-            style: const TextStyle(fontSize: Sp.fTiny, color: Sp.textFaint),
+            style: TextStyle(fontSize: Sp.fTiny, color: context.cs.onSurfaceVariant),
           ),
         ],
       ),
@@ -403,7 +403,7 @@ class _RankCard extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(Sp.rCard),
           gradient: const LinearGradient(
-            colors: <Color>[Sp.green, Sp.greenDim],
+            colors: <Color>[context.cs.primary, context.cs.primaryContainer],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),

@@ -25,12 +25,12 @@ class SearchSongTile extends StatelessWidget {
           width: Sp.tileCover,
           height: Sp.tileCover,
           child: song.cover.isEmpty
-              ? Container(color: Sp.cardHigh)
+              ? Container(color: context.cs.surfaceContainerHigh)
               : Image.network(
                   song.cover,
                   fit: BoxFit.cover,
                   errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                      Container(color: Sp.cardHigh),
+                      Container(color: context.cs.surfaceContainerHigh),
                 ),
         ),
       ),
@@ -40,7 +40,7 @@ class SearchSongTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: Sp.fItem,
-          color: Sp.text,
+          color: context.cs.onSurface,
           fontWeight: song.isVip ? FontWeight.w600 : FontWeight.w400,
         ),
       ),
@@ -48,7 +48,7 @@ class SearchSongTile extends StatelessWidget {
         song.singer.isEmpty ? '未知歌手' : song.singer,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+        style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -57,13 +57,13 @@ class SearchSongTile extends StatelessWidget {
             IconButton(
               tooltip: '专辑',
               iconSize: 18,
-              color: Sp.textFaint,
+              color: context.cs.onSurfaceVariant,
               onPressed: onAlbum,
               icon: const Icon(Icons.album_outlined),
             ),
           Text(
             song.durationSec > 0 ? '${song.durationSec}s' : '',
-            style: const TextStyle(fontSize: Sp.fTiny, color: Sp.textFaint),
+            style: TextStyle(fontSize: Sp.fTiny, color: context.cs.onSurfaceVariant),
           ),
         ],
       ),
@@ -83,7 +83,7 @@ class SearchEmptyBox extends StatelessWidget {
     ),
     child: Text(
       message,
-      style: const TextStyle(fontSize: Sp.fSub, color: Sp.textFaint),
+      style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
     ),
   );
 }
@@ -104,14 +104,14 @@ class SearchErrorRetry extends StatelessWidget {
         Expanded(
           child: Text(
             message,
-            style: const TextStyle(fontSize: Sp.fSub, color: Sp.red),
+            style: TextStyle(fontSize: Sp.fSub, color: context.cs.error),
           ),
         ),
         TextButton(
           onPressed: onRetry,
-          child: const Text(
+          child: Text(
             '重试',
-            style: TextStyle(fontSize: Sp.fSub, color: Sp.green),
+            style: TextStyle(fontSize: Sp.fSub, color: context.cs.primary),
           ),
         ),
       ],

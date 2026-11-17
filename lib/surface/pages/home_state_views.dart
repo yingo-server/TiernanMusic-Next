@@ -20,7 +20,7 @@ class HomeSkeletonBox extends StatelessWidget {
           width: 124,
           margin: const EdgeInsets.only(right: Sp.gapM),
           decoration: BoxDecoration(
-            color: Sp.card,
+            color: context.cs.surfaceContainer,
             borderRadius: BorderRadius.circular(Sp.rCard),
           ),
         ),
@@ -41,7 +41,7 @@ class HomeEmptyBox extends StatelessWidget {
     ),
     child: Text(
       message,
-      style: const TextStyle(fontSize: Sp.fSub, color: Sp.textFaint),
+      style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
     ),
   );
 }
@@ -62,14 +62,14 @@ class HomeErrorRetry extends StatelessWidget {
         Expanded(
           child: Text(
             message,
-            style: const TextStyle(fontSize: Sp.fSub, color: Sp.red),
+            style: TextStyle(fontSize: Sp.fSub, color: context.cs.error),
           ),
         ),
         TextButton(
           onPressed: onRetry,
-          child: const Text(
+          child: Text(
             '重试',
-            style: TextStyle(fontSize: Sp.fSub, color: Sp.green),
+            style: TextStyle(fontSize: Sp.fSub, color: context.cs.primary),
           ),
         ),
       ],

@@ -138,12 +138,12 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Sp.bg,
+      backgroundColor: context.cs.surface,
       body: SafeArea(
         child: Column(
           children: <Widget>[
-            _searchBar(),
-            _suggestBox(),
+            _searchBar(context),
+            _suggestBox(context),
             Expanded(child: _body()),
           ],
         ),
@@ -151,7 +151,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _searchBar() {
+  Widget _searchBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         Sp.pagePad,
@@ -166,29 +166,29 @@ class _SearchPageState extends State<SearchPage> {
               height: 44,
               padding: const EdgeInsets.only(left: Sp.gapM, right: Sp.gapS),
               decoration: BoxDecoration(
-                color: Sp.card,
+                color: context.cs.surfaceContainer,
                 borderRadius: BorderRadius.circular(Sp.rFull),
-                border: Border.all(color: Sp.divider),
+                border: Border.all(color: context.cs.outlineVariant),
               ),
               child: Row(
                 children: <Widget>[
-                  const Icon(Icons.search, size: 20, color: Sp.textSub),
+                  Icon(Icons.search, size: 20, color: context.cs.onSurfaceVariant),
                   const SizedBox(width: Sp.gapS),
                   Expanded(
                     child: TextField(
                       controller: _ctrl,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: Sp.fItem,
-                        color: Sp.text,
+                        color: context.cs.onSurface,
                       ),
-                      cursorColor: Sp.green,
+                      cursorColor: context.cs.primary,
                       decoration: const InputDecoration(
                         isDense: true,
                         border: InputBorder.none,
                         hintText: '搜索歌曲、歌单、歌手',
                         hintStyle: TextStyle(
                           fontSize: Sp.fItem,
-                          color: Sp.textFaint,
+                          color: context.cs.onSurfaceVariant,
                         ),
                       ),
                       textInputAction: TextInputAction.search,
@@ -205,7 +205,7 @@ class _SearchPageState extends State<SearchPage> {
             width: 44,
             height: 44,
             child: Material(
-              color: Sp.green,
+              color: context.cs.primary,
               shape: const CircleBorder(),
               child: InkWell(
                 customBorder: const CircleBorder(),
@@ -223,7 +223,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _suggestBox() {
+  Widget _suggestBox(BuildContext context) {
     final Future<List<SearchSuggestItem>>? f = _suggestF;
     if (f == null) return const SizedBox.shrink();
     return FutureBuilder<List<SearchSuggestItem>>(
@@ -246,14 +246,14 @@ class _SearchPageState extends State<SearchPage> {
                 dense: true,
                 visualDensity: VisualDensity.compact,
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(
+                leading: Icon(
                   Icons.history,
                   size: 18,
-                  color: Sp.textFaint,
+                  color: context.cs.onSurfaceVariant,
                 ),
                 title: Text(
                   it.keyword,
-                  style: const TextStyle(fontSize: Sp.fItem, color: Sp.text),
+                  style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
                 ),
                 onTap: () {
                   _ctrl.text = it.keyword;
@@ -293,14 +293,14 @@ class _SearchPageState extends State<SearchPage> {
                 kSearchSegments[i],
                 style: TextStyle(
                   fontSize: Sp.fSub,
-                  color: sel ? Colors.black : Sp.text,
+                  color: sel ? Colors.black : context.cs.onSurface,
                 ),
               ),
               selected: sel,
               showCheckmark: false,
-              backgroundColor: Sp.card,
-              selectedColor: Sp.green,
-              side: const BorderSide(color: Sp.divider),
+              backgroundColor: context.cs.surfaceContainer,
+              selectedColor: context.cs.primary,
+              side: BorderSide(color: context.cs.outlineVariant),
               onSelected: (_) {
                 setState(() => _segment = i);
                 if (_query.isNotEmpty) _doSearch(_query);
@@ -339,7 +339,7 @@ class _SearchPageState extends State<SearchPage> {
             style: TextStyle(
               fontSize: Sp.fSection,
               fontWeight: FontWeight.w700,
-              color: Sp.text,
+              color: context.cs.onSurface,
             ),
           ),
         ),
@@ -353,10 +353,10 @@ class _SearchPageState extends State<SearchPage> {
                 ActionChip(
                   label: Text(
                     name,
-                    style: const TextStyle(fontSize: Sp.fSub, color: Sp.text),
+                    style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurface),
                   ),
-                  backgroundColor: Sp.card,
-                  side: const BorderSide(color: Sp.divider),
+                  backgroundColor: context.cs.surfaceContainer,
+                  side: BorderSide(color: context.cs.outlineVariant),
                   onPressed: () {
                     _ctrl.text = name;
                     _doSearch(name);
@@ -375,7 +375,7 @@ class _SearchPageState extends State<SearchPage> {
         padding: EdgeInsets.fromLTRB(Sp.pagePad, Sp.gapXL, Sp.pagePad, 0),
         child: Text(
           '暂无搜索历史',
-          style: TextStyle(fontSize: Sp.fSub, color: Sp.textFaint),
+          style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
         ),
       );
     }
@@ -397,14 +397,14 @@ class _SearchPageState extends State<SearchPage> {
                 style: TextStyle(
                   fontSize: Sp.fSection,
                   fontWeight: FontWeight.w700,
-                  color: Sp.text,
+                  color: context.cs.onSurface,
                 ),
               ),
               TextButton(
                 onPressed: _clearHistory,
-                child: const Text(
+                child: Text(
                   '清空',
-                  style: TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+                  style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
                 ),
               ),
             ],
@@ -420,10 +420,10 @@ class _SearchPageState extends State<SearchPage> {
                 ActionChip(
                   label: Text(
                     h,
-                    style: const TextStyle(fontSize: Sp.fSub, color: Sp.text),
+                    style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurface),
                   ),
-                  backgroundColor: Sp.card,
-                  side: const BorderSide(color: Sp.divider),
+                  backgroundColor: context.cs.surfaceContainer,
+                  side: BorderSide(color: context.cs.outlineVariant),
                   onPressed: () {
                     _ctrl.text = h;
                     _doSearch(h);
@@ -444,7 +444,7 @@ class _SearchPageState extends State<SearchPage> {
       builder: (BuildContext c, AsyncSnapshot<SearchResult> snap) {
         if (snap.connectionState != ConnectionState.done) {
           return const Center(
-            child: CircularProgressIndicator(color: Sp.green),
+            child: CircularProgressIndicator(color: context.cs.primary),
           );
         }
         if (snap.hasError) {
