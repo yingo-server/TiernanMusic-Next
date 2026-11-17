@@ -29,6 +29,8 @@ abstract class AudioEngine {
   Future<void> stop();
   Future<void> setVolume(double volume);
   Future<void> setSpeed(double speed);
+  /// 单曲循环开关（阶段B B3：loopOne 真重播）。
+  Future<void> setLoopOne(bool enabled);
   Future<void> dispose();
 }
 
@@ -48,6 +50,8 @@ class NullAudioEngine implements AudioEngine {
   Future<void> setVolume(double volume) async {}
   @override
   Future<void> setSpeed(double speed) async {}
+  @override
+  Future<void> setLoopOne(bool enabled) async {}
   @override
   Future<void> dispose() async {}
 }
@@ -184,6 +188,15 @@ class JustAudioEngine implements AudioEngine {
       await _player.setSpeed(v.clamp(0.5, 2.0));
     } catch (e, st) {
       Log.e(_tag, 'setSpeed failed', e, st);
+    }
+  }
+
+  @override
+  Future<void> setLoopOne(bool enabled) async {
+    try {
+      await _player.setLoopMode(enabled ? LoopMode.one : LoopMode.off);
+    } catch (e, st) {
+      Log.e(_tag, 'setLoopOne failed', e, st);
     }
   }
 

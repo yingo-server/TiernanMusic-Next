@@ -124,7 +124,20 @@ class MusicAudioHandler extends BaseAudioHandler {
   @override
   Future<void> stop() => _player.stop();
   @override
-  Future<void> seek(Duration position) => _player.seek(position);
+  Future<void> seek(Duration position) async {
+    // 阶段B B3：优先转发会话级 seek（走状态机、进度不失真）；
+    // 未绑定 onSeek 时回退引擎直驱（兼容旧装配）。
+    final cb = _controls.onSeek;
+    if (cb != null) {
+      try {
+        await cb(position.inMilliseconds);
+        return;
+      } catch (e, st) {
+        Log.e(_tag, 'onSeek failed, fallback engine', e, st);
+      }
+    }
+    await _player.seek(position);
+  }
 
   @override
   Future<void> skipToNext() async {

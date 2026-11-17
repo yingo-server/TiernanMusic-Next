@@ -56,6 +56,38 @@
 - **L5 IO 直连 6 处 / L6 越权状态机 / main 跨层桥**：架构债，阶段 B 各功能跨层批顺带收敛。
 - **VerificationLogic 端点实测**：getVerifyInfo/submitVerification 仍诚实标注「未实测、不发请求」；本轮只打通「session→门面触发 required 状态」，真实提交端点待实测（不臆造）。
 
+## 6. 阶段 B 跨层修复（主会话，2026-11-17）
+
+### 已修（本批，待 CI 验证）
+
+| P0 | 修法 |
+|---|---|
+| VIP 快照（3次未闭环） | PlaybackService 加 `credentialsProvider` 实时读 settings 闭包，bootstrap 注入；`_hasRights` 优先 provider |
+| 语言切换完全不可用 | 新建 L6 LocaleController（ValueNotifier）+ bridge_session 导出；app_root 嵌套监听 + MaterialApp.locale/supportedLocales；设置页加语言下拉 |
+| 错误态不可见 | 播放页读 `snap.player.lastError` 显示错误条（带图标） |
+| 下载 onTask 零订阅 | library_page initState 订阅 onTask→setState 刷新、dispose 取消 |
+| MV 响应解包第五重 | B4 已修（弃用 dataOf 直接 listOf / res['data'][0]） |
+
+| P1 | 修法 |
+|---|---|
+| search/search_typed 空结果缓存 | 加 `if (res.items.isNotEmpty)` 守卫（3处） |
+| AuthSession 未 attach + 换号串号 | bootstrap 补 `AuthSession.attach(client)` + onAuthChanged→collect.resetLocalMirror / album.invalidatePrefix |
+| 单曲循环失效 + shuffle 回退 | AudioEngine 加 setLoopOne；setMode 与 _start 调引擎重播；_start 保留当前 mode 不重建 |
+| 通知栏 seek 失同步 | notification_gateway.seek 转发 onSeek；playback_session 绑定 onSeek→seek |
+| 动态取色链 100% 断 | ThemeController 加 seedArgb + applySeed（L4 fromSeed）；Sp.theme 接 seed 参数并去掉 primary 硬覆盖；app_root 传 seed——L4→L6→L7 链打通 |
+
+### 静态审读（Dart API）
+对照 Flutter 3.50 / just_audio 0.10 / audio_service 0.18 / cryptography 2.7 审读，定位并修复 1 处编译错（app_root switch 表达式非穷尽，加 `_` 兜底）；其余 API 全部核验无 error。
+
+### 未在本批修（大工程，诚实登记）
+- MD3 页面级重构：195 处 `Sp.*` 静态色 → `Theme.of(context).colorScheme.*`（MD3 仅 +2 分的根因）。
+- i18n 全量接线：213 处中文硬编码 → S.of(context).t(key)（接线率≈0%）。
+- 设置页四项缺陷、导航死链、歌单写 L7 入口、缓存域统一、L5 下载 IO 下沉等 P1。
+- 20028 验证 UI 出口（端点未实测，不宜造请求）。
+
+### 门禁
+layer_audit PASS（128 文件）、static smoke PASS。CI 完整编译待验证。
+
 ## 5. 门禁状态
 
 - `python3 tool/layer_audit.py`：PASS strict seven-six（127 文件）。

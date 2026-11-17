@@ -269,16 +269,20 @@ Future<MvBrief?> getMvBySong(KugouClient client, int albumAudioId) async {
         'fields': '',
       },
     );
-    final data = dataOf(res);
-    // 嵌套数组容错：data[0][] 优先，回退 data.list / data.info / data 平铺。
+    // 审查修复（阶段B B4 P0）：实测 §A5-1 响应顶层 data 是**嵌套数组**
+    // data[0][]；dataOf() 对数组 data 回空 Map，导致阶段A的 videoId 修复
+    // 根本到不了 fromMap（探针留样 found=false）。改用 search_endpoints 同款
+    // 直接 listOf(res['data'])，兼容嵌套数组与平铺两种形态。
     var list = <Map<String, dynamic>>[];
-    final dd = data['data'];
-    if (dd is List && dd.isNotEmpty) {
-      final first = dd.first;
-      list = first is List ? listOf(first) : listOf(dd);
+    final rawData = res['data'];
+    if (rawData is List && rawData.isNotEmpty) {
+      final first = rawData.first;
+      list = first is List ? listOf(first) : listOf(rawData);
     }
     if (list.isEmpty) {
-      list = listOf(data['list'] ?? data['info'] ?? data['mv_list'] ?? data);
+      // 兜底：data 为 {list/info/mv_list:[...]} 的对象形态。
+      final m = dataOf(res);
+      list = listOf(m['list'] ?? m['info'] ?? m['mv_list'] ?? m['data']);
     }
     if (list.isEmpty) {
       Log.d(_tag, 'getMvBySong empty list aid=$albumAudioId');
@@ -338,16 +342,18 @@ Future<List<MvQuality>> getVideoQualities(
       const <String, Object?>{},
       body: body,
     );
-    final data = dataOf(res);
-    // 实测形态（field_truth L600-617）：data[0] 平铺 ld/sd/hd/fhd/qhd(+265/
-    // mkv_*) hash 键。优先 data[0]（Map 形态），兜底 data 平铺。
-    final d0 = data['data'] is List && (data['data'] as List).isNotEmpty
-        ? (data['data'] as List).first
-        : null;
-    final items = d0 is Map
-        ? MvQuality.fromFlat(d0.map((k, v) => MapEntry('$k', v)))
-        : data.isNotEmpty
-        ? MvQuality.fromFlat(data)
+    // 审查修复（阶段B B4 P0）：实测 §A5-2 响应 data[0] 是平铺档位 Map，
+    // 顶层 data 是数组；旧代码 dataOf(res) 对数组回空，恒无档位。
+    // 直接取 res['data'][0]（Map），兜底 res['data'] 本身是 Map 的形态。
+    final rawData = res['data'];
+    Map<String, dynamic>? d0;
+    if (rawData is List && rawData.isNotEmpty && rawData.first is Map) {
+      d0 = Map<String, dynamic>.from(rawData.first as Map);
+    } else if (rawData is Map) {
+      d0 = Map<String, dynamic>.from(rawData);
+    }
+    final items = d0 != null
+        ? MvQuality.fromFlat(d0)
         : const <MvQuality>[];
     if (items.isEmpty) {
       Log.w(

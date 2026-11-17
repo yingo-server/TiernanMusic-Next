@@ -26,6 +26,8 @@ export '../session/bootstrap.dart' show appGraph;
 export '../session/theme_controller.dart' show ThemeController;
 // 批2-F3：登录态会话（isLoggedIn/userid 快照 + onAuthChanged 订阅）。
 export '../session/auth_session.dart' show AuthSession;
+// 阶段B B7：语言区域控制器（语言切换实时生效）。
+export '../session/locale_controller.dart' show LocaleController;
 
 /// 创建默认装配图（失败返回空图并留痕，不抛给 L7）。
 AppGraph createAppGraph() {

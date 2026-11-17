@@ -60,7 +60,8 @@ class SearchLogic {
         return hit;
       }
       final res = await searchSongs(_client, kw, page, pageSize);
-      _cache.put(key, res);
+      // 审查修复（阶段B B2）：空结果/失败不落缓存（与 rank/recommend 一致）。
+      if (res.items.isNotEmpty) _cache.put(key, res);
       Log.d(
         _tag,
         'search miss→network kw=$kw page=$page got=${res.items.length} '

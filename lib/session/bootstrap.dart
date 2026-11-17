@@ -119,10 +119,9 @@ Future<AppGraph> bootstrapSession({
         client: client,
         songDao: songDao,
         downloadStore: downloadStore,
-        // 审查修复（阶段A A5 P1）：旧代码省略可选 session → _hasRights
-        // 恒 false → VIP 用户永远按匿名音质降级。VIP 凭据由 AuthLogic
-        // 登录时落入 settings，这里以 Map 形态注入（PlaybackService 支持）。
-        session: <String, Object?>{
+        // 审查修复（阶段B B1/B3 P0）：实时读 settings 的凭据，启动后登录/
+        // 切号时 vip 变化可见；不再用构造时快照（旧实现致 VIP 恒匿名）。
+        credentialsProvider: () => <String, String>{
           'vip_token': settings.getString('auth.vip_token') ?? '',
           'vip_type': settings.getString('auth.vip_type') ?? '',
         },
@@ -221,6 +220,21 @@ Future<AppGraph> bootstrapSession({
       ),
       (ep: EndpointRegistry.rankList, params: <String, Object?>{}),
     ]);
+
+    // 阶段B B1/B5：装配 AuthSession 并接换号重置（收藏镜像/歌单缓存随登录态清空）。
+    AuthSession.instance.attach(client);
+    if (collect != null) {
+      final c = collect;
+      AuthSession.instance.onAuthChanged(() {
+        c.resetLocalMirror();
+      });
+    }
+    if (album != null) {
+      final a = album;
+      AuthSession.instance.onAuthChanged(() {
+        a.invalidatePrefix();
+      });
+    }
 
     // 播放会话：成熟库 just_audio 引擎由 PlaybackSession.attach 内部构造。
     PlaybackSession.instance.attach(

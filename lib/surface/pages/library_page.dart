@@ -34,6 +34,12 @@ class _LibraryPageState extends State<LibraryPage>
     _recentSongs = appGraph.historyDao?.recent();
     _loadProfile();
     _loadDownloads();
+    // 阶段B B5 P0：订阅下载任务变更，进度/完成/失败实时刷新 UI。
+    final dm = appGraph.downloads;
+    dm?.onTask = (DownloadEvent e) {
+      if (!mounted) return;
+      setState(() => _downloads = e.tasks);
+    };
   }
 
   void _loadProfile() {
@@ -61,6 +67,8 @@ class _LibraryPageState extends State<LibraryPage>
 
   @override
   void dispose() {
+    // 阶段B B5：释放下载订阅，避免 Widget 销毁后回调野指针。
+    appGraph.downloads?.onTask = null;
     _tabs.dispose();
     super.dispose();
   }

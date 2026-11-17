@@ -323,9 +323,38 @@ class _PlayerPageState extends State<PlayerPage> {
               );
             }
             final art = Sp.artHero;
+            final errText = snap.player.lastError.trim();
             return Column(
               children: <Widget>[
                 _topBar(),
+                if (errText.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: Sp.pagePad,
+                      vertical: Sp.gapS,
+                    ),
+                    padding: const EdgeInsets.all(Sp.gapM),
+                    decoration: BoxDecoration(
+                      color: Sp.cardHigh,
+                      borderRadius: BorderRadius.circular(Sp.rCard),
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        const Icon(Icons.error_outline, color: Sp.red, size: 20),
+                        const SizedBox(width: Sp.gapS),
+                        Expanded(
+                          child: Text(
+                            errText,
+                            style: const TextStyle(
+                              fontSize: Sp.fSub,
+                              color: Sp.text,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.symmetric(

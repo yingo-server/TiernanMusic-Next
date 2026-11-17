@@ -9,7 +9,7 @@ import '../../bridges/bridge_logic.dart' show AuthLogic, AccountLogic;
 import '../../bridges/bridge_session.dart'
     show playbackSession, SurfaceModule, NavEntry;
 import '../../bridges/bridge_session.dart'
-    show appGraph, navState, ThemeController;
+    show appGraph, navState, ThemeController, LocaleController;
 import 'login_sheet.dart' show showLoginSheet;
 import '../design/tokens.dart';
 import '../design/components.dart';
@@ -219,6 +219,47 @@ class _SettingsPageState extends State<SettingsPage> {
                               onSelectionChanged: (s) =>
                                   ThemeController.instance.setMode(s.first),
                             ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 阶段B B7 P0：语言选择入口（切语言实时生效）。
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      Sp.pagePad, Sp.gapS, Sp.pagePad, Sp.gapM,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        const Text(
+                          '界面语言',
+                          style: TextStyle(fontSize: Sp.fItem, color: Sp.text),
+                        ),
+                        const SizedBox(height: Sp.gapS),
+                        ValueListenableBuilder<String>(
+                          valueListenable: LocaleController.instance,
+                          builder: (context, code, _) => DropdownButtonFormField<String>(
+                            value: code,
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              border: UnderlineInputBorder(),
+                            ),
+                            items: const <DropdownMenuItem<String>>[
+                              DropdownMenuItem(value: '', child: Text('跟随系统')),
+                              DropdownMenuItem(value: 'zh', child: Text('简体中文')),
+                              DropdownMenuItem(value: 'zh_Hant', child: Text('繁體中文')),
+                              DropdownMenuItem(value: 'en', child: Text('English')),
+                              DropdownMenuItem(value: 'ja', child: Text('日本語')),
+                              DropdownMenuItem(value: 'ko', child: Text('한국어')),
+                              DropdownMenuItem(value: 'es', child: Text('Español')),
+                              DropdownMenuItem(value: 'fr', child: Text('Français')),
+                              DropdownMenuItem(value: 'de', child: Text('Deutsch')),
+                              DropdownMenuItem(value: 'pt', child: Text('Português')),
+                              DropdownMenuItem(value: 'ru', child: Text('Русский')),
+                            ],
+                            onChanged: (v) =>
+                                LocaleController.instance.setLocale(v ?? ''),
                           ),
                         ),
                       ],

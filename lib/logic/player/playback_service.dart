@@ -119,13 +119,19 @@ class PlaybackService {
     required SongDao songDao,
     required DownloadStore downloadStore,
     Object? session,
+    Map<String, String> Function()? credentialsProvider,
   }) : _client = client,
        _store = downloadStore,
-       _session = session;
+       _session = session,
+       _credentialsProvider = credentialsProvider;
 
   final KugouClient _client;
   final DownloadStore _store;
   final Object? _session;
+  /// 审查修复（阶段B B1/B3 P0）：启动后登录/切号时 vip 会变，构造快照会过期。
+  /// 优先实时读凭据提供者（由 bootstrap 注入读 settings 的闭包）；无提供者时
+  /// 回退到 [session] 快照（兼容旧装配/测试）。
+  final Map<String, String> Function()? _credentialsProvider;
 
   /// 'flac' → '320' → '128' 降级链（L5 编排，不臆造端点/参数）。
   static const List<String> _ladder = <String>['flac', '320', '128'];
@@ -144,6 +150,17 @@ class PlaybackService {
   /// 按登录态选权益，待三态实测：有 vip_token 或 vip_type>0 视为有权益态；
   /// 未注入 / 探测异常一律按匿名处理（不静默吞，异常落 Log.e）。
   bool get _hasRights {
+    // 优先实时凭据（登录后 vip 变更可见，修复构造快照过期 P0）。
+    final provider = _credentialsProvider;
+    if (provider != null) {
+      try {
+        final c = provider();
+        return _truthy(c['vip_token']) || _truthy(c['vip_type']);
+      } catch (e, st) {
+        Log.e(_tag, '_hasRights provider failed', e, st);
+        return false;
+      }
+    }
     final s = _session;
     if (s == null) return false;
     try {

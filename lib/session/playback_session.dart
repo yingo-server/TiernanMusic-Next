@@ -114,7 +114,12 @@ class PlaybackSession extends ChangeNotifier {
         // 通知栏：成熟库 audio_service，控制回调绑定回本会话（无反向 import）。
         initNotification(
               just.rawPlayer,
-              NotificationControls(onNext: next, onPrev: prev),
+              NotificationControls(
+                onNext: next,
+                onPrev: prev,
+                // 阶段B B3：通知栏拖动进度条走会话 seek，进度/状态不失真。
+                onSeek: (ms) async => seek(ms),
+              ),
             )
             .then((h) {
               _notification = h;
@@ -191,9 +196,14 @@ class PlaybackSession extends ChangeNotifier {
     SongBrief? song,
   }) async {
     try {
+      // 审查修复（阶段B B3）：旧代码用 const QueueState() 重建，丢失当前
+      // 播放模式（shuffle 切一首即回退顺序）。改为从当前 _queue 继承 mode。
+      final baseQueue = _queue.mode == PlayMode.sequence
+          ? const QueueState()
+          : _queue;
       final q = song != null
-          ? const QueueState().replaceQueue(<SongBrief>[song], 0)
-          : const QueueState().replaceQueue(songs, start);
+          ? baseQueue.replaceQueue(<SongBrief>[song], 0)
+          : baseQueue.replaceQueue(songs, start);
       final cur = q.current;
       if (cur == null) return;
       final loading = playbackReducer(_player, StartLoad(cur, index: q.index));
@@ -264,6 +274,8 @@ class PlaybackSession extends ChangeNotifier {
       // 本地已下载优先，其次在线主链。
       final target = src.localPath ?? src.urls.first;
       _sourceKind = src.localPath != null ? 'local' : 'kugou';
+      // 阶段B B3：切曲后保持单曲循环引擎态（_start 会重建队列）。
+      await _engine.setLoopOne(q.mode == PlayMode.loopOne);
       await _engine.play(target);
       _emit(playbackReducer(_player, Playing()), queue: q);
       // 历史落库：fire-and-forget 但失败必须留痕，不静默丢。
@@ -352,6 +364,8 @@ class PlaybackSession extends ChangeNotifier {
   void setMode(PlayMode mode) {
     try {
       _emit(_player, queue: _queue.withMode(mode));
+      // 阶段B B3：单曲循环由播放器真正重播，不只是高亮按钮。
+      _engine.setLoopOne(mode == PlayMode.loopOne);
     } catch (e, st) {
       Log.e(_tag, 'setMode failed', e, st);
     }

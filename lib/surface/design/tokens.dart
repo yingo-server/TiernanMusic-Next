@@ -75,8 +75,11 @@ class Sp {
   static const Curve accelerate = Curves.easeIn; // 退出屏幕
 
   /// 主题（唯一工厂；AppRoot 只用它）。dark=false 时用亮色映射。
-  static ThemeData theme({bool dark = true}) {
+  /// [seed]：动态取色种子（L6 ThemeController 经 L4 fromSeed 派生）；
+  ///   默认品牌绿。seed 变化时 primary 等 tonal 角色随之变化。
+  static ThemeData theme({bool dark = true, Color? seed}) {
     try {
+      final Color brandSeed = seed ?? green;
       final Color bg = dark ? Sp.bg : _bgLight;
       final Color bgElevated = dark ? Sp.bgElevated : _bgElevatedLight;
       final Color card = dark ? Sp.card : _cardLight;
@@ -86,7 +89,7 @@ class Sp {
       final Color textSub = dark ? Sp.textSub : _textSubLight;
       final scheme =
           ColorScheme.fromSeed(
-            seedColor: green,
+            seedColor: brandSeed,
             brightness: dark ? Brightness.dark : Brightness.light,
           ).copyWith(
             surface: bg,
@@ -97,10 +100,8 @@ class Sp {
             surfaceContainer: card,
             surfaceContainerHigh: cardHigh,
             surfaceContainerHighest: divider,
-            primary: green,
-            onPrimary: Colors.black,
-            primaryContainer: greenDim,
-            onPrimaryContainer: text,
+            // primary/onPrimary/primaryContainer 不再硬覆盖：让 fromSeed(seed)
+            // 派生的 tonal 角色生效，动态取色链才真正落地（阶段B B6）。
             error: red,
             onError: Colors.white,
           );

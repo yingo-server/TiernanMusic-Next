@@ -65,7 +65,8 @@ class SearchTypedLogic {
         return hit;
       }
       final res = await ep.searchTyped(_client, type, kw, p, ps);
-      _cache.put(key, res);
+      // 审查修复（阶段B B2）：空结果/失败不落缓存。
+      if (res.items.isNotEmpty) _cache.put(key, res);
       Log.d(
         _tag,
         'typed miss→network type=${type.name} kw=$kw page=$p '
@@ -105,7 +106,8 @@ class SearchTypedLogic {
         return hit;
       }
       final res = await ep.searchComplexV6(_client, kw, p);
-      _cache.put(key, res);
+      // 审查修复（阶段B B2）：空结果/失败不落缓存。
+      if (res.items.isNotEmpty) _cache.put(key, res);
       Log.d(_tag, 'complex kw=$kw page=$p got=${res.items.length}');
       return res;
     } catch (e, st) {
