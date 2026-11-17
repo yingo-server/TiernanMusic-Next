@@ -607,9 +607,14 @@ class TnStrings {
   static const List<String> plannedCodes = supportedCodes;
 
   /// 语言偏好持久化：L7 设置页调用；重启后由 L7 读取。
+  /// [code] 空/'system' = 跟随系统（存空串，不经 normalize 避免落到 zh）。
   static void saveLocale(String code) {
     try {
       final s = KeyValueSettings.shared(StoragePaths.I);
+      if (code.isEmpty || code == 'system') {
+        s.setString(_localeKey, '');
+        return;
+      }
       s.setString(_localeKey, normalize(code));
     } catch (e, st) {
       Log.e(_tag, 'saveLocale failed', e, st);

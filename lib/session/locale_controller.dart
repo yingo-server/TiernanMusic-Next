@@ -25,25 +25,13 @@ class LocaleController extends ValueNotifier<String> {
   /// 切换语言：持久化 + 通知（app_root 监听后重建 MaterialApp）。
   void setLocale(String code) {
     try {
-      final s = KeyValueSettings.shared(StoragePaths.I);
-      if (code.isEmpty || code == 'system') {
-        // 跟随系统：直接存空串（不能走 normalize——normalize('system') 会
-        // 落到 defaultCode='zh'，导致"跟随系统"变成强制简体中文）。
-        s.setString(_localeKey, '');
-        value = '';
-        Log.d(_tag, 'setLocale system');
-        notifyListeners();
-        return;
-      }
-      final norm = TnStrings.normalize(code);
-      TnStrings.saveLocale(norm);
-      value = norm;
-      Log.d(_tag, 'setLocale $code -> $value');
+      // 持久化归口 L4 TnStrings（内部处理 system→空串，避免 normalize 陷阱）。
+      TnStrings.saveLocale(code);
+      value = TnStrings.loadLocale();
+      Log.d(_tag, 'setLocale $code -> ${value.isEmpty ? "system" : value}');
       notifyListeners();
     } catch (e, st) {
       Log.e(_tag, 'setLocale($code) failed', e, st);
     }
   }
-
-  static const String _localeKey = 'ui.locale';
 }
