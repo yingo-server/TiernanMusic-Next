@@ -455,7 +455,8 @@ class _PlayerPageState extends State<PlayerPage> {
     ],
   );
 
-  static final TextStyle _timeStyle = TextStyle(
+  // 审查修复：改为实例 getter——静态字段无 context，无法取 ColorScheme。
+  TextStyle get _timeStyle => TextStyle(
     fontSize: Sp.fTiny,
     color: context.cs.onSurfaceVariant,
   );
