@@ -128,7 +128,7 @@ class Sp {
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: bgElevated,
           surfaceTintColor: Colors.transparent,
-          indicatorColor: greenDim,
+          indicatorColor: scheme.primaryContainer,
           height: navH,
           labelTextStyle: WidgetStateProperty.resolveWith(
             (s) => TextStyle(
@@ -159,8 +159,10 @@ class Sp {
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            backgroundColor: green,
-            foregroundColor: Colors.black,
+            // 动态取色：用 scheme 的成对角色（primary/onPrimary），
+            // 不再硬编码品牌绿 + 黑字（seed 变化时按钮不跟随）。
+            backgroundColor: scheme.primary,
+            foregroundColor: scheme.onPrimary,
             textStyle: const TextStyle(
               fontSize: fItem,
               fontWeight: FontWeight.w600,
