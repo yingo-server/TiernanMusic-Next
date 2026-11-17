@@ -16,7 +16,7 @@ enum _YkgMode { export, import }
 Future<void> showYkgSheet(BuildContext context, _YkgMode mode) =>
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Sp.bgElevated,
+      backgroundColor: context.cs.surfaceContainerLow,
       isScrollControlled: true,
       builder: (_) => _YkgSheet(mode: mode),
     );
@@ -144,10 +144,10 @@ class _YkgSheetState extends State<_YkgSheet> {
               Container(
                 padding: const EdgeInsets.all(Sp.gapM),
                 decoration: BoxDecoration(
-                  color: Sp.cardHigh,
+                  color: context.cs.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(Sp.rCard),
                 ),
-                child: Text(s.t('ykgRisk'), style: TextStyle(color: Sp.orange)),
+                child: Text(s.t('ykgRisk'), style: TextStyle(color: context.cs.tertiary)),
               ),
               const SizedBox(height: Sp.gapM),
               if (!isExport) ...<Widget>[
@@ -180,7 +180,7 @@ class _YkgSheetState extends State<_YkgSheet> {
               ),
               if (_result.isNotEmpty) ...<Widget>[
                 const SizedBox(height: Sp.gapS),
-                Text(_result, style: TextStyle(color: Sp.textSub)),
+                Text(_result, style: TextStyle(color: context.cs.onSurfaceVariant)),
               ],
             ],
           ),
