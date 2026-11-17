@@ -162,7 +162,7 @@ class _LyricsPageState extends State<LyricsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Sp.bg,
+      backgroundColor: context.cs.surface,
       body: SafeArea(
         child: Column(
           children: <Widget>[
@@ -181,7 +181,7 @@ class _LyricsPageState extends State<LyricsPage> {
         IconButton(
           onPressed: () => Navigator.of(context).maybePop(),
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          color: Sp.text,
+          color: context.cs.onSurface,
           tooltip: '返回',
         ),
         const Spacer(),
@@ -243,7 +243,7 @@ class _LyricsPageState extends State<LyricsPage> {
                     style: TextStyle(
                       fontSize: on ? Sp.fSection : Sp.fItem,
                       fontWeight: on ? FontWeight.w700 : FontWeight.w400,
-                      color: on ? Sp.green : Sp.textFaint,
+                      color: on ? context.cs.primary : context.cs.onSurfaceVariant,
                     ),
                   ),
                   if (showSub) ...<Widget>[
@@ -253,7 +253,7 @@ class _LyricsPageState extends State<LyricsPage> {
                       style: TextStyle(
                         fontSize: on ? Sp.fItem : Sp.fSub,
                         fontWeight: on ? FontWeight.w600 : FontWeight.w400,
-                        color: on ? Sp.green : Sp.textFaint,
+                        color: on ? context.cs.primary : context.cs.onSurfaceVariant,
                       ),
                     ),
                   ],

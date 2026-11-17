@@ -51,8 +51,8 @@ class _SeekSliderState extends State<_SeekSlider> {
     return Slider(
       value: pos.clamp(0.0, max).toDouble(),
       max: max,
-      activeColor: Sp.green,
-      inactiveColor: Sp.divider,
+      activeColor: context.cs.primary,
+      inactiveColor: context.cs.outlineVariant,
       onChanged: dur <= 0 ? null : (v) => setState(() => _preview = v),
       onChangeEnd: dur <= 0
           ? null
@@ -88,7 +88,7 @@ class _FavoriteButtonState extends State<FavoriteButton> {
     return IconButton(
       onPressed: _busy ? null : () => _toggle(cur),
       icon: Icon(collected ? Icons.favorite : Icons.favorite_border),
-      color: collected ? Sp.green : Sp.textSub,
+      color: collected ? context.cs.primary : context.cs.onSurfaceVariant,
       tooltip: collected ? '取消收藏' : '收藏',
     );
   }
@@ -139,7 +139,7 @@ class _PlayerPageState extends State<PlayerPage> {
   void _openSpeedSheet(double current) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Sp.bgElevated,
+      backgroundColor: context.cs.surfaceContainerLow,
       builder: (ctx) => SafeArea(
         child: ListView(
           shrinkWrap: true,
@@ -151,7 +151,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   '${s.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '')}x',
                 ),
                 trailing: (s - current).abs() < 0.001
-                    ? const Icon(Icons.check, color: Sp.green)
+                    ? Icon(Icons.check, color: context.cs.primary)
                     : null,
                 onTap: () {
                   playbackSession().setSpeed(s);
@@ -168,7 +168,7 @@ class _PlayerPageState extends State<PlayerPage> {
     final list = vipQualities();
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Sp.bgElevated,
+      backgroundColor: context.cs.surfaceContainerLow,
       builder: (ctx) => SafeArea(
         child: ListView(
           shrinkWrap: true,
@@ -178,7 +178,7 @@ class _PlayerPageState extends State<PlayerPage> {
               ListTile(
                 title: Text(qualityParam(q)),
                 trailing: qualityParam(q) == current
-                    ? const Icon(Icons.check, color: Sp.green)
+                    ? Icon(Icons.check, color: context.cs.primary)
                     : null,
                 onTap: () {
                   playbackSession().setQuality(qualityParam(q));
@@ -194,13 +194,13 @@ class _PlayerPageState extends State<PlayerPage> {
   void _openMenu() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Sp.bgElevated,
+      backgroundColor: context.cs.surfaceContainerLow,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             ListTile(
-              leading: const Icon(Icons.lyrics_outlined, color: Sp.textSub),
+              leading: Icon(Icons.lyrics_outlined, color: context.cs.onSurfaceVariant),
               title: const Text('歌词'),
               onTap: () {
                 navState().requestTab('lyrics');
@@ -208,9 +208,9 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
             ListTile(
-              leading: const Icon(
+              leading: Icon(
                 Icons.mode_comment_outlined,
-                color: Sp.textSub,
+                color: context.cs.onSurfaceVariant,
               ),
               title: const Text('评论'),
               onTap: () {
@@ -219,9 +219,9 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
             ListTile(
-              leading: const Icon(
+              leading: Icon(
                 Icons.video_library_outlined,
-                color: Sp.textSub,
+                color: context.cs.onSurfaceVariant,
               ),
               title: const Text('查看 MV'),
               onTap: () {
@@ -238,7 +238,7 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.download_outlined, color: Sp.textSub),
+              leading: Icon(Icons.download_outlined, color: context.cs.onSurfaceVariant),
               title: const Text('下载当前歌曲'),
               onTap: () async {
                 Navigator.of(ctx).pop();
@@ -275,7 +275,7 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.radio_outlined, color: Sp.textSub),
+              leading: Icon(Icons.radio_outlined, color: context.cs.onSurfaceVariant),
               title: const Text('个人 FM'),
               onTap: () async {
                 Navigator.of(ctx).pop();
@@ -308,7 +308,7 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget build(BuildContext context) {
     final session = playbackSession();
     return Scaffold(
-      backgroundColor: Sp.bg,
+      backgroundColor: context.cs.surface,
       body: SafeArea(
         child: AnimatedBuilder(
           animation: session,
@@ -336,19 +336,19 @@ class _PlayerPageState extends State<PlayerPage> {
                     ),
                     padding: const EdgeInsets.all(Sp.gapM),
                     decoration: BoxDecoration(
-                      color: Sp.cardHigh,
+                      color: context.cs.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(Sp.rCard),
                     ),
                     child: Row(
                       children: <Widget>[
-                        const Icon(Icons.error_outline, color: Sp.red, size: 20),
+                        Icon(Icons.error_outline, color: context.cs.error, size: 20),
                         const SizedBox(width: Sp.gapS),
                         Expanded(
                           child: Text(
                             errText,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: Sp.fSub,
-                              color: Sp.text,
+                              color: context.cs.onSurface,
                             ),
                           ),
                         ),
@@ -375,10 +375,10 @@ class _PlayerPageState extends State<PlayerPage> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: Sp.fPageTitle,
                           fontWeight: FontWeight.w700,
-                          color: Sp.text,
+                          color: context.cs.onSurface,
                         ),
                       ),
                       const SizedBox(height: Sp.gapS),
@@ -387,20 +387,20 @@ class _PlayerPageState extends State<PlayerPage> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: Sp.fItem,
-                          color: Sp.textSub,
+                          color: context.cs.onSurfaceVariant,
                         ),
                       ),
                       if (snap.player.sourceKind == 'mv-audio') ...<Widget>[
                         const SizedBox(height: Sp.gapS),
-                        const Text(
+                        Text(
                           '试听音源',
                           maxLines: 1,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: Sp.fTiny,
-                            color: Sp.textFaint,
+                            color: context.cs.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -432,7 +432,7 @@ class _PlayerPageState extends State<PlayerPage> {
         IconButton(
           onPressed: () => Navigator.of(context).maybePop(),
           icon: const Icon(Icons.keyboard_arrow_down, size: 28),
-          color: Sp.text,
+          color: context.cs.onSurface,
           tooltip: '收起',
         ),
         const Spacer(),
@@ -440,7 +440,7 @@ class _PlayerPageState extends State<PlayerPage> {
         IconButton(
           onPressed: _openMenu,
           icon: const Icon(Icons.more_vert),
-          color: Sp.text,
+          color: context.cs.onSurface,
           tooltip: '更多',
         ),
       ],
@@ -455,9 +455,9 @@ class _PlayerPageState extends State<PlayerPage> {
     ],
   );
 
-  static final TextStyle _timeStyle = const TextStyle(
+  static final TextStyle _timeStyle = TextStyle(
     fontSize: Sp.fTiny,
-    color: Sp.textFaint,
+    color: context.cs.onSurfaceVariant,
   );
 
   Widget _controls(PlayMode mode) => Row(
@@ -506,13 +506,13 @@ class _PlayerPageState extends State<PlayerPage> {
     mainAxisAlignment: MainAxisAlignment.center,
     children: <Widget>[
       ActionChip(
-        avatar: const Icon(Icons.speed, size: 16, color: Sp.textSub),
+        avatar: Icon(Icons.speed, size: 16, color: context.cs.onSurfaceVariant),
         label: Text('${speed.toStringAsFixed(2)}x'),
         onPressed: () => _openSpeedSheet(speed),
       ),
       const SizedBox(width: Sp.gapM),
       ActionChip(
-        avatar: const Icon(Icons.graphic_eq, size: 16, color: Sp.textSub),
+        avatar: Icon(Icons.graphic_eq, size: 16, color: context.cs.onSurfaceVariant),
         label: const Text('音质'),
         onPressed: () => _openQualitySheet('128'),
       ),

@@ -209,13 +209,13 @@ class _MvPageState extends State<MvPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Sp.bg,
+    backgroundColor: context.cs.surface,
     appBar: AppBar(
-      backgroundColor: Sp.bg,
-      iconTheme: const IconThemeData(color: Sp.text),
-      title: const Text(
+      backgroundColor: context.cs.surface,
+      iconTheme: IconThemeData(color: context.cs.onSurface),
+      title: Text(
         'MV',
-        style: TextStyle(fontSize: Sp.fSection, color: Sp.text),
+        style: TextStyle(fontSize: Sp.fSection, color: context.cs.onSurface),
       ),
     ),
     body: SafeArea(child: _view()),
@@ -228,11 +228,11 @@ class _MvPageState extends State<MvPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              const CircularProgressIndicator(color: Sp.green),
+              CircularProgressIndicator(color: context.cs.primary),
               const SizedBox(height: Sp.gapM),
-              const Text(
+              Text(
                 '正在加载 MV…',
-                style: TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+                style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
               ),
             ],
           ),
@@ -273,7 +273,7 @@ class _MvPageState extends State<MvPage> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(Sp.rCard),
                 child: ColoredBox(
-                  color: Sp.bgElevated,
+                  color: context.cs.surfaceContainerLow,
                   child: AspectRatio(aspectRatio: ar, child: VideoPlayer(c)),
                 ),
               ),
@@ -281,10 +281,10 @@ class _MvPageState extends State<MvPage> {
               VideoProgressIndicator(
                 c,
                 allowScrubbing: true,
-                colors: const VideoProgressColors(
-                  playedColor: Sp.green,
-                  bufferedColor: Sp.textFaint,
-                  backgroundColor: Sp.divider,
+                colors: VideoProgressColors(
+                  playedColor: context.cs.primary,
+                  bufferedColor: context.cs.onSurfaceVariant,
+                  backgroundColor: context.cs.outlineVariant,
                 ),
               ),
               const SizedBox(height: Sp.gapS),
@@ -295,7 +295,7 @@ class _MvPageState extends State<MvPage> {
                     icon: Icon(
                       c.value.isPlaying ? Icons.pause : Icons.play_arrow,
                     ),
-                    color: Sp.green,
+                    color: context.cs.primary,
                     tooltip: c.value.isPlaying ? '暂停' : '播放',
                   ),
                   const SizedBox(width: Sp.gapS),
@@ -306,9 +306,9 @@ class _MvPageState extends State<MvPage> {
                           : (_quality.isEmpty ? 'MV 内嵌播放' : '档位 $_quality'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: Sp.fTiny,
-                        color: Sp.textSub,
+                        color: context.cs.onSurfaceVariant,
                       ),
                     ),
                   ),
