@@ -8,7 +8,7 @@ import '../../bridges/bridge_logic.dart'
 import '../../bridges/bridge_session.dart'
     show NavState, PlaybackSession, SurfaceModule, NavEntry;
 import '../../bridges/bridge_session.dart' show appGraph;
-import '../design/tokens.dart' show Sp;
+import '../design/tokens.dart' show Sp, SpColorSchemeX;
 import 'search_tile_widgets.dart'
     show SearchSongTile, SearchEmptyBox, SearchErrorRetry;
 
@@ -182,7 +182,7 @@ class _SearchPageState extends State<SearchPage> {
                         color: context.cs.onSurface,
                       ),
                       cursorColor: context.cs.primary,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         isDense: true,
                         border: InputBorder.none,
                         hintText: '搜索歌曲、歌单、歌手',
@@ -327,7 +327,7 @@ class _SearchPageState extends State<SearchPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const Padding(
+        Padding(
           padding: EdgeInsets.fromLTRB(
             Sp.pagePad,
             Sp.gapL,
@@ -371,7 +371,7 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _historySection() {
     if (_history.isEmpty) {
-      return const Padding(
+      return Padding(
         padding: EdgeInsets.fromLTRB(Sp.pagePad, Sp.gapXL, Sp.pagePad, 0),
         child: Text(
           '暂无搜索历史',
@@ -392,7 +392,7 @@ class _SearchPageState extends State<SearchPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
-              const Text(
+              Text(
                 '历史记录',
                 style: TextStyle(
                   fontSize: Sp.fSection,
@@ -443,7 +443,7 @@ class _SearchPageState extends State<SearchPage> {
       future: f,
       builder: (BuildContext c, AsyncSnapshot<SearchResult> snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(color: context.cs.primary),
           );
         }

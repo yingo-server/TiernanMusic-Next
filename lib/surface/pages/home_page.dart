@@ -7,7 +7,7 @@ import '../../bridges/bridge_logic.dart'
 import '../../bridges/bridge_session.dart'
     show NavState, PlaybackSession, SurfaceModule, NavEntry;
 import '../../bridges/bridge_session.dart' show appGraph;
-import '../design/tokens.dart' show Sp;
+import '../design/tokens.dart' show Sp, SpColorSchemeX;
 import 'home_state_views.dart'
     show HomeSkeletonBox, HomeEmptyBox, HomeErrorRetry;
 import 'playlist_page.dart' show PlaylistDetailSheet;
@@ -126,7 +126,7 @@ class _HomePageState extends State<HomePage> {
               backgroundColor: context.cs.surface,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
-              title: const Text(
+              title: Text(
                 '首页',
                 style: TextStyle(
                   fontSize: Sp.fHero,
@@ -402,7 +402,7 @@ class _RankCard extends StatelessWidget {
         padding: const EdgeInsets.all(Sp.gapS),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(Sp.rCard),
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             colors: <Color>[context.cs.primary, context.cs.primaryContainer],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
