@@ -25,11 +25,11 @@ class SpCover extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Sp.card,
+        color: context.cs.surfaceContainer,
         borderRadius: BorderRadius.circular(radius),
       ),
       alignment: Alignment.center,
-      child: Icon(Icons.music_note, size: size * 0.4, color: Sp.textFaint),
+      child: Icon(Icons.music_note, size: size * 0.4, color: context.cs.onSurfaceVariant),
     );
     if (u.isEmpty) return box;
     return ClipRRect(
@@ -109,7 +109,7 @@ class SpSongTile extends StatelessWidget {
               IconButton(
                 onPressed: onMore,
                 icon: const Icon(Icons.more_vert, size: 20),
-                color: Sp.textSub,
+                color: context.cs.onSurfaceVariant,
                 visualDensity: VisualDensity.compact,
                 tooltip: '更多',
               ),
@@ -157,7 +157,7 @@ class SpSectionHeader extends StatelessWidget {
             TextButton(
               onPressed: onAction,
               style: TextButton.styleFrom(
-                foregroundColor: Sp.green,
+                foregroundColor: context.cs.primary,
                 visualDensity: VisualDensity.compact,
               ),
               child: Text(actionLabel!),
@@ -186,7 +186,7 @@ class SpSkeleton extends StatelessWidget {
     width: width,
     height: height,
     decoration: BoxDecoration(
-      color: Sp.card,
+      color: context.cs.surfaceContainer,
       borderRadius: BorderRadius.circular(radius),
     ),
   );
@@ -254,7 +254,7 @@ class SpStateView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(icon, size: 40, color: Sp.textFaint),
+            Icon(icon, size: 40, color: context.cs.onSurfaceVariant),
             const SizedBox(height: Sp.gapM),
             Text(title, style: t.titleMedium, textAlign: TextAlign.center),
             if (subtitle != null && subtitle!.isNotEmpty) ...<Widget>[
@@ -290,7 +290,7 @@ class SpPlayButton extends StatelessWidget {
     width: size,
     height: size,
     child: Material(
-      color: Sp.green,
+      color: context.cs.primary,
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -325,7 +325,7 @@ class SpRoundButton extends StatelessWidget {
     onPressed: onTap,
     tooltip: tooltip,
     icon: Icon(icon, size: 24),
-    color: active ? Sp.green : Sp.text,
+    color: active ? context.cs.primary : context.cs.onSurface,
     visualDensity: VisualDensity.compact,
   );
 }

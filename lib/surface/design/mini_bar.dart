@@ -38,7 +38,7 @@ class SpMiniBar extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final playing = snap.player.isPlaying;
     return Material(
-      color: Sp.bgElevated,
+      color: context.cs.surfaceContainerLow,
       child: InkWell(
         onTap: onExpand,
         child: Container(
@@ -74,13 +74,13 @@ class SpMiniBar extends StatelessWidget {
               IconButton(
                 onPressed: session.toggle,
                 icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-                color: Sp.text,
+                color: context.cs.onSurface,
                 tooltip: playing ? '暂停' : '播放',
               ),
               IconButton(
                 onPressed: session.next,
                 icon: const Icon(Icons.skip_next),
-                color: Sp.text,
+                color: context.cs.onSurface,
                 tooltip: '下一首',
               ),
             ],

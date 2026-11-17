@@ -205,3 +205,11 @@ class Sp {
     );
   }
 }
+
+/// 语义色门面（MD3 页面级重构 · 阶段B方案A M1）。
+/// 页面统一用 `context.cs.primary/onSurface/surface...` 取代 `Sp.*` 静态色，
+/// 让亮/暗/动态取色真正生效——这是 MD3 42/100 白底白字的根因修复。
+/// 单一事实源：全部来自 Theme.of(context).colorScheme。
+extension SpColorSchemeX on BuildContext {
+  ColorScheme get cs => Theme.of(this).colorScheme;
+}
