@@ -7,7 +7,7 @@ import '../../bridges/bridge_logic.dart'
 import '../../bridges/bridge_session.dart'
     show NavState, PlaybackSession, SurfaceModule, NavEntry;
 import '../../bridges/bridge_session.dart' show appGraph;
-import '../design/tokens.dart' show Sp;
+import '../design/tokens.dart' show Sp, SpColorSchemeX;
 
 const String _tag = 'surface.playlist';
 
@@ -34,15 +34,15 @@ class PlaylistPage extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: Sp.bg,
+        backgroundColor: context.cs.surface,
         body: SafeArea(
           child: Column(
             children: <Widget>[
-              const TabBar(
-                indicatorColor: Sp.green,
+              TabBar(
+                indicatorColor: context.cs.primary,
                 indicatorWeight: 3,
-                labelColor: Sp.text,
-                unselectedLabelColor: Sp.textSub,
+                labelColor: context.cs.onSurface,
+                unselectedLabelColor: context.cs.onSurfaceVariant,
                 labelStyle: TextStyle(
                   fontSize: Sp.fSection,
                   fontWeight: FontWeight.w700,
@@ -97,7 +97,7 @@ class _RecommendTabState extends State<_RecommendTab> {
     try {
       showModalBottomSheet<void>(
         context: context,
-        backgroundColor: Sp.bgElevated,
+        backgroundColor: context.cs.surfaceContainerLow,
         isScrollControlled: true,
         builder: (BuildContext c) => PlaylistDetailSheet(
           playlistId: brief.id,
@@ -116,8 +116,8 @@ class _RecommendTabState extends State<_RecommendTab> {
       future: _f,
       builder: (BuildContext c, AsyncSnapshot<List<PlaylistBrief>> snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(
-            child: CircularProgressIndicator(color: Sp.green),
+          return Center(
+            child: CircularProgressIndicator(color: context.cs.primary),
           );
         }
         if (snap.hasError) {
@@ -180,7 +180,7 @@ class _MineTabState extends State<_MineTab> {
     try {
       showModalBottomSheet<void>(
         context: context,
-        backgroundColor: Sp.bgElevated,
+        backgroundColor: context.cs.surfaceContainerLow,
         isScrollControlled: true,
         builder: (BuildContext c) => PlaylistDetailSheet(
           playlistId: meta.playlistId,
@@ -200,8 +200,8 @@ class _MineTabState extends State<_MineTab> {
       future: _f,
       builder: (BuildContext c, AsyncSnapshot<List<PlaylistMeta>> snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(
-            child: CircularProgressIndicator(color: Sp.green),
+          return Center(
+            child: CircularProgressIndicator(color: context.cs.primary),
           );
         }
         if (snap.hasError) {
@@ -285,13 +285,13 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
       initialChildSize: 0.75,
       builder: (BuildContext c, ScrollController ctrl) {
         return Container(
-          color: Sp.bgElevated,
+          color: context.cs.surfaceContainerLow,
           child: FutureBuilder<_SheetData>(
             future: _f,
             builder: (BuildContext c, AsyncSnapshot<_SheetData> snap) {
               if (snap.connectionState != ConnectionState.done) {
-                return const Center(
-                  child: CircularProgressIndicator(color: Sp.green),
+                return Center(
+                  child: CircularProgressIndicator(color: context.cs.primary),
                 );
               }
               final _SheetData data =
@@ -313,7 +313,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                             width: 64,
                             height: 64,
                             child: widget.cover.isEmpty
-                                ? Container(color: Sp.cardHigh)
+                                ? Container(color: context.cs.surfaceContainerHigh)
                                 : Image.network(
                                     widget.cover,
                                     fit: BoxFit.cover,
@@ -321,7 +321,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                                       BuildContext c,
                                       Object e,
                                       StackTrace? s,
-                                    ) => Container(color: Sp.cardHigh),
+                                    ) => Container(color: context.cs.surfaceContainerHigh),
                                   ),
                           ),
                         ),
@@ -334,10 +334,10 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                                 title.isEmpty ? '歌单详情' : title,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: Sp.fSection,
                                   fontWeight: FontWeight.w700,
-                                  color: Sp.text,
+                                  color: context.cs.onSurface,
                                 ),
                               ),
                               const SizedBox(height: Sp.gapXS),
@@ -345,9 +345,9 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                                 items.isNotEmpty
                                     ? '${items.length} 首'
                                     : '本地镜像 ${widget.localTrackCount} 首',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: Sp.fSub,
-                                  color: Sp.textSub,
+                                  color: context.cs.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -398,12 +398,12 @@ class PlaylistGridCard extends StatelessWidget {
       child: AspectRatio(
         aspectRatio: 1,
         child: brief.cover.isEmpty
-            ? Container(color: Sp.cardHigh)
+            ? Container(color: context.cs.surfaceContainerHigh)
             : Image.network(
                 brief.cover,
                 fit: BoxFit.cover,
                 errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                    Container(color: Sp.cardHigh),
+                    Container(color: context.cs.surfaceContainerHigh),
               ),
       ),
     );
@@ -418,11 +418,11 @@ class PlaylistGridCard extends StatelessWidget {
             brief.name.isEmpty ? '未命名歌单' : brief.name,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: Sp.fSub, color: Sp.text),
+            style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurface),
           ),
           Text(
             brief.trackCount > 0 ? '${brief.trackCount} 首' : '曲目数未知',
-            style: const TextStyle(fontSize: Sp.fTiny, color: Sp.textFaint),
+            style: TextStyle(fontSize: Sp.fTiny, color: context.cs.onSurfaceVariant),
           ),
         ],
       ),
@@ -443,12 +443,12 @@ class _MineRow extends StatelessWidget {
         width: Sp.tileCover,
         height: Sp.tileCover,
         child: meta.coverUrl.isEmpty
-            ? Container(color: Sp.cardHigh)
+            ? Container(color: context.cs.surfaceContainerHigh)
             : Image.network(
                 meta.coverUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                    Container(color: Sp.cardHigh),
+                    Container(color: context.cs.surfaceContainerHigh),
               ),
       ),
     );
@@ -460,13 +460,13 @@ class _MineRow extends StatelessWidget {
         meta.name.isEmpty ? '未命名歌单' : meta.name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: Sp.fItem, color: Sp.text),
+        style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
       ),
       subtitle: Text(
         '${meta.songHashes.length} 首',
-        style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+        style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
       ),
-      trailing: const Icon(Icons.chevron_right, color: Sp.textFaint),
+      trailing: Icon(Icons.chevron_right, color: context.cs.onSurfaceVariant),
     );
   }
 }
@@ -492,27 +492,27 @@ class _TrackRow extends StatelessWidget {
         width: 28,
         child: Text(
           '${index + 1}',
-          style: const TextStyle(fontSize: Sp.fSub, color: Sp.textFaint),
+          style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
         ),
       ),
       title: Text(
         song.name.isEmpty ? '未知歌曲' : song.name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: Sp.fItem, color: Sp.text),
+        style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
       ),
       subtitle: Text(
         song.singer,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+        style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
       ),
       trailing: song.albumId.isEmpty
           ? null
           : IconButton(
               tooltip: '专辑',
               iconSize: 18,
-              color: Sp.textFaint,
+              color: context.cs.onSurfaceVariant,
               onPressed: onAlbum,
               icon: const Icon(Icons.album_outlined),
             ),
@@ -539,7 +539,7 @@ class PlaylistEmptyBox extends StatelessWidget {
     ),
     child: Text(
       message,
-      style: const TextStyle(fontSize: Sp.fSub, color: Sp.textFaint),
+      style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
     ),
   );
 }
@@ -560,14 +560,14 @@ class PlaylistErrorRetry extends StatelessWidget {
         Expanded(
           child: Text(
             message,
-            style: const TextStyle(fontSize: Sp.fSub, color: Sp.red),
+            style: TextStyle(fontSize: Sp.fSub, color: context.cs.error),
           ),
         ),
         TextButton(
           onPressed: onRetry,
-          child: const Text(
+          child: Text(
             '重试',
-            style: TextStyle(fontSize: Sp.fSub, color: Sp.green),
+            style: TextStyle(fontSize: Sp.fSub, color: context.cs.primary),
           ),
         ),
       ],

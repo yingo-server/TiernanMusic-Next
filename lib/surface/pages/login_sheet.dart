@@ -28,7 +28,7 @@ Future<void> showLoginSheet(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Sp.bgElevated,
+    backgroundColor: context.cs.surfaceContainerLow,
     builder: (_) => SizedBox(
       height: MediaQuery.of(_).size.height * 0.7,
       child: LoginSheetPanel(onAuthChanged: onAuthChanged),
@@ -252,12 +252,12 @@ class _QrTabState extends State<_QrTab> {
                   height: 200,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: Sp.card,
+                    color: context.cs.surfaceContainer,
                     borderRadius: BorderRadius.circular(Sp.rCard),
                   ),
-                  child: const Text(
+                  child: Text(
                     '二维码加载中',
-                    style: TextStyle(fontSize: Sp.fSub, color: Sp.textFaint),
+                    style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
                   ),
                 ),
         ),
@@ -265,7 +265,7 @@ class _QrTabState extends State<_QrTab> {
         Center(
           child: Text(
             _hint,
-            style: const TextStyle(fontSize: Sp.fItem, color: Sp.textSub),
+            style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurfaceVariant),
           ),
         ),
         const SizedBox(height: Sp.gapM),
@@ -478,12 +478,12 @@ class _YkgTab extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Icon(Icons.link, size: 48, color: Sp.textSub),
+          Icon(Icons.link, size: 48, color: context.cs.onSurfaceVariant),
           const SizedBox(height: Sp.gapM),
           Text(
             s.t('ykgRisk'),
             textAlign: TextAlign.center,
-            style: TextStyle(color: Sp.textSub),
+            style: TextStyle(color: context.cs.onSurfaceVariant),
           ),
           const SizedBox(height: Sp.gapL),
           FilledButton.icon(

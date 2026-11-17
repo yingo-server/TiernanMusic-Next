@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart' show AccountRecord;
-import '../design/tokens.dart' show Sp;
+import '../design/tokens.dart' show Sp, SpColorSchemeX;
 
 /// 已登录账号列表区（当前账号高亮；支持切换/移除）。
 class AccountSection extends StatelessWidget {
@@ -24,19 +24,19 @@ class AccountSection extends StatelessWidget {
   Widget build(BuildContext context) {
     try {
       return Container(
-        decoration: const BoxDecoration(color: Sp.card),
+        decoration: BoxDecoration(color: context.cs.surfaceContainer),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(Sp.pagePad, Sp.gapM, Sp.pagePad, 4),
               child: Text(
                 '已登录账号',
-                style: TextStyle(fontSize: Sp.fItem, color: Sp.textSub),
+                style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurfaceVariant),
               ),
             ),
             if (accounts.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(
                   Sp.pagePad,
                   0,
@@ -45,7 +45,7 @@ class AccountSection extends StatelessWidget {
                 ),
                 child: Text(
                   '暂无账号，登录后将自动保存到这里',
-                  style: TextStyle(fontSize: Sp.fSub, color: Sp.textFaint),
+                  style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
                 ),
               )
             else
@@ -56,25 +56,25 @@ class AccountSection extends StatelessWidget {
                     rec.accountId == activeUid
                         ? Icons.person
                         : Icons.person_outline,
-                    color: rec.accountId == activeUid ? Sp.green : Sp.textSub,
+                    color: rec.accountId == activeUid ? context.cs.primary : context.cs.onSurfaceVariant,
                     size: 20,
                   ),
                   title: Text(
                     rec.displayName,
-                    style: const TextStyle(fontSize: Sp.fItem, color: Sp.text),
+                    style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
                   ),
                   subtitle: Text(
                     '账号 ${rec.accountId}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: Sp.fSub,
-                      color: Sp.textFaint,
+                      color: context.cs.onSurfaceVariant,
                     ),
                   ),
                   trailing: IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.delete_outline,
                       size: 20,
-                      color: Sp.textFaint,
+                      color: context.cs.onSurfaceVariant,
                     ),
                     tooltip: '移除账号',
                     onPressed: () => onRemove(rec.accountId),

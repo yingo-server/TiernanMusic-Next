@@ -84,7 +84,7 @@ class _SettingsPageState extends State<SettingsPage> {
   void _openQualitySheet() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Sp.bgElevated,
+      backgroundColor: context.cs.surfaceContainerLow,
       builder: (ctx) => SafeArea(
         child: ListView(
           shrinkWrap: true,
@@ -107,7 +107,7 @@ class _SettingsPageState extends State<SettingsPage> {
   void _openSpeedSheet(double current) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Sp.bgElevated,
+      backgroundColor: context.cs.surfaceContainerLow,
       builder: (ctx) => SafeArea(
         child: ListView(
           shrinkWrap: true,
@@ -117,7 +117,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ListTile(
                 title: Text('${s}x'),
                 trailing: (s - current).abs() < 0.001
-                    ? const Icon(Icons.check, color: Sp.green)
+                    ? Icon(Icons.check, color: context.cs.primary)
                     : null,
                 onTap: () {
                   playbackSession().setSpeed(s);
@@ -151,7 +151,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final session = playbackSession();
     return Scaffold(
-      backgroundColor: Sp.bg,
+      backgroundColor: context.cs.surface,
       body: SafeArea(
         child: AnimatedBuilder(
           animation: session,
@@ -163,18 +163,18 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SpSectionHeader(title: '账号'),
                 _group(<Widget>[
                   ListTile(
-                    leading: const Icon(
+                    leading: Icon(
                       Icons.person_outline,
-                      color: Sp.textSub,
+                      color: context.cs.onSurfaceVariant,
                     ),
                     title: Text(_loggedIn ? '已登录' : '未登录'),
                     subtitle: Text(
                       _loggedIn
                           ? (_nickname.isEmpty ? '酷狗用户' : _nickname)
                           : '扫码登录后同步收藏与历史',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: Sp.fSub,
-                        color: Sp.textSub,
+                        color: context.cs.onSurfaceVariant,
                       ),
                     ),
                     trailing: _loggedIn
@@ -195,9 +195,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Text(
+                        Text(
                           '主题模式',
-                          style: TextStyle(fontSize: Sp.fItem, color: Sp.text),
+                          style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
                         ),
                         const SizedBox(height: Sp.gapM),
                         ValueListenableBuilder<int>(
@@ -232,9 +232,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Text(
+                        Text(
                           '界面语言',
-                          style: TextStyle(fontSize: Sp.fItem, color: Sp.text),
+                          style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
                         ),
                         const SizedBox(height: Sp.gapS),
                         ValueListenableBuilder<String>(
@@ -269,31 +269,31 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SpSectionHeader(title: '播放'),
                 _group(<Widget>[
                   ListTile(
-                    leading: const Icon(Icons.graphic_eq, color: Sp.textSub),
+                    leading: Icon(Icons.graphic_eq, color: context.cs.onSurfaceVariant),
                     title: const Text('音质'),
-                    subtitle: const Text(
+                    subtitle: Text(
                       '128（标准）',
-                      style: TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+                      style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
                     ),
-                    trailing: const Icon(
+                    trailing: Icon(
                       Icons.chevron_right,
-                      color: Sp.textFaint,
+                      color: context.cs.onSurfaceVariant,
                     ),
                     onTap: _openQualitySheet,
                   ),
                   ListTile(
-                    leading: const Icon(Icons.speed, color: Sp.textSub),
+                    leading: Icon(Icons.speed, color: context.cs.onSurfaceVariant),
                     title: const Text('倍速'),
                     subtitle: Text(
                       '${speed}x',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: Sp.fSub,
-                        color: Sp.textSub,
+                        color: context.cs.onSurfaceVariant,
                       ),
                     ),
-                    trailing: const Icon(
+                    trailing: Icon(
                       Icons.chevron_right,
-                      color: Sp.textFaint,
+                      color: context.cs.onSurfaceVariant,
                     ),
                     onTap: () => _openSpeedSheet(speed),
                   ),
@@ -301,14 +301,14 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SpSectionHeader(title: '存储'),
                 _group(<Widget>[
                   ListTile(
-                    leading: const Icon(
+                    leading: Icon(
                       Icons.cleaning_services_outlined,
-                      color: Sp.textSub,
+                      color: context.cs.onSurfaceVariant,
                     ),
                     title: const Text('清理缓存'),
-                    subtitle: const Text(
+                    subtitle: Text(
                       '清理会话缓存与请求合并表',
-                      style: TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+                      style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
                     ),
                     trailing: FilledButton(
                       onPressed: _clearCache,
@@ -319,13 +319,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SpSectionHeader(title: '关于'),
                 _group(<Widget>[
                   ListTile(
-                    leading: const Icon(Icons.info_outline, color: Sp.textSub),
+                    leading: Icon(Icons.info_outline, color: context.cs.onSurfaceVariant),
                     title: const Text('版本'),
                     trailing: Text(
                       kAppVersion,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: Sp.fSub,
-                        color: Sp.textSub,
+                        color: context.cs.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -341,7 +341,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _group(List<Widget> children) => Container(
     margin: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
     decoration: BoxDecoration(
-      color: Sp.card,
+      color: context.cs.surfaceContainer,
       borderRadius: BorderRadius.circular(Sp.rCard),
     ),
     clipBehavior: Clip.antiAlias,

@@ -76,16 +76,16 @@ class _LibraryPageState extends State<LibraryPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Sp.bg,
+      backgroundColor: context.cs.surface,
       body: SafeArea(
         child: Column(
           children: <Widget>[
             _accountCard(),
             TabBar(
               controller: _tabs,
-              labelColor: Sp.text,
-              unselectedLabelColor: Sp.textSub,
-              indicatorColor: Sp.green,
+              labelColor: context.cs.onSurface,
+              unselectedLabelColor: context.cs.onSurfaceVariant,
+              indicatorColor: context.cs.primary,
               labelStyle: const TextStyle(
                 fontSize: Sp.fItem,
                 fontWeight: FontWeight.w600,
@@ -146,10 +146,10 @@ class _LibraryPageState extends State<LibraryPage>
                       p.nickname.isEmpty ? '未命名用户' : p.nickname,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: Sp.fSection,
                         fontWeight: FontWeight.w700,
-                        color: Sp.text,
+                        color: context.cs.onSurface,
                       ),
                     ),
                     const SizedBox(height: Sp.gapXS),
@@ -157,9 +157,9 @@ class _LibraryPageState extends State<LibraryPage>
                       children: <Widget>[
                         Text(
                           'ID ${p.userid}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: Sp.fSub,
-                            color: Sp.textSub,
+                            color: context.cs.onSurfaceVariant,
                           ),
                         ),
                         const SizedBox(width: Sp.gapM),
@@ -167,9 +167,9 @@ class _LibraryPageState extends State<LibraryPage>
                           future: _favCount,
                           builder: (context, c) => Text(
                             '我喜欢 ${c.data ?? 0}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: Sp.fSub,
-                              color: Sp.textSub,
+                              color: context.cs.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -190,12 +190,12 @@ class _LibraryPageState extends State<LibraryPage>
     final fallback = Container(
       width: 48,
       height: 48,
-      decoration: const BoxDecoration(
-        color: Sp.cardHigh,
+      decoration: BoxDecoration(
+        color: context.cs.surfaceContainerHigh,
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
-      child: const Icon(Icons.person, color: Sp.textFaint),
+      child: Icon(Icons.person, color: context.cs.onSurfaceVariant),
     );
     if (u.isEmpty) return fallback;
     return ClipOval(
@@ -269,14 +269,14 @@ class _LibraryPageState extends State<LibraryPage>
         return ListView.builder(
           itemCount: items.length,
           itemBuilder: (BuildContext ctx, int i) => ListTile(
-            leading: const Icon(Icons.music_note, color: Sp.textFaint),
+            leading: Icon(Icons.music_note, color: context.cs.onSurfaceVariant),
             title: Text(
               titleOf(items[i]),
-              style: const TextStyle(fontSize: Sp.fItem, color: Sp.text),
+              style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
             ),
             subtitle: Text(
               subtitleOf(items[i]),
-              style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+              style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
             ),
           ),
         );
@@ -324,7 +324,7 @@ class _LibraryPageState extends State<LibraryPage>
           ),
           subtitle: Text(
             '${t.quality} · ${t.status.name}',
-            style: const TextStyle(fontSize: Sp.fSub, color: Sp.textSub),
+            style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
           ),
           trailing: t.progress >= 0
               ? SizedBox(
