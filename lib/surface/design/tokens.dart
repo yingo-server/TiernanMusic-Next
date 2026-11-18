@@ -78,7 +78,11 @@ class Sp {
   /// 主题（唯一工厂；AppRoot 只用它）。dark=false 时用亮色映射。
   /// [seed]：动态取色种子（L6 ThemeController 经 L4 fromSeed 派生）；
   ///   默认品牌绿。seed 变化时 primary 等 tonal 角色随之变化。
-  static ThemeData theme({bool dark = true, Color? seed}) {
+  static ThemeData theme({
+    bool dark = true,
+    Color? seed,
+    bool pureBlack = false,
+  }) {
     try {
       final Color brandSeed = seed ?? green;
       // 审查修复（底栏/内容板分裂）：surface 系列不再用局部 dark/亮常量覆盖，
@@ -94,6 +98,13 @@ class Sp {
             onPrimary: Colors.black,
             error: red,
             onError: Colors.white,
+            // 纯黑（AMOLED）档：surface 全系压到 #000000，与暗色档拉开差异。
+            surface: pureBlack ? Colors.black : null,
+            surfaceContainerLowest: pureBlack ? Colors.black : null,
+            surfaceContainerLow: pureBlack ? Colors.black : null,
+            surfaceContainer: pureBlack ? Colors.black : null,
+            surfaceContainerHigh: pureBlack ? const Color(0xFF0A0A0A) : null,
+            surfaceContainerHighest: pureBlack ? const Color(0xFF121212) : null,
           );
       return ThemeData(
         useMaterial3: true,

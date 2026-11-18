@@ -66,8 +66,12 @@ class _AppRootState extends State<AppRoot> {
             title: 'TiernanMusicNext',
             debugShowCheckedModeBanner: false,
             theme: Sp.theme(dark: false, seed: seed),
-            darkTheme: Sp.theme(dark: true, seed: seed),
-            // 0 跟随系统 / 1 亮 / 2 暗 / 3 纯黑。
+            darkTheme: Sp.theme(
+              dark: true,
+              seed: seed,
+              pureBlack: mode == 3,
+            ),
+            // 0 跟随系统(暗色基底) / 1 亮 / 2 暗 / 3 纯黑(AMOLED)。
             // 审查修复（底栏浅色回归）：本 App 视觉基底为深色（Spotify 深色风），
             // "跟随系统"沿用系统浅色会让大量深色假设失效、底栏与内容板分裂；
             // 故 0 档保持暗色基底（与旧行为一致），想用浅色请选"亮"。
