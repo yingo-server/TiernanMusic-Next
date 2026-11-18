@@ -402,8 +402,17 @@ class _RankCard extends StatelessWidget {
         padding: const EdgeInsets.all(Sp.gapS),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(Sp.rCard),
+          // 审查修复：primary→primaryContainer 渐变在暗色板第二段是浅 tonal
+          // 色，卡片下半截会变成浅灰块（用户截图问题）。改为同族深色渐变，
+          // 文字色跟随 onPrimaryContainer 保证对比度。
           gradient: LinearGradient(
-            colors: <Color>[context.cs.primary, context.cs.primaryContainer],
+            colors: <Color>[
+              context.cs.primary,
+              Color.alphaBlend(
+                context.cs.onPrimary.withValues(alpha: 0.35),
+                context.cs.primary,
+              ),
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
