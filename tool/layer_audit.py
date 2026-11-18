@@ -64,7 +64,15 @@ L4_EXTRA = ('package:isar/isar.dart',
             'package:just_audio/just_audio.dart',
             'package:audio_service/audio_service.dart',
             # YKG 链接登录：成熟密码学库仅允许 L4 core 引用（算法不自研）。
-            'package:cryptography/cryptography.dart')
+            'package:cryptography/cryptography.dart',
+            # 平台层（core/platform）：桌面窗口/标题栏能力。
+            # 理由：bitsdojo_window 取原生窗口句柄、window_manager 管最小尺寸/
+            # 最大化/焦点事件，二者仅在 core/platform/window 内使用；
+            # flutter/foundation 仅用 defaultTargetPlatform（平台判定只允许
+            # 出现在平台层，见 docs/UI_REWRITE_PLAN.md §2）。
+            'package:flutter/foundation.dart',
+            'package:bitsdojo_window/bitsdojo_window.dart',
+            'package:window_manager/window_manager.dart')
 
 violations = []
 file_count = 0

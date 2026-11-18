@@ -49,6 +49,17 @@ export '../core/algorithms/color_extract.dart'
 export '../core/l10n/strings.dart' show TnStrings;
 // ── V2：缓存 ⊃ 预读 统一服务（L6 session 经本桥取） ──
 export '../core/cache/cache_service.dart' show CacheService, CacheOrigin;
+// ── 平台层门面（能力网关 / 能力集合 / 窗口服务）──
+// 平台差异实现位于 lib/platform/**（条件导入），此处只暴露平台无关接口；
+// 上层（logic/surface）禁止直接 import lib/platform/**，必须经本桥。
+export '../core/capability/capability_gateway.dart'
+    show CapabilityGateway, CapState, CapStatus, CapId, InMemoryCapabilityGateway;
+export '../core/capability/platform_capabilities.dart'
+    show PlatformCapabilities, WindowService, WindowSizeRequest, WindowEvent;
+// ── 平台服务单例（能力集合 / 权限网关 / 窗口服务）──
+// 上层经本桥获取平台能力，禁止直接 import lib/core/platform/**。
+export '../core/platform/platform_services.dart'
+    show platformCapabilities, capabilityGateway, windowService;
 // V2：session 构造预读请求需要 Endpoint 类型与注册表（core 内部数据类型，经桥转出）。
 export '../core/net/kugou_client.dart' show Endpoint, EndpointRegistry;
 // ── V2：core/audio 成熟库网关（L6 session 经本桥取引擎，L7 不碰引擎） ──
