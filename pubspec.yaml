@@ -33,10 +33,10 @@ dependencies:
   window_manager: ^0.4.3
   # 跨平台文件选择（桌面/移动统一入口，走能力网关）。
   file_selector: ^1.0.3
-  # 桌面拖拽（播放列表/文件拖入）。
-  desktop_drop: ^0.6.0
-  # 多显示器支持（桌面窗口跨屏）。
-  screen_retriever: ^0.2.0
+  # 注意：desktop_drop / screen_retriever 有 Android 端实现，会在 APK 构建时
+  # 触发 AAR 元数据冲突（android-33 vs androidx 34+）。桌面拖拽/多屏改用
+  # Flutter 官方 DragTarget + MediaQuery 实现（零原生依赖），不引入这两个包。
+  window_manager: ^0.4.3
 
 dev_dependencies:
   flutter_test:

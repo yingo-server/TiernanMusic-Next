@@ -182,8 +182,9 @@ dependencies:
   bitsdojo_window: ^0.1.6     # 桌面自定义标题栏
   window_manager: ^0.4.3      # 窗口最小尺寸/最大化/全屏（与 bitsdojo 配合）
   file_selector: ^1.0.3       # 跨平台文件选择
-  desktop_drop: ^0.6.0        # 桌面拖拽
-  screen_retriever: ^0.2.0    # 多显示器
+  # 桌面拖拽/多屏：用 Flutter 官方 DragTarget + MediaQuery（零原生依赖），
+  # 不引入 desktop_drop / screen_retriever（其 Android 端实现会致 APK 构建
+  # AAR 元数据冲突）。
 ```
 > 依赖是否可用性需在 CI 用 `flutter pub get` 验证；任何新依赖若引入编译问题，回退到官方等价 API（`file_selector`→`dart:io` 封装）。
 
