@@ -1,81 +1,109 @@
 # TiernanMusic-Next
 
-Flutter 离线优先的酷狗第三方客户端（酷狗原生 API 直连，不依赖第三方网关）。
-**76 原则（七层六桥）**架构 + Riverpod + Isar，目标平台 Android（split-per-abi 三架构极限包体）。
+**一款离线优先的酷狗第三方音乐客户端（Flutter）。** 直连酷狗原生 API，不依赖第三方网关，数据与下载落在本机 —— 为想要"自己掌控播放、下载与账号凭据"的用户而做，Android 与桌面（Windows / Linux AppImage）可用。
 
-> 零源仓库代码复用：酷狗 API 知识全部来自逆向知识文档 [docs/KUGOU_API.md](docs/KUGOU_API.md)。
+> 零源仓库代码复用：酷狗 API 知识全部来自自建的逆向知识文档 [docs/KUGOU_API.md](docs/KUGOU_API.md)。仅供学习研究，不随包分发酷狗内容。
 
-## 架构速览：76 原则（七层六桥 · 权威定义见 [docs/SEVEN_SIX_RULE.md](docs/SEVEN_SIX_RULE.md)）
+## 它能做什么
+
+- **播放 / 下载 / 歌词 / MV**：播放队列状态机与播放源编排（L5 logic），音频走 just_audio + audio_service，支持歌词解析与 MV 内嵌播放壳。
+- **离线优先**：Isar 本地数据库 + 统一缓存服务（含预读 `prefetch`），看过/听过的不重复拉网。
+- **账号**：QR 扫码登录 + **YKG 链接登录**（AES-256-GCM / PBKDF2-HMAC-SHA256 报文封装，算法全部用成熟库，设计见 [docs/YKG_LINK_CRYPTO_DESIGN.md](docs/YKG_LINK_CRYPTO_DESIGN.md)）。
+- **三态适配**：匿名 / 非VIP / VIP 三种返回体逐字段实测并写入回归锚点（含 20028 / priv_status 语义），权限判定唯一可信源为 status/priv_status。
+
+## 为什么它的 UI 可信
+
+UI 由两套现成模块构成，我们**只写色彩，不写控件**：
+
+- **官方 Material 3** 承载全部结构（Scaffold / NavigationBar / Card / Dialog…），只做主题与参数配置；
+- **GetWidget** 补足反馈层（Obx / GetSnackbar / GetDialog / GetBottomSheet）。
+
+色彩是"森林翡翠"设计语言（[docs/DESIGN_LANGUAGE.md](docs/DESIGN_LANGUAGE.md)）：语义 token + 明暗成对定义，对比度脚本化校验（正文 ≥4.5:1），支持动态取色。门禁 `ui_no_custom_widgets.py` 零例外禁止自绘控件与硬编码色值 —— 所以每一屏都来自官方组件的默认质量。
+
+## 76 原则架构（七层六桥）
+
+权威定义见 [docs/SEVEN_SIX_RULE.md](docs/SEVEN_SIX_RULE.md)，架构规范见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)：
 
 ```
-L7 surface    仅 UI 控件（Spotify 深色设计系统）   ⇅ bridge_surface.dart
-L6 session    播放编排/播放列表/装配图/导航状态    ⇅ bridge_session.dart
-L5 logic      纯后端逻辑（无UI无IO直连）           ⇅ bridge_logic.dart
-L4 core       缓存⊃预读/音频网关/纯算法/网络/存储  ⇅ bridge_core.dart
-L3 kernel     生命周期/日志                     ⇅ bridge_kernel.dart
-L2 bootloader 启动序列/依赖装配                 ⇅ bridge_boot.dart
-L1 init       main 入口/完整性校验触发
+L7 surface    仅 UI 控件           ⇅ bridge_surface.dart
+L6 session    播放编排/导航状态     ⇅ bridge_session.dart
+L5 logic      纯后端逻辑           ⇅ bridge_logic.dart
+L4 core       缓存/音频网关/网络    ⇅ bridge_core.dart
+L3 kernel     生命周期/日志        ⇅ bridge_kernel.dart
+L2 bootloader 启动序列/依赖装配     ⇅ bridge_boot.dart
+L1 init       main 入口
 ```
-依赖方向 `surface(L7) → session(L6) → logic(L5) → core(L4)`，禁止反向。
 
-**铁律**
-
-1. 跨层只能经桥文件（lib/bridges/），`tool/layer_audit.py` CI 强制。
-2. 桥函数统一 try/catch + Log 留痕，失败不静默吞。
-3. core/net/endpoints/ 每端点一模块 + `core/net/endpoint_registry.dart` 的 `EndpointRegistry` 声明式配置（50 个端点常量，从 `kugou_client.dart` 拆出），改 API 不动调用方。
-4. 零源仓库代码复用；酷狗 API 知识仅来自 docs/KUGOU_API.md。
-5. 依赖纪律：SDK 可实现（≤500行/文件）不引库；例外清单：`riverpod / just_audio / audio_service / isar / isar_flutter_libs / path_provider / video_player`（MV 内嵌播放壳，`video_player` 已加入 pubspec 并同时列入 `tool/layer_audit.py` / `tool/smoke_check.dart` 的 L4/L7 白名单；`package:isar/isar.dart` 为两工具共同的 L4_EXTRA 例外）。以 `pubspec.yaml` 为唯一依赖事实源。
-6. L7 热插拔：页面为 SurfaceModule，注册表在 L6 session，L7 按 id 动态生成导航；模块间零直接 import。
+- 依赖方向 `surface → session → logic → core`，禁止反向；跨层只能经 `lib/bridges/`，`tool/layer_audit.py` CI 强制。
+- 平台差异收敛到 `lib/platform/`（桌面标题栏 bitsdojo / window_manager），权限与系统能力走统一网关 `lib/core/capability/`（未授权/已授权/永久拒绝三态）。
+- 50 个酷狗端点在 `core/net/endpoint_registry.dart` 声明式配置，改 API 不动调用方。
+- 每次构建生成 `verification.json`（加盐摘要 + RSA-4096 签名），运行期校验产物完整性。
 
 ## 快速开始
 
-本项目**构建与测试全部在 CI 完成**（本地 arm64 无 Flutter SDK）：
+### 下载现成产物
 
-- 推送到 main 或打 tag `v*` 触发 [.github/workflows/ci.yml](.github/workflows/ci.yml)；
-- 手动触发：workflow_dispatch，可选 `release`（发布 Release）与 `debug`（debug 构建，允许完整性 bypass）；
-- 产品为 `analyze-test` → `build`（split-per-abi APK）→ `release`（changelog 取 changed/<版本>.md）。
+到 [Releases](https://github.com/yingo-server/TiernanMusic-Next/releases) 页面下载：
 
-本地仅支持纯 Dart 检查（无需 Flutter SDK）：
+- **Android**：split-per-abi 三架构 APK（`arm64-v8a` / `armeabi-v7a` / `x86_64`）。最近的稳定版为 `v26.11.13.06`；后续版本当前均为 prerelease，可从最新 tag 下载尝鲜。
+- **桌面（Windows / Linux AppImage）**：通过 `desktop-build.yml` workflow 手动触发构建并可选发布为 Release 资产。
+- 每个发布附 `verification.json` 完整性校验文件。
+
+### 从源码构建
+
+需要本机 Flutter SDK（CI 使用 Flutter 3.50.0 stable）：
 
 ```bash
-dart run tool/smoke_check.dart   # 静态合规冒烟：括号/禁import/桥唯一性
-dart run tool/md5_smoke.dart     # MD5 签名四向量
-python3 tool/layer_audit.py      # 跨层审计
-python3 tool/analyze_gate.py     # 项目类型真错误闸
-flutter analyze / flutter test   # 需本机安装 Flutter SDK
+flutter pub get
+dart run build_runner build --delete-conflicting_outputs
+flutter build apk --release          # Android
+flutter build windows --release      # Windows
+flutter build linux --release        # Linux（CI 上进一步打包为 AppImage）
 ```
 
-`tool/local_gate.sh` 为**本地十道门禁**（全绿输出 `FINAL-OK`；旧的「八道」口径已废弃，十道含 `smoke_check` 与 `analyze_gate`）。CI `.github/workflows/ci.yml` 的 `verdict` 与之逐项对齐：覆盖 `layer_audit` / `syntax` / `smoke` / `analyze_gate` / `md5` / `field_truth` / `reachability` 及 `boot` / `play` / `resolve` / `download` 契约自检，每道都有独立 `tee /tmp/*.log` 与正向 PASS / 反向 FAIL grep 判据。
+本地纯 Dart 检查（无需 Flutter SDK）：
 
-## 模块清单（lib/ 六层目录）
+```bash
+dart run tool/smoke_check.dart    # 静态合规冒烟
+dart run tool/md5_smoke.dart      # MD5 签名四向量
+python3 tool/layer_audit.py       # 76 原则跨层审计
+python3 tool/analyze_gate.py      # 类型真错误闸
+bash tool/local_gate.sh           # 本地十道门禁，全绿输出 FINAL-OK
+```
 
-| 目录 | 层 | 说明 |
-|---|---|---|
-| lib/init/ | L1 | main 入口：启动 bootloader、触发完整性校验 |
-| lib/bootloader/ | L2 | 启动序列与依赖装配 |
-| lib/kernel/ | L3 | 生命周期、注册表、日志、完整性校验 |
-| lib/core/ | L4 | 签名引擎、50 端点声明注册表（`core/net/endpoint_registry.dart`，已拆出 `kugou_client.dart`）、KRC 解密、AES/RSA、Isar 数据库、文件存储、LRU/磁盘缓存 |
-| lib/logic/ | L5 | 播放队列状态机、播放源编排、下载管理、歌词解析、账号（QR 登录）、搜索/歌单/榜单 |
-| lib/surface/ | L6 | 热插拔 SurfaceModule 注册表、六大页面模块、亮暗主题、播放器控制器 |
-| lib/bridges/ | 桥 | 五桥门面：唯一合法跨层通道，统一日志留痕 |
+CI：推送到 main 或打 tag `v*` 触发 [ci.yml](.github/workflows/ci.yml)（analyze-test → build → release，changelog 取 `changed/<版本>.md`）；桌面构建由 [desktop-build.yml](.github/workflows/desktop-build.yml) workflow_dispatch 手动触发。
 
-## 测试策略
+## 文档索引
 
-- **签名四向量**：`tool/md5_smoke.dart` / `test/signing_test.dart` 用 MD5 标准向量（empty/abc/fox/long）锁定签名引擎的哈希底座。
-- **层审计**：`tool/layer_audit.py` 静态扫描全部 import，跨层即 VIOLATION（含桥的使用层级白名单，init→app_root 装配特例除外）。
-- **三态回归锚点**：酷狗端点返回体按匿名/非VIP/VIP 三态实测，字段路径与错误语义（20028 / priv_status=0）写入 docs/KUGOU_API.md 作为回归锚点，play_url 权限判定唯一可信源为 status/priv_status。
-- **静态冒烟**：`tool/smoke_check.dart`（括号配平 / 禁 import / 桥文件唯一性），CI 在 pub get 后、analyze 前执行；`tool/analyze_gate.py` 只挑项目内类型真错误，二者同为本地十道门禁成员。
-- CI 报错不妥协：全部门禁 continue-on-error 跑完，末尾 verdict 汇总判定（与本地十道逐项对齐）。
+| 文档 | 内容 |
+|---|---|
+| [docs/SEVEN_SIX_RULE.md](docs/SEVEN_SIX_RULE.md) | 76 原则（七层六桥）权威定义 |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构规范：铁律 / 依赖例外 / 门禁 |
+| [docs/KUGOU_API.md](docs/KUGOU_API.md) | 酷狗 API 逆向知识与三态回归锚点 |
+| [docs/UI_REWRITE_PLAN.md](docs/UI_REWRITE_PLAN.md) | UI 重写与平台化总规划（M3 + GetWidget + 平台层/权限网关） |
+| [docs/DESIGN_LANGUAGE.md](docs/DESIGN_LANGUAGE.md) | 森林翡翠设计语言：色彩 token 与明暗映射 |
+| [docs/FOUR_RELEASE_ROADMAP.md](docs/FOUR_RELEASE_ROADMAP.md) | 四步版本路线图 |
+| [docs/YKG_LINK_CRYPTO_DESIGN.md](docs/YKG_LINK_CRYPTO_DESIGN.md) | YKG 链接登录密码学设计 |
+| [docs/ACCEPTANCE_CHECKLIST.md](docs/ACCEPTANCE_CHECKLIST.md) | 真机验收清单（42 条编号待执行项） |
 
-## 版本策略
+## 项目状态（截至 2026-11-19）
 
-`26.11.10.N`（日期.序号）。每个发布版本一份 `changed/<版本>.md` changelog，CI 的 release job 自动将其作为 Release body（缺失则回退最近 20 条 commit）。当前版本：26.11.10.1 LTS。
+项目正按 [docs/FOUR_RELEASE_ROADMAP.md](docs/FOUR_RELEASE_ROADMAP.md) 四步推进：
 
-## 验收与批5 检查报告
+1. ✅ **重写稳定**：破坏性 UI 重写（官方 M3 + GetWidget）+ 桌面标题栏挂载完成。
+2. ✅ **全平台构建**：`desktop-build.yml`（Windows / Linux AppImage）已落地，Android APK 常规发布。
+3. 🔄 **SOTA 文案与文档**：进行中（本 README 重写属此阶段）。
+4. ⏳ **v1.0.0 正式版**：待前三步门禁全绿后发布（prerelease=false）。
 
-- **真机验收**：见 [docs/ACCEPTANCE_CHECKLIST.md](docs/ACCEPTANCE_CHECKLIST.md)（42 条编号待执行验收项 + 风险与结论，覆盖启动/首页/搜索/歌单/播放/收藏/下载/歌词/评论/设置/通知栏）。
-- **批5 检查报告**：见 `docs/batch5_c*.md`（C1 UI 残留与 app_root 主题统一方案、C2 通知栏 next/prev + collect fileid 方案、C3 真机验收清单产出），另见 `docs/batch5_f1.md`（app_root 主题收口）与 `docs/batch5_f2.md`（通知栏 next/prev + collect fileid 补齐）改动说明。
+已知后续项（诚实清单）：
 
-## License
+- i18n 尚未全量接线：zh / zh_Hant / en 之外语言为 en 占位。
+- 酷狗端点 20028（权限不足）语义已入回归锚点，相关端点的体验优化仍在进行。
+- 桌面产物尚未出现在常规 Release 资产中，需手动触发 workflow。
+- 真机验收清单（42 条）尚未全部执行完毕。
 
-Apache-2.0
+## 贡献与许可
+
+- 版本号格式 `26.11.10.N`（日期.序号），每版一份 `changed/<版本>.md` changelog。
+- 修改代码请先通过本地门禁（`bash tool/local_gate.sh` → FINAL-OK）。
+- 许可证：Apache-2.0，见 [LICENSE](LICENSE)。

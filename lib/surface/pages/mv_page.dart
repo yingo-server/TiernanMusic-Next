@@ -93,7 +93,7 @@ class _MvPageState extends State<MvPage> {
     }
     final logic = appGraph?.mv;
     if (logic == null) {
-      _fail(_Phase.error, '装配图未就绪（MV 门面不可用）');
+      _fail(_Phase.error, 'MV 功能暂未开放');
       return;
     }
     try {
@@ -137,24 +137,24 @@ class _MvPageState extends State<MvPage> {
       final r = await logic.playUrl(videoId, requestedId: requested);
       if (!mounted) return;
       if (!r.playable) {
-        _fail(_Phase.empty, 'MV 地址不可用（可能被权限拦截）');
+        _fail(_Phase.empty, 'MV 暂不可用，可能是版权限制');
         return;
       }
       final raw = r.urls
           .firstWhere((u) => u.trim().isNotEmpty, orElse: () => '')
           .trim();
       if (raw.isEmpty) {
-        _fail(_Phase.empty, 'MV 地址为空');
+        _fail(_Phase.empty, 'MV 暂不可用');
         return;
       }
       // http 明文显式处理：Android 默认禁明文，统一升级为 https 并留可见提示。
       var url = raw, note = '';
       if (url.startsWith('http://')) {
         url = 'https://${url.substring(7)}';
-        note = 'http 明文链接已升级为 https';
+        note = '已自动升级为安全链接（https）';
       }
       if (!url.startsWith('https://')) {
-        _fail(_Phase.error, '不支持的 MV 链接协议：$url');
+        _fail(_Phase.error, 'MV 链接暂不支持，请重试');
         return;
       }
       final c = VideoPlayerController.network(url);
@@ -182,7 +182,7 @@ class _MvPageState extends State<MvPage> {
       });
     } catch (e, st) {
       debugPrint('surface.mv: load failed: $e\n$st');
-      _fail(_Phase.error, 'MV 加载失败：$e');
+      _fail(_Phase.error, 'MV 加载失败，请重试');
     }
   }
 
@@ -227,7 +227,7 @@ class _MvPageState extends State<MvPage> {
       case _Phase.ready:
         final c = _ctrl;
         if (c == null) {
-          return _stateView(Icons.error_outline, 'MV 不可用', '播放器已释放');
+          return _stateView(Icons.error_outline, 'MV 不可用', '播放器已停止');
         }
         final ar = c.value.aspectRatio > 0 ? c.value.aspectRatio : 1.0;
         return Padding(
@@ -268,7 +268,7 @@ class _MvPageState extends State<MvPage> {
                     child: Text(
                       _note.isNotEmpty
                           ? _note
-                          : (_quality.isEmpty ? 'MV 内嵌播放' : '档位 $_quality'),
+                          : (_quality.isEmpty ? 'MV 内嵌播放' : '音质 $_quality'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelSmall,

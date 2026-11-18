@@ -161,7 +161,7 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
   Future<void> _createQr() async {
     final auth = appGraph.auth;
     if (auth == null) {
-      if (mounted) setState(() => _qrHint = '登录能力未装配');
+      if (mounted) setState(() => _qrHint = '登录功能暂未开放');
       return;
     }
     try {
@@ -202,7 +202,7 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
       case QrLoginStatus.waitScan:
         break; // 保持「请扫码」文案
       case QrLoginStatus.waitConfirm:
-        setState(() => _qrHint = '已在手机上扫码，请在手机端确认登录');
+        setState(() => _qrHint = '已扫码，请在手机上确认登录');
         break;
       case QrLoginStatus.expired:
         _qrTimer?.cancel();
@@ -211,7 +211,7 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
           setState(() => _qrHint = '二维码已过期，正在自动刷新…');
           _createQr();
         } else {
-          setState(() => _qrHint = '二维码已过期，请下拉重试或退出重开');
+          setState(() => _qrHint = '二维码已过期，请刷新重试');
         }
         break;
       case QrLoginStatus.success:
@@ -288,7 +288,7 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
       ok = await appGraph.auth?.sendVerifyCode(phone) ?? false;
     } catch (e, st) {
       Log.e('surface.login', 'send verify code failed', e, st);
-      _toast('验证码发送失败（接口待实测）');
+      _toast('验证码发送失败，请稍后重试');
       return;
     }
     _toast(ok ? '验证码已发送至 ${_maskPhone(phone)}' : '发送失败，请稍后重试');
@@ -316,13 +316,13 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
     try {
       final res = await appGraph.auth?.signInByVerifyCode(phone, code);
       if (res == null) {
-        _toast('登录能力未装配');
+        _toast('登录功能暂未开放');
         return;
       }
       if (!res.ok) {
         _toast(
           res.needsProbe
-              ? '验证码登录端点待实测（needs probe）'
+              ? '验证码登录暂不可用，请稍后重试'
               : '登录失败：${res.error.isEmpty ? '未知错误' : res.error}',
         );
         return;
@@ -381,14 +381,14 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
     try {
       final auth = appGraph.auth;
       if (auth == null) {
-        _toast('登录能力未装配');
+        _toast('登录功能暂未开放');
         return;
       }
       await auth.signInByPwd(pwd);
       _onLoginSuccess();
     } catch (e, st) {
       Log.e('surface.login', 'pwd login failed', e, st);
-      _toast('密码登录待后端就绪');
+      _toast('密码登录暂未开放');
     }
   }
 

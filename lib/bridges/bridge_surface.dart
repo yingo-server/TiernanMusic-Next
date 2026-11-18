@@ -11,6 +11,8 @@ import '../surface/theme/tn_theme.dart' show spErrorThemeData;
 import '../session/bootstrap.dart' as session;
 
 export '../surface/app_root.dart' show SurfaceDeps, AppRoot;
+export '../bridges/bridge_core.dart'
+    show platformCapabilities, windowService;
 export '../surface/theme/tn_theme.dart' show spErrorThemeData;
 // V2：L1/独立 UI 模型可直接经桥取 session 门面。
 export '../session/graph.dart' show AppGraph, SessionDeps;

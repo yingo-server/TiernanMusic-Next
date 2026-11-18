@@ -154,7 +154,7 @@ class _LibraryPageState extends State<LibraryPage>
       body: SafeArea(
         child: Column(
           children: <Widget>[
-            AppBar(title: Text('音乐库', style: theme.textTheme.headlineSmall)),
+            AppBar(title: Text('曲库', style: theme.textTheme.headlineSmall)),
             _accountCard(context),
             TabBar(
               controller: _tabs,
@@ -347,7 +347,7 @@ class _LibraryPageState extends State<LibraryPage>
       return _stateView(
         context: context,
         icon: icon,
-        title: '数据能力未装配',
+        title: '数据加载暂不可用',
         subtitle: emptySubtitle,
       );
     }
@@ -442,8 +442,8 @@ class _LibraryPageState extends State<LibraryPage>
       return _stateView(
         context: context,
         icon: Icons.download_outlined,
-        title: '下载管理不可用',
-        subtitle: '下载能力未装配',
+        title: '下载管理暂不可用',
+        subtitle: '下载功能暂未开放',
       );
     }
     if (_downloads.isEmpty) {
@@ -451,7 +451,7 @@ class _LibraryPageState extends State<LibraryPage>
         context: context,
         icon: Icons.download_outlined,
         title: '暂无下载任务',
-        subtitle: '在歌曲菜单里选择下载',
+        subtitle: '在歌曲菜单中选择下载',
       );
     }
     return ListView.builder(
@@ -505,7 +505,7 @@ class LibraryPageModule extends SurfaceModule {
   String get route => '/library';
 
   @override
-  NavEntry? get navEntry => const NavEntry('音乐库', 'library_music', navOrder: 3);
+  NavEntry? get navEntry => const NavEntry('曲库', 'library_music', navOrder: 3);
 
   @override
   WidgetBuilder? get builder =>

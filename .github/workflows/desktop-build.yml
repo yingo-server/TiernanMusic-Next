@@ -42,6 +42,11 @@ jobs:
           if (-not (Test-Path windows)) {
             flutter create --platforms=windows --project-name tiernan_music_next --org com.tiernan.music.next --no-overwrite .
           }
+          # flutter create 生成了默认计数器示例 lib/main.dart（含 _MyHomePageState），
+          # 会覆盖真实入口。删除它，构建时用 -t lib/init/main.dart。
+          if (Test-Path lib/main.dart -and (Select-String -Path lib/main.dart -Pattern '_MyHomePageState' -Quiet)) {
+            Remove-Item lib/main.dart -Force
+          }
           $cpp = 'windows/runner/main.cpp'
           if (Test-Path $cpp) {
             $src = Get-Content $cpp -Raw
@@ -52,7 +57,7 @@ jobs:
             }
           }
       - name: build windows release
-        run: flutter build windows --release
+        run: flutter build windows --release -t lib/init/main.dart
       - name: zip windows artifact
         shell: pwsh
         run: |
@@ -90,13 +95,15 @@ jobs:
             flutter create --platforms=linux --project-name tiernan_music_next \
               --org com.tiernan.music.next --no-overwrite .
           fi
+          # 删除 flutter create 生成的默认计数器示例入口（真实入口 lib/init/main.dart）
+          if grep -q '_MyHomePageState' lib/main.dart 2>/dev/null; then rm -f lib/main.dart; fi
           # bitsdojo_window Linux：my_application.cc 需设置 GTK 窗口无装饰。
           APP=linux/runner/my_application.cc
           if [ -f "$APP" ] && ! grep -q 'gtk_window_set_decorated' "$APP"; then
             sed -i '/gtk_window_set_default_size/a\  gtk_window_set_decorated(GTK_WINDOW(window), FALSE);' "$APP"
           fi
       - name: build linux release
-        run: flutter build linux --release
+        run: flutter build linux --release -t lib/init/main.dart
       - name: package AppImage (bundle all deps)
         run: |
           set -e

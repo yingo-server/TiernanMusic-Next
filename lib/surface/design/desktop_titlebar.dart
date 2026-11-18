@@ -45,7 +45,7 @@ Widget? buildDesktopTitleBar(BuildContext context) {
               // 拖拽区：让标题栏空白处可拖动窗口（官方 startDragging）。
               Expanded(
                 child: GestureDetector(
-                  onPanStart: (_) => appWindow.startDragging(),
+                  onPanStart: (_) => windowService.startDragging(),
                   behavior: HitTestBehavior.opaque,
                 ),
               ),

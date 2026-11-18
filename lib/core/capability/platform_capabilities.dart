@@ -114,6 +114,18 @@ abstract class WindowService {
   /// 是否可用（移动/Web 为 false）。
   bool get isAvailable;
 
+  /// 桌面端初始化（须在 runApp 前 await）：
+  /// windowManager.ensureInitialized + 隐藏原生标题栏 + 监听窗口事件。
+  /// 移动/Web/未初始化环境为 no-op。
+  Future<void> ensureInitialized({
+    required double minWidth,
+    required double minHeight,
+    required bool customTitleBar,
+  });
+
+  /// 开始拖动窗口（标题栏拖拽区用；收回平台层，surface 不直接接触 appWindow）。
+  void startDragging();
+
   /// 当前窗口原生句柄（供 bitsdojo_window 使用；不可用时为 null）。
   Object? get nativeHandle;
 

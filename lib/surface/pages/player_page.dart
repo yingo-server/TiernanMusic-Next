@@ -49,7 +49,7 @@ class _PlayerPageState extends State<PlayerPage> {
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Text('播放速度', style: Theme.of(ctx).textTheme.titleLarge),
+              child: Text('倍速', style: Theme.of(ctx).textTheme.titleLarge),
             ),
             for (final s in _speeds)
               ListTile(
@@ -173,7 +173,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text('下载失败：$e')));
+                        .showSnackBar(SnackBar(content: Text('下载失败，请稍后重试')));
                   }
                 }
               },
@@ -189,13 +189,13 @@ class _PlayerPageState extends State<PlayerPage> {
                     await PlaybackSession.instance.playAll(songs, 0);
                   } else if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('FM 暂无可用曲目（端点待实测）')),
+                      const SnackBar(content: Text('FM 暂无可用曲目')),
                     );
                   }
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text('FM 启动失败：$e')));
+                        .showSnackBar(SnackBar(content: Text('FM 启动失败，请重试')));
                   }
                 }
               },
@@ -237,7 +237,7 @@ class _PlayerPageState extends State<PlayerPage> {
       }
       setState(() {}); // 刷新 isCollected 真实态
     } catch (e) {
-      _msg('收藏失败：$e');
+      _msg('收藏失败，请重试');
     } finally {
       if (mounted) setState(() => _favBusy = false);
     }

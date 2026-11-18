@@ -2,14 +2,16 @@
 //
 // 职责分离：
 // - window_manager：窗口尺寸/最大化/关闭/焦点事件（WindowListener 范式）
-// - bitsdojo_window：appWindow（原生句柄/拖拽区）由 desktop_titlebar 直接用，
-//   本服务不重复封装（避免两套 API 交叉）。
-// 本文件是 window_manager 唯一出现处；上层经 bridge_core 的 WindowService 抽象。
+// - bitsdojo_window：appWindow 拖拽/句柄由本服务 startDragging() 统一封装，
+//   surface 不直接接触 appWindow（守 76 原则，平台差异只在平台层）。
+// 本文件是 window_manager / bitsdojo appWindow 唯一出现处；上层经 bridge_core
+// 的 WindowService 抽象。
 library;
 
 import 'dart:async';
 import 'dart:ui' show Size;
 
+import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -57,6 +59,18 @@ class IoWindowService implements WindowService {
   Object? get nativeHandle => null; // 原生句柄由 bitsdojo appWindow 提供
 
   /// 桌面端初始化（须在 runApp 前 await）。
+  @override
+  void startDragging() {
+    if (!isAvailable) return;
+    try {
+      appWindow.startDragging();
+    } catch (e, st) {
+      // 平台层用 Log（经 bridge_kernel），此处仅 debugPrint 兜底避免 import 环。
+      debugPrint('io_window_service.startDragging failed: $e\n$st');
+    }
+  }
+
+  @override
   Future<void> ensureInitialized({
     required double minWidth,
     required double minHeight,

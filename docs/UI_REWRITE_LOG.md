@@ -1,3 +1,7 @@
+> 🗄️ **已归档（2026-11-19）** — 本篇为 UI 重写执行期日志（含 Sp.* 替换过程），已非当前事实。
+> 权威新文档：[层与桥参考](architecture/LAYERS_AND_BRIDGES.md) ·
+> [设计语言参考](architecture/DESIGN_LANGUAGE.md) · [文档索引](README.md)。
+
 # UI 重写日志（森林翡翠 / 官方 M3 范式）
 
 ## 2026-11-19 · 子代理：重写播放 / 歌词 / MV 三页

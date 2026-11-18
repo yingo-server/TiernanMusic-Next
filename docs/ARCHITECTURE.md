@@ -1,3 +1,7 @@
+> 🗄️ **已归档（2026-11-19）** — 本篇曾为架构规范摘要，现由
+> [层与桥参考](architecture/LAYERS_AND_BRIDGES.md) + [架构总览](architecture/ARCHITECTURE_OVERVIEW.md) 取代；
+> 其中「Spotify 深色设计系统」为旧描述，当前设计语言是森林翡翠语义 token。
+
 # TiernanMusic-Next 架构规范 · 76 原则（七层六桥）
 
 > 权威定义：[docs/SEVEN_SIX_RULE.md](SEVEN_SIX_RULE.md)。V1 六层五桥见 [SIX_FIVE_RULE.md](SIX_FIVE_RULE.md)（DEPRECATED）。

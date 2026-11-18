@@ -1,3 +1,7 @@
+> 🗄️ **已归档（2026-11-19）** — 本篇为重写前的规划稿（含 Spotify/Sp.* 旧设计描述），已过时。
+> 权威新文档：[架构总览](architecture/ARCHITECTURE_OVERVIEW.md) ·
+> [设计语言参考](architecture/DESIGN_LANGUAGE.md) · [文档索引](README.md)。
+
 # TiernanMusicNext · UI 信息架构与组件规划（UI_IA_PLAN）
 
 > 状态：**设计规划文档（纯设计，不含 Dart 实现）**

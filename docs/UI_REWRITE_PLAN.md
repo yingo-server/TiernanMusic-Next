@@ -1,3 +1,8 @@
+> 🗄️ **已归档（2026-11-19）** — 本篇为重写前的规划（六层五桥 / Sp.* 自绘 / Spotify 深色 / lib/platform 路径），
+> 与当前代码不符。权威新文档：[架构总览](architecture/ARCHITECTURE_OVERVIEW.md) ·
+> [层与桥参考](architecture/LAYERS_AND_BRIDGES.md) · [平台能力参考](architecture/PLATFORM_CAPABILITIES.md) ·
+> [构建指南](architecture/BUILD_GUIDE.md)。保留仅为追溯重写动机。
+
 # UI 层全面重写 · 平台化改造总规划（v0.1）
 
 > 状态：规划阶段（2026-11-19）

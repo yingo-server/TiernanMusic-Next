@@ -385,7 +385,7 @@ class _SearchPageState extends State<SearchPage> {
         final SearchResult r = snap.data ?? const SearchResult();
         final List<SongBrief> items = r.items;
         if (items.isEmpty) {
-          return _empty(c, '没有找到与「$_query」相关的歌曲');
+          return _empty(c, '没有找到与「$_query」相关的内容');
         }
         return ListView.builder(
           padding: const EdgeInsets.only(bottom: _gapXL),

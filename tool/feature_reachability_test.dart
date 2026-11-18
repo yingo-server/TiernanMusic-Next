@@ -241,7 +241,7 @@ void main() {
   check(
     'M3 ColorScheme in theme',
     has(read('lib/surface/theme/tn_theme.dart'), 'ColorScheme.fromSeed') ||
-        has(read('lib/surface/design/tokens.dart'), 'ColorScheme.fromSeed') ||
+        has(read('lib/surface/design/tokens_v2.dart'), 'ColorScheme.fromSeed') ||
         has(sessionSrc, 'ColorScheme.fromSeed'),
   );
 

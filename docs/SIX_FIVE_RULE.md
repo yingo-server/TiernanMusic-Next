@@ -1,4 +1,6 @@
-> ⚠️ DEPRECATED — V1 六层五桥已废弃。权威定义见 [SEVEN_SIX_RULE.md](SEVEN_SIX_RULE.md)（76 原则：七层六桥）。
+> 🗄️ **已归档（2026-11-19）** — V1 六层五桥早已废弃；V2（SEVEN_SIX_RULE.md）亦已归档。
+> 当前唯一权威：[架构总览](architecture/ARCHITECTURE_OVERVIEW.md) + [层与桥参考](architecture/LAYERS_AND_BRIDGES.md)。
+> 本篇保留仅为追溯立规历史，勿作为事实源或派代理前缀。
 
 # 76 原则（76 原则（V1 已废弃））—— 权威契约 · 派代理必贴
 

@@ -250,7 +250,7 @@ class _HomePageState extends State<HomePage> {
         }
         final items = snap.data ?? const <SongBrief>[];
         if (items.isEmpty) {
-          return _section(c, '每日推荐', _empty(c, '暂无每日推荐（登录后可能可见）'));
+          return _section(c, '每日推荐', _empty(c, '登录后可查看每日推荐'));
         }
         return _section(
           c,

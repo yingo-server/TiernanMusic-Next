@@ -1,3 +1,7 @@
+> 🗄️ **已归档（2026-11-19）** — V2 契约曾为权威，现由 [架构总览](architecture/ARCHITECTURE_OVERVIEW.md) +
+> [层与桥参考](architecture/LAYERS_AND_BRIDGES.md) 取代；本篇 §4/§8 措辞矛盾（"L7 session" / "L6 只有 Widget"），
+> 且 §6「surface 仅占位」与实际 13 页已建不符。保留仅为追溯 76 原则的立规过程。
+
 # 76 原则（76 原则）· 架构 V2 权威契约
 
 > 立规来源：用户 2026-11-14 决策（推倒重建 L6 后确立）。取代 V1「76 原则（V1 已废弃）」。

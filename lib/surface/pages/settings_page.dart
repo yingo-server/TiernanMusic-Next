@@ -100,7 +100,7 @@ class _SettingsPageState extends State<SettingsPage> {
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text('音质档位', style: Theme.of(ctx).textTheme.titleLarge),
+              child: Text('音质', style: Theme.of(ctx).textTheme.titleLarge),
             ),
             for (final AudioQuality q in vipQualities())
               ListTile(
@@ -125,7 +125,7 @@ class _SettingsPageState extends State<SettingsPage> {
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text('播放倍速', style: Theme.of(ctx).textTheme.titleLarge),
+              child: Text('倍速', style: Theme.of(ctx).textTheme.titleLarge),
             ),
             for (final s in _speeds)
               ListTile(
@@ -152,7 +152,7 @@ class _SettingsPageState extends State<SettingsPage> {
   void _clearCache() {
     final cache = appGraph.cache;
     if (cache == null) {
-      _toast('缓存能力未装配');
+      _toast('缓存功能暂未开放');
       return;
     }
     try {
@@ -369,7 +369,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     title: const Text('清理缓存'),
                     subtitle: Text(
-                      '清理会话缓存与请求合并表',
+                      '清理临时缓存文件',
                       style: theme.textTheme.bodySmall,
                     ),
                     trailing: FilledButton(

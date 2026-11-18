@@ -16,7 +16,13 @@ import '../bridges/bridge_boot.dart' show BootOutcome, runBoot;
 // 业务调用仍全部经 bridge_boot。
 import '../bootloader/register.dart' show registerBootloader;
 import '../bridges/bridge_surface.dart'
-    show SurfaceDeps, bootstrapApp, installServices, spErrorThemeData;
+    show
+        SurfaceDeps,
+        bootstrapApp,
+        installServices,
+        spErrorThemeData,
+        platformCapabilities,
+        windowService;
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -109,7 +115,21 @@ Future<void> _boot({required bool debugBypass}) async {
     return;
   }
 
-  // ⑤ runApp（bridge_surface 内部完成）。把归一化前的原始 L2 结果原样交回
+  // ⑤ 桌面窗口服务初始化（隐藏原生标题栏 + 监听窗口事件 + 最小尺寸）。
+  //    必须在 runApp 前 await，否则自绘标题栏叠在原生标题栏上、事件不注册。
+  if (platformCapabilities.supportsCustomTitleBar) {
+    try {
+      await windowService.ensureInitialized(
+        minWidth: 640,
+        minHeight: 480,
+        customTitleBar: true,
+      );
+    } catch (e, st) {
+      debugPrint('main: window init failed (non-fatal): $e\n$st');
+    }
+  }
+
+  // ⑥ runApp（bridge_surface 内部完成）。把归一化前的原始 L2 结果原样交回
   //    既有 bootstrapApp，保持其桥业务逻辑不变（不在本次改动范围）。
   bootstrapApp(outcome.dep('__raw'));
 }

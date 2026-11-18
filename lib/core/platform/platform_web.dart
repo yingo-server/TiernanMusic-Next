@@ -42,6 +42,16 @@ class _WebWindowService implements WindowService {
   bool get isAvailable => false;
 
   @override
+  Future<void> ensureInitialized({
+    required double minWidth,
+    required double minHeight,
+    required bool customTitleBar,
+  }) async {}
+
+  @override
+  void startDragging() {}
+
+  @override
   Object? get nativeHandle => null;
 
   @override

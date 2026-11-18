@@ -1,3 +1,8 @@
+> 🗄️ **已归档为历史计划（2026-11-19 审计）** — 本篇是四步版本的原始计划稿（Explanation），
+> 步骤状态与执行细节以 [构建指南 · 四步版本路线](architecture/BUILD_GUIDE.md#四步版本路线当前计划未全部完成) 为准。
+> 审计发现本篇「Agent B 产出 docs/DOCS_AUDIT.md」与实际 `docs/DOCS_WORKFLOW_AUDIT.md` 命名不一致，
+> 以本轮审计报告 [DOCS_WORKFLOW_AUDIT.md](DOCS_WORKFLOW_AUDIT.md) 为准。保留仅为追溯计划来源。
+
 # UI 重写 · 四步小版本实施计划（SOTA skills 驱动）
 
 > 版本：v0.1 · 目标：在现有破坏性 UI 重写（P1–P3 已实施）基础上，

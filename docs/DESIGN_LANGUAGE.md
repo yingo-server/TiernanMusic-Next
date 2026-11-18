@@ -1,3 +1,8 @@
+> 🗄️ **已归档（2026-11-19）** — 本篇描述重写前的旧架构/旧设计，勿作为事实源。
+> 权威新文档：[架构总览](architecture/ARCHITECTURE_OVERVIEW.md) · [层与桥参考](architecture/LAYERS_AND_BRIDGES.md) ·
+> [设计语言参考](architecture/DESIGN_LANGUAGE.md) · [平台能力参考](architecture/PLATFORM_CAPABILITIES.md) ·
+> [构建指南](architecture/BUILD_GUIDE.md)。保留仅为追溯历史决策。
+
 # 内部设计语言 · 色彩规范（森林翡翠）
 
 > 版本：v0.1 · 2026-11-19
