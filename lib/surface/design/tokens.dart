@@ -80,28 +80,16 @@ class Sp {
   static ThemeData theme({bool dark = true, Color? seed}) {
     try {
       final Color brandSeed = seed ?? green;
-      final Color bg = dark ? Sp.bg : _bgLight;
-      final Color bgElevated = dark ? Sp.bgElevated : _bgElevatedLight;
-      final Color card = dark ? Sp.card : _cardLight;
-      final Color cardHigh = dark ? Sp.cardHigh : _cardHighLight;
-      final Color divider = dark ? Sp.divider : _dividerLight;
-      final Color text = dark ? Sp.text : _textLight;
-      final Color textSub = dark ? Sp.textSub : _textSubLight;
+      // 审查修复（底栏/内容板分裂）：surface 系列不再用局部 dark/亮常量覆盖，
+      // 统一由 fromSeed 按 brightness 派生——局部常量与实际生效 theme/darkTheme
+      // 可能取到不同板（themeMode=system 时），导致底栏浅、内容深。
       final scheme =
           ColorScheme.fromSeed(
             seedColor: brandSeed,
             brightness: dark ? Brightness.dark : Brightness.light,
           ).copyWith(
-            surface: bg,
-            onSurface: text,
-            onSurfaceVariant: textSub,
-            surfaceContainerLowest: bgElevated,
-            surfaceContainerLow: bgElevated,
-            surfaceContainer: card,
-            surfaceContainerHigh: cardHigh,
-            surfaceContainerHighest: divider,
-            // primary/onPrimary/primaryContainer 不再硬覆盖：让 fromSeed(seed)
-            // 派生的 tonal 角色生效，动态取色链才真正落地（阶段B B6）。
+            primary: brandSeed,
+            onPrimary: dark ? Colors.black : Colors.white,
             error: red,
             onError: Colors.white,
           );
@@ -109,50 +97,60 @@ class Sp {
         useMaterial3: true,
         brightness: dark ? Brightness.dark : Brightness.light,
         colorScheme: scheme,
-        scaffoldBackgroundColor: bg,
-        dividerColor: divider,
+        scaffoldBackgroundColor: scheme.surface,
+        dividerColor: scheme.outlineVariant,
         splashFactory: InkSparkle.splashFactory,
         textTheme: _text(scheme, dark: dark),
         appBarTheme: AppBarTheme(
-          backgroundColor: bg,
+          backgroundColor: scheme.surface,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           centerTitle: false,
           titleTextStyle: TextStyle(
             fontSize: fPageTitle,
             fontWeight: FontWeight.w700,
-            color: text,
+            color: scheme.onSurface,
           ),
-          iconTheme: IconThemeData(color: text),
+          iconTheme: IconThemeData(color: scheme.onSurface),
         ),
         navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: bgElevated,
+          // 审查修复（底栏变色回归）：组件主题一律取 scheme 角色，
+          // 不用局部 dark/亮常量——否则 themeMode=system 时底栏与页面
+          // 可能取到不同板（底栏浅灰、内容深色）。
+          backgroundColor: scheme.surfaceContainer,
           surfaceTintColor: Colors.transparent,
           indicatorColor: scheme.primaryContainer,
           height: navH,
           labelTextStyle: WidgetStateProperty.resolveWith(
             (s) => TextStyle(
               fontSize: fTiny,
-              color: s.contains(WidgetState.selected) ? text : textSub,
+              color: s.contains(WidgetState.selected)
+                  ? scheme.onSurface
+                  : scheme.onSurfaceVariant,
             ),
           ),
           iconTheme: WidgetStateProperty.resolveWith(
             (s) => IconThemeData(
               size: 24,
-              color: s.contains(WidgetState.selected) ? text : textSub,
+              color: s.contains(WidgetState.selected)
+                  ? scheme.onSurface
+                  : scheme.onSurfaceVariant,
             ),
           ),
         ),
         listTileTheme: ListTileThemeData(
-          iconColor: textSub,
-          textColor: text,
-          titleTextStyle: TextStyle(fontSize: fItem, color: text),
-          subtitleTextStyle: TextStyle(fontSize: fSub, color: textSub),
+          iconColor: scheme.onSurfaceVariant,
+          textColor: scheme.onSurface,
+          titleTextStyle: TextStyle(fontSize: fItem, color: scheme.onSurface),
+          subtitleTextStyle: TextStyle(
+            fontSize: fSub,
+            color: scheme.onSurfaceVariant,
+          ),
         ),
         chipTheme: ChipThemeData(
-          backgroundColor: card,
-          side: BorderSide(color: divider),
-          labelStyle: TextStyle(fontSize: fSub, color: text),
+          backgroundColor: scheme.surfaceContainer,
+          side: BorderSide(color: scheme.outlineVariant),
+          labelStyle: TextStyle(fontSize: fSub, color: scheme.onSurface),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(rFull),
           ),
@@ -173,12 +171,15 @@ class Sp {
           ),
         ),
         snackBarTheme: SnackBarThemeData(
-          backgroundColor: cardHigh,
-          contentTextStyle: TextStyle(color: text, fontSize: fSub),
+          backgroundColor: scheme.surfaceContainerHigh,
+          contentTextStyle: TextStyle(
+            color: scheme.onSurface,
+            fontSize: fSub,
+          ),
           behavior: SnackBarBehavior.floating,
         ),
-        progressIndicatorTheme: const ProgressIndicatorThemeData(
-          color: green,
+        progressIndicatorTheme: ProgressIndicatorThemeData(
+          color: scheme.primary,
           linearMinHeight: 2,
         ),
       );
@@ -189,8 +190,10 @@ class Sp {
   }
 
   static TextTheme _text(ColorScheme s, {bool dark = true}) {
-    final base = TextStyle(color: dark ? Sp.text : _textLight, fontSize: fItem);
-    final sub = dark ? Sp.textSub : _textSubLight;
+    // 审查修复（底栏/文本色分裂回归）：颜色一律取 scheme 角色，
+    // 不用 dark ? Sp.text : _textLight —— 局部常量与实际生效板可能不一致。
+    final base = TextStyle(color: s.onSurface, fontSize: fItem);
+    final sub = s.onSurfaceVariant;
     return TextTheme(
       headlineSmall: base.copyWith(
         fontSize: fPageTitle,

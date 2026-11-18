@@ -106,6 +106,9 @@ class _AppShellState extends State<AppShell> {
     final safeIndex = _index.clamp(0, modules.length - 1);
     final current = modules[safeIndex];
     return Scaffold(
+      // 审查修复（底栏浅色块回归）：外壳背景与页面同源，
+      // 否则底部导航栏周围会露出外层 Scaffold 的默认底色。
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         bottom: false,
         child: Column(

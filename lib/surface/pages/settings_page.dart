@@ -209,7 +209,8 @@ class _SettingsPageState extends State<SettingsPage> {
                               segments: const <ButtonSegment<int>>[
                                 ButtonSegment<int>(
                                   value: 0,
-                                  label: Text('跟随系统'),
+                                  // 深色基底（App 视觉基准），非系统浅色。
+                                  label: Text('默认'),
                                 ),
                                 ButtonSegment<int>(value: 1, label: Text('亮')),
                                 ButtonSegment<int>(value: 2, label: Text('暗')),

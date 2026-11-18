@@ -68,10 +68,12 @@ class _AppRootState extends State<AppRoot> {
             theme: Sp.theme(dark: false, seed: seed),
             darkTheme: Sp.theme(dark: true, seed: seed),
             // 0 跟随系统 / 1 亮 / 2 暗 / 3 纯黑。
+            // 审查修复（底栏浅色回归）：本 App 视觉基底为深色（Spotify 深色风），
+            // "跟随系统"沿用系统浅色会让大量深色假设失效、底栏与内容板分裂；
+            // 故 0 档保持暗色基底（与旧行为一致），想用浅色请选"亮"。
             themeMode: switch (mode) {
-              0 => ThemeMode.system,
               1 => ThemeMode.light,
-              _ => ThemeMode.dark, // 覆盖 2/3（暗/纯黑）及异常值
+              _ => ThemeMode.dark, // 0 跟随系统(暗色基底) / 2 暗 / 3 纯黑
             },
             // 阶段B B7 P0：语言切换实时生效——locale 变化触发本 builder 重建。
             locale: _toLocale(localeCode),
