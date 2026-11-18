@@ -8,9 +8,9 @@
 library;
 
 import 'dart:async';
+import 'dart:ui' show Size;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart' show Size;
 import 'package:window_manager/window_manager.dart';
 
 import '../../capability/platform_capabilities.dart';
