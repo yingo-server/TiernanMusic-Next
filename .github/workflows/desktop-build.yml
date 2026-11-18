@@ -16,9 +16,13 @@ on:
         type: boolean
         default: false
       version:
-        description: 'version tag (e.g. v0.1.1-beta)'
+        description: 'version tag (e.g. v1.0.0)'
         type: string
         required: false
+      stable:
+        description: '正式版（prerelease=false）'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -160,8 +164,8 @@ jobs:
       - name: publish release assets
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.version || 'v0.1.1-beta' }}
+          tag_name: ${{ github.event.inputs.version || 'v1.0.0' }}
           files: dist/*
-          prerelease: true
+          prerelease: ${{ github.event.inputs.stable != 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
