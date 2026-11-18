@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 // 真机修复（浅灰/米黄底栏带）：App 自身不设置 Android 系统导航栏颜色时，
 // MIUI 等 ROM 会用浅灰 windowBackground 画系统导航区（截图里那条无色无图标的
 // 纯色带），它盖住/挤掉 Flutter 的 NavigationBar，造成"底栏不可见"。显式锁暗。
-import 'package:flutter/services.dart' show SystemChrome, SystemUIOverlayStyle;
+import 'package:flutter/services.dart' show SystemChrome, SystemUiOverlayStyle;
 
 import '../bridges/bridge_core.dart'
     show
@@ -69,7 +69,7 @@ class _AppRootState extends State<AppRoot> {
   /// 它盖在 Flutter 的 NavigationBar 之上，导致底栏图标文字"完全不可见"。
   /// 只改 Flutter ThemeData 的颜色无法影响这条系统带——必须在此显式锁暗。
   static void _applySystemBarStyle() {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUIOverlayStyle(
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       systemNavigationBarColor: Color(0xFF0E0F12),
       systemNavigationBarDividerColor: Color(0xFF0E0F12),
       systemNavigationBarIconBrightness: Brightness.light,
