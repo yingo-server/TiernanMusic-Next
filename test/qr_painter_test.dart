@@ -89,7 +89,8 @@ String _decode(QrMatrix m) {
   }
 
   final pairs = <List<int>>[];
-  for (var right = s - 2; right >= 8; right -= 2) {
+  // 与编码器一致：标准列对从 size-1 起（阶段A off-by-one 修正后）。
+  for (var right = s - 1; right >= 8; right -= 2) {
     pairs.add(<int>[right, right - 1]);
   }
   pairs.addAll(<List<int>>[
