@@ -9,6 +9,9 @@ library;
 
 import 'platform.dart'
     show buildCapabilityGateway, buildPlatformCapabilities, buildWindowService;
+import '../capability/capability_gateway.dart' show CapabilityGateway;
+import '../capability/platform_capabilities.dart'
+    show PlatformCapabilities, WindowService;
 
 /// 平台能力集合（惰性单例）。
 final PlatformCapabilities platformCapabilities = buildPlatformCapabilities();

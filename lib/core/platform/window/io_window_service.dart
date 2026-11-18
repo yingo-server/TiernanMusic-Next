@@ -1,18 +1,37 @@
-// lib/platform/window · dart:io 平台的窗口服务（bitsdojo_window + window_manager）
+// lib/core/platform/window · dart:io 平台的窗口服务（bitsdojo + window_manager）
 //
 // 职责分离：
-// - bitsdojo_window：取原生窗口句柄、置标题栏透明/无边框（自定义标题栏用）
-// - window_manager：最小尺寸/最大化/全屏/焦点事件
-// 二者都只在本文件调用，上层（surface）经 bridge 拿抽象接口。
+// - window_manager：窗口尺寸/最大化/关闭/焦点事件（WindowListener 范式）
+// - bitsdojo_window：appWindow（原生句柄/拖拽区）由 desktop_titlebar 直接用，
+//   本服务不重复封装（避免两套 API 交叉）。
+// 本文件是 window_manager 唯一出现处；上层经 bridge_core 的 WindowService 抽象。
 library;
 
 import 'dart:async';
 
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show Size;
 import 'package:window_manager/window_manager.dart';
 
 import '../../capability/platform_capabilities.dart';
+
+/// window_manager 的 WindowListener 转发到 [events] 流。
+class _Listener with WindowListener {
+  _Listener(this._onChange);
+  final void Function() _onChange;
+
+  @override
+  void onWindowMaximize() => _onChange();
+
+  @override
+  void onWindowUnmaximize() => _onChange();
+
+  @override
+  void onWindowFocus() => _onChange();
+
+  @override
+  void onWindowBlur() => _onChange();
+}
 
 class IoWindowService implements WindowService {
   IoWindowService();
@@ -20,23 +39,22 @@ class IoWindowService implements WindowService {
   bool _initialized = false;
   bool _maximized = false;
   bool _focused = true;
+  final _Listener _listener = _Listener(_scheduleSync);
+  static late final IoWindowService _self;
   final StreamController<WindowEvent> _events =
       StreamController<WindowEvent>.broadcast();
 
+  /// windowManager.addListener 需要实例方法回调，用静态桥接。
+  static void _scheduleSync() => _self._sync();
+
   @override
-  bool get isAvailable => defaultTargetPlatform == TargetPlatform.windows ||
+  bool get isAvailable =>
+      defaultTargetPlatform == TargetPlatform.windows ||
       defaultTargetPlatform == TargetPlatform.linux ||
       defaultTargetPlatform == TargetPlatform.macOS;
 
   @override
-  Object? get nativeHandle {
-    try {
-      return bitsdojo.windowManager.nativeHandle;
-    } catch (e) {
-      debugPrint('platform.window: nativeHandle unavailable: $e');
-      return null;
-    }
-  }
+  Object? get nativeHandle => null; // 原生句柄由 bitsdojo appWindow 提供
 
   /// 桌面端初始化（须在 runApp 前 await）。
   Future<void> ensureInitialized({
@@ -45,16 +63,14 @@ class IoWindowService implements WindowService {
     required bool customTitleBar,
   }) async {
     if (_initialized || !isAvailable) return;
+    _self = this;
     try {
       await windowManager.ensureInitialized();
       final opts = WindowOptions(
         minimumSize: Size(minWidth, minHeight),
-        titleBarStyle: customTitleBar
-            ? TitleBarStyle.hidden
-            : TitleBarStyle.normal,
-        windowButtonVisibility: customTitleBar
-            ? false
-            : true,
+        titleBarStyle:
+            customTitleBar ? TitleBarStyle.hidden : TitleBarStyle.normal,
+        windowButtonVisibility: !customTitleBar,
         skipTaskbar: false,
         center: false,
       );
@@ -62,27 +78,28 @@ class IoWindowService implements WindowService {
         await windowManager.show();
         await windowManager.focus();
       });
-      windowManager.addListener(_onWindowListener);
+      windowManager.addListener(_listener);
+      _maximized = await windowManager.isMaximized();
       _initialized = true;
     } catch (e) {
       debugPrint('platform.window: init failed: $e');
     }
   }
 
-  void _onWindowListener() {
+  Future<void> _sync() async {
     try {
-      final nowMax = windowManager.isMaximized();
+      final nowMax = await windowManager.isMaximized();
       if (nowMax != _maximized) {
         _maximized = nowMax;
         _events.add(nowMax ? WindowEvent.maximized : WindowEvent.unmaximized);
       }
-      final nowFocus = windowManager.isFocused;
+      final nowFocus = await windowManager.isFocused();
       if (nowFocus != _focused) {
         _focused = nowFocus;
         _events.add(nowFocus ? WindowEvent.focused : WindowEvent.unfocused);
       }
     } catch (e) {
-      debugPrint('platform.window: listener error: $e');
+      debugPrint('platform.window: sync error: $e');
     }
   }
 
@@ -149,29 +166,17 @@ class IoWindowService implements WindowService {
   }
 
   @override
-  bool get isMaximized {
-    try {
-      return isAvailable ? windowManager.isMaximized() : false;
-    } catch (e) {
-      return _maximized;
-    }
-  }
+  bool get isMaximized => _maximized;
 
   @override
-  bool get isFocused {
-    try {
-      return isAvailable ? windowManager.isFocused : true;
-    } catch (e) {
-      return _focused;
-    }
-  }
+  bool get isFocused => _focused;
 
   @override
   Stream<WindowEvent> get events => _events.stream;
 
   void dispose() {
     try {
-      if (_initialized) windowManager.removeListener(_onWindowListener);
+      if (_initialized) windowManager.removeListener(_listener);
     } catch (e) {
       debugPrint('platform.window: dispose failed: $e');
     }
