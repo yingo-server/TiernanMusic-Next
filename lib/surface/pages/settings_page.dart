@@ -1,18 +1,26 @@
-// L7 surface/pages · 设置页（分组：账号 / 外观 / 播放 / 存储 / 关于）
+// L7 surface/pages · 设置页（官方 M3 分组：账号 / 外观 / 播放 / 存储 / 关于）
+//
+// 契约：只用官方 Material 3 控件；不手写控件类；颜色只来自语义 token。
 // 数据经桥：AuthLogic / AccountLogic（bridge_logic）、CacheService（bridge_core）、
-// 播放偏好经 PlaybackSession 意图方法。
+// 播放偏好经 PlaybackSession 意图方法；主题/语言经 L6 控制器。
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart'
     show AudioQuality, qualityParam, vipQualities;
-import '../../bridges/bridge_logic.dart' show AuthLogic, AccountLogic;
+import '../../bridges/bridge_logic.dart' show Log, AuthLogic, AccountLogic;
 import '../../bridges/bridge_session.dart'
-    show playbackSession, SurfaceModule, NavEntry;
-import '../../bridges/bridge_session.dart'
-    show appGraph, navState, ThemeController, LocaleController, AuthSession;
+    show
+        playbackSession,
+        SurfaceModule,
+        NavEntry,
+        appGraph,
+        navState,
+        ThemeController,
+        LocaleController,
+        AuthSession;
+import '../design/tokens_v2.dart';
+import '../l10n/s.dart' show S;
 import 'login_sheet.dart' show showLoginSheet;
-import '../design/tokens.dart';
-import '../design/components.dart';
 
 /// 应用版本号（与 pubspec.yaml version 同步）。
 const String kAppVersion = '26.11.10+1';
@@ -86,12 +94,14 @@ class _SettingsPageState extends State<SettingsPage> {
   void _openQualitySheet() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: context.cs.surfaceContainerLow,
-      builder: (ctx) => SafeArea(
+      builder: (BuildContext ctx) => SafeArea(
         child: ListView(
           shrinkWrap: true,
           children: <Widget>[
-            const SpSectionHeader(title: '音质档位'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('音质档位', style: Theme.of(ctx).textTheme.titleLarge),
+            ),
             for (final AudioQuality q in vipQualities())
               ListTile(
                 title: Text(qualityParam(q)),
@@ -109,17 +119,22 @@ class _SettingsPageState extends State<SettingsPage> {
   void _openSpeedSheet(double current) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: context.cs.surfaceContainerLow,
-      builder: (ctx) => SafeArea(
+      builder: (BuildContext ctx) => SafeArea(
         child: ListView(
           shrinkWrap: true,
           children: <Widget>[
-            const SpSectionHeader(title: '播放倍速'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text('播放倍速', style: Theme.of(ctx).textTheme.titleLarge),
+            ),
             for (final s in _speeds)
               ListTile(
                 title: Text('${s}x'),
                 trailing: (s - current).abs() < 0.001
-                    ? Icon(Icons.check, color: context.cs.primary)
+                    ? Icon(
+                        Icons.check,
+                        color: Theme.of(ctx).colorScheme.primary,
+                      )
                     : null,
                 onTap: () {
                   playbackSession().setSpeed(s);
@@ -133,36 +148,45 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   /// 清缓存：经 bridge_core 的 CacheService 清理会话缓存。
-  /// 说明：磁盘级缓存目录清理能力尚未经桥暴露（见 GAP 注释），此处只做
-  /// 已暴露能力的调用，不臆造磁盘删除。
+  /// 说明：磁盘级缓存目录清理能力尚未经桥暴露，此处只做已暴露能力的调用。
   void _clearCache() {
     final cache = appGraph.cache;
     if (cache == null) {
       _toast('缓存能力未装配');
       return;
     }
-    cache.invalidateSession();
-    _toast('已清理会话缓存');
+    try {
+      cache.invalidateSession();
+      _toast('已清理会话缓存');
+    } catch (e, st) {
+      Log.e('surface.settings', 'clear cache failed', e, st);
+      _toast('缓存清理失败');
+    }
   }
 
   void _toast(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final session = playbackSession();
+    final s = S.of(context);
     return Scaffold(
-      backgroundColor: context.cs.surface,
+      appBar: AppBar(
+        title: Text(s.t('settings'), style: theme.textTheme.headlineSmall),
+      ),
       body: SafeArea(
         child: AnimatedBuilder(
           animation: session,
-          builder: (context, _) {
+          builder: (BuildContext context, Widget? _) {
             final speed = session.snapshot.speed;
             return ListView(
-              padding: const EdgeInsets.symmetric(vertical: Sp.gapM),
+              padding: const EdgeInsets.only(bottom: 24),
               children: <Widget>[
-                const SpSectionHeader(title: '账号'),
+                _sectionHeader(context, '账号'),
                 _group(<Widget>[
                   ListTile(
                     leading: Icon(
@@ -174,144 +198,179 @@ class _SettingsPageState extends State<SettingsPage> {
                       _loggedIn
                           ? (_nickname.isEmpty ? '酷狗用户' : _nickname)
                           : '扫码登录后同步收藏与历史',
-                      style: TextStyle(
-                        fontSize: Sp.fSub,
-                        color: context.cs.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodySmall,
                     ),
                     trailing: _loggedIn
                         ? TextButton(
                             onPressed: _logout,
-                            child: const Text('登出'),
+                            child: Text(s.t('logout')),
                           )
                         : FilledButton(
                             onPressed: () => showLoginSheet(context),
-                            child: const Text('扫码登录'),
+                            child: Text(s.t('login')),
                           ),
                   ),
                 ]),
-                const SpSectionHeader(title: '外观'),
+                _sectionHeader(context, s.t('theme')),
                 _group(<Widget>[
                   Padding(
-                    padding: const EdgeInsets.all(Sp.pagePad),
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(
-                          '主题模式',
-                          style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
-                        ),
-                        const SizedBox(height: Sp.gapM),
+                        Text('主题模式', style: theme.textTheme.titleSmall),
+                        const SizedBox(height: 12),
                         ValueListenableBuilder<int>(
                           valueListenable: ThemeController.instance,
-                          builder: (context, mode, _) => SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: SegmentedButton<int>(
-                              showSelectedIcon: false,
-                              segments: const <ButtonSegment<int>>[
-                                ButtonSegment<int>(
-                                  value: 0,
-                                  // 深色基底（App 视觉基准），非系统浅色。
-                                  label: Text('默认'),
+                          builder: (BuildContext c, int mode, Widget? _) =>
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: SegmentedButton<int>(
+                                  showSelectedIcon: false,
+                                  segments: const <ButtonSegment<int>>[
+                                    // 档位：0=跟随系统 / 1=浅色 / 2=深色 / 3=纯黑。
+                                    ButtonSegment<int>(
+                                      value: 0,
+                                      label: Text('跟随系统'),
+                                    ),
+                                    ButtonSegment<int>(
+                                      value: 1,
+                                      label: Text('浅色'),
+                                    ),
+                                    ButtonSegment<int>(
+                                      value: 2,
+                                      label: Text('深色'),
+                                    ),
+                                    ButtonSegment<int>(
+                                      value: 3,
+                                      label: Text('纯黑'),
+                                    ),
+                                  ],
+                                  selected: <int>{mode},
+                                  onSelectionChanged: (Set<int> sel) =>
+                                      ThemeController.instance.setMode(
+                                        sel.first,
+                                      ),
                                 ),
-                                ButtonSegment<int>(value: 1, label: Text('亮')),
-                                ButtonSegment<int>(value: 2, label: Text('暗')),
-                                ButtonSegment<int>(value: 3, label: Text('纯黑')),
-                              ],
-                              selected: <int>{mode},
-                              onSelectionChanged: (s) =>
-                                  ThemeController.instance.setMode(s.first),
-                            ),
-                          ),
+                              ),
                         ),
                       ],
                     ),
                   ),
                   // 阶段B B7 P0：语言选择入口（切语言实时生效）。
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      Sp.pagePad, Sp.gapS, Sp.pagePad, Sp.gapM,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(
-                          '界面语言',
-                          style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
-                        ),
-                        const SizedBox(height: Sp.gapS),
+                        Text('界面语言', style: theme.textTheme.titleSmall),
+                        const SizedBox(height: 8),
                         ValueListenableBuilder<String>(
                           valueListenable: LocaleController.instance,
-                          builder: (context, code, _) => DropdownButtonFormField<String>(
-                            value: code,
-                            decoration: const InputDecoration(
-                              isDense: true,
-                              border: UnderlineInputBorder(),
-                            ),
-                            items: const <DropdownMenuItem<String>>[
-                              DropdownMenuItem(value: '', child: Text('跟随系统')),
-                              DropdownMenuItem(value: 'zh', child: Text('简体中文')),
-                              DropdownMenuItem(value: 'zh_Hant', child: Text('繁體中文')),
-                              DropdownMenuItem(value: 'en', child: Text('English')),
-                              DropdownMenuItem(value: 'ja', child: Text('日本語')),
-                              DropdownMenuItem(value: 'ko', child: Text('한국어')),
-                              DropdownMenuItem(value: 'es', child: Text('Español')),
-                              DropdownMenuItem(value: 'fr', child: Text('Français')),
-                              DropdownMenuItem(value: 'de', child: Text('Deutsch')),
-                              DropdownMenuItem(value: 'pt', child: Text('Português')),
-                              DropdownMenuItem(value: 'ru', child: Text('Русский')),
-                            ],
-                            onChanged: (v) =>
-                                LocaleController.instance.setLocale(v ?? ''),
-                          ),
+                          builder: (BuildContext c, String code, Widget? _) =>
+                              DropdownButtonFormField<String>(
+                                value: code,
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                ),
+                                items: const <DropdownMenuItem<String>>[
+                                  DropdownMenuItem(
+                                    value: '',
+                                    child: Text('跟随系统'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'zh',
+                                    child: Text('简体中文'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'zh_Hant',
+                                    child: Text('繁體中文'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'en',
+                                    child: Text('English'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'ja',
+                                    child: Text('日本語'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'ko',
+                                    child: Text('한국어'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'es',
+                                    child: Text('Español'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'fr',
+                                    child: Text('Français'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'de',
+                                    child: Text('Deutsch'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'pt',
+                                    child: Text('Português'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'ru',
+                                    child: Text('Русский'),
+                                  ),
+                                ],
+                                onChanged: (String? v) => LocaleController
+                                    .instance
+                                    .setLocale(v ?? ''),
+                              ),
                         ),
                       ],
                     ),
                   ),
                 ]),
-                const SpSectionHeader(title: '播放'),
+                _sectionHeader(context, '播放'),
                 _group(<Widget>[
                   ListTile(
-                    leading: Icon(Icons.graphic_eq, color: context.cs.onSurfaceVariant),
-                    title: const Text('音质'),
-                    subtitle: Text(
-                      '128（标准）',
-                      style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
+                    leading: Icon(
+                      Icons.graphic_eq,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
+                    title: const Text('音质'),
+                    subtitle: Text('128（标准）', style: theme.textTheme.bodySmall),
                     trailing: Icon(
                       Icons.chevron_right,
-                      color: context.cs.onSurfaceVariant,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                     onTap: _openQualitySheet,
                   ),
                   ListTile(
-                    leading: Icon(Icons.speed, color: context.cs.onSurfaceVariant),
+                    leading: Icon(
+                      Icons.speed,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                     title: const Text('倍速'),
                     subtitle: Text(
                       '${speed}x',
-                      style: TextStyle(
-                        fontSize: Sp.fSub,
-                        color: context.cs.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodySmall,
                     ),
                     trailing: Icon(
                       Icons.chevron_right,
-                      color: context.cs.onSurfaceVariant,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                     onTap: () => _openSpeedSheet(speed),
                   ),
                 ]),
-                const SpSectionHeader(title: '存储'),
+                _sectionHeader(context, s.t('cache')),
                 _group(<Widget>[
                   ListTile(
                     leading: Icon(
                       Icons.cleaning_services_outlined,
-                      color: context.cs.onSurfaceVariant,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                     title: const Text('清理缓存'),
                     subtitle: Text(
                       '清理会话缓存与请求合并表',
-                      style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
+                      style: theme.textTheme.bodySmall,
                     ),
                     trailing: FilledButton(
                       onPressed: _clearCache,
@@ -319,17 +378,17 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                 ]),
-                const SpSectionHeader(title: '关于'),
+                _sectionHeader(context, s.t('about')),
                 _group(<Widget>[
                   ListTile(
-                    leading: Icon(Icons.info_outline, color: context.cs.onSurfaceVariant),
+                    leading: Icon(
+                      Icons.info_outline,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                     title: const Text('版本'),
                     trailing: Text(
                       kAppVersion,
-                      style: TextStyle(
-                        fontSize: Sp.fSub,
-                        color: context.cs.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodySmall,
                     ),
                   ),
                 ]),
@@ -341,15 +400,24 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _group(List<Widget> children) => Container(
-    margin: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
-    decoration: BoxDecoration(
-      color: context.cs.surfaceContainer,
-      borderRadius: BorderRadius.circular(Sp.rCard),
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: Column(children: children),
-  );
+  /// 区块标题（官方 Text）。
+  Widget _sectionHeader(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+    );
+  }
+
+  /// 分组容器（官方 Card）。
+  Widget _group(List<Widget> children) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: children),
+      ),
+    );
+  }
 }
 
 /// 设置模块（进底部导航）。

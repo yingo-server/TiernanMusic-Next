@@ -15,6 +15,12 @@ library;
 
 import 'package:flutter/material.dart';
 
+/// 系统 UI 覆盖层颜色（SystemChrome 用；属 platform token，可脱离 context）。
+abstract final class TnSystemColors {
+  static const Color navDark = Color(0xFF0B1F14); // green-900
+  static const Color statusDark = Color(0xFF0B1F14);
+}
+
 /// 语义色彩表：Light / Dark 成对。
 class TnPalette {
   const TnPalette({

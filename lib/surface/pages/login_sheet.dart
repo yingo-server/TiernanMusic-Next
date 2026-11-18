@@ -1,22 +1,23 @@
-// L7 surface/pages · 登录弹层（批2-F2）：扫码 / 验证码 / 密码 三 Tab + 账号区。
+// L7 surface/pages · 登录弹层（批2-F2）：扫码 / 验证码 / 密码 三 Tab + YKG 入口 + 账号区。
+//
 // 76 原则：L7 只画控件；状态与意图全经 bridge_session(bootstrap.appGraph/navState)
-// 与 bridge_logic(AuthLogic/VerificationLogic/AccountLogic) 令牌。
+// 与 bridge_logic(AuthLogic/AccountLogic) 令牌。
+// 铁律：只用官方 Material 3 控件；不手写控件类（弹层本身为唯一页面容器，
+// 各 Tab 内容均内联为方法 + 官方控件组合）；颜色只来自语义 token。
 // 凭据安全：手机号日志/界面脱敏（138****1234）；token 不回显不进日志。
-// 批2 收口：sendSmsCode/smsLogin/loginByPwd 均已接 AuthLogic 真门面
-// （auth_endpoints 顶层封装，端点待实测；手机号/凭据一律脱敏）。
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../../bridges/bridge_core.dart'
-    show AccountRecord, sendSmsCode, smsLogin, KugouApiException;
-import '../../bridges/bridge_logic.dart' show QrLoginState, QrLoginStatus;
+import '../../bridges/bridge_core.dart' show AccountRecord;
+import '../../bridges/bridge_logic.dart' show Log, QrLoginState, QrLoginStatus;
 import '../../bridges/bridge_session.dart' show appGraph, navState, AuthSession;
-import '../design/tokens.dart';
+import '../design/tokens_v2.dart';
 import '../l10n/s.dart' show S;
-import 'login_account_section.dart' show AccountSection;
+import 'login_account_section.dart'
+    show AccountEntry, buildAccountEntries, accountSubtitle;
 import 'ykg_sheet.dart' show showYkgExport, showYkgImport;
 
 /// 登录弹层入口：isScrollControlled + 约 70% 高度。
@@ -28,9 +29,8 @@ Future<void> showLoginSheet(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: context.cs.surfaceContainerLow,
-    builder: (_) => SizedBox(
-      height: MediaQuery.of(_).size.height * 0.7,
+    builder: (BuildContext c) => SizedBox(
+      height: MediaQuery.sizeOf(c).size.height * 0.7,
       child: LoginSheetPanel(onAuthChanged: onAuthChanged),
     ),
   );
@@ -39,14 +39,15 @@ Future<void> showLoginSheet(
 /// 手机号脱敏：138****1234；异常输入原样截断尾部 4 位。
 String _maskPhone(String phone) {
   final p = phone.trim();
-  if (p.length >= 7)
+  if (p.length >= 7) {
     return '${p.substring(0, 3)}****${p.substring(p.length - 4)}';
+  }
   return p.isEmpty
       ? '-'
       : '****${p.substring(p.length - 2 < 0 ? 0 : p.length - 2)}';
 }
 
-/// 弹层面板：TabBar + 底部已登录账号区。
+/// 弹层面板：TabBar + Tab 内容 + 底部已登录账号区。
 class LoginSheetPanel extends StatefulWidget {
   const LoginSheetPanel({super.key, this.onAuthChanged});
   final void Function()? onAuthChanged;
@@ -54,123 +55,113 @@ class LoginSheetPanel extends StatefulWidget {
   State<LoginSheetPanel> createState() => _LoginSheetPanelState();
 }
 
-class _LoginSheetPanelState extends State<LoginSheetPanel> {
+class _LoginSheetPanelState extends State<LoginSheetPanel>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs = TabController(length: 4, vsync: this);
+
+  // 账号区
   List<AccountRecord> _accounts = const <AccountRecord>[];
+
+  // 扫码 Tab
+  QrLoginState? _qr;
+  Uint8List? _qrImg;
+  bool _qrRecreatedOnce = false;
+  String _qrHint = '正在获取二维码…';
+  Timer? _qrTimer;
+
+  // 验证码 Tab
+  final TextEditingController _phone = TextEditingController();
+  final TextEditingController _code = TextEditingController();
+  int _countdown = 0;
+  Timer? _smsTimer;
+
+  // 密码 Tab
+  final TextEditingController _pwdAccount = TextEditingController();
+  final TextEditingController _pwd = TextEditingController();
+  bool _pwdObscure = true;
 
   @override
   void initState() {
     super.initState();
     _reloadAccounts();
+    _createQr();
+  }
+
+  @override
+  void dispose() {
+    _qrTimer?.cancel();
+    _smsTimer?.cancel();
+    _phone.dispose();
+    _code.dispose();
+    _pwdAccount.dispose();
+    _pwd.dispose();
+    _tabs.dispose();
+    super.dispose();
   }
 
   // 按钮回调内持有 future，不在 build 新建。
   Future<void> _reloadAccounts() async {
-    final account = appGraph.account;
-    if (account == null) return;
-    final list = await account.listAccounts();
-    if (!mounted) return;
-    setState(() => _accounts = list);
+    try {
+      final account = appGraph.account;
+      if (account == null) return;
+      final list = await account.listAccounts();
+      if (!mounted) return;
+      setState(() => _accounts = list);
+    } catch (e, st) {
+      Log.e('surface.login', 'load accounts failed', e, st);
+    }
   }
 
   Future<void> _switchTo(String accountId) async {
-    final ok = await appGraph.account?.switchTo(accountId) ?? false;
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(ok ? '已切换账号 $accountId' : '切换失败')));
-    if (ok) navState().bumpAuth();
-    _reloadAccounts();
+    try {
+      final ok = await appGraph.account?.switchTo(accountId) ?? false;
+      if (!mounted) return;
+      _toast(ok ? '已切换账号 $accountId' : '切换失败');
+      if (ok) navState().bumpAuth();
+      _reloadAccounts();
+    } catch (e, st) {
+      Log.e('surface.login', 'switch account failed', e, st);
+    }
   }
 
   Future<void> _removeAccount(String accountId) async {
-    final ok = await appGraph.account?.removeAccount(accountId) ?? false;
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(ok ? '已移除账号 $accountId' : '移除失败')));
-    _reloadAccounts();
+    try {
+      final ok = await appGraph.account?.removeAccount(accountId) ?? false;
+      if (!mounted) return;
+      _toast(ok ? '已移除账号 $accountId' : '移除失败');
+      _reloadAccounts();
+    } catch (e, st) {
+      Log.e('surface.login', 'remove account failed', e, st);
+    }
   }
 
   /// 登录成功统一收口：落账号档案 → bumpAuth → 广播登录态 → 回调 → 关弹层。
   Future<void> _onLoginSuccess() async {
-    await appGraph.account?.saveCurrent();
+    try {
+      await appGraph.account?.saveCurrent();
+    } catch (e, st) {
+      Log.e('surface.login', 'save account failed', e, st);
+    }
     navState().bumpAuth();
-    // 审查修复（阶段B B5）：广播登录态，触发换号重置（收藏镜像/缓存前缀）——
-    // 此前只有 YKG 导入路径调 notifyAuthChanged，常规登录/登出不触发。
+    // 审查修复（阶段B B5）：广播登录态，触发换号重置（收藏镜像/缓存前缀）。
     AuthSession.instance.notifyAuthChanged();
     if (!mounted) return;
     widget.onAuthChanged?.call();
     Navigator.of(context).pop();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final activeUid = appGraph.auth?.session.userid ?? '';
-    final s = S.of(context);
-    return DefaultTabController(
-      length: 4,
-      child: Column(
-        children: <Widget>[
-          TabBar(
-            tabs: <Tab>[
-              Tab(text: s.t('qrLogin')),
-              Tab(text: s.t('smsLogin')),
-              Tab(text: s.t('pwdLogin')),
-              Tab(text: s.t('ykgTitle')),
-            ],
-          ),
-          Expanded(
-            child: TabBarView(
-              children: <Widget>[
-                _QrTab(onLoginSuccess: _onLoginSuccess),
-                _SmsTab(onLoginSuccess: _onLoginSuccess),
-                _PwdTab(),
-                const _YkgTab(),
-              ],
-            ),
-          ),
-          _accountSection(activeUid),
-        ],
-      ),
-    );
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  Widget _accountSection(String activeUid) {
-    return AccountSection(
-      accounts: _accounts,
-      activeUid: activeUid,
-      onSwitch: _switchTo,
-      onRemove: _removeAccount,
-    );
-  }
-}
+  // ───────────────────────── 扫码 Tab ─────────────────────────
 
-/// 扫码 Tab：createQrLogin 出码 → pollQrLogin 1.5s 轮询（0/1/2/4 四态）。
-/// 过期自动重建一次（仅一次）；成功即回调并关闭。
-class _QrTab extends StatefulWidget {
-  const _QrTab({required this.onLoginSuccess});
-  final void Function() onLoginSuccess;
-  @override
-  State<_QrTab> createState() => _QrTabState();
-}
-
-class _QrTabState extends State<_QrTab> {
-  QrLoginState? _qr;
-  Uint8List? _img;
-  bool _recreatedOnce = false;
-  String _hint = '正在获取二维码…';
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _createQr();
-  }
-
+  /// 出码 + 1.5s 轮询（0/1/2/4 四态）；过期自动重建一次。
   Future<void> _createQr() async {
     final auth = appGraph.auth;
     if (auth == null) {
-      if (mounted) setState(() => _hint = '登录能力未装配');
+      if (mounted) setState(() => _qrHint = '登录能力未装配');
       return;
     }
     try {
@@ -178,32 +169,32 @@ class _QrTabState extends State<_QrTab> {
       if (!mounted) return;
       setState(() {
         _qr = st;
-        _hint = '请使用酷狗音乐 App 扫码';
+        _qrHint = '请使用酷狗音乐 App 扫码';
         try {
-          _img = st.qrImageB64.isEmpty ? null : base64Decode(st.qrImageB64);
+          _qrImg = st.qrImageB64.isEmpty ? null : base64Decode(st.qrImageB64);
         } catch (_) {
-          _img = null; // 官方图解码失败兜底为提示文案
+          _qrImg = null; // 官方图解码失败兜底为提示文案
         }
       });
-      _timer?.cancel();
-      _timer = Timer.periodic(
+      _qrTimer?.cancel();
+      _qrTimer = Timer.periodic(
         const Duration(milliseconds: 1500),
-        (_) => _poll(st.key),
+        (_) => _pollQr(st.key),
       );
-    } catch (e) {
-      if (mounted) {
-        setState(() => _hint = '二维码获取失败，请重试');
-      }
+    } catch (e, st) {
+      Log.e('surface.login', 'create qr failed', e, st);
+      if (mounted) setState(() => _qrHint = '二维码获取失败，请重试');
     }
   }
 
-  Future<void> _poll(String key) async {
+  Future<void> _pollQr(String key) async {
     final auth = appGraph.auth;
     if (auth == null || _qr == null) return;
     final QrLoginState st;
     try {
       st = await auth.pollQrLogin(key);
-    } catch (_) {
+    } catch (e, st2) {
+      Log.e('surface.login', 'poll qr failed', e, st2);
       return; // 轮询瞬时失败容错，下个周期继续
     }
     if (!mounted) return;
@@ -211,71 +202,69 @@ class _QrTabState extends State<_QrTab> {
       case QrLoginStatus.waitScan:
         break; // 保持「请扫码」文案
       case QrLoginStatus.waitConfirm:
-        setState(() => _hint = '已在手机上扫码，请在手机端确认登录');
+        setState(() => _qrHint = '已在手机上扫码，请在手机端确认登录');
         break;
       case QrLoginStatus.expired:
-        _timer?.cancel();
-        if (!_recreatedOnce) {
-          _recreatedOnce = true;
-          setState(() => _hint = '二维码已过期，正在自动刷新…');
+        _qrTimer?.cancel();
+        if (!_qrRecreatedOnce) {
+          _qrRecreatedOnce = true;
+          setState(() => _qrHint = '二维码已过期，正在自动刷新…');
           _createQr();
         } else {
-          setState(() => _hint = '二维码已过期，请下拉重试或退出重开');
+          setState(() => _qrHint = '二维码已过期，请下拉重试或退出重开');
         }
         break;
       case QrLoginStatus.success:
-        _timer?.cancel();
-        widget.onLoginSuccess();
+        _qrTimer?.cancel();
+        _onLoginSuccess();
         break;
     }
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _qrBody(BuildContext context) {
+    final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.all(Sp.pagePad),
+      padding: const EdgeInsets.all(16),
       children: <Widget>[
-        const SizedBox(height: Sp.gapM),
+        const SizedBox(height: 8),
         Center(
-          child: _img != null
+          child: _qrImg != null
               ? Image.memory(
-                  _img!,
+                  _qrImg!,
                   width: 200,
                   height: 200,
                   fit: BoxFit.contain,
                 )
-              : Container(
-                  width: 200,
-                  height: 200,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: context.cs.surfaceContainer,
-                    borderRadius: BorderRadius.circular(Sp.rCard),
-                  ),
-                  child: Text(
-                    '二维码加载中',
-                    style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
+              : Card(
+                  child: SizedBox(
+                    width: 200,
+                    height: 200,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const CircularProgressIndicator(strokeWidth: 2),
+                          const SizedBox(height: 12),
+                          Text('二维码加载中', style: theme.textTheme.bodySmall),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
         ),
-        const SizedBox(height: Sp.gapM),
+        const SizedBox(height: 16),
         Center(
           child: Text(
-            _hint,
-            style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurfaceVariant),
+            _qrHint,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium,
           ),
         ),
-        const SizedBox(height: Sp.gapM),
+        const SizedBox(height: 8),
         Center(
           child: TextButton(
             onPressed: () {
-              _recreatedOnce = false; // 手动刷新重置一次性重建标记
+              _qrRecreatedOnce = false; // 手动刷新重置一次性重建标记
               _createQr();
             },
             child: const Text('刷新二维码'),
@@ -284,33 +273,8 @@ class _QrTabState extends State<_QrTab> {
       ],
     );
   }
-}
 
-/// 验证码 Tab：手机号 + 发送（60s 倒计时防重发）+ 验证码 + 登录。
-class _SmsTab extends StatefulWidget {
-  const _SmsTab({required this.onLoginSuccess});
-  final void Function() onLoginSuccess;
-  @override
-  State<_SmsTab> createState() => _SmsTabState();
-}
-
-class _SmsTabState extends State<_SmsTab> {
-  final TextEditingController _phone = TextEditingController();
-  final TextEditingController _code = TextEditingController();
-  int _countdown = 0;
-  Timer? _timer;
-  String _msg = '';
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _phone.dispose();
-    _code.dispose();
-    super.dispose();
-  }
-
-  void _toast(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  // ───────────────────────── 验证码 Tab ─────────────────────────
 
   Future<void> _sendCode() async {
     if (_countdown > 0) return;
@@ -322,24 +286,27 @@ class _SmsTabState extends State<_SmsTab> {
     bool ok = false;
     try {
       ok = await appGraph.auth?.sendVerifyCode(phone) ?? false;
-    } catch (e) {
-      _msg = '验证码发送失败（接口待实测）';
-      _toast(_msg);
+    } catch (e, st) {
+      Log.e('surface.login', 'send verify code failed', e, st);
+      _toast('验证码发送失败（接口待实测）');
       return;
     }
     _toast(ok ? '验证码已发送至 ${_maskPhone(phone)}' : '发送失败，请稍后重试');
     if (ok) {
       setState(() => _countdown = 60);
-      _timer?.cancel();
-      _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-        if (!mounted) return t.cancel();
+      _smsTimer?.cancel();
+      _smsTimer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
+        if (!mounted) {
+          t.cancel();
+          return;
+        }
         setState(() => _countdown = _countdown - 1);
         if (_countdown <= 0) t.cancel();
       });
     }
   }
 
-  Future<void> _login() async {
+  Future<void> _smsLogin() async {
     final phone = _phone.text.trim();
     final code = _code.text.trim();
     if (phone.isEmpty || code.isEmpty) {
@@ -360,16 +327,16 @@ class _SmsTabState extends State<_SmsTab> {
         );
         return;
       }
-      widget.onLoginSuccess();
-    } catch (e) {
-      _toast('验证码登录失败：$e');
+      _onLoginSuccess();
+    } catch (e, st) {
+      Log.e('surface.login', 'sms login failed', e, st);
+      _toast('验证码登录失败');
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _smsBody(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(Sp.pagePad),
+      padding: const EdgeInsets.all(16),
       children: <Widget>[
         TextField(
           controller: _phone,
@@ -379,7 +346,7 @@ class _SmsTabState extends State<_SmsTab> {
             hintText: '用于登录酷狗账号',
           ),
         ),
-        const SizedBox(height: Sp.gapM),
+        const SizedBox(height: 16),
         Row(
           children: <Widget>[
             Expanded(
@@ -389,112 +356,94 @@ class _SmsTabState extends State<_SmsTab> {
                 decoration: const InputDecoration(labelText: '验证码'),
               ),
             ),
-            const SizedBox(width: Sp.gapM),
+            const SizedBox(width: 12),
             TextButton(
               onPressed: _countdown > 0 ? null : _sendCode,
               child: Text(_countdown > 0 ? '${_countdown}s' : '发送验证码'),
             ),
           ],
         ),
-        const SizedBox(height: Sp.gapM),
-        FilledButton(onPressed: _login, child: const Text('登录')),
+        const SizedBox(height: 16),
+        FilledButton(onPressed: _smsLogin, child: const Text('登录')),
       ],
     );
   }
-}
 
-/// 密码 Tab：手机号/用户名 + 密码（obscureText）→ AuthLogic.loginByPwd。
-/// 批2-F1 尚未合入该方法：try/catch 兜底提示，不崩。
-class _PwdTab extends StatefulWidget {
-  @override
-  State<_PwdTab> createState() => _PwdTabState();
-}
+  // ───────────────────────── 密码 Tab ─────────────────────────
 
-class _PwdTabState extends State<_PwdTab> {
-  final TextEditingController _account = TextEditingController();
-  final TextEditingController _pwd = TextEditingController();
-  bool _obscure = true;
-
-  @override
-  void dispose() {
-    _account.dispose();
-    _pwd.dispose();
-    super.dispose();
-  }
-
-  Future<void> _login() async {
-    final acc = _account.text.trim();
+  Future<void> _pwdLogin() async {
+    final acc = _pwdAccount.text.trim();
     final pwd = _pwd.text;
     if (acc.isEmpty || pwd.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('请输入账号与密码')));
+      _toast('请输入账号与密码');
       return;
     }
     try {
-      final dynamic auth = appGraph.auth;
+      final auth = appGraph.auth;
+      if (auth == null) {
+        _toast('登录能力未装配');
+        return;
+      }
       await auth.signInByPwd(pwd);
-      // 就绪后此处接 onLoginSuccess（由批2-F1 定义返回形态）
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('密码登录待后端就绪')));
+      _onLoginSuccess();
+    } catch (e, st) {
+      Log.e('surface.login', 'pwd login failed', e, st);
+      _toast('密码登录待后端就绪');
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _pwdBody(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(Sp.pagePad),
+      padding: const EdgeInsets.all(16),
       children: <Widget>[
         TextField(
-          controller: _account,
+          controller: _pwdAccount,
           decoration: const InputDecoration(labelText: '手机号 / 用户名'),
         ),
-        const SizedBox(height: Sp.gapM),
+        const SizedBox(height: 16),
         TextField(
           controller: _pwd,
-          obscureText: _obscure,
+          obscureText: _pwdObscure,
           decoration: InputDecoration(
             labelText: '密码',
             suffixIcon: IconButton(
-              icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
-              onPressed: () => setState(() => _obscure = !_obscure),
+              tooltip: _pwdObscure ? '显示密码' : '隐藏密码',
+              icon: Icon(_pwdObscure ? Icons.visibility_off : Icons.visibility),
+              onPressed: () => setState(() => _pwdObscure = !_pwdObscure),
             ),
           ),
         ),
-        const SizedBox(height: Sp.gapM),
-        FilledButton(onPressed: _login, child: const Text('登录')),
+        const SizedBox(height: 16),
+        FilledButton(onPressed: _pwdLogin, child: const Text('登录')),
       ],
     );
   }
-}
 
-/// YKG 链接登录 Tab（导出 / 导入两个入口；弹层承载密码与风险提示）。
-class _YkgTab extends StatelessWidget {
-  const _YkgTab();
+  // ───────────────────────── YKG Tab ─────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _ykgBody(BuildContext context) {
     final s = S.of(context);
-    return Padding(
-      padding: const EdgeInsets.all(Sp.gapL),
+    final theme = Theme.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Icon(Icons.link, size: 48, color: context.cs.onSurfaceVariant),
-          const SizedBox(height: Sp.gapM),
+          Icon(Icons.link, size: 48, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(height: 16),
           Text(
             s.t('ykgRisk'),
             textAlign: TextAlign.center,
-            style: TextStyle(color: context.cs.onSurfaceVariant),
+            style: theme.textTheme.bodySmall,
           ),
-          const SizedBox(height: Sp.gapL),
+          const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: () => showYkgImport(context),
             icon: const Icon(Icons.download_outlined),
             label: Text(s.t('ykgImport')),
           ),
-          const SizedBox(height: Sp.gapS),
+          const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: () => showYkgExport(context),
             icon: const Icon(Icons.upload_outlined),
@@ -502,6 +451,126 @@ class _YkgTab extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  // ───────────────────────── 账号区 ─────────────────────────
+
+  Widget _accountArea(BuildContext context) {
+    final theme = Theme.of(context);
+    final activeUid = appGraph.auth?.session.userid ?? '';
+    final List<AccountEntry> entries = buildAccountEntries(
+      _accounts,
+      activeUid,
+    );
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text('已登录账号', style: theme.textTheme.titleSmall),
+          ),
+          if (entries.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Text('暂无账号，登录后将自动保存到这里', style: theme.textTheme.bodySmall),
+            )
+          else
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 180),
+              child: ListView(
+                shrinkWrap: true,
+                children: <Widget>[
+                  for (final AccountEntry e in entries)
+                    ListTile(
+                      dense: true,
+                      leading: Icon(
+                        e.active ? Icons.person : Icons.person_outline,
+                        color: e.active
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
+                        size: 20,
+                      ),
+                      title: Text(
+                        e.displayName,
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      subtitle: Text(
+                        accountSubtitle(e.accountId),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      trailing: IconButton(
+                        tooltip: '移除账号',
+                        icon: const Icon(Icons.delete_outline, size: 20),
+                        onPressed: () => _removeAccount(e.accountId),
+                      ),
+                      onTap: () => _switchTo(e.accountId),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────── 组装 ─────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final theme = Theme.of(context);
+    return Column(
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(s.t('login'), style: theme.textTheme.titleLarge),
+              ),
+              IconButton(
+                tooltip: '关闭',
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        ),
+        TabBar(
+          controller: _tabs,
+          labelColor: theme.colorScheme.onSurface,
+          unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+          indicatorColor: context.cs.primary,
+          tabs: <Widget>[
+            Tab(text: s.t('qrLogin')),
+            Tab(text: s.t('smsLogin')),
+            Tab(text: s.t('pwdLogin')),
+            Tab(text: s.t('ykgTitle')),
+          ],
+        ),
+        Expanded(
+          child: AnimatedBuilder(
+            animation: _tabs,
+            builder: (BuildContext c, Widget? _) {
+              switch (_tabs.index) {
+                case 1:
+                  return _smsBody(c);
+                case 2:
+                  return _pwdBody(c);
+                case 3:
+                  return _ykgBody(c);
+                default:
+                  return _qrBody(c);
+              }
+            },
+          ),
+        ),
+        _accountArea(context),
+      ],
     );
   }
 }

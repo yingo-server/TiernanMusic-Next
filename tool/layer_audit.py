@@ -54,7 +54,14 @@ L7_EXTRA = ('package:flutter', 'package:flutter_riverpod',
             'package:riverpod', 'package:just_audio',
             'package:video_player',
             'package:audio_service', 'package:path_provider',
-            'package:flutter_localizations')
+            'package:flutter_localizations',
+            # L7 UI 重构范式：GetWidget 现成能力（Obx/GetBuilder/GetView 等）
+            # 是 sanctioned 的视图层状态工具，仅此层可用（业务状态仍在 L6 session）。
+            'package:get',
+            # 桌面标题栏用 bitsdojo 官方控件（WindowBorder/WindowTitleBarBox/
+            # Minimize/Maximize/CloseWindowButton），仅 design/desktop_titlebar.dart
+            # 使用；不手写按钮（见 docs/UI_REWRITE_PLAN.md §0.0）。
+            'package:bitsdojo_window')
 # L6 session：编排会话层，允许 riverpod 状态容器与 flutter foundation/widgets
 # 基础类型（GlobalKey / ChangeNotifier），禁止自定义 Widget 渲染类。
 L6_EXTRA = ('package:flutter_riverpod', 'package:riverpod',

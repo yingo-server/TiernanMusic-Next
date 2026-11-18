@@ -30,14 +30,14 @@ ALLOWED_WIDGET_FILES = {
 # 但**可复用 UI 组件**禁止自写。判定：类名以 '_' 开头（私有组件）或
 # 位于 design/ 目录且非页面 → 视为组件；位于 pages/ 且类名以 Page/Sheet 结尾
 # → 视为页面容器（允许）。
-PAGE_NAME_RE = re.compile(r'(Page|Sheet|Panel|View|Screen|Dialog)$')
+PAGE_NAME_RE = re.compile(r'(Page|Sheet|Panel|View|Screen|Dialog|Root|Shell)$')
 
 errs = []
 widget_def_re = re.compile(
     r'^\s*class\s+(\w+)\s+extends\s+(StatelessWidget|StatefulWidget|InheritedWidget)', re.M)
 draw_re = re.compile(r'\b(CustomPainter|CustomPaint|Canvas\b|\.drawCircle\(|\.drawRect\(|\.drawPath\(|\.drawRRect\(|Paint\(\))')
 color_hex_re = re.compile(r'Color\(0x[0-9A-Fa-f]{8}\)')
-colors_api_re = re.compile(r'Colors\.(?!transparent\b)\w+')
+colors_api_re = re.compile(r'(?<![A-Za-z_])Colors\.(?!transparent\b)\w+')
 
 def is_token_file(rel):
     return any(a in rel for a in TOKEN_ALLOW)

@@ -1,41 +1,43 @@
 // L7 surface/pages · YKG 链接登录弹层（导出 / 导入）
-// 铁律：只画控件；能力经 bridge_session.appGraph.ykg；文案走 S.of(context).t。
+//
+// 铁律：只用官方 Material 3 控件；不手写控件类（弹层本身为页面容器）；
+// 颜色只来自语义 token（Theme.of(context).colorScheme / context.cs）；
+// 能力经 bridge_session.appGraph.ykg；文案走 S.of(context).t。
 // 设计权威：docs/YKG_LINK_CRYPTO_DESIGN.md
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
+import '../../bridges/bridge_logic.dart' show Log;
 import '../../bridges/bridge_session.dart' show appGraph;
-import '../design/tokens.dart';
+import '../design/tokens_v2.dart';
 import '../l10n/s.dart' show S;
 
-enum _YkgMode { export, import }
-
-/// 显示 YKG 弹层。entry=导出/导入。
-Future<void> showYkgSheet(BuildContext context, _YkgMode mode) =>
+/// 显示 YKG 弹层。export=true 导出，false 导入。
+Future<void> showYkgSheet(BuildContext context, {required bool export}) =>
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: context.cs.surfaceContainerLow,
       isScrollControlled: true,
-      builder: (_) => _YkgSheet(mode: mode),
+      builder: (BuildContext c) => YkgSheet(export: export),
     );
 
 /// 便捷入口（供登录页调用，避免暴露内部枚举）。
 Future<void> showYkgExport(BuildContext context) =>
-    showYkgSheet(context, _YkgMode.export);
+    showYkgSheet(context, export: true);
+
 Future<void> showYkgImport(BuildContext context) =>
-    showYkgSheet(context, _YkgMode.import);
+    showYkgSheet(context, export: false);
 
-class _YkgSheet extends StatefulWidget {
-  const _YkgSheet({required this.mode});
-  final _YkgMode mode;
-
+/// YKG 弹层容器（页面容器，允许有状态）。
+class YkgSheet extends StatefulWidget {
+  const YkgSheet({super.key, required this.export});
+  final bool export;
   @override
-  State<_YkgSheet> createState() => _YkgSheetState();
+  State<YkgSheet> createState() => _YkgSheetState();
 }
 
-class _YkgSheetState extends State<_YkgSheet> {
+class _YkgSheetState extends State<YkgSheet> {
   final TextEditingController _pwd = TextEditingController();
   final TextEditingController _link = TextEditingController();
   String _result = '';
@@ -50,29 +52,31 @@ class _YkgSheetState extends State<_YkgSheet> {
   }
 
   Future<void> _doExport() async {
+    final s = S.of(context);
     final logic = appGraph.ykg;
     if (logic == null || !logic.canExport) {
-      _set(S.of(context).t('ykgNotLoggedIn'));
+      _set(s.t('ykgNotLoggedIn'));
       return;
     }
     if (_pwd.text.isEmpty) {
-      _set(S.of(context).t('ykgPasswordHint'));
+      _set(s.t('ykgPasswordHint'));
       return;
     }
     setState(() => _busy = true);
     try {
       final link = await logic.exportLink(password: _pwd.text);
       if (link == null) {
-        _set(S.of(context).t('ykgNotLoggedIn'));
+        _set(s.t('ykgNotLoggedIn'));
         return;
       }
       await Clipboard.setData(ClipboardData(text: link));
       if (mounted) {
         _link.text = link;
-        _set(S.of(context).t('ykgCopied'));
+        _set(s.t('ykgCopied'));
       }
-    } catch (e) {
-      _set(S.of(context).t('errorGeneric'));
+    } catch (e, st) {
+      Log.e('surface.ykg', 'export failed', e, st);
+      _set(s.t('errorGeneric'));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -87,11 +91,11 @@ class _YkgSheetState extends State<_YkgSheet> {
     }
     final text = _link.text.trim();
     if (!logic.isYkgLink(text)) {
-      _set(S.of(context).t('ykgInvalidLink'));
+      _set(s.t('ykgInvalidLink'));
       return;
     }
     if (_pwd.text.isEmpty) {
-      _set(S.of(context).t('ykgPasswordHint'));
+      _set(s.t('ykgPasswordHint'));
       return;
     }
     setState(() => _busy = true);
@@ -102,12 +106,12 @@ class _YkgSheetState extends State<_YkgSheet> {
         _set(s.t('ykgImportOk'));
         Navigator.of(context).pop();
       } else {
-        // 底层错误统一为「密码错/链接损坏」，按 i18n 文案展示，不直显底层串
-        // （避免 oracle 与硬编码）。
+        // 底层错误统一为「密码错/链接损坏」，按 i18n 文案展示，不直显底层串。
         _set(s.t('ykgWrongPassword'));
       }
-    } catch (e) {
-      _set(S.of(context).t('ykgWrongPassword'));
+    } catch (e, st) {
+      Log.e('surface.ykg', 'import failed', e, st);
+      _set(s.t('ykgWrongPassword'));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -121,14 +125,15 @@ class _YkgSheetState extends State<_YkgSheet> {
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    final isExport = widget.mode == _YkgMode.export;
+    final theme = Theme.of(context);
+    final isExport = widget.export;
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
-          left: Sp.gapL,
-          right: Sp.gapL,
-          top: Sp.gapM,
-          bottom: MediaQuery.of(context).viewInsets.bottom + Sp.gapL,
+          left: 24,
+          right: 24,
+          top: 16,
+          bottom: MediaQuery.viewInsetsOf(context).bottom + 24,
         ),
         child: SingleChildScrollView(
           child: Column(
@@ -137,19 +142,32 @@ class _YkgSheetState extends State<_YkgSheet> {
             children: <Widget>[
               Text(
                 isExport ? s.t('ykgExport') : s.t('ykgImport'),
-                style: Theme.of(context).textTheme.titleLarge,
+                style: theme.textTheme.titleLarge,
               ),
-              const SizedBox(height: Sp.gapM),
+              const SizedBox(height: 16),
               // 风险提示（强制）：凭据链接 + 密码 = 可登录，勿公开分享。
-              Container(
-                padding: const EdgeInsets.all(Sp.gapM),
-                decoration: BoxDecoration(
-                  color: context.cs.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(Sp.rCard),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: context.cs.secondary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          s.t('ykgRisk'),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Text(s.t('ykgRisk'), style: TextStyle(color: context.cs.tertiary)),
               ),
-              const SizedBox(height: Sp.gapM),
+              const SizedBox(height: 16),
               if (!isExport) ...<Widget>[
                 TextField(
                   controller: _link,
@@ -157,7 +175,7 @@ class _YkgSheetState extends State<_YkgSheet> {
                   minLines: 2,
                   maxLines: 4,
                 ),
-                const SizedBox(height: Sp.gapS),
+                const SizedBox(height: 8),
               ],
               TextField(
                 controller: _pwd,
@@ -166,6 +184,7 @@ class _YkgSheetState extends State<_YkgSheet> {
                   labelText: s.t('ykgPassword'),
                   helperText: s.t('ykgPasswordHint'),
                   suffixIcon: IconButton(
+                    tooltip: _obscure ? '显示密码' : '隐藏密码',
                     icon: Icon(
                       _obscure ? Icons.visibility : Icons.visibility_off,
                     ),
@@ -173,14 +192,20 @@ class _YkgSheetState extends State<_YkgSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: Sp.gapM),
+              const SizedBox(height: 16),
               FilledButton(
                 onPressed: _busy ? null : (isExport ? _doExport : _doImport),
-                child: Text(isExport ? s.t('ykgCopy') : s.t('ykgImport')),
+                child: _busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(isExport ? s.t('ykgCopy') : s.t('ykgImport')),
               ),
               if (_result.isNotEmpty) ...<Widget>[
-                const SizedBox(height: Sp.gapS),
-                Text(_result, style: TextStyle(color: context.cs.onSurfaceVariant)),
+                const SizedBox(height: 8),
+                Text(_result, style: theme.textTheme.bodySmall),
               ],
             ],
           ),

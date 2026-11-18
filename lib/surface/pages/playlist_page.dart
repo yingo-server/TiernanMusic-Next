@@ -1,4 +1,8 @@
-// L7 surface/pages · 歌单页（Spotify 深色 + M3）。只画控件；数据只经 bridge_logic 的 logic 单例取；颜色/字号/间距只用 Sp.*。
+// L7 surface/pages · 歌单页（官方 M3 + 语义 token 森林翡翠）。
+//
+// 契约：只用官方 Material 3 控件 + get 包现成能力；不手写控件类（页面/弹层容器除外）；
+// 颜色只来自 context.cs.*（design/tokens_v2.dart 的 ColorScheme 扩展）；
+// 数据只经 bridge_logic/logic 单例取；异步 future 只在 initState / 交互回调持有。
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart' show PlaylistMeta;
@@ -7,11 +11,18 @@ import '../../bridges/bridge_logic.dart'
 import '../../bridges/bridge_session.dart'
     show NavState, PlaybackSession, SurfaceModule, NavEntry;
 import '../../bridges/bridge_session.dart' show appGraph;
-import '../design/tokens.dart' show Sp, SpColorSchemeX;
+import '../design/tokens_v2.dart';
 
 const String _tag = 'surface.playlist';
 
-/// 页面模块注册。
+const double _pad = 16;
+const double _gapXS = 4;
+const double _gapS = 8;
+const double _gapM = 12;
+const double _gapXL = 24;
+const double _radiusS = 8;
+
+/// 页面模块注册（L7 注入 builder，宿主按 id 覆盖 session 占位模块）。
 class PlaylistPageModule extends SurfaceModule {
   @override
   String get id => 'playlist';
@@ -26,62 +37,30 @@ class PlaylistPageModule extends SurfaceModule {
       (BuildContext ctx) => const PlaylistPage();
 }
 
-/// 歌单页：TabBar（推荐 / 我的）+ 网格 + 详情底部弹层。
-class PlaylistPage extends StatelessWidget {
+/// 歌单页：官方 NavigationBar 分段（推荐 / 我的）+ 网格 + 详情底部弹层。
+///
+/// 说明：原 DefaultTabController + 自写 _RecommendTab/_MineTab StatefulWidget
+/// 改为页面自身持有两个 future（initState 加载）+ IndexedStack 切换，
+/// 既保留原业务逻辑，又消灭手写控件类。
+class PlaylistPage extends StatefulWidget {
   const PlaylistPage({super.key});
   @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: context.cs.surface,
-        body: SafeArea(
-          child: Column(
-            children: <Widget>[
-              TabBar(
-                indicatorColor: context.cs.primary,
-                indicatorWeight: 3,
-                labelColor: context.cs.onSurface,
-                unselectedLabelColor: context.cs.onSurfaceVariant,
-                labelStyle: TextStyle(
-                  fontSize: Sp.fSection,
-                  fontWeight: FontWeight.w700,
-                ),
-                unselectedLabelStyle: TextStyle(fontSize: Sp.fSection),
-                tabs: <Widget>[
-                  Tab(text: '推荐'),
-                  Tab(text: '我的'),
-                ],
-              ),
-              const Expanded(
-                child: TabBarView(
-                  children: <Widget>[_RecommendTab(), _MineTab()],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  State<PlaylistPage> createState() => _PlaylistPageState();
 }
 
-/// 推荐歌单网格（3 列封面卡 + 名称 + 曲目数）。
-class _RecommendTab extends StatefulWidget {
-  const _RecommendTab();
-  @override
-  State<_RecommendTab> createState() => _RecommendTabState();
-}
+class _PlaylistPageState extends State<PlaylistPage> {
+  int _tab = 0;
+  late Future<List<PlaylistBrief>> _recommendF;
+  late Future<List<PlaylistMeta>> _mineF;
 
-class _RecommendTabState extends State<_RecommendTab> {
-  late Future<List<PlaylistBrief>> _f;
   @override
   void initState() {
     super.initState();
-    _f = _load();
+    _recommendF = _loadRecommend();
+    _mineF = _loadMine();
   }
 
-  Future<List<PlaylistBrief>> _load() async {
+  Future<List<PlaylistBrief>> _loadRecommend() async {
     try {
       final pl = appGraph.playlist;
       if (pl == null) return const <PlaylistBrief>[];
@@ -92,12 +71,24 @@ class _RecommendTabState extends State<_RecommendTab> {
     }
   }
 
-  void _reload() => setState(() => _f = _load());
-  void _open(PlaylistBrief brief) {
+  Future<List<PlaylistMeta>> _loadMine() async {
+    try {
+      final pl = appGraph.playlist;
+      if (pl == null) return const <PlaylistMeta>[];
+      return pl.listLocal();
+    } catch (e, st) {
+      Log.e(_tag, 'listLocal failed', e, st);
+      return const <PlaylistMeta>[];
+    }
+  }
+
+  void _reloadRecommend() => setState(() => _recommendF = _loadRecommend());
+  void _reloadMine() => setState(() => _mineF = _loadMine());
+
+  void _openBrief(PlaylistBrief brief) {
     try {
       showModalBottomSheet<void>(
         context: context,
-        backgroundColor: context.cs.surfaceContainerLow,
         isScrollControlled: true,
         builder: (BuildContext c) => PlaylistDetailSheet(
           playlistId: brief.id,
@@ -110,77 +101,10 @@ class _RecommendTabState extends State<_RecommendTab> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<PlaylistBrief>>(
-      future: _f,
-      builder: (BuildContext c, AsyncSnapshot<List<PlaylistBrief>> snap) {
-        if (snap.connectionState != ConnectionState.done) {
-          return Center(
-            child: CircularProgressIndicator(color: context.cs.primary),
-          );
-        }
-        if (snap.hasError) {
-          return PlaylistErrorRetry(message: '推荐歌单加载失败', onRetry: _reload);
-        }
-        final List<PlaylistBrief> items = snap.data ?? const <PlaylistBrief>[];
-        if (items.isEmpty) {
-          return const PlaylistEmptyBox('暂无推荐歌单');
-        }
-        return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(
-            Sp.pagePad,
-            Sp.gapM,
-            Sp.pagePad,
-            Sp.gapXL,
-          ),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            childAspectRatio: 0.72,
-            crossAxisSpacing: Sp.gapM,
-            mainAxisSpacing: Sp.gapM,
-          ),
-          itemCount: items.length,
-          itemBuilder: (BuildContext c, int i) =>
-              PlaylistGridCard(brief: items[i], onTap: () => _open(items[i])),
-        );
-      },
-    );
-  }
-}
-
-/// 我的歌单（本地镜像列表）。
-class _MineTab extends StatefulWidget {
-  const _MineTab();
-  @override
-  State<_MineTab> createState() => _MineTabState();
-}
-
-class _MineTabState extends State<_MineTab> {
-  late Future<List<PlaylistMeta>> _f;
-  @override
-  void initState() {
-    super.initState();
-    _f = _load();
-  }
-
-  Future<List<PlaylistMeta>> _load() async {
-    try {
-      final pl = appGraph.playlist;
-      if (pl == null) return const <PlaylistMeta>[];
-      return pl.listLocal();
-    } catch (e, st) {
-      Log.e(_tag, 'listLocal failed', e, st);
-      return const <PlaylistMeta>[];
-    }
-  }
-
-  void _reload() => setState(() => _f = _load());
-  void _open(PlaylistMeta meta) {
+  void _openMeta(PlaylistMeta meta) {
     try {
       showModalBottomSheet<void>(
         context: context,
-        backgroundColor: context.cs.surfaceContainerLow,
         isScrollControlled: true,
         builder: (BuildContext c) => PlaylistDetailSheet(
           playlistId: meta.playlistId,
@@ -196,28 +120,221 @@ class _MineTabState extends State<_MineTab> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<PlaylistMeta>>(
-      future: _f,
-      builder: (BuildContext c, AsyncSnapshot<List<PlaylistMeta>> snap) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('歌单', style: Theme.of(context).textTheme.headlineSmall),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: <Widget>[
+            NavigationBar(
+              selectedIndex: _tab,
+              onDestinationSelected: (i) => setState(() => _tab = i),
+              destinations: const <NavigationDestination>[
+                NavigationDestination(icon: Icon(Icons.recommend), label: '推荐'),
+                NavigationDestination(icon: Icon(Icons.library_music_outlined), label: '我的'),
+              ],
+            ),
+            Expanded(
+              child: IndexedStack(
+                index: _tab,
+                children: <Widget>[
+                  _recommendTab(context),
+                  _mineTab(context),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 推荐歌单网格：官方 GridView + Card（原 PlaylistGridCard）。
+  Widget _recommendTab(BuildContext c) {
+    return FutureBuilder<List<PlaylistBrief>>(
+      future: _recommendF,
+      builder: (BuildContext c, AsyncSnapshot<List<PlaylistBrief>> snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return Center(
-            child: CircularProgressIndicator(color: context.cs.primary),
-          );
+          return _loading(c);
         }
         if (snap.hasError) {
-          return PlaylistErrorRetry(message: '我的歌单加载失败', onRetry: _reload);
+          return _error(c, '推荐歌单加载失败', _reloadRecommend);
         }
-        final List<PlaylistMeta> items = snap.data ?? const <PlaylistMeta>[];
-        if (items.isEmpty) {
-          return const PlaylistEmptyBox('还没有收藏的歌单');
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.only(bottom: Sp.gapXL),
+        final List<PlaylistBrief> items = snap.data ?? const <PlaylistBrief>[];
+        if (items.isEmpty) return _empty(c, '暂无推荐歌单');
+        final columns = MediaQuery.sizeOf(c).width >= 1000
+            ? 5
+            : MediaQuery.sizeOf(c).width >= 600
+            ? 4
+            : 3;
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(_pad, _gapM, _pad, _gapXL),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            childAspectRatio: 0.72,
+            crossAxisSpacing: _gapM,
+            mainAxisSpacing: _gapM,
+          ),
           itemCount: items.length,
           itemBuilder: (BuildContext c, int i) =>
-              _MineRow(meta: items[i], onTap: () => _open(items[i])),
+              _gridCard(c, items[i], () => _openBrief(items[i])),
         );
       },
+    );
+  }
+
+  /// 我的歌单：官方 ListView + ListTile（原 _MineRow）。
+  Widget _mineTab(BuildContext c) {
+    return FutureBuilder<List<PlaylistMeta>>(
+      future: _mineF,
+      builder: (BuildContext c, AsyncSnapshot<List<PlaylistMeta>> snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return _loading(c);
+        }
+        if (snap.hasError) {
+          return _error(c, '我的歌单加载失败', _reloadMine);
+        }
+        final List<PlaylistMeta> items = snap.data ?? const <PlaylistMeta>[];
+        if (items.isEmpty) return _empty(c, '还没有收藏的歌单');
+        return ListView.builder(
+          padding: const EdgeInsets.only(bottom: _gapXL),
+          itemCount: items.length,
+          itemBuilder: (BuildContext c, int i) =>
+              _mineRow(c, items[i], () => _openMeta(items[i])),
+        );
+      },
+    );
+  }
+
+  /// 网格封面卡：官方 Card + InkWell + ClipRRect/Image.network。
+  Widget _gridCard(BuildContext c, PlaylistBrief brief, VoidCallback onTap) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            AspectRatio(
+              aspectRatio: 1,
+              child: brief.cover.isEmpty
+                  ? Container(color: c.cs.surfaceContainerHigh)
+                  : Image.network(
+                      brief.cover,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Container(color: c.cs.surfaceContainerHigh),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(_gapS),
+              child: Text(
+                brief.name.isEmpty ? '未命名歌单' : brief.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(c).textTheme.titleSmall,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: _gapS),
+              child: Text(
+                brief.trackCount > 0 ? '${brief.trackCount} 首' : '曲目数未知',
+                style: Theme.of(c).textTheme.bodySmall,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 我的歌单行：官方 ListTile。
+  Widget _mineRow(BuildContext c, PlaylistMeta meta, VoidCallback onTap) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: _pad),
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(_radiusS),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: meta.coverUrl.isEmpty
+              ? Container(color: c.cs.surfaceContainerHigh)
+              : Image.network(
+                  meta.coverUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      Container(color: c.cs.surfaceContainerHigh),
+                ),
+        ),
+      ),
+      title: Text(
+        meta.name.isEmpty ? '未命名歌单' : meta.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(c).textTheme.bodyMedium,
+      ),
+      subtitle: Text(
+        '${meta.songHashes.length} 首',
+        style: Theme.of(c).textTheme.bodySmall,
+      ),
+      trailing: Icon(Icons.chevron_right, color: c.cs.onSurfaceVariant),
+    );
+  }
+
+  /// 加载占位：官方 Card + LinearProgressIndicator（原 SpSkeleton）。
+  Widget _loading(BuildContext c) {
+    return Center(
+      child: SizedBox(
+        width: 160,
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(_gapM),
+            child: LinearProgressIndicator(
+              minHeight: 3,
+              color: c.cs.primary,
+              backgroundColor: c.cs.surfaceContainerHigh,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 空态：官方 Icon + Text（原 PlaylistEmptyBox / SpStateView）。
+  Widget _empty(BuildContext c, String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: _pad),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(Icons.queue_music, color: c.cs.onSurfaceVariant),
+            const SizedBox(height: _gapS),
+            Text(message, style: Theme.of(c).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 错误 + 重试：官方 Icon + Text + FilledButton.tonal（原 PlaylistErrorRetry）。
+  Widget _error(BuildContext c, String message, VoidCallback onRetry) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: _pad),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(Icons.error_outline, color: c.cs.error),
+            const SizedBox(height: _gapS),
+            Text(message, style: Theme.of(c).textTheme.bodySmall),
+            const SizedBox(height: _gapS),
+            FilledButton.tonal(onPressed: onRetry, child: const Text('重试')),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -242,6 +359,7 @@ class PlaylistDetailSheet extends StatefulWidget {
 class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
   late Future<_SheetData> _f;
   _SheetData _data = const _SheetData(null, TrackPage());
+
   @override
   void initState() {
     super.initState();
@@ -278,299 +396,160 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
     }
   }
 
+  void _openAlbum(String albumId) {
+    try {
+      NavState.instance.setAlbum(albumId);
+    } catch (e, st) {
+      Log.e(_tag, 'setAlbum failed', e, st);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.75,
       builder: (BuildContext c, ScrollController ctrl) {
-        return Container(
-          color: context.cs.surfaceContainerLow,
-          child: FutureBuilder<_SheetData>(
-            future: _f,
-            builder: (BuildContext c, AsyncSnapshot<_SheetData> snap) {
-              if (snap.connectionState != ConnectionState.done) {
-                return Center(
-                  child: CircularProgressIndicator(color: context.cs.primary),
-                );
-              }
-              final _SheetData data =
-                  snap.data ?? const _SheetData(null, TrackPage());
-              final String title = data.detail?.name.isNotEmpty == true
-                  ? data.detail!.name
-                  : widget.title;
-              final List<SongBrief> items = data.tracks.items;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.all(Sp.pagePad),
-                    child: Row(
-                      children: <Widget>[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(Sp.rCard),
-                          child: SizedBox(
-                            width: 64,
-                            height: 64,
-                            child: widget.cover.isEmpty
-                                ? Container(color: context.cs.surfaceContainerHigh)
-                                : Image.network(
-                                    widget.cover,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (
-                                      BuildContext c,
-                                      Object e,
-                                      StackTrace? s,
-                                    ) => Container(color: context.cs.surfaceContainerHigh),
-                                  ),
+        return FutureBuilder<_SheetData>(
+          future: _f,
+          builder: (BuildContext c, AsyncSnapshot<_SheetData> snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final _SheetData data =
+                snap.data ?? const _SheetData(null, TrackPage());
+            final String title = data.detail?.name.isNotEmpty == true
+                ? data.detail!.name
+                : widget.title;
+            final List<SongBrief> items = data.tracks.items;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                _header(c, title, items),
+                Expanded(
+                  child: items.isEmpty
+                      ? _emptyTracks(c)
+                      : ListView.builder(
+                          controller: ctrl,
+                          itemCount: items.length,
+                          itemBuilder: (BuildContext c, int i) => _trackRow(
+                            c,
+                            items[i],
+                            i,
+                            () => _play(i),
+                            () => _openAlbum(items[i].albumId),
                           ),
                         ),
-                        const SizedBox(width: Sp.gapM),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                title.isEmpty ? '歌单详情' : title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: Sp.fSection,
-                                  fontWeight: FontWeight.w700,
-                                  color: context.cs.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: Sp.gapXS),
-                              Text(
-                                items.isNotEmpty
-                                    ? '${items.length} 首'
-                                    : '本地镜像 ${widget.localTrackCount} 首',
-                                style: TextStyle(
-                                  fontSize: Sp.fSub,
-                                  color: context.cs.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: items.isEmpty
-                        ? const PlaylistEmptyBox('该歌单暂无曲目')
-                        : ListView.builder(
-                            controller: ctrl,
-                            itemCount: items.length,
-                            itemBuilder: (BuildContext c, int i) => _TrackRow(
-                              song: items[i],
-                              index: i,
-                              onTap: () => _play(i),
-                              onAlbum: () {
-                                try {
-                                  NavState.instance.setAlbum(items[i].albumId);
-                                } catch (e, st) {
-                                  Log.e(_tag, 'setAlbum failed', e, st);
-                                }
-                              },
-                            ),
-                          ),
-                  ),
-                ],
-              );
-            },
-          ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
-}
 
-/// 网格封面卡：封面 + 名称 + 曲目数。
-class PlaylistGridCard extends StatelessWidget {
-  const PlaylistGridCard({required this.brief, required this.onTap});
-  final PlaylistBrief brief;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    final Widget cover = ClipRRect(
-      borderRadius: BorderRadius.circular(Sp.rCard),
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: brief.cover.isEmpty
-            ? Container(color: context.cs.surfaceContainerHigh)
-            : Image.network(
-                brief.cover,
-                fit: BoxFit.cover,
-                errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                    Container(color: context.cs.surfaceContainerHigh),
-              ),
-      ),
-    );
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  /// 弹层头部：官方 Row + ClipRRect/Image.network（原内联封面块）。
+  Widget _header(BuildContext c, String title, List<SongBrief> items) {
+    return Padding(
+      padding: const EdgeInsets.all(_pad),
+      child: Row(
         children: <Widget>[
-          cover,
-          const SizedBox(height: Sp.gapS),
-          Text(
-            brief.name.isEmpty ? '未命名歌单' : brief.name,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurface),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(_radiusS),
+            child: SizedBox(
+              width: 64,
+              height: 64,
+              child: widget.cover.isEmpty
+                  ? Container(color: c.cs.surfaceContainerHigh)
+                  : Image.network(
+                      widget.cover,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Container(color: c.cs.surfaceContainerHigh),
+                    ),
+            ),
           ),
-          Text(
-            brief.trackCount > 0 ? '${brief.trackCount} 首' : '曲目数未知',
-            style: TextStyle(fontSize: Sp.fTiny, color: context.cs.onSurfaceVariant),
+          const SizedBox(width: _gapM),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title.isEmpty ? '歌单详情' : title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(c).textTheme.titleLarge,
+                ),
+                const SizedBox(height: _gapXS),
+                Text(
+                  items.isNotEmpty
+                      ? '${items.length} 首'
+                      : '本地镜像 ${widget.localTrackCount} 首',
+                  style: Theme.of(c).textTheme.bodySmall,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
-}
 
-/// 我的歌单行。
-class _MineRow extends StatelessWidget {
-  const _MineRow({required this.meta, required this.onTap});
-  final PlaylistMeta meta;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    final Widget lead = ClipRRect(
-      borderRadius: BorderRadius.circular(Sp.rM),
-      child: SizedBox(
-        width: Sp.tileCover,
-        height: Sp.tileCover,
-        child: meta.coverUrl.isEmpty
-            ? Container(color: context.cs.surfaceContainerHigh)
-            : Image.network(
-                meta.coverUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                    Container(color: context.cs.surfaceContainerHigh),
-              ),
-      ),
-    );
+  /// 曲目行：官方 ListTile（原 _TrackRow）。
+  Widget _trackRow(BuildContext c, SongBrief song, int index,
+      VoidCallback onTap, VoidCallback onAlbum) {
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
-      leading: lead,
-      title: Text(
-        meta.name.isEmpty ? '未命名歌单' : meta.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
-      ),
-      subtitle: Text(
-        '${meta.songHashes.length} 首',
-        style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
-      ),
-      trailing: Icon(Icons.chevron_right, color: context.cs.onSurfaceVariant),
-    );
-  }
-}
-
-/// 曲目行：序号 + 名称/歌手 + 专辑跳转（NavState 传 id）。
-class _TrackRow extends StatelessWidget {
-  const _TrackRow({
-    required this.song,
-    required this.index,
-    required this.onTap,
-    required this.onAlbum,
-  });
-  final SongBrief song;
-  final int index;
-  final VoidCallback onTap;
-  final VoidCallback onAlbum;
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+      contentPadding: const EdgeInsets.symmetric(horizontal: _pad),
       leading: SizedBox(
         width: 28,
-        child: Text(
-          '${index + 1}',
-          style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
-        ),
+        child: Text('${index + 1}', style: Theme.of(c).textTheme.bodySmall),
       ),
       title: Text(
         song.name.isEmpty ? '未知歌曲' : song.name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
+        style: Theme.of(c).textTheme.bodyMedium,
       ),
       subtitle: Text(
         song.singer,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
+        style: Theme.of(c).textTheme.bodySmall,
       ),
       trailing: song.albumId.isEmpty
           ? null
           : IconButton(
               tooltip: '专辑',
               iconSize: 18,
-              color: context.cs.onSurfaceVariant,
               onPressed: onAlbum,
               icon: const Icon(Icons.album_outlined),
             ),
     );
   }
+
+  /// 空曲目：官方 Icon + Text（原 PlaylistEmptyBox）。
+  Widget _emptyTracks(BuildContext c) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: _pad),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(Icons.music_off, color: c.cs.onSurfaceVariant),
+            const SizedBox(height: _gapS),
+            Text('该歌单暂无曲目', style: Theme.of(c).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-/// 弹层数据载体。
+/// 弹层数据载体（纯数据，非控件）。
 class _SheetData {
   const _SheetData(this.detail, this.tracks);
   final PlaylistDetail? detail;
   final TrackPage tracks;
-}
-
-/// 空态。
-class PlaylistEmptyBox extends StatelessWidget {
-  const PlaylistEmptyBox(this.message);
-  final String message;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(
-      horizontal: Sp.pagePad,
-      vertical: Sp.gapXL,
-    ),
-    child: Text(
-      message,
-      style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
-    ),
-  );
-}
-
-/// 错误 + 重试。
-class PlaylistErrorRetry extends StatelessWidget {
-  const PlaylistErrorRetry({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(
-      horizontal: Sp.pagePad,
-      vertical: Sp.gapXL,
-    ),
-    child: Row(
-      children: <Widget>[
-        Expanded(
-          child: Text(
-            message,
-            style: TextStyle(fontSize: Sp.fSub, color: context.cs.error),
-          ),
-        ),
-        TextButton(
-          onPressed: onRetry,
-          child: Text(
-            '重试',
-            style: TextStyle(fontSize: Sp.fSub, color: context.cs.primary),
-          ),
-        ),
-      ],
-    ),
-  );
 }

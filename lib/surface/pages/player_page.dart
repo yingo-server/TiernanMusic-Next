@@ -1,5 +1,8 @@
-// L7 surface/pages · 播放页（Spotify 深色 + M3）
-// 铁律：只画控件；数据只来自 PlaybackSession 快照；样式一律 Sp.*。
+// L7 surface/pages · 播放页（官方 M3 控件 + 语义 token）
+//
+// 契约：只用官方 Material 3 控件；不手写控件类（页面容器除外）；
+// 颜色只来自 design/tokens_v2.dart 语义 token；数据只经 PlaybackSession 快照。
+// 进度条：官方 Slider + 本地预览值，拖动只改预览，松手才 seek。
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart'
@@ -13,117 +16,9 @@ import '../../bridges/bridge_session.dart'
         PlaybackSession,
         SurfaceModule,
         NavEntry;
-import '../design/tokens.dart';
-import '../design/components.dart';
+import '../design/tokens_v2.dart';
 import '../l10n/s.dart' show S;
 import 'mv_page.dart' show MvPage, registerMvModule;
-
-/// 进度条：拖动只改本地预览，松手才 seek（严禁 onChanged 里直接 seek）。
-class _SeekSlider extends StatefulWidget {
-  const _SeekSlider({required this.positionMs, required this.durationMs});
-
-  final int positionMs;
-  final int durationMs;
-
-  @override
-  State<_SeekSlider> createState() => _SeekSliderState();
-}
-
-class _SeekSliderState extends State<_SeekSlider> {
-  double? _preview;
-
-  @override
-  void didUpdateWidget(covariant _SeekSlider old) {
-    super.didUpdateWidget(old);
-    if (_preview == null) return;
-    // 外部位置已追上预览值 → 交还真实进度。
-    if ((widget.positionMs - (_preview ?? 0).round()).abs() < 900) {
-      _preview = null;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final dur = widget.durationMs;
-    final max = dur <= 0 ? 1.0 : dur.toDouble();
-    final pos =
-        _preview ?? widget.positionMs.toDouble().clamp(0, max).toDouble();
-    return Slider(
-      value: pos.clamp(0.0, max).toDouble(),
-      max: max,
-      activeColor: context.cs.primary,
-      inactiveColor: context.cs.outlineVariant,
-      onChanged: dur <= 0 ? null : (v) => setState(() => _preview = v),
-      onChangeEnd: dur <= 0
-          ? null
-          : (v) {
-              setState(() => _preview = null);
-              playbackSession().seek(v.round());
-            },
-    );
-  }
-}
-
-/// 收藏按钮：审查修复（阶段A A1/A3/A5/A7 P0）——旧实现是纯本地
-/// setState 假按钮，重启即丢、不落库、不请求。改为经 appGraph.collect
-/// 读真实镜像态 + 调真 toggle，失败给可见反馈。
-class FavoriteButton extends StatefulWidget {
-  const FavoriteButton({super.key, this.onChanged});
-
-  final VoidCallback? onChanged;
-
-  @override
-  State<FavoriteButton> createState() => _FavoriteButtonState();
-}
-
-class _FavoriteButtonState extends State<FavoriteButton> {
-  bool _busy = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final cur = PlaybackSession.instance.snapshot.player.current;
-    final hash = cur?.hash ?? '';
-    final collected =
-        hash.isEmpty ? false : (appGraph.collect?.isCollected(hash) ?? false);
-    return IconButton(
-      onPressed: _busy ? null : () => _toggle(cur),
-      icon: Icon(collected ? Icons.favorite : Icons.favorite_border),
-      color: collected ? context.cs.primary : context.cs.onSurfaceVariant,
-      tooltip: collected ? '取消收藏' : '收藏',
-    );
-  }
-
-  Future<void> _toggle(SongBrief? cur) async {
-    final logic = appGraph.collect;
-    if (logic == null || cur == null) {
-      _msg(S.of(context).t('favoriteUnavailable'));
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      final r = await logic.toggle(cur.hash, cur.mixSongId, song: cur);
-      if (!mounted) return;
-      if (r.needsLogin) {
-        _msg(S.of(context).t('favoriteNeedLogin'));
-      } else if (!r.ok) {
-        _msg(S.of(context).t('favoriteFailed'));
-      }
-      setState(() {}); // 刷新 isCollected 真实态
-      widget.onChanged?.call();
-    } catch (e) {
-      _msg('收藏失败：$e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  void _msg(String text) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
-    );
-  }
-}
 
 /// 播放页。
 class PlayerPage extends StatefulWidget {
@@ -136,22 +31,33 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> {
   static const List<double> _speeds = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
+  /// 拖动进度条时的本地预览值（ms）；非 null 期间 Slider 只显示预览，松手才 seek。
+  double? _seekPreview;
+
+  /// 收藏请求在途，防重复点击。
+  bool _favBusy = false;
+
+  // ── 底部弹层（官方 showModalBottomSheet + ListTile）────────────────
+
   void _openSpeedSheet(double current) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: context.cs.surfaceContainerLow,
-      builder: (ctx) => SafeArea(
+      builder: (BuildContext ctx) => SafeArea(
         child: ListView(
           shrinkWrap: true,
           children: <Widget>[
-            const SpSectionHeader(title: '播放速度'),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('播放速度', style: Theme.of(ctx).textTheme.titleLarge),
+            ),
             for (final s in _speeds)
               ListTile(
                 title: Text(
                   '${s.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '')}x',
                 ),
                 trailing: (s - current).abs() < 0.001
-                    ? Icon(Icons.check, color: context.cs.primary)
+                    ? Icon(Icons.check, color: ctx.cs.primary)
                     : null,
                 onTap: () {
                   playbackSession().setSpeed(s);
@@ -169,16 +75,19 @@ class _PlayerPageState extends State<PlayerPage> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: context.cs.surfaceContainerLow,
-      builder: (ctx) => SafeArea(
+      builder: (BuildContext ctx) => SafeArea(
         child: ListView(
           shrinkWrap: true,
           children: <Widget>[
-            const SpSectionHeader(title: '音质'),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('音质', style: Theme.of(ctx).textTheme.titleLarge),
+            ),
             for (final AudioQuality q in list)
               ListTile(
                 title: Text(qualityParam(q)),
                 trailing: qualityParam(q) == current
-                    ? Icon(Icons.check, color: context.cs.primary)
+                    ? Icon(Icons.check, color: ctx.cs.primary)
                     : null,
                 onTap: () {
                   playbackSession().setQuality(qualityParam(q));
@@ -195,12 +104,12 @@ class _PlayerPageState extends State<PlayerPage> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: context.cs.surfaceContainerLow,
-      builder: (ctx) => SafeArea(
+      builder: (BuildContext ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             ListTile(
-              leading: Icon(Icons.lyrics_outlined, color: context.cs.onSurfaceVariant),
+              leading: const Icon(Icons.lyrics_outlined),
               title: const Text('歌词'),
               onTap: () {
                 navState().requestTab('lyrics');
@@ -208,10 +117,7 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
             ListTile(
-              leading: Icon(
-                Icons.mode_comment_outlined,
-                color: context.cs.onSurfaceVariant,
-              ),
+              leading: const Icon(Icons.mode_comment_outlined),
               title: const Text('评论'),
               onTap: () {
                 navState().requestTab('comment');
@@ -219,10 +125,7 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
             ListTile(
-              leading: Icon(
-                Icons.video_library_outlined,
-                color: context.cs.onSurfaceVariant,
-              ),
+              leading: const Icon(Icons.video_library_outlined),
               title: const Text('查看 MV'),
               onTap: () {
                 Navigator.of(ctx).pop();
@@ -238,7 +141,7 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.download_outlined, color: context.cs.onSurfaceVariant),
+              leading: const Icon(Icons.download_outlined),
               title: const Text('下载当前歌曲'),
               onTap: () async {
                 Navigator.of(ctx).pop();
@@ -247,7 +150,9 @@ class _PlayerPageState extends State<PlayerPage> {
                 if (cur == null || mgr == null) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(S.of(context).t('downloadUnavailable'))),
+                      SnackBar(
+                        content: Text(S.of(context).t('downloadUnavailable')),
+                      ),
                     );
                   }
                   return;
@@ -267,15 +172,14 @@ class _PlayerPageState extends State<PlayerPage> {
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('下载失败：$e')),
-                    );
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text('下载失败：$e')));
                   }
                 }
               },
             ),
             ListTile(
-              leading: Icon(Icons.radio_outlined, color: context.cs.onSurfaceVariant),
+              leading: const Icon(Icons.radio_outlined),
               title: const Text('个人 FM'),
               onTap: () async {
                 Navigator.of(ctx).pop();
@@ -283,12 +187,10 @@ class _PlayerPageState extends State<PlayerPage> {
                   final songs = await appGraph.fm?.start();
                   if (songs != null && songs.isNotEmpty) {
                     await PlaybackSession.instance.playAll(songs, 0);
-                  } else {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('FM 暂无可用曲目（端点待实测）')),
-                      );
-                    }
+                  } else if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('FM 暂无可用曲目（端点待实测）')),
+                    );
                   }
                 } catch (e) {
                   if (context.mounted) {
@@ -304,6 +206,52 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
+  // ── 收藏（内联官方 IconButton，逻辑经 appGraph.collect 读写真实镜像）──
+
+  Widget _favoriteButton(SongBrief? cur) {
+    final hash = cur?.hash ?? '';
+    final collected =
+        hash.isNotEmpty && (appGraph.collect?.isCollected(hash) ?? false);
+    return IconButton(
+      onPressed: _favBusy ? null : () => _toggleFavorite(cur),
+      icon: Icon(collected ? Icons.favorite : Icons.favorite_border),
+      color: collected ? context.cs.primary : context.cs.onSurfaceVariant,
+      tooltip: collected ? '取消收藏' : '收藏',
+    );
+  }
+
+  Future<void> _toggleFavorite(SongBrief? cur) async {
+    final logic = appGraph.collect;
+    if (logic == null || cur == null) {
+      _msg(S.of(context).t('favoriteUnavailable'));
+      return;
+    }
+    setState(() => _favBusy = true);
+    try {
+      final r = await logic.toggle(cur.hash, cur.mixSongId, song: cur);
+      if (!mounted) return;
+      if (r.needsLogin) {
+        _msg(S.of(context).t('favoriteNeedLogin'));
+      } else if (!r.ok) {
+        _msg(S.of(context).t('favoriteFailed'));
+      }
+      setState(() {}); // 刷新 isCollected 真实态
+    } catch (e) {
+      _msg('收藏失败：$e');
+    } finally {
+      if (mounted) setState(() => _favBusy = false);
+    }
+  }
+
+  void _msg(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  // ── build ────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final session = playbackSession();
@@ -312,17 +260,12 @@ class _PlayerPageState extends State<PlayerPage> {
       body: SafeArea(
         child: AnimatedBuilder(
           animation: session,
-          builder: (context, _) {
+          builder: (BuildContext context, _) {
             final snap = session.snapshot;
             final song = snap.current;
             if (song == null) {
-              return const SpStateView(
-                icon: Icons.music_note,
-                title: '暂无播放',
-                subtitle: '播放队列为空',
-              );
+              return _stateView(Icons.music_note, '暂无播放', '播放队列为空');
             }
-            final art = Sp.artHero;
             final errText = snap.player.lastError.trim();
             final errCode = snap.player.lastErrorCode;
             final s = S.of(context);
@@ -334,111 +277,65 @@ class _PlayerPageState extends State<PlayerPage> {
               'network' => s.t('errorNetwork'),
               _ => errText,
             };
+            final canRetry =
+                errCode == 'needsVerification' || errCode == 'network';
             return Column(
               children: <Widget>[
-                _topBar(),
+                _topBar(song),
                 if (errText.isNotEmpty)
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: Sp.pagePad,
-                      vertical: Sp.gapS,
-                    ),
-                    padding: const EdgeInsets.all(Sp.gapM),
-                    decoration: BoxDecoration(
-                      color: context.cs.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(Sp.rCard),
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        Icon(Icons.error_outline, color: context.cs.error, size: 20),
-                        const SizedBox(width: Sp.gapS),
-                        Expanded(
-                          child: Text(
-                            shownErr,
-                            style: TextStyle(
-                              fontSize: Sp.fSub,
-                              color: context.cs.onSurface,
-                            ),
-                          ),
-                        ),
-                        // 审查修复（阶段B B7）：验证/网络类错误给"重试"出口，
-                        // 用户不再卡死无操作（端点未实测时至少能重试/换歌）。
-                        if (errCode == 'needsVerification' ||
-                            errCode == 'network')
-                          TextButton(
-                            onPressed: () {
-                              final cur = snap.current;
-                              if (cur != null) {
-                                playbackSession().playAll(
-                                  <SongBrief>[cur],
-                                  0,
-                                );
-                              }
-                            },
-                            child: Text(s.t('retryPlay')),
-                          ),
-                      ],
-                    ),
+                  _errorBar(
+                    shownErr,
+                    canRetry
+                        ? () {
+                            final cur = snap.current;
+                            if (cur != null) {
+                              playbackSession().playAll(<SongBrief>[cur], 0);
+                            }
+                          }
+                        : null,
                   ),
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: Sp.pagePad,
-                      vertical: Sp.gapM,
+                      horizontal: 16,
+                      vertical: 12,
                     ),
                     children: <Widget>[
-                      Center(
-                        child: SpCover(
-                          url: song.cover,
-                          size: art,
-                          radius: Sp.rXL,
-                        ),
-                      ),
-                      const SizedBox(height: Sp.gapXL),
+                      Center(child: _cover(song.cover)),
+                      const SizedBox(height: 24),
                       Text(
                         song.name.isEmpty ? song.hash : song.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: Sp.fPageTitle,
-                          fontWeight: FontWeight.w700,
-                          color: context.cs.onSurface,
-                        ),
+                        style: Theme.of(context).textTheme.headlineSmall,
                       ),
-                      const SizedBox(height: Sp.gapS),
+                      const SizedBox(height: 8),
                       Text(
                         song.singer.isEmpty ? '未知歌手' : song.singer,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: Sp.fItem,
-                          color: context.cs.onSurfaceVariant,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       if (snap.player.sourceKind == 'mv-audio') ...<Widget>[
-                        const SizedBox(height: Sp.gapS),
+                        const SizedBox(height: 8),
                         Text(
                           '试听音源',
                           maxLines: 1,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: Sp.fTiny,
-                            color: context.cs.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall,
                         ),
                       ],
-                      const SizedBox(height: Sp.gapXL),
-                      _SeekSlider(
-                        positionMs: snap.player.positionMs,
-                        durationMs: snap.player.durationMs,
+                      const SizedBox(height: 24),
+                      _seekSlider(
+                        snap.player.positionMs,
+                        snap.player.durationMs,
                       ),
                       _timeRow(snap.player.positionMs, snap.player.durationMs),
-                      const SizedBox(height: Sp.gapM),
+                      const SizedBox(height: 12),
                       _controls(snap.mode),
-                      const SizedBox(height: Sp.gapL),
+                      const SizedBox(height: 16),
                       _badges(snap.speed),
                     ],
                   ),
@@ -451,80 +348,172 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
-  Widget _topBar() => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: Sp.gapM, vertical: Sp.gapS),
+  /// 封面（ClipRRect + Image.network，占位取 surfaceContainerHigh）。
+  Widget _cover(String url) {
+    const double size = 280;
+    final placeholder = Container(
+      width: size,
+      height: size,
+      color: context.cs.surfaceContainerHigh,
+      alignment: Alignment.center,
+      child: Icon(Icons.music_note, size: size * 0.4),
+    );
+    final u = url.trim();
+    if (u.isEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: placeholder,
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Image.network(
+        u,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => placeholder,
+        loadingBuilder: (_, Widget child, progress) =>
+            progress == null ? child : placeholder,
+      ),
+    );
+  }
+
+  /// 空态（官方 Icon + Text）。
+  Widget _stateView(IconData icon, String title, String subtitle) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 40, color: context.cs.onSurfaceVariant),
+          const SizedBox(height: 12),
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
+    ),
+  );
+
+  /// 错误条（官方 Card + ListTile；验证/网络错误给"重试"出口）。
+  Widget _errorBar(String message, VoidCallback? onRetry) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Card(
+        color: context.cs.surfaceContainerHigh,
+        child: ListTile(
+          leading: Icon(Icons.error_outline, color: context.cs.error, size: 20),
+          title: Text(
+            message,
+            style: TextStyle(fontSize: 12, color: context.cs.onSurface),
+          ),
+          trailing: onRetry != null
+              ? TextButton(
+                  onPressed: onRetry,
+                  child: Text(S.of(context).t('retryPlay')),
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _topBar(SongBrief? cur) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     child: Row(
       children: <Widget>[
         IconButton(
           onPressed: () => Navigator.of(context).maybePop(),
           icon: const Icon(Icons.keyboard_arrow_down, size: 28),
-          color: context.cs.onSurface,
           tooltip: '收起',
         ),
         const Spacer(),
-        const FavoriteButton(),
+        _favoriteButton(cur),
         IconButton(
           onPressed: _openMenu,
           icon: const Icon(Icons.more_vert),
-          color: context.cs.onSurface,
           tooltip: '更多',
         ),
       ],
     ),
   );
 
+  /// 官方 Slider：拖动只改本地预览，松手才 seek。
+  Widget _seekSlider(int positionMs, int durationMs) {
+    // 外部位置已追上预览值（误差 < 900ms）→ 交还真实进度（对齐旧 _SeekSlider）。
+    if (_seekPreview != null &&
+        (positionMs - _seekPreview!.round()).abs() < 900) {
+      _seekPreview = null;
+    }
+    final max = durationMs <= 0 ? 1.0 : durationMs.toDouble();
+    final pos = _seekPreview ?? positionMs.toDouble().clamp(0.0, max);
+    return Slider(
+      value: pos.clamp(0.0, max),
+      max: max,
+      onChanged: durationMs <= 0
+          ? null
+          : (v) => setState(() => _seekPreview = v),
+      onChangeEnd: durationMs <= 0
+          ? null
+          : (v) {
+              setState(() => _seekPreview = null);
+              playbackSession().seek(v.round());
+            },
+    );
+  }
+
   Widget _timeRow(int posMs, int durMs) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: <Widget>[
-      Text(_fmt(posMs), style: _timeStyle),
-      Text(_fmt(durMs), style: _timeStyle),
+      Text(_fmt(posMs), style: Theme.of(context).textTheme.labelSmall),
+      Text(_fmt(durMs), style: Theme.of(context).textTheme.labelSmall),
     ],
-  );
-
-  // 审查修复：改为实例 getter——静态字段无 context，无法取 ColorScheme。
-  TextStyle get _timeStyle => TextStyle(
-    fontSize: Sp.fTiny,
-    color: context.cs.onSurfaceVariant,
   );
 
   Widget _controls(PlayMode mode) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: <Widget>[
-      SpRoundButton(
-        icon: Icons.shuffle,
-        active: mode == PlayMode.shuffle,
-        tooltip: '随机',
-        onTap: () {
+      IconButton(
+        onPressed: () {
           final s = playbackSession();
           s.setMode(
             mode == PlayMode.shuffle ? PlayMode.sequence : PlayMode.shuffle,
           );
         },
+        icon: const Icon(Icons.shuffle),
+        color: mode == PlayMode.shuffle ? context.cs.primary : null,
+        tooltip: '随机',
       ),
-      SpRoundButton(
-        icon: Icons.skip_previous,
+      IconButton(
+        onPressed: () => playbackSession().prev(),
+        icon: const Icon(Icons.skip_previous),
         tooltip: '上一首',
-        onTap: () => playbackSession().prev(),
       ),
-      SpPlayButton(
-        playing: playbackSession().snapshot.player.isPlaying,
-        onTap: () => playbackSession().toggle(),
+      IconButton.filled(
+        onPressed: () => playbackSession().toggle(),
+        icon: Icon(
+          playbackSession().snapshot.player.isPlaying
+              ? Icons.pause
+              : Icons.play_arrow,
+        ),
+        tooltip: '播放/暂停',
       ),
-      SpRoundButton(
-        icon: Icons.skip_next,
+      IconButton(
+        onPressed: () => playbackSession().next(),
+        icon: const Icon(Icons.skip_next),
         tooltip: '下一首',
-        onTap: () => playbackSession().next(),
       ),
-      SpRoundButton(
-        icon: Icons.repeat,
-        active: mode == PlayMode.loopOne,
-        tooltip: '循环',
-        onTap: () {
+      IconButton(
+        onPressed: () {
           final s = playbackSession();
           s.setMode(
             mode == PlayMode.loopOne ? PlayMode.sequence : PlayMode.loopOne,
           );
         },
+        icon: const Icon(Icons.repeat),
+        color: mode == PlayMode.loopOne ? context.cs.primary : null,
+        tooltip: '循环',
       ),
     ],
   );
@@ -533,13 +522,13 @@ class _PlayerPageState extends State<PlayerPage> {
     mainAxisAlignment: MainAxisAlignment.center,
     children: <Widget>[
       ActionChip(
-        avatar: Icon(Icons.speed, size: 16, color: context.cs.onSurfaceVariant),
+        avatar: const Icon(Icons.speed, size: 16),
         label: Text('${speed.toStringAsFixed(2)}x'),
         onPressed: () => _openSpeedSheet(speed),
       ),
-      const SizedBox(width: Sp.gapM),
+      const SizedBox(width: 12),
       ActionChip(
-        avatar: Icon(Icons.graphic_eq, size: 16, color: context.cs.onSurfaceVariant),
+        avatar: const Icon(Icons.graphic_eq, size: 16),
         label: const Text('音质'),
         onPressed: () => _openQualitySheet('128'),
       ),

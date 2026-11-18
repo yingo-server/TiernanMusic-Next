@@ -1,12 +1,11 @@
-// L7 surface/pages · MV 页（内嵌 video_player；非底栏模块）
-// 铁律：只画控件；数据只经 bridge_session.appGraph.mv 取；样式一律 Sp.*。
+// L7 surface/pages · MV 页（官方 M3 控件 + 语义 token；内嵌 video_player）
+// 铁律：只画控件；数据只经 bridge_session.appGraph.mv 取；颜色来自语义 token。
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../bridges/bridge_session.dart'
     show appGraph, ModuleRegistry, NavEntry, SurfaceModule;
-import '../design/components.dart' show SpStateView;
-import '../design/tokens.dart';
+import '../design/tokens_v2.dart';
 
 /// 安装 MV 模块到 L6 注册表（审查修复 A1/A6 P0）：install 本身是
 /// 「重复 id 覆盖」，旧守卫 `if (byId('mv') != null) return` 会让启动期
@@ -134,6 +133,7 @@ class _MvPageState extends State<MvPage> {
         }
       }
       final requested = low.id.isNotEmpty ? low.id : low.hash;
+      // 两段式第二段：用数字 videoId 取播放地址。
       final r = await logic.playUrl(videoId, requestedId: requested);
       if (!mounted) return;
       if (!r.playable) {
@@ -211,12 +211,7 @@ class _MvPageState extends State<MvPage> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: context.cs.surface,
     appBar: AppBar(
-      backgroundColor: context.cs.surface,
-      iconTheme: IconThemeData(color: context.cs.onSurface),
-      title: Text(
-        'MV',
-        style: TextStyle(fontSize: Sp.fSection, color: context.cs.onSurface),
-      ),
+      title: Text('MV', style: Theme.of(context).textTheme.titleLarge),
     ),
     body: SafeArea(child: _view()),
   );
@@ -224,60 +219,30 @@ class _MvPageState extends State<MvPage> {
   Widget _view() {
     switch (_phase) {
       case _Phase.loading:
-        return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              CircularProgressIndicator(color: context.cs.primary),
-              const SizedBox(height: Sp.gapM),
-              Text(
-                '正在加载 MV…',
-                style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
-              ),
-            ],
-          ),
-        );
+        return _loadingView();
       case _Phase.empty:
-        return SpStateView(
-          icon: Icons.movie,
-          title: '暂无 MV',
-          subtitle: _message,
-          actionLabel: '重试',
-          onAction: _load,
-        );
+        return _stateView(Icons.movie, '暂无 MV', _message);
       case _Phase.error:
-        return SpStateView(
-          icon: Icons.error_outline,
-          title: 'MV 不可用',
-          subtitle: _message,
-          actionLabel: '重试',
-          onAction: _load,
-        );
+        return _stateView(Icons.error_outline, 'MV 不可用', _message);
       case _Phase.ready:
         final c = _ctrl;
         if (c == null) {
-          return SpStateView(
-            icon: Icons.error_outline,
-            title: 'MV 不可用',
-            subtitle: '播放器已释放',
-            actionLabel: '重试',
-            onAction: _load,
-          );
+          return _stateView(Icons.error_outline, 'MV 不可用', '播放器已释放');
         }
         final ar = c.value.aspectRatio > 0 ? c.value.aspectRatio : 1.0;
         return Padding(
-          padding: const EdgeInsets.all(Sp.gapM),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               ClipRRect(
-                borderRadius: BorderRadius.circular(Sp.rCard),
+                borderRadius: BorderRadius.circular(12),
                 child: ColoredBox(
                   color: context.cs.surfaceContainerLow,
                   child: AspectRatio(aspectRatio: ar, child: VideoPlayer(c)),
                 ),
               ),
-              const SizedBox(height: Sp.gapM),
+              const SizedBox(height: 12),
               VideoProgressIndicator(
                 c,
                 allowScrubbing: true,
@@ -287,7 +252,7 @@ class _MvPageState extends State<MvPage> {
                   backgroundColor: context.cs.outlineVariant,
                 ),
               ),
-              const SizedBox(height: Sp.gapS),
+              const SizedBox(height: 8),
               Row(
                 children: <Widget>[
                   IconButton(
@@ -298,7 +263,7 @@ class _MvPageState extends State<MvPage> {
                     color: context.cs.primary,
                     tooltip: c.value.isPlaying ? '暂停' : '播放',
                   ),
-                  const SizedBox(width: Sp.gapS),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _note.isNotEmpty
@@ -306,10 +271,7 @@ class _MvPageState extends State<MvPage> {
                           : (_quality.isEmpty ? 'MV 内嵌播放' : '档位 $_quality'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: Sp.fTiny,
-                        color: context.cs.onSurfaceVariant,
-                      ),
+                      style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ),
                 ],
@@ -319,4 +281,39 @@ class _MvPageState extends State<MvPage> {
         );
     }
   }
+
+  /// 加载态（官方 CircularProgressIndicator + Text）。
+  Widget _loadingView() => Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        CircularProgressIndicator(color: context.cs.primary),
+        const SizedBox(height: 12),
+        Text('正在加载 MV…', style: Theme.of(context).textTheme.bodySmall),
+      ],
+    ),
+  );
+
+  /// 三态（官方 Icon + Text + FilledButton 重试）。
+  Widget _stateView(IconData icon, String title, String subtitle) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 40, color: context.cs.onSurfaceVariant),
+          const SizedBox(height: 12),
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodySmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: _load, child: const Text('重试')),
+        ],
+      ),
+    ),
+  );
 }

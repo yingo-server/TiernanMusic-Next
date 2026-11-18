@@ -1,92 +1,45 @@
-// L7 surface/pages · 登录弹层的已登录账号区（从 login_sheet 拆出，≤500 行门禁）。
-// 只画控件；数据经 bridge_core 的 AccountRecord / bridge_logic 的 AccountLogic。
-import 'package:flutter/material.dart';
-
+// L7 surface/pages · 登录弹层的已登录账号区（纯数据装配，零控件）
+//
+// 铁律：L7 零手写控件。本文件只提供「账号记录 → 展示行」的纯数据映射，
+// 账号区 UI 由 login_sheet.dart 内联为官方 ListTile 组合渲染。
+// 数据经 bridge_core 的 AccountRecord；不 import 旧 design/tokens.dart。
 import '../../bridges/bridge_core.dart' show AccountRecord;
-import '../design/tokens.dart' show Sp, SpColorSchemeX;
 
-/// 已登录账号列表区（当前账号高亮；支持切换/移除）。
-class AccountSection extends StatelessWidget {
-  const AccountSection({
-    super.key,
-    required this.accounts,
-    required this.activeUid,
-    required this.onSwitch,
-    required this.onRemove,
+/// 账号展示行（纯数据，非控件）。
+class AccountEntry {
+  const AccountEntry({
+    required this.accountId,
+    required this.displayName,
+    required this.active,
   });
 
-  final List<AccountRecord> accounts;
-  final String activeUid;
-  final void Function(String accountId) onSwitch;
-  final void Function(String accountId) onRemove;
+  /// 账号业务 id。
+  final String accountId;
 
-  @override
-  Widget build(BuildContext context) {
-    try {
-      return Container(
-        decoration: BoxDecoration(color: context.cs.surfaceContainer),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Padding(
-              padding: EdgeInsets.fromLTRB(Sp.pagePad, Sp.gapM, Sp.pagePad, 4),
-              child: Text(
-                '已登录账号',
-                style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurfaceVariant),
-              ),
-            ),
-            if (accounts.isEmpty)
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  Sp.pagePad,
-                  0,
-                  Sp.pagePad,
-                  Sp.gapM,
-                ),
-                child: Text(
-                  '暂无账号，登录后将自动保存到这里',
-                  style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
-                ),
-              )
-            else
-              for (final AccountRecord rec in accounts)
-                ListTile(
-                  dense: true,
-                  leading: Icon(
-                    rec.accountId == activeUid
-                        ? Icons.person
-                        : Icons.person_outline,
-                    color: rec.accountId == activeUid ? context.cs.primary : context.cs.onSurfaceVariant,
-                    size: 20,
-                  ),
-                  title: Text(
-                    rec.displayName,
-                    style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
-                  ),
-                  subtitle: Text(
-                    '账号 ${rec.accountId}',
-                    style: TextStyle(
-                      fontSize: Sp.fSub,
-                      color: context.cs.onSurfaceVariant,
-                    ),
-                  ),
-                  trailing: IconButton(
-                    icon: Icon(
-                      Icons.delete_outline,
-                      size: 20,
-                      color: context.cs.onSurfaceVariant,
-                    ),
-                    tooltip: '移除账号',
-                    onPressed: () => onRemove(rec.accountId),
-                  ),
-                  onTap: () => onSwitch(rec.accountId),
-                ),
-          ],
-        ),
-      );
-    } catch (e, st) {
-      debugPrint('surface.login: account section failed: $e\n$st');
-      return const SizedBox.shrink();
-    }
-  }
+  /// 展示名（昵称）。
+  final String displayName;
+
+  /// 是否为当前激活账号。
+  final bool active;
 }
+
+/// 账号列表 → 展示行（当前账号高亮；展示名为空时回退账号 id）。
+List<AccountEntry> buildAccountEntries(
+  List<AccountRecord> accounts,
+  String activeUid,
+) {
+  final List<AccountEntry> out = <AccountEntry>[];
+  for (final AccountRecord rec in accounts) {
+    out.add(
+      AccountEntry(
+        accountId: rec.accountId,
+        displayName: rec.displayName.isEmpty ? rec.accountId : rec.displayName,
+        active: rec.accountId == activeUid,
+      ),
+    );
+  }
+  return out;
+}
+
+/// 账号副标题文案。
+String accountSubtitle(String accountId) => '账号 $accountId';

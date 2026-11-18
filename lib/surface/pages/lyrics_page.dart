@@ -1,4 +1,4 @@
-// L7 surface/pages · 歌词页（整屏歌词 + 逐行高亮 + 自动居中滚动）
+// L7 surface/pages · 歌词页（官方 M3 控件 + 语义 token）
 // 数据经桥：LyricsLogic（bridge_logic）、LyricResult/LyricsDisplayMode（bridge_core）。
 // 性能：定时轮询播放位置（200ms）→ 只更新「当前行索引」ValueNotifier，
 // 列表项用 ValueListenableBuilder 局部重绘，避免整页每帧 rebuild。
@@ -13,8 +13,7 @@ import '../../bridges/bridge_session.dart'
     show playbackSession, SurfaceModule, NavEntry;
 // GAP(跨桥)：逻辑单例随 AppGraph 暴露，bridge_session 暂未导出实例出口。
 import '../../bridges/bridge_session.dart' show appGraph;
-import '../design/tokens.dart';
-import '../design/components.dart';
+import '../design/tokens_v2.dart';
 
 /// 一行歌词（原文 + 可选译文）。
 class _LyricRow {
@@ -67,6 +66,7 @@ class _LyricsPageState extends State<LyricsPage> {
   Future<void> _load() async {
     final song = playbackSession().snapshot.current;
     if (song == null) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
         _rows = const <_LyricRow>[];
@@ -77,6 +77,7 @@ class _LyricsPageState extends State<LyricsPage> {
     _hash = song.hash;
     final logic = _lyrics;
     if (logic == null) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
         _error = true;
@@ -156,7 +157,11 @@ class _LyricsPageState extends State<LyricsPage> {
     final target = (idx * 44.0 - 160.0)
         .clamp(0.0, _scroll.position.maxScrollExtent)
         .toDouble();
-    _scroll.animateTo(target, duration: Sp.normal, curve: Sp.curve);
+    _scroll.animateTo(
+      target,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -175,13 +180,12 @@ class _LyricsPageState extends State<LyricsPage> {
   }
 
   Widget _topBar() => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: Sp.gapM, vertical: Sp.gapS),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     child: Row(
       children: <Widget>[
         IconButton(
           onPressed: () => Navigator.of(context).maybePop(),
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          color: context.cs.onSurface,
           tooltip: '返回',
         ),
         const Spacer(),
@@ -203,57 +207,49 @@ class _LyricsPageState extends State<LyricsPage> {
 
   Widget _body() {
     if (_loading) {
-      return const SpListSkeleton(rows: 8);
+      return _skeleton();
     }
     if (_error) {
-      return const SpStateView(
-        icon: Icons.lyrics_outlined,
-        title: '歌词加载失败',
-        subtitle: '稍后重试或切歌再试',
-      );
+      return _stateView(Icons.lyrics_outlined, '歌词加载失败', '稍后重试或切歌再试');
     }
     if (_rows.isEmpty) {
-      return const SpStateView(
-        icon: Icons.lyrics_outlined,
-        title: '暂无歌词',
-        subtitle: '这首歌没有可用的歌词数据',
-      );
+      return _stateView(Icons.lyrics_outlined, '暂无歌词', '这首歌没有可用的歌词数据');
     }
     return ListView.builder(
       controller: _scroll,
-      padding: const EdgeInsets.symmetric(
-        horizontal: Sp.pagePad,
-        vertical: Sp.gapXL,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       itemCount: _rows.length,
-      itemBuilder: (context, i) {
+      itemBuilder: (BuildContext context, int i) {
         final r = _rows[i];
         return ValueListenableBuilder<int>(
           valueListenable: _active,
-          builder: (context, active, _) {
+          builder: (BuildContext context, int active, _) {
             final on = active == i;
             final showSub = _bilingual && r.sub.isNotEmpty;
+            final mainColor = on
+                ? context.cs.primary
+                : context.cs.onSurfaceVariant;
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: Sp.gapS),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
                     r.main,
                     style: TextStyle(
-                      fontSize: on ? Sp.fSection : Sp.fItem,
+                      fontSize: on ? 16 : 14,
                       fontWeight: on ? FontWeight.w700 : FontWeight.w400,
-                      color: on ? context.cs.primary : context.cs.onSurfaceVariant,
+                      color: mainColor,
                     ),
                   ),
                   if (showSub) ...<Widget>[
-                    const SizedBox(height: Sp.gapXS),
+                    const SizedBox(height: 4),
                     Text(
                       r.sub,
                       style: TextStyle(
-                        fontSize: on ? Sp.fItem : Sp.fSub,
+                        fontSize: on ? 14 : 12,
                         fontWeight: on ? FontWeight.w600 : FontWeight.w400,
-                        color: on ? context.cs.primary : context.cs.onSurfaceVariant,
+                        color: mainColor,
                       ),
                     ),
                   ],
@@ -265,6 +261,51 @@ class _LyricsPageState extends State<LyricsPage> {
       },
     );
   }
+
+  /// 加载骨架（官方 Card + LinearProgressIndicator）。
+  Widget _skeleton() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Column(
+      children: <Widget>[
+        for (int i = 0; i < 8; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: SizedBox(
+              height: 44,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Center(
+                    child: LinearProgressIndicator(
+                      minHeight: 3,
+                      color: context.cs.primary,
+                      backgroundColor: context.cs.surfaceContainerHigh,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+
+  /// 三态（官方 Icon + Text + FilledButton）。
+  Widget _stateView(IconData icon, String title, String subtitle) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 40, color: context.cs.onSurfaceVariant),
+          const SizedBox(height: 12),
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
+    ),
+  );
 }
 
 /// 歌词模块（不进底部导航）。

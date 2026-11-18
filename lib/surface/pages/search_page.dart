@@ -1,5 +1,8 @@
-// L7 surface/pages · 搜索页（Spotify 深色 + M3）
-// 只画控件；数据只经 bridge_logic 的 logic 单例取；颜色/字号/间距只用 Sp.*。
+// L7 surface/pages · 搜索页（官方 M3 + 语义 token 森林翡翠）。
+//
+// 契约：只用官方 Material 3 控件 + get 包现成能力；不手写控件类（页面容器除外）；
+// 颜色只来自 context.cs.*（design/tokens_v2.dart 的 ColorScheme 扩展）；
+// 数据只经 bridge_logic/logic 单例取；异步 future 一律在交互回调中持有，build 内不新建。
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart' show SearchType;
@@ -8,13 +11,19 @@ import '../../bridges/bridge_logic.dart'
 import '../../bridges/bridge_session.dart'
     show NavState, PlaybackSession, SurfaceModule, NavEntry;
 import '../../bridges/bridge_session.dart' show appGraph;
-import '../design/tokens.dart' show Sp, SpColorSchemeX;
-import 'search_tile_widgets.dart'
-    show SearchSongTile, SearchEmptyBox, SearchErrorRetry;
+import '../design/tokens_v2.dart';
 
 const String _tag = 'surface.search';
 
-/// 页面模块注册。
+// 语义间距/圆角（纯数值，非色值；语义色一律走 context.cs.*）。
+const double _pad = 16;
+const double _gapS = 8;
+const double _gapM = 12;
+const double _gapL = 16;
+const double _gapXL = 24;
+const double _radiusS = 8;
+
+/// 页面模块注册（L7 注入 builder，宿主按 id 覆盖 session 占位模块）。
 class SearchPageModule extends SurfaceModule {
   @override
   String get id => 'search';
@@ -53,7 +62,7 @@ const List<String> kHotCategories = <String>[
   '情歌',
 ];
 
-/// 搜索页：大胶囊搜索框 + 热门分类 + 历史记录 + 分段结果。
+/// 搜索页：搜索栏 + 联想 + 分段结果 + 热门/历史（官方控件组合）。
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
   @override
@@ -67,6 +76,7 @@ class _SearchPageState extends State<SearchPage> {
   int _segment = 0;
   Future<SearchResult>? _resultF;
   Future<List<SearchSuggestItem>>? _suggestF;
+
   @override
   void dispose() {
     _ctrl.dispose();
@@ -97,6 +107,7 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _clearHistory() => setState(_history.clear);
+
   void _onChanged(String text) {
     final String t = text.trim();
     if (t.isEmpty) {
@@ -138,91 +149,57 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: context.cs.surface,
+      appBar: AppBar(title: Text('搜索', style: Theme.of(context).textTheme.headlineSmall)),
       body: SafeArea(
         child: Column(
           children: <Widget>[
             _searchBar(context),
             _suggestBox(context),
-            Expanded(child: _body()),
+            Expanded(child: _body(context)),
           ],
         ),
       ),
     );
   }
 
-  Widget _searchBar(BuildContext context) {
+  /// 搜索栏：官方 SearchBar + FilledIconButton（原手写胶囊 Material/InkWell）。
+  Widget _searchBar(BuildContext c) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        Sp.pagePad,
-        Sp.gapM,
-        Sp.pagePad,
-        Sp.gapS,
-      ),
+      padding: const EdgeInsets.fromLTRB(_pad, _gapS, _pad, _gapS),
       child: Row(
         children: <Widget>[
           Expanded(
-            child: Container(
-              height: 44,
-              padding: const EdgeInsets.only(left: Sp.gapM, right: Sp.gapS),
-              decoration: BoxDecoration(
-                color: context.cs.surfaceContainer,
-                borderRadius: BorderRadius.circular(Sp.rFull),
-                border: Border.all(color: context.cs.outlineVariant),
+            child: SearchBar(
+              controller: _ctrl,
+              hintText: '搜索歌曲、歌单、歌手',
+              leading: const Icon(Icons.search),
+              onChanged: _onChanged,
+              onSubmitted: _doSearch,
+              elevation: WidgetStateProperty.all(0),
+              backgroundColor: WidgetStateProperty.all(c.cs.surfaceContainer),
+              side: WidgetStateProperty.all(BorderSide(color: c.cs.outlineVariant)),
+              shape: WidgetStateProperty.all(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28),
+                ),
               ),
-              child: Row(
-                children: <Widget>[
-                  Icon(Icons.search, size: 20, color: context.cs.onSurfaceVariant),
-                  const SizedBox(width: Sp.gapS),
-                  Expanded(
-                    child: TextField(
-                      controller: _ctrl,
-                      style: TextStyle(
-                        fontSize: Sp.fItem,
-                        color: context.cs.onSurface,
-                      ),
-                      cursorColor: context.cs.primary,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        border: InputBorder.none,
-                        hintText: '搜索歌曲、歌单、歌手',
-                        hintStyle: TextStyle(
-                          fontSize: Sp.fItem,
-                          color: context.cs.onSurfaceVariant,
-                        ),
-                      ),
-                      textInputAction: TextInputAction.search,
-                      onChanged: _onChanged,
-                      onSubmitted: _doSearch,
-                    ),
-                  ),
-                ],
+              padding: WidgetStateProperty.all(
+                const EdgeInsets.symmetric(horizontal: _gapL),
               ),
             ),
           ),
-          const SizedBox(width: Sp.gapS),
-          SizedBox(
-            width: 44,
-            height: 44,
-            child: Material(
-              color: context.cs.primary,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () => _doSearch(_ctrl.text),
-                child: const Icon(
-                  Icons.arrow_forward,
-                  size: 20,
-                  color: Colors.black,
-                ),
-              ),
-            ),
+          const SizedBox(width: _gapS),
+          IconButton.filled(
+            tooltip: '搜索',
+            onPressed: () => _doSearch(_ctrl.text),
+            icon: const Icon(Icons.arrow_forward),
           ),
         ],
       ),
     );
   }
 
+  /// 联想词：官方 ListTile（原 ListTile 保留，仅换语义色）。
   Widget _suggestBox(BuildContext context) {
     final Future<List<SearchSuggestItem>>? f = _suggestF;
     if (f == null) return const SizedBox.shrink();
@@ -238,7 +215,7 @@ class _SearchPageState extends State<SearchPage> {
         return SizedBox(
           height: 208,
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+            padding: const EdgeInsets.symmetric(horizontal: _pad),
             itemCount: items.length,
             itemBuilder: (BuildContext c, int i) {
               final SearchSuggestItem it = items[i];
@@ -246,15 +223,8 @@ class _SearchPageState extends State<SearchPage> {
                 dense: true,
                 visualDensity: VisualDensity.compact,
                 contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  Icons.history,
-                  size: 18,
-                  color: context.cs.onSurfaceVariant,
-                ),
-                title: Text(
-                  it.keyword,
-                  style: TextStyle(fontSize: Sp.fItem, color: context.cs.onSurface),
-                ),
+                leading: Icon(Icons.history, color: c.cs.onSurfaceVariant),
+                title: Text(it.keyword, style: Theme.of(c).textTheme.bodyMedium),
                 onTap: () {
                   _ctrl.text = it.keyword;
                   _doSearch(it.keyword);
@@ -267,40 +237,39 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _body() {
-    if (_resultF == null) return _idleBody();
+  Widget _body(BuildContext c) {
+    if (_resultF == null) return _idleBody(c);
     return Column(
       children: <Widget>[
-        _segmentBar(),
-        Expanded(child: _resultBody()),
+        _segmentBar(c),
+        Expanded(child: _resultBody(c)),
       ],
     );
   }
 
-  Widget _segmentBar() {
+  /// 分段：官方 ChoiceChip （颜色用语义 token，选中文字用 onPrimary）。
+  Widget _segmentBar(BuildContext c) {
     return SizedBox(
       height: 48,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+        padding: const EdgeInsets.symmetric(horizontal: _pad),
         itemCount: kSearchSegments.length,
         itemBuilder: (BuildContext c, int i) {
           final bool sel = i == _segment;
           return Padding(
-            padding: const EdgeInsets.only(right: Sp.gapS, top: Sp.gapS),
+            padding: const EdgeInsets.only(right: _gapS, top: _gapS),
             child: ChoiceChip(
               label: Text(
                 kSearchSegments[i],
-                style: TextStyle(
-                  fontSize: Sp.fSub,
-                  color: sel ? Colors.black : context.cs.onSurface,
-                ),
+                style: Theme.of(c).textTheme.labelLarge?.copyWith(
+                      color: sel ? c.cs.onPrimary : c.cs.onSurface,
+                    ),
               ),
               selected: sel,
               showCheckmark: false,
-              backgroundColor: context.cs.surfaceContainer,
-              selectedColor: context.cs.primary,
-              side: BorderSide(color: context.cs.outlineVariant),
+              selectedColor: c.cs.primary,
+              side: BorderSide(color: c.cs.outlineVariant),
               onSelected: (_) {
                 setState(() => _segment = i);
                 if (_query.isNotEmpty) _doSearch(_query);
@@ -312,51 +281,34 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _idleBody() {
+  Widget _idleBody(BuildContext c) {
     return ListView.builder(
-      padding: const EdgeInsets.only(bottom: Sp.gapXL),
+      padding: const EdgeInsets.only(bottom: _gapXL),
       itemCount: 2,
       itemBuilder: (BuildContext c, int i) {
-        if (i == 0) return _hotCategories();
-        return _historySection();
+        if (i == 0) return _hotCategories(c);
+        return _historySection(c);
       },
     );
   }
 
-  Widget _hotCategories() {
+  Widget _hotCategories(BuildContext c) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Padding(
-          padding: EdgeInsets.fromLTRB(
-            Sp.pagePad,
-            Sp.gapL,
-            Sp.pagePad,
-            Sp.gapM,
-          ),
-          child: Text(
-            '热门分类',
-            style: TextStyle(
-              fontSize: Sp.fSection,
-              fontWeight: FontWeight.w700,
-              color: context.cs.onSurface,
-            ),
-          ),
+          padding: const EdgeInsets.fromLTRB(_pad, _gapL, _pad, _gapM),
+          child: Text('热门分类', style: Theme.of(c).textTheme.titleLarge),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+          padding: const EdgeInsets.symmetric(horizontal: _pad),
           child: Wrap(
-            spacing: Sp.gapS,
-            runSpacing: Sp.gapS,
+            spacing: _gapS,
+            runSpacing: _gapS,
             children: <Widget>[
               for (final String name in kHotCategories)
                 ActionChip(
-                  label: Text(
-                    name,
-                    style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurface),
-                  ),
-                  backgroundColor: context.cs.surfaceContainer,
-                  side: BorderSide(color: context.cs.outlineVariant),
+                  label: Text(name, style: Theme.of(c).textTheme.labelLarge),
                   onPressed: () {
                     _ctrl.text = name;
                     _doSearch(name);
@@ -369,13 +321,13 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _historySection() {
+  Widget _historySection(BuildContext c) {
     if (_history.isEmpty) {
       return Padding(
-        padding: EdgeInsets.fromLTRB(Sp.pagePad, Sp.gapXL, Sp.pagePad, 0),
+        padding: const EdgeInsets.fromLTRB(_pad, _gapXL, _pad, 0),
         child: Text(
           '暂无搜索历史',
-          style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
+          style: Theme.of(c).textTheme.bodySmall,
         ),
       );
     }
@@ -383,47 +335,27 @@ class _SearchPageState extends State<SearchPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(
-            Sp.pagePad,
-            Sp.gapXL,
-            Sp.pagePad,
-            Sp.gapM,
-          ),
+          padding: const EdgeInsets.fromLTRB(_pad, _gapXL, _pad, _gapM),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
-              Text(
-                '历史记录',
-                style: TextStyle(
-                  fontSize: Sp.fSection,
-                  fontWeight: FontWeight.w700,
-                  color: context.cs.onSurface,
-                ),
-              ),
+              Text('历史记录', style: Theme.of(c).textTheme.titleLarge),
               TextButton(
                 onPressed: _clearHistory,
-                child: Text(
-                  '清空',
-                  style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurfaceVariant),
-                ),
+                child: const Text('清空'),
               ),
             ],
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Sp.pagePad),
+          padding: const EdgeInsets.symmetric(horizontal: _pad),
           child: Wrap(
-            spacing: Sp.gapS,
-            runSpacing: Sp.gapS,
+            spacing: _gapS,
+            runSpacing: _gapS,
             children: <Widget>[
               for (final String h in _history)
                 ActionChip(
-                  label: Text(
-                    h,
-                    style: TextStyle(fontSize: Sp.fSub, color: context.cs.onSurface),
-                  ),
-                  backgroundColor: context.cs.surfaceContainer,
-                  side: BorderSide(color: context.cs.outlineVariant),
+                  label: Text(h, style: Theme.of(c).textTheme.labelLarge),
                   onPressed: () {
                     _ctrl.text = h;
                     _doSearch(h);
@@ -436,40 +368,119 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _resultBody() {
+  Widget _resultBody(BuildContext c) {
     final Future<SearchResult>? f = _resultF;
-    if (f == null) return const SearchEmptyBox('暂无结果');
+    if (f == null) return _empty(c, '暂无结果');
     return FutureBuilder<SearchResult>(
       future: f,
       builder: (BuildContext c, AsyncSnapshot<SearchResult> snap) {
         if (snap.connectionState != ConnectionState.done) {
           return Center(
-            child: CircularProgressIndicator(color: context.cs.primary),
+            child: CircularProgressIndicator(color: c.cs.primary),
           );
         }
         if (snap.hasError) {
-          return SearchErrorRetry(
-            message: '搜索失败',
-            onRetry: () => _doSearch(_query),
-          );
+          return _error(c, '搜索失败', () => _doSearch(_query));
         }
         final SearchResult r = snap.data ?? const SearchResult();
         final List<SongBrief> items = r.items;
         if (items.isEmpty) {
-          return SearchEmptyBox('没有找到与「$_query」相关的歌曲');
+          return _empty(c, '没有找到与「$_query」相关的歌曲');
         }
         return ListView.builder(
-          padding: const EdgeInsets.only(bottom: Sp.gapXL),
+          padding: const EdgeInsets.only(bottom: _gapXL),
           itemCount: items.length,
-          itemBuilder: (BuildContext c, int i) => SearchSongTile(
-            song: items[i],
-            onTap: () => _play(items, i),
-            onAlbum: () => _openAlbum(items[i].albumId),
-          ),
+          itemBuilder: (BuildContext c, int i) =>
+              _songTile(c, items[i], () => _play(items, i),
+                  () => _openAlbum(items[i].albumId)),
         );
       },
     );
   }
-}
 
-/// 歌曲行（SpSongTile 风格）：封面 + 名称 + 歌手 + 专辑跳转 + 播放。
+  /// 歌曲行：官方 ListTile（原 SearchSongTile / SpSongTile 的等价物）。
+  Widget _songTile(BuildContext c, SongBrief song, VoidCallback onTap,
+      VoidCallback onAlbum) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: _pad),
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(_radiusS),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: song.cover.isEmpty
+              ? Container(color: c.cs.surfaceContainerHigh)
+              : Image.network(
+                  song.cover,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      Container(color: c.cs.surfaceContainerHigh),
+                ),
+        ),
+      ),
+      title: Text(
+        song.name.isEmpty ? '未知歌曲' : song.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(c).textTheme.bodyMedium?.copyWith(
+              fontWeight: song.isVip ? FontWeight.w600 : FontWeight.w400,
+            ),
+      ),
+      subtitle: Text(
+        song.singer.isEmpty ? '未知歌手' : song.singer,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(c).textTheme.bodySmall,
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (song.albumId.isNotEmpty)
+            IconButton(
+              tooltip: '专辑',
+              iconSize: 18,
+              onPressed: onAlbum,
+              icon: const Icon(Icons.album_outlined),
+            ),
+          Text(
+            song.durationSec > 0 ? '${song.durationSec}s' : '',
+            style: Theme.of(c).textTheme.labelSmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 空态：官方 Icon + Text（原 SearchEmptyBox）。
+  Widget _empty(BuildContext c, String message) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: _pad, vertical: _gapXL),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(Icons.search_off, color: c.cs.onSurfaceVariant),
+          const SizedBox(height: _gapS),
+          Text(message, style: Theme.of(c).textTheme.bodySmall),
+        ],
+      ),
+    );
+  }
+
+  /// 错误 + 重试：官方 Icon + Text + TextButton（原 SearchErrorRetry）。
+  Widget _error(BuildContext c, String message, VoidCallback onRetry) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: _pad, vertical: _gapXL),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.error_outline, color: c.cs.error),
+          const SizedBox(width: _gapS),
+          Expanded(
+            child: Text(message, style: Theme.of(c).textTheme.bodySmall),
+          ),
+          TextButton(onPressed: onRetry, child: const Text('重试')),
+        ],
+      ),
+    );
+  }
+}
