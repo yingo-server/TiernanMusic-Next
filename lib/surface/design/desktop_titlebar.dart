@@ -9,7 +9,7 @@
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
 
-import '../bridges/bridge_core.dart' show platformCapabilities, windowService;
+import '../../bridges/bridge_core.dart' show platformCapabilities, windowService;
 import 'tokens_v2.dart';
 
 /// 桌面标题栏（仅 Windows/Linux 自定义框架时使用；macOS/Web 不渲染）。

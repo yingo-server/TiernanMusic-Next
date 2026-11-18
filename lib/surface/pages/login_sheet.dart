@@ -30,7 +30,7 @@ Future<void> showLoginSheet(
     context: context,
     isScrollControlled: true,
     builder: (BuildContext c) => SizedBox(
-      height: MediaQuery.sizeOf(c).size.height * 0.7,
+      height: MediaQuery.sizeOf(c).height * 0.7,
       child: LoginSheetPanel(onAuthChanged: onAuthChanged),
     ),
   );

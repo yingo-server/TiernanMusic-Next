@@ -127,3 +127,24 @@ class _AppRootState extends State<AppRoot> {
     return Locale(parts[0]);
   }
 }
+
+// ── L1 装配入口（经 bridge_surface 调用；非 UI 控件，符合零手写控件契约）──
+
+/// 页面模块注册（各页面 Module 自注册）。
+Future<void> installServices({
+  required SurfaceDeps deps,
+  Object? engine,
+}) async {
+  try {
+    registerModules();
+    assert(deps.settings != null, 'surface deps requires settings');
+  } catch (e, st) {
+    debugPrint('surface.installServices failed: $e\n$st');
+    rethrow;
+  }
+}
+
+/// runApp 入口（保留既有 bootstrapApp 调用形状）。
+void bootstrapApp(dynamic result) {
+  runApp(const AppRoot());
+}
