@@ -71,9 +71,14 @@ if m2:
 else:
     errs.append('tokens navigationBarTheme 无法解析')
 
+# 防回归：--tree-shake-icons 会裁掉 iconFor() 动态映射的导航图标（真机 tab 消失真因）
+ci = open(os.path.join(ROOT, '.github/workflows/ci.yml'), encoding='utf-8').read()
+if '--tree-shake-icons' in ci:
+    errs.append('CI 构建含 --tree-shake-icons：会裁掉 iconFor() 动态引用的导航图标，致底栏 tab 消失')
+
 if errs:
     print('FAIL bottom-bar-gate:')
     for e in errs:
         print('  -', e)
     sys.exit(1)
-print('PASS bottom-bar-gate (dark bottom nav hard-locked, no light-block regression)')
+print('PASS bottom-bar-gate (dark bottom nav, icons kept, no light-block regression)')

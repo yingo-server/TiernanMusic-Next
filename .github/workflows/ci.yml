@@ -371,8 +371,6 @@ jobs:
           CHANNEL="${{ github.event.inputs.stable == 'true' && 'stable' || 'preview' }}"
           mkdir -p dist build/symbols
           flutter build apk --release --split-per-abi -t lib/init/main.dart \
-            --tree-shake-icons \
-            --obfuscate --split-debug-info=build/symbols \
             ${{ github.event.inputs.debug == 'true' && '--dart-define=NEXT_DEBUG_BYPASS=true' || '' }} \
             --build-name="$VER" --build-number="$(echo "$VER" | tr -d '.')"
           # 有意义命名：产品-版本-渠道-ABI.apk
