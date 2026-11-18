@@ -186,6 +186,8 @@ const _l7Extra = [
   'package:flutter', 'package:riverpod',
   'package:just_audio', 'package:audio_service', 'package:path_provider',
   'package:video_player', // MV inline shell (batch R2)
+  // UI 重写：GetWidget 能力 + bitsdojo 官方标题栏控件（仅 L7）。
+  'package:get', 'package:bitsdojo_window',
 ];
 
 String? _resolveTarget(String rel, String imp) {
@@ -307,6 +309,10 @@ void _checkForbiddenImports(String rel, String src) {
       'package:audio_service/audio_service.dart',
       // YKG 链接登录：成熟密码学库仅 L4 core 可引用（算法不自研）。
       'package:cryptography/cryptography.dart',
+      // 平台层 core/platform：窗口服务/权限网关依赖（仅 L4）。
+      'package:flutter/foundation.dart',
+      'package:bitsdojo_window/bitsdojo_window.dart',
+      'package:window_manager/window_manager.dart',
     ];
     const l6Extra = [
       'package:flutter_riverpod',
