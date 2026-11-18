@@ -31,7 +31,6 @@ void main() {
 
     final scheme = Sp.theme(dark: true).colorScheme;
     await tester.pumpWidget(MaterialApp(
-      useMaterial3: true,
       theme: Sp.theme(dark: true),
       home: Scaffold(
         backgroundColor: scheme.surface,

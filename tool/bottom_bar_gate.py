@@ -10,10 +10,10 @@
   5. tokens.dart 的 navigationBarTheme 必须来自 scheme（供其它屏幕用，不能再用局部明/暗常量）
 任一不满足 -> FAIL（退出码 1）。
 """
-import re, sys
-ROOT = '/var/minis/workspace/NextWorkspace/TiernanMusic-Next'
-shell = open(ROOT + '/lib/surface/shell.dart', encoding='utf-8').read()
-tokens = open(ROOT + '/lib/surface/design/tokens.dart', encoding='utf-8').read()
+import re, sys, os
+ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+shell = open(os.path.join(ROOT, 'lib/surface/shell.dart'), encoding='utf-8').read()
+tokens = open(os.path.join(ROOT, 'lib/surface/design/tokens.dart'), encoding='utf-8').read()
 errs = []
 
 def check(cond, msg):
