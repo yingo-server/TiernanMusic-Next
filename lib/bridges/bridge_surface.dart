@@ -7,11 +7,11 @@ import '../kernel/kernel.dart' show Log;
 import '../surface/app_root.dart'
     as root
     show SurfaceDeps, bootstrapApp, installServices;
-import '../surface/theme/tn_theme.dart' show spLightThemeData;
+import '../surface/theme/tn_theme.dart' show spErrorThemeData;
 import '../session/bootstrap.dart' as session;
 
 export '../surface/app_root.dart' show SurfaceDeps, AppRoot;
-export '../surface/theme/tn_theme.dart' show spLightThemeData;
+export '../surface/theme/tn_theme.dart' show spErrorThemeData;
 // V2：L1/独立 UI 模型可直接经桥取 session 门面。
 export '../session/graph.dart' show AppGraph, SessionDeps;
 export '../session/contracts.dart' show NavEntry, SurfaceModule;
