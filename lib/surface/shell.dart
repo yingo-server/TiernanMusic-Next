@@ -107,9 +107,9 @@ class _AppShellState extends State<AppShell> {
     final safeIndex = _index.clamp(0, modules.length - 1);
     final current = modules[safeIndex];
     return Scaffold(
-      // 审查修复（底栏浅色块回归）：外壳背景与页面同源，
-      // 否则底部导航栏周围会露出外层 Scaffold 的默认底色。
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      // 真机回归修复：外壳背景显式锁深色（不依赖 scheme 解析），
+      // 否则底部露出的任意区域都可能显示浅色。
+      backgroundColor: const Color(0xFF0E0F12),
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -126,8 +126,53 @@ class _AppShellState extends State<AppShell> {
           ],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: safeIndex,
+      bottomNavigationBar: _buildBottomBar(safeIndex, modules),
+    );
+  }
+
+  /// 底部导航栏：用局部 Theme 显式锁死深色底 + 可见图标文字，
+  /// 彻底切断外层主题解析影响（真机截图曾出现浅色块吞掉底栏，
+  /// 静态 scheme 推导无法保证渲染结果，故在此强制）。
+  Widget _buildBottomBar(int selected, List<SurfaceModule> modules) {
+    const darkBar = Color(0xFF141519);
+    const barText = Color(0xFFEDEFF2);
+    const barTextDim = Color(0xFFA9AFB8);
+    const barIndicator = Color(0xFF1DB954);
+    final darkScheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF1DB954),
+      brightness: Brightness.dark,
+    ).copyWith(
+      surface: darkBar,
+      surfaceContainer: darkBar,
+      onSurface: barText,
+      onSurfaceVariant: barTextDim,
+      primary: barIndicator,
+    );
+    return Theme(
+      data: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: darkScheme,
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: darkBar,
+          surfaceTintColor: Colors.transparent,
+          indicatorColor: barIndicator,
+          labelTextStyle: WidgetStateProperty.resolveWith(
+            (s) => TextStyle(
+              fontSize: 11,
+              color: s.contains(WidgetState.selected) ? barText : barTextDim,
+            ),
+          ),
+          iconTheme: WidgetStateProperty.resolveWith(
+            (s) => IconThemeData(
+              size: 24,
+              color: s.contains(WidgetState.selected) ? barText : barTextDim,
+            ),
+          ),
+        ),
+      ),
+      child: NavigationBar(
+        selectedIndex: selected,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: <Widget>[
           for (final m in modules)
