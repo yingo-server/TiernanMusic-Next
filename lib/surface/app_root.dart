@@ -27,6 +27,7 @@ import '../bridges/bridge_session.dart'
         ThemeController,
         LocaleController;
 import 'design/tokens_v2.dart';
+import 'design/desktop_titlebar.dart' show buildDesktopTitleBar;
 import 'shell.dart';
 
 /// 装配依赖（由 L1 经 bridge_surface 注入）。
@@ -112,7 +113,21 @@ class _AppRootState extends State<AppRoot> {
               Locale('ko'), Locale('es'), Locale('fr'), Locale('de'),
               Locale('pt'), Locale('ru'),
             ],
-            home: const AppShell(),
+            // 桌面端（Win/Linux）在内容上方挂自绘标题栏（官方 bitsdojo 控件）；
+            // 移动/Web 返回 null → 直接用 AppShell。用官方 Builder 取 MaterialApp
+            // 生效后的 context（确保 titlebar token 取到正确明暗）。
+            home: Builder(
+              builder: (appContext) {
+                final titleBar = buildDesktopTitleBar(appContext);
+                if (titleBar == null) return const AppShell();
+                return Column(
+                  children: <Widget>[
+                    titleBar,
+                    const Expanded(child: AppShell()),
+                  ],
+                );
+              },
+            ),
           );
         },
       ),
