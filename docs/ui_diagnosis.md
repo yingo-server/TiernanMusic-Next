@@ -30,3 +30,25 @@ app_root.dart、shell.dart、design/tokens.dart、design/mini_bar.dart、pages/h
 ### 6.7 不确定性
 - 灰带“系统导航栏覆盖”是高置信推断（颜色/高度/无人机交互/ROM 行为/App 未声明），但没有直接读到此刻 Android NavigationBar 的 color 属性；另一 App 截图底部为深色，说明可能与 App 主题声明相关而非全局 ROM 设置。
 - 无论如何，修复同时覆盖两层：Flutter 层已有 _buildBottomBar 硬锁深色（shell/tokens）+ 本轮新增系统层声明；真正生效仍需 **发布包含这些 commit 的新 APK 并让用户升级安装**，否则真机不会变。
+
+---
+
+## 7. 最终根因（2026-11-19 · 全文件 diff 比对后确认）
+
+用户提示"曾经调整 bar 排序那次（b82d10b）是好的"，用 `docs/diff_good_vs_now.txt`
+比对 b82d10b↔HEAD 全部 262 个变更文件，得到**完整根因链**（修正上文 6.4/6.7 的"未找到源头"）：
+
+1. **不是 Dart 代码回归**：shell.dart / theme_controller / tokens 的 NavigationBar 配置
+   在 b82d10b（好）与坏版本间**几乎一字不差**（good=now 的 navigationBarTheme/themeMode 结构）。
+2. **仓库根本没有 `android/` 目录**（全历史如此）。CI 每次构建用
+   `flutter create --platforms=android` 临时生成 Android 脚手架。
+3. `flutter create` 默认生成 **`Theme.Material.Light.NoActionBar`（浅色 windowBackground）**。
+   MIUI(Android 9) 在浅色 windowBackground 下用浅灰画 64dp 系统导航栏
+   （真机实测纯色 RGB(182,182,182)、无图标文字、y=1728-1919）——**这就是浅色带真正来源**。
+4. 好版本坏版本代码相同却表现不同，是不同 release 构建时脚手架/ROM 状态差异；
+   决定权从来不在 Flutter 代码，而在 **CI 生成的原生主题**。
+
+**最终修复（commit 749c534）**：CI 生成 android 后 patch `styles.xml` →
+深色 `Theme.MaterialComponents.NoActionBar` + `windowLightStatusBar/NavigationBar=false`，
+与 Dart 层 `SystemChrome.setSystemUIOverlayStyle` 形成**原生层 + Dart 层双锁**。
+不再把系统栏颜色交给 ROM 默认——这是真因级修复，区别于之前只改 Flutter ThemeData 的无效尝试。
