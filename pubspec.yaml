@@ -22,6 +22,21 @@ dependencies:
   # HMAC / SHA-256），自研代码只负责报文封装与流程，见
   # docs/YKG_LINK_CRYPTO_DESIGN.md。
   cryptography: ^2.7.0
+  # ── UI 重写（森林翡翠设计语言）──
+  # GetWidget：官方 Material 3 之外的补充包（Obx/GetBuilder/GetView/
+  # GetSnackbar/GetDialog/GetBottomSheet/GetMaterialApp）。
+  # 契约：UI 层只用官方 M3 + GetWidget 现成能力，不手写任何控件（只写色彩）。
+  get: ^4.7.3
+  # 桌面自定义标题栏（Windows/Linux 原生窗口句柄 + 置透明）。
+  bitsdojo_window: ^0.1.6
+  # 窗口尺寸/最小尺寸/最大化（与 bitsdojo_window 配合，职责分离）。
+  window_manager: ^0.4.3
+  # 跨平台文件选择（桌面/移动统一入口，走能力网关）。
+  file_selector: ^1.0.3
+  # 桌面拖拽（播放列表/文件拖入）。
+  desktop_drop: ^0.6.0
+  # 多显示器支持（桌面窗口跨屏）。
+  screen_retriever: ^0.2.0
 
 dev_dependencies:
   flutter_test:

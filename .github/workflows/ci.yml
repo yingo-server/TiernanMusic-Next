@@ -79,6 +79,14 @@ jobs:
         if: always()
         run: python3 tool/bottom_bar_gate.py 2>&1 | tee /tmp/bottom_bar_gate.log
         continue-on-error: true
+      - name: UI contrast gate (semantic tokens, light/dark pairs)
+        if: always()
+        run: python3 tool/ui_contrast_gate.py 2>&1 | tee /tmp/ui_contrast.log
+        continue-on-error: true
+      - name: UI no-custom-widgets gate
+        if: always()
+        run: python3 tool/ui_no_custom_widgets.py 2>&1 | tee /tmp/ui_widgets.log
+        continue-on-error: true
       - name: boot contract (pure Dart)
         if: always()
         run: dart run tool/boot_contract_test.dart 2>&1 | tee /tmp/boot_contract.log
@@ -189,6 +197,9 @@ jobs:
           grep -q "FEATURE-REACHABILITY-FAIL" /tmp/reach.log && mark reach-fail
           # 底栏深色硬锁门禁（真机浅色块回归后新增）——必须 PASS
           grep -q "PASS bottom-bar-gate" /tmp/bottom_bar_gate.log || mark bottom-bar-light-regression
+          # UI 重写门禁：色彩对比度 + 零手写控件（破坏性重写的强制约束）
+          grep -q "PASS ui-contrast-gate" /tmp/ui_contrast.log || mark ui-contrast
+          grep -q "PASS ui-no-custom-widgets" /tmp/ui_widgets.log || mark ui-custom-widgets
           # 纯 Dart 契约自检：正向 self-check + 0 failed 两重判据（日志均已 tee）
           grep -q "boot contract self-check" /tmp/boot_contract.log || mark boot-selfcheck
           grep -q "0 failed" /tmp/boot_contract.log || mark boot-zero
