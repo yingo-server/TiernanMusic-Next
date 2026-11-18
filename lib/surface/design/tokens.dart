@@ -58,7 +58,8 @@ class Sp {
   // ── 尺寸 ──
   static const double tileCover = 48;
   static const double barH = 60;
-  static const double navH = 64;
+  // MD3 NavigationBar 标准高度 80dp；64 会压缩图标+指示器+label（文字被裁切）。
+  static const double navH = 80;
   static const double artHero = 280;
 
   // ── 动效（审查修复：MD3 motion 分级令牌）──

@@ -88,6 +88,18 @@
 ### 门禁
 layer_audit PASS（128 文件）、static smoke PASS。CI 完整编译待验证。
 
+## 本轮工作（2026-11-18）
+
+- 阶段 B 7 批功能跨层审查全部完成（bB1~bB7 汇总落盘）。
+- 主会话亲修 P0/P1：VIP 实时凭据 provider、语言切换全链（LocaleController + saveLocale 归口 TnStrings）、播放页错误可见、下载 onTask 订阅、单曲循环真重播（AudioEngine.setLoopOne）、通知栏 seek 转发、动态取色链（L4 fromSeed → L6 seed 状态 → L7 Sp.theme(seed)）、search/search_typed 空结果缓存守卫、AuthSession attach + 换号重置。
+- MD3 迁移 M1–M4：全 surface ~190 处 `Sp.*` 静态色 → `context.cs.*` 语义角色（15 文件），每批 CI 验证。
+- 用户截图回归修复（底栏浅色块）：
+  1. **主题分裂根因**：`Sp.theme()` 的组件主题（navBar/appBar/listTile/chip/snackBar/textTheme）用局部 `dark ? Sp.x : _xLight` 常量，页面用 `context.cs.*`（实际生效 ColorScheme）→ `themeMode=system` 时两者取到不同板。**全部组件主题改用 `scheme.*` 角色**（单一来源，永不分裂）。
+  2. **scheme 角色被局部常量覆盖**：`copyWith(surface: bg, onSurface: text, surfaceContainer*: card...)` 抹掉 fromSeed 派生 → 改为只覆盖 primary/onPrimary/error，surface 系列交给 fromSeed。
+  3. **themeMode 0「跟随系统」**：本 App 视觉基底为深色，跟随系统浅色会让大量深色假设失效 → 0 档恢复暗色基底（设置页文案改为「默认」）。
+  4. **排行榜卡片渐变**：`primary → primaryContainer` 在暗色板第二段是浅 tonal 色（≈中灰），卡片下半截变浅灰 → 改为 primary 同族 alphaBlend 渐变。
+  5. shell 外层 Scaffold 补 `backgroundColor`（同源），避免导航栏周围露默认底色。
+
 ## 5. 门禁状态
 
 - `python3 tool/layer_audit.py`：PASS strict seven-six（127 文件）。
