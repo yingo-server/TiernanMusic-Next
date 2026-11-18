@@ -90,7 +90,8 @@ class Sp {
             brightness: dark ? Brightness.dark : Brightness.light,
           ).copyWith(
             primary: brandSeed,
-            onPrimary: dark ? Colors.black : Colors.white,
+            // 品牌绿 #1DB954 上黑字对比 ≈8.7（WCAG AA+）；白字仅 ≈2.8 不足。
+            onPrimary: Colors.black,
             error: red,
             onError: Colors.white,
           );

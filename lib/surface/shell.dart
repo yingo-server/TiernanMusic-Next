@@ -41,6 +41,7 @@ IconData iconFor(String key) {
     case 'search':
       return Icons.search;
     case 'library':
+    case 'library_music':
       return Icons.library_music_outlined;
     case 'music':
       return Icons.queue_music;
