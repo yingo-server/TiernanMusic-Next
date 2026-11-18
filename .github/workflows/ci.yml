@@ -254,6 +254,10 @@ jobs:
           if ! grep -q 'namespace' "$ISAR_GRADLE"; then
             sed -i 's#^[[:space:]]*android[[:space:]]*{#android {\n    namespace "dev.isar.isar_flutter_libs"#' "$ISAR_GRADLE"
           fi
+          # desktop_drop 等桌面插件的 build.gradle 声明 compileSdk 33，但其 androidx
+          # 依赖要求 34+。统一把 PUB_CACHE 下所有插件 gradle 的 compileSdk 提到 35。
+          find "$PUB_CACHE" -path '*/android/build.gradle' -name build.gradle \
+            -exec sed -i -E 's#compileSdkVersion[[:space:]]+[0-9]+#compileSdkVersion 35#g; s#compileSdk[[:space:]]*=[[:space:]]*[0-9]+#compileSdk = 35#g' {} \; 2>/dev/null || true
           grep -q 'namespace' "$ISAR_GRADLE" || { echo "::error::namespace injection failed"; exit 1; }
           # isar_flutter_libs 声明 compileSdk 30，但新 androidx 依赖要求 >=34；统一提到 35。
           sed -i -E 's#compileSdkVersion[[:space:]]+[0-9]+#compileSdkVersion 35#g; s#compileSdk[[:space:]]*=[[:space:]]*[0-9]+#compileSdk = 35#g; s#compileSdk[[:space:]]+[0-9]+#compileSdk 35#g' "$ISAR_GRADLE"
