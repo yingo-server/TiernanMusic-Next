@@ -8,17 +8,32 @@
   3. _buildBottomBar 内 navigationBarTheme.backgroundColor 必须是 const darkBar
   4. _buildBottomBar 内 NavigationBar 的 indicator/label/icon 必须可读（深色底+亮字）
   5. tokens.dart 的 navigationBarTheme 必须来自 scheme（供其它屏幕用，不能再用局部明/暗常量）
+  6. app_root 必须显式声明系统导航栏深色（真机浅灰/米黄带根因；ROM 系统层，
+     Flutter ThemeData 改色无效）
 任一不满足 -> FAIL（退出码 1）。
 """
 import re, sys, os
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 shell = open(os.path.join(ROOT, 'lib/surface/shell.dart'), encoding='utf-8').read()
 tokens = open(os.path.join(ROOT, 'lib/surface/design/tokens.dart'), encoding='utf-8').read()
+app_root = open(os.path.join(ROOT, 'lib/surface/app_root.dart'), encoding='utf-8').read()
 errs = []
 
 def check(cond, msg):
     if not cond:
         errs.append(msg)
+
+# 0) 【真机浅灰/米黄带根因门禁】App 必须显式声明 Android 系统导航栏深色。
+#    未声明时 MIUI/ROM 用浅灰 windowBackground 画系统导航区（真机 RGB≈182），
+#    盖住 Flutter NavigationBar。这是 Flutter ThemeData 改色无法覆盖的一层。
+check('SystemChrome.setSystemUIOverlayStyle' in app_root,
+      'app_root 未声明系统 UI 样式（系统导航栏可能显示浅灰带）')
+check('systemNavigationBarColor' in app_root,
+      'app_root 未设置 systemNavigationBarColor（真机浅色带根因）')
+check(re.search(r'systemNavigationBarColor:\s*(?:const\s+)?Color\(0xFF0[0-9A-Fa-f]{5}\)', app_root) is not None,
+      'systemNavigationBarColor 不是深色常量')
+check('systemNavigationBarContrastEnforced: false' in app_root,
+      '未关闭 systemNavigationBarContrastEnforced（ROM 可能强制加浅色遮罩）')
 
 # 1) bottomNavigationBar 走 _buildBottomBar
 check('bottomNavigationBar: _buildBottomBar(' in shell,

@@ -1,6 +1,10 @@
 // L7 surface · 应用根（MaterialApp + 主题 + 外壳装配）
 // 76 原则：L7 只画控件；数据与状态全部来自 L6 session（经 bridge_session）。
 import 'package:flutter/material.dart';
+// 真机修复（浅灰/米黄底栏带）：App 自身不设置 Android 系统导航栏颜色时，
+// MIUI 等 ROM 会用浅灰 windowBackground 画系统导航区（截图里那条无色无图标的
+// 纯色带），它盖住/挤掉 Flutter 的 NavigationBar，造成"底栏不可见"。显式锁暗。
+import 'package:flutter/services.dart' show SystemChrome, SystemUIOverlayStyle;
 
 import '../bridges/bridge_core.dart'
     show
@@ -52,6 +56,29 @@ class AppRoot extends StatefulWidget {
 }
 
 class _AppRootState extends State<AppRoot> {
+  @override
+  void initState() {
+    super.initState();
+    _applySystemBarStyle();
+  }
+
+  /// 真机回归根因修复（浅灰/米黄底栏带）：
+  /// 本 App 全部视觉基底都是深色，但从未向 Android 声明系统导航栏样式。
+  /// MIUI 等 ROM 在深色 App 未声明时会用浅灰 windowBackground 画系统导航栏
+  /// （真机截图最底部那条纯色、无图标文字的带，实测 RGB≈(182,182,182)），
+  /// 它盖在 Flutter 的 NavigationBar 之上，导致底栏图标文字"完全不可见"。
+  /// 只改 Flutter ThemeData 的颜色无法影响这条系统带——必须在此显式锁暗。
+  static void _applySystemBarStyle() {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUIOverlayStyle(
+      systemNavigationBarColor: Color(0xFF0E0F12),
+      systemNavigationBarDividerColor: Color(0xFF0E0F12),
+      systemNavigationBarIconBrightness: Brightness.light,
+      systemNavigationBarContrastEnforced: false,
+      statusBarColor: Color(0xFF0E0F12),
+      statusBarIconBrightness: Brightness.light,
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
