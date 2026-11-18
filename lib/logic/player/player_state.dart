@@ -19,6 +19,7 @@ class PlayerState {
     this.speed = 1.0,
     this.current,
     this.lastError = '',
+    this.lastErrorCode = '',
     this.sourceKind = 'kugou',
   });
 
@@ -30,6 +31,11 @@ class PlayerState {
   final double speed; // 0.5 ~ 2.0
   final SongBrief? current;
   final String lastError;
+
+  /// 结构化错误码（审查修复 阶段B B7）：供 L7 按码取 i18n 文案与决定可操作项
+  /// （如 needsVerification → 显示"重试"）。只放语义码，不放文案（文案归 L7/i18n）。
+  /// 取值：'needsVerification' / 'noPrivilege' / 'notFound' / 'network' / ''。
+  final String lastErrorCode;
 
   /// 音源类型（批3-F2）：'kugou' = 常规酷狗音源；'mv-audio' = MV 音频兜底。
   /// 其他取值视同 'kugou'；构造默认 'kugou' 不破坏现有调用。
@@ -69,6 +75,7 @@ class PlayerState {
     bool clearCurrent = false,
     String? lastError,
     bool clearError = false,
+    String? lastErrorCode,
     String? sourceKind,
   }) {
     try {
@@ -81,6 +88,9 @@ class PlayerState {
         speed: speed ?? this.speed,
         current: clearCurrent ? null : (current ?? this.current),
         lastError: clearError ? '' : (lastError ?? this.lastError),
+        lastErrorCode: clearError
+            ? ''
+            : (lastErrorCode ?? this.lastErrorCode),
         sourceKind: sourceKind ?? this.sourceKind,
       );
     } catch (e, st) {

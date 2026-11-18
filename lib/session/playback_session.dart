@@ -260,14 +260,21 @@ class PlaybackSession extends ChangeNotifier {
         }
         _sourceKind = 'kugou';
         // 失败语义映射为可读文案（不把 enum.toString() 的英文泄漏给 UI）。
+        // 同时给结构化码，供 L7 按 i18n 选择文案与可操作项（阶段B B7）。
         final errText = switch (err) {
           PlaybackError.needsVerification => '需要人机验证（20028）',
           PlaybackError.noPrivilege => '该曲目需要会员权限',
           PlaybackError.notFound => '未找到可播放源',
           PlaybackError.network => '网络异常，请重试',
         };
+        final errCode = switch (err) {
+          PlaybackError.needsVerification => 'needsVerification',
+          PlaybackError.noPrivilege => 'noPrivilege',
+          PlaybackError.notFound => 'notFound',
+          PlaybackError.network => 'network',
+        };
         _emit(
-          playbackReducer(_player, ErrorAction(errText)),
+          playbackReducer(_player, ErrorAction(errText, code: errCode)),
         );
         return;
       }

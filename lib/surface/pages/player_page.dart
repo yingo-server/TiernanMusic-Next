@@ -324,6 +324,16 @@ class _PlayerPageState extends State<PlayerPage> {
             }
             final art = Sp.artHero;
             final errText = snap.player.lastError.trim();
+            final errCode = snap.player.lastErrorCode;
+            final s = S.of(context);
+            // 按结构化码取 i18n 文案（跨语言正确），无码时用 L6 兜底文案。
+            final shownErr = switch (errCode) {
+              'needsVerification' => s.t('needVerifyBody'),
+              'noPrivilege' => s.t('needVip'),
+              'notFound' => s.t('noPlayable'),
+              'network' => s.t('errorNetwork'),
+              _ => errText,
+            };
             return Column(
               children: <Widget>[
                 _topBar(),
@@ -345,13 +355,29 @@ class _PlayerPageState extends State<PlayerPage> {
                         const SizedBox(width: Sp.gapS),
                         Expanded(
                           child: Text(
-                            errText,
+                            shownErr,
                             style: TextStyle(
                               fontSize: Sp.fSub,
                               color: context.cs.onSurface,
                             ),
                           ),
                         ),
+                        // 审查修复（阶段B B7）：验证/网络类错误给"重试"出口，
+                        // 用户不再卡死无操作（端点未实测时至少能重试/换歌）。
+                        if (errCode == 'needsVerification' ||
+                            errCode == 'network')
+                          TextButton(
+                            onPressed: () {
+                              final cur = snap.current;
+                              if (cur != null) {
+                                playbackSession().playAll(
+                                  <SongBrief>[cur],
+                                  0,
+                                );
+                              }
+                            },
+                            child: Text(s.t('retryPlay')),
+                          ),
                       ],
                     ),
                   ),

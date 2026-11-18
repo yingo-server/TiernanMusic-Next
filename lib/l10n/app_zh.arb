@@ -58,5 +58,9 @@
   "mvLoadingFail": "MV 加载失败",
   "qrLogin": "扫码",
   "smsLogin": "验证码",
-  "pwdLogin": "密码"
+  "pwdLogin": "密码",
+  "needVerifyTitle": "需要人机验证",
+  "needVerifyBody": "该曲目需要人机验证。验证通道暂不可用，可稍后重试或换用其他歌曲。",
+  "retryPlay": "重试播放",
+  "downloadStarted": "开始下载"
 }

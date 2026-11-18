@@ -49,8 +49,14 @@ class Completed extends PlaybackAction {
 
 /// 播放错误。
 class ErrorAction extends PlaybackAction {
-  const ErrorAction(this.message);
+  const ErrorAction(this.message, {this.code = ''});
+
+  /// 面向 L7 的展示文案（L6 不做 i18n，故仅中文兜底；L7 优先按 [code] 取 i18n）。
   final String message;
+
+  /// 结构化语义码：'needsVerification' / 'noPrivilege' / 'notFound' / 'network'。
+  /// L7 据此选择 i18n 文案与可操作项（如验证类显示"重试"）。
+  final String code;
 }
 
 /// 跳转到指定位置（seek）。
@@ -164,6 +170,7 @@ PlayerState playbackReducer(PlayerState state, PlaybackAction action) {
       return state.copyWith(
         status: PlayerStatus.error,
         lastError: action.message,
+        lastErrorCode: action.code,
       );
     }
     if (action is SeekTo) {

@@ -9,7 +9,7 @@ import '../../bridges/bridge_logic.dart' show AuthLogic, AccountLogic;
 import '../../bridges/bridge_session.dart'
     show playbackSession, SurfaceModule, NavEntry;
 import '../../bridges/bridge_session.dart'
-    show appGraph, navState, ThemeController, LocaleController;
+    show appGraph, navState, ThemeController, LocaleController, AuthSession;
 import 'login_sheet.dart' show showLoginSheet;
 import '../design/tokens.dart';
 import '../design/components.dart';
@@ -79,6 +79,8 @@ class _SettingsPageState extends State<SettingsPage> {
     });
     _loadAccount();
     navState().bumpAuth();
+    // 审查修复（阶段B B5）：登出同样广播登录态，触发收藏镜像/缓存前缀重置。
+    AuthSession.instance.notifyAuthChanged();
   }
 
   void _openQualitySheet() {

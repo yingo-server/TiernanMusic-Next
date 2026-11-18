@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 import '../../bridges/bridge_core.dart'
     show AccountRecord, sendSmsCode, smsLogin, KugouApiException;
 import '../../bridges/bridge_logic.dart' show QrLoginState, QrLoginStatus;
-import '../../bridges/bridge_session.dart' show appGraph, navState;
+import '../../bridges/bridge_session.dart' show appGraph, navState, AuthSession;
 import '../design/tokens.dart';
 import '../l10n/s.dart' show S;
 import 'login_account_section.dart' show AccountSection;
@@ -91,10 +91,13 @@ class _LoginSheetPanelState extends State<LoginSheetPanel> {
     _reloadAccounts();
   }
 
-  /// 登录成功统一收口：落账号档案 → bumpAuth → 回调 → 关弹层。
+  /// 登录成功统一收口：落账号档案 → bumpAuth → 广播登录态 → 回调 → 关弹层。
   Future<void> _onLoginSuccess() async {
     await appGraph.account?.saveCurrent();
     navState().bumpAuth();
+    // 审查修复（阶段B B5）：广播登录态，触发换号重置（收藏镜像/缓存前缀）——
+    // 此前只有 YKG 导入路径调 notifyAuthChanged，常规登录/登出不触发。
+    AuthSession.instance.notifyAuthChanged();
     if (!mounted) return;
     widget.onAuthChanged?.call();
     Navigator.of(context).pop();

@@ -58,5 +58,9 @@
   "mvLoadingFail": "Failed to load MV",
   "qrLogin": "QR Code",
   "smsLogin": "Code",
-  "pwdLogin": "Password"
+  "pwdLogin": "Password",
+  "needVerifyTitle": "Verification required",
+  "needVerifyBody": "This track needs human verification. The verification channel is unavailable right now — try again later or pick another track.",
+  "retryPlay": "Retry",
+  "downloadStarted": "Downloading"
 }
