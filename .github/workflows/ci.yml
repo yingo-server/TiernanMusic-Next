@@ -75,6 +75,10 @@ jobs:
         if: always()
         run: dart run tool/feature_reachability_test.dart 2>&1 | tee /tmp/reach.log
         continue-on-error: true
+      - name: bottom bar dark-lock gate
+        if: always()
+        run: python3 tool/bottom_bar_gate.py 2>&1 | tee /tmp/bottom_bar_gate.log
+        continue-on-error: true
       - name: boot contract (pure Dart)
         if: always()
         run: dart run tool/boot_contract_test.dart 2>&1 | tee /tmp/boot_contract.log
@@ -98,6 +102,25 @@ jobs:
       - name: generate isar code
         if: always()
         run: dart run build_runner build --delete-conflicting-outputs
+      # UI golden preview: render the real widget tree via Flutter engine to a
+      # PNG so the bottom-bar layout can be inspected without a device. The
+      # golden has no committed baseline, so the test intentionally fails the
+      # comparison — but the PNG is still written to test/golden/. We allow the
+      # failure here and upload the PNG as an artifact.
+      - name: render UI preview golden (PNG artifact)
+        if: always()
+        continue-on-error: true
+        run: |
+          mkdir -p test/golden
+          flutter test --dart-define=GOLDEN_PREVIEW=true test/ui_preview_golden_test.dart 2>&1 | tee /tmp/golden.log || true
+          ls -la test/golden || true
+      - name: upload UI preview PNG artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-preview-golden
+          path: test/golden/*.png
+          if-no-files-found: warn
       - name: dart syntax (fast gate, no SDK deps)
         id: syntax
         if: always()
@@ -164,6 +187,8 @@ jobs:
           grep -q "FIELD-TRUTH-FAIL" /tmp/field_truth.log && mark field-truth-fail
           grep -q "FEATURE-REACHABILITY-OK" /tmp/reach.log || mark reach
           grep -q "FEATURE-REACHABILITY-FAIL" /tmp/reach.log && mark reach-fail
+          # 底栏深色硬锁门禁（真机浅色块回归后新增）——必须 PASS
+          grep -q "PASS bottom-bar-gate" /tmp/bottom_bar_gate.log || mark bottom-bar-light-regression
           # 纯 Dart 契约自检：正向 self-check + 0 failed 两重判据（日志均已 tee）
           grep -q "boot contract self-check" /tmp/boot_contract.log || mark boot-selfcheck
           grep -q "0 failed" /tmp/boot_contract.log || mark boot-zero
