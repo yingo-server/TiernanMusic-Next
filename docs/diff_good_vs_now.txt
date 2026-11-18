@@ -1,0 +1,987 @@
+# DIFF: b82d10b (good bottom bar) -> HEAD
+changed file count: 262
+
+## 变更文件清单
+M	.github/workflows/ci.yml
+A	changed/.keep
+A	docs/API_FIELD_CAPTURE_3STATE.md
+A	docs/AUTONOMOUS_CACHE_NETWORK_AUDIT.md
+A	docs/DEEP_AUDIT_14_BATCH_PLAN.md
+A	docs/DEEP_AUDIT_PHASE_B_PLAN.md
+A	docs/DEEP_AUDIT_STATE.md
+A	docs/FINAL_VERIFICATION.md
+A	docs/FIX_BOTTOM_BAR_THEME.md
+A	docs/MD3_I18N_MIGRATION_PLAN.md
+A	docs/PHASE_A_FIX_LOG.md
+A	docs/PHASE_B_FIX_LIST.md
+A	docs/PROJECT_STATUS_AND_PLAN.md
+M	docs/SEVEN_SIX_RULE.md
+A	docs/SIX_BATCH_PLAN.md
+A	docs/SIX_BATCH_STATE.md
+A	docs/YKG_LINK_CRYPTO_DESIGN.md
+A	docs/api_samples_v2/anonymous.json
+A	docs/api_samples_v2/nonvip.json
+A	docs/api_samples_v2/vip.json
+A	docs/autonomous_lineA_c.md
+A	docs/autonomous_lineB.md
+A	docs/autonomous_lineB_c.md
+A	docs/autonomous_lineB_features.md
+A	docs/autonomous_lineC.md
+A	docs/autonomous_lineC_c.md
+A	docs/batch2_c1.md
+A	docs/batch2_c2.md
+A	docs/batch2_c3.md
+A	docs/batch2_f1.md
+A	docs/batch2_f2.md
+A	docs/batch2_f3.md
+A	docs/batch3_c1.md
+A	docs/batch3_c2.md
+A	docs/batch3_c3.md
+A	docs/batch3_f1.md
+A	docs/batch3_f2.md
+A	docs/batch3_f3.md
+A	docs/batch5_live.md
+A	docs/deep_audit/A2_P0_VERIFICATION.md
+A	docs/deep_audit/A3_MV_P0_VERIFICATION.md
+A	docs/deep_audit/A4_QR_VERIFICATION.md
+A	docs/deep_audit/B4_MV_UNPACK_VERIFICATION.md
+A	docs/deep_audit/M3_BASELINE.md
+A	docs/deep_audit/bA1_c1.md
+A	docs/deep_audit/bA1_c2.md
+A	docs/deep_audit/bA1_c3.md
+A	docs/deep_audit/bA1_summary.md
+A	docs/deep_audit/bA2_c1.md
+A	docs/deep_audit/bA2_c2.md
+A	docs/deep_audit/bA2_c3.md
+A	docs/deep_audit/bA2_summary.md
+A	docs/deep_audit/bA3_c1.md
+A	docs/deep_audit/bA3_c2.md
+A	docs/deep_audit/bA3_c3.md
+A	docs/deep_audit/bA3_summary.md
+A	docs/deep_audit/bA4_c1.md
+A	docs/deep_audit/bA4_c2.md
+A	docs/deep_audit/bA4_c3.md
+A	docs/deep_audit/bA4_summary.md
+A	docs/deep_audit/bA5_c1.md
+A	docs/deep_audit/bA5_c2.md
+A	docs/deep_audit/bA5_c3.md
+A	docs/deep_audit/bA5_summary.md
+A	docs/deep_audit/bA6_c1.md
+A	docs/deep_audit/bA6_c2.md
+A	docs/deep_audit/bA6_c3.md
+A	docs/deep_audit/bA6_summary.md
+A	docs/deep_audit/bA7_c1.md
+A	docs/deep_audit/bA7_c2.md
+A	docs/deep_audit/bA7_c3.md
+A	docs/deep_audit/bA7_summary.md
+A	docs/deep_audit/bB1_c1.md
+A	docs/deep_audit/bB1_c2.md
+A	docs/deep_audit/bB1_c3.md
+A	docs/deep_audit/bB1_summary.md
+A	docs/deep_audit/bB2_c1.md
+A	docs/deep_audit/bB2_c2.md
+A	docs/deep_audit/bB2_c3.md
+A	docs/deep_audit/bB2_summary.md
+A	docs/deep_audit/bB3_c1.md
+A	docs/deep_audit/bB3_c2.md
+A	docs/deep_audit/bB3_c3.md
+A	docs/deep_audit/bB3_summary.md
+A	docs/deep_audit/bB4_c1.md
+A	docs/deep_audit/bB4_c2.md
+A	docs/deep_audit/bB4_c3.md
+A	docs/deep_audit/bB4_summary.md
+A	docs/deep_audit/bB5_c1.md
+A	docs/deep_audit/bB5_c2.md
+A	docs/deep_audit/bB5_c3.md
+A	docs/deep_audit/bB5_summary.md
+A	docs/deep_audit/bB6_c1.md
+A	docs/deep_audit/bB6_c2.md
+A	docs/deep_audit/bB6_c3.md
+A	docs/deep_audit/bB6_summary.md
+A	docs/deep_audit/bB7_c1.md
+A	docs/deep_audit/bB7_c2.md
+A	docs/deep_audit/bB7_c3.md
+A	docs/deep_audit/bB7_summary.md
+M	docs/plan_ui_api_batches.md
+A	docs/six_b1_c1.md
+A	docs/six_b1_c2.md
+A	docs/six_b1_c3.md
+A	docs/six_b1_f1.md
+A	docs/six_b1_f2.md
+A	docs/six_b1_f3.md
+A	docs/six_b1_summary.md
+A	docs/six_b2_summary.md
+A	docs/six_b3_summary.md
+A	docs/six_b4_summary.md
+A	docs/six_b5_summary.md
+A	docs/six_b6_summary.md
+A	docs/ui_diagnosis.md
+M	lib/bootloader/bootloader.dart
+M	lib/bridges/bridge_boot.dart
+M	lib/bridges/bridge_core.dart
+M	lib/bridges/bridge_kernel.dart
+M	lib/bridges/bridge_logic.dart
+M	lib/bridges/bridge_session.dart
+M	lib/bridges/bridge_surface.dart
+M	lib/core/algorithms/color_extract.dart
+M	lib/core/algorithms/qr_codec.dart
+M	lib/core/audio/audio_gateway.dart
+M	lib/core/audio/notification_gateway.dart
+M	lib/core/cache/cache_service.dart
+M	lib/core/database/dao.dart
+M	lib/core/database/db.dart
+M	lib/core/l10n/strings.dart
+M	lib/core/memory/cache_keys.dart
+M	lib/core/memory/lru_cache.dart
+M	lib/core/net/crypto_aes.dart
+M	lib/core/net/crypto_bigint.dart
+M	lib/core/net/crypto_rsa.dart
+M	lib/core/net/crypto_rsa_raw.dart
+M	lib/core/net/endpoint_registry.dart
+M	lib/core/net/endpoints/album_endpoints.dart
+M	lib/core/net/endpoints/artist_endpoints.dart
+M	lib/core/net/endpoints/auth_endpoints.dart
+M	lib/core/net/endpoints/collect_endpoints.dart
+M	lib/core/net/endpoints/comment_endpoints.dart
+M	lib/core/net/endpoints/fm_endpoints.dart
+M	lib/core/net/endpoints/lyric_models.dart
+M	lib/core/net/endpoints/misc_endpoints.dart
+A	lib/core/net/endpoints/mv_anonymous.dart
+M	lib/core/net/endpoints/mv_endpoints.dart
+M	lib/core/net/endpoints/play_endpoints.dart
+M	lib/core/net/endpoints/play_models.dart
+M	lib/core/net/endpoints/playlist_endpoints.dart
+M	lib/core/net/endpoints/playlist_models.dart
+M	lib/core/net/endpoints/playlist_write_endpoints.dart
+M	lib/core/net/endpoints/quality_endpoints.dart
+M	lib/core/net/endpoints/recommend_endpoints.dart
+M	lib/core/net/endpoints/search_endpoints.dart
+M	lib/core/net/endpoints/search_typed_endpoints.dart
+M	lib/core/net/endpoints/song_models.dart
+M	lib/core/net/endpoints/translation_endpoints.dart
+M	lib/core/net/endpoints/translation_models.dart
+M	lib/core/net/endpoints/user_endpoints.dart
+M	lib/core/net/inflight.dart
+M	lib/core/net/kugou_client.dart
+M	lib/core/net/network_phase.dart
+M	lib/core/net/signing.dart
+A	lib/core/net/ykg_codec.dart
+M	lib/core/storage/download_store.dart
+M	lib/core/storage/paths.dart
+M	lib/core/storage/resource_cache.dart
+M	lib/core/storage/settings_store.dart
+M	lib/init/main.dart
+M	lib/kernel/kernel.dart
+M	lib/l10n/app_de.arb
+M	lib/l10n/app_en.arb
+M	lib/l10n/app_es.arb
+M	lib/l10n/app_fr.arb
+M	lib/l10n/app_ja.arb
+M	lib/l10n/app_ko.arb
+M	lib/l10n/app_pt.arb
+M	lib/l10n/app_ru.arb
+M	lib/l10n/app_zh.arb
+M	lib/l10n/app_zh_Hant.arb
+M	lib/logic/auth/account_logic.dart
+M	lib/logic/auth/auth_logic.dart
+M	lib/logic/auth/verification_logic.dart
+A	lib/logic/auth/ykg_logic.dart
+M	lib/logic/catalog/album_logic.dart
+M	lib/logic/catalog/artist_logic.dart
+M	lib/logic/catalog/collect_logic.dart
+M	lib/logic/catalog/comment_logic.dart
+M	lib/logic/catalog/fm_logic.dart
+M	lib/logic/catalog/mv_logic.dart
+M	lib/logic/catalog/playlist_logic.dart
+M	lib/logic/catalog/playlist_write_logic.dart
+M	lib/logic/catalog/rank_logic.dart
+M	lib/logic/catalog/recommend_logic.dart
+M	lib/logic/catalog/search_logic.dart
+M	lib/logic/catalog/search_typed_logic.dart
+M	lib/logic/catalog/user_logic.dart
+M	lib/logic/download/download_commit.dart
+M	lib/logic/download/download_job.dart
+M	lib/logic/download/download_manager.dart
+M	lib/logic/download/download_models.dart
+M	lib/logic/download/download_paths.dart
+M	lib/logic/lyrics/lyrics_logic.dart
+M	lib/logic/lyrics/lyrics_parser.dart
+M	lib/logic/lyrics/translation_logic.dart
+M	lib/logic/player/history_recorder.dart
+M	lib/logic/player/play_resolver.dart
+M	lib/logic/player/play_source_parser.dart
+M	lib/logic/player/playback_reducer.dart
+M	lib/logic/player/playback_service.dart
+M	lib/logic/player/player_state.dart
+M	lib/logic/player/quality_policy.dart
+M	lib/logic/player/queue_state.dart
+M	lib/logic/player/url_health.dart
+A	lib/session/auth_session.dart
+M	lib/session/bootstrap.dart
+M	lib/session/graph.dart
+A	lib/session/locale_controller.dart
+M	lib/session/module_registry.dart
+M	lib/session/nav_state.dart
+M	lib/session/playback_session.dart
+M	lib/session/theme_controller.dart
+M	lib/surface/app_root.dart
+M	lib/surface/design/components.dart
+M	lib/surface/design/mini_bar.dart
+M	lib/surface/design/tokens.dart
+A	lib/surface/l10n/s.dart
+M	lib/surface/pages/home_page.dart
+M	lib/surface/pages/home_state_views.dart
+M	lib/surface/pages/library_page.dart
+A	lib/surface/pages/login_account_section.dart
+A	lib/surface/pages/login_sheet.dart
+M	lib/surface/pages/lyrics_page.dart
+A	lib/surface/pages/mv_page.dart
+M	lib/surface/pages/player_page.dart
+M	lib/surface/pages/playlist_page.dart
+M	lib/surface/pages/search_page.dart
+M	lib/surface/pages/search_tile_widgets.dart
+M	lib/surface/pages/settings_page.dart
+A	lib/surface/pages/ykg_sheet.dart
+M	lib/surface/shell.dart
+M	lib/surface/theme/tn_theme.dart
+M	pubspec.yaml
+M	test/qr_painter_test.dart
+M	test/signing_test.dart
+A	test/ui_preview_golden_test.dart
+A	tool/api_field_probe_v2.dart
+M	tool/api_matrix_probe.dart
+M	tool/api_probe.dart
+M	tool/boot_contract_test.dart
+A	tool/bottom_bar_gate.py
+M	tool/download_contract_test.dart
+M	tool/feature_reachability_test.dart
+M	tool/field_truth_test.dart
+M	tool/gen_i18n.py
+M	tool/gen_verification.dart
+M	tool/layer_audit.py
+M	tool/md5_smoke.dart
+M	tool/play_contract_test.dart
+M	tool/resolve_contract_test.dart
+A	tool/sched_a1.sh
+M	tool/smoke_check.dart
+
+## 关键文件 diff（底栏/主题相关）
+
+### lib/surface/shell.dart
+diff --git a/lib/surface/shell.dart b/lib/surface/shell.dart
+index 55f9969..e7cf860 100644
+--- a/lib/surface/shell.dart
++++ b/lib/surface/shell.dart
+@@ -9,6 +9,7 @@ import 'design/tokens.dart';
+ import 'pages/home_page.dart' show HomePageModule;
+ import 'pages/library_page.dart' show LibraryPageModule;
+ import 'pages/lyrics_page.dart' show LyricsPageModule;
++import 'pages/mv_page.dart' show registerMvModule;
+ import 'pages/player_page.dart' show PlayerPageModule;
+ import 'pages/playlist_page.dart' show PlaylistPageModule;
+ import 'pages/search_page.dart' show SearchPageModule;
+@@ -26,6 +27,7 @@ void registerModules() {
+       ..install(SettingsPageModule())
+       ..install(PlayerPageModule())
+       ..install(LyricsPageModule());
++    registerMvModule();
+   } catch (e, st) {
+     debugPrint('surface.shell: registerModules failed: $e\n$st');
+   }
+@@ -39,6 +41,7 @@ IconData iconFor(String key) {
+     case 'search':
+       return Icons.search;
+     case 'library':
++    case 'library_music':
+       return Icons.library_music_outlined;
+     case 'music':
+       return Icons.queue_music;
+@@ -86,8 +89,10 @@ class _AppShellState extends State<AppShell> {
+     }
+   }
+ 
+-  List<SurfaceModule> get _modules =>
+-      ModuleRegistry.instance.active().where((m) => m.navEntry != null).toList();
++  List<SurfaceModule> get _modules => ModuleRegistry.instance
++      .active()
++      .where((m) => m.navEntry != null)
++      .toList();
+ 
+   @override
+   Widget build(BuildContext context) {
+@@ -95,14 +100,16 @@ class _AppShellState extends State<AppShell> {
+     if (modules.isEmpty) {
+       return Scaffold(
+         body: Center(
+-          child: Text('无可用模块',
+-              style: Theme.of(context).textTheme.bodyMedium),
++          child: Text('无可用模块', style: Theme.of(context).textTheme.bodyMedium),
+         ),
+       );
+     }
+     final safeIndex = _index.clamp(0, modules.length - 1);
+     final current = modules[safeIndex];
+     return Scaffold(
++      // 真机回归修复：外壳背景显式锁深色（不依赖 scheme 解析），
++      // 否则底部露出的任意区域都可能显示浅色。
++      backgroundColor: const Color(0xFF0E0F12),
+       body: SafeArea(
+         bottom: false,
+         child: Column(
+@@ -110,7 +117,8 @@ class _AppShellState extends State<AppShell> {
+             Expanded(
+               child: KeyedSubtree(
+                 key: ValueKey<String>(current.id),
+-                child: (current.builder as WidgetBuilder?)?.call(context) ??
++                child:
++                    (current.builder as WidgetBuilder?)?.call(context) ??
+                     const Center(child: Text('模块未提供页面')),
+               ),
+             ),
+@@ -118,8 +126,53 @@ class _AppShellState extends State<AppShell> {
+           ],
+         ),
+       ),
+-      bottomNavigationBar: NavigationBar(
+-        selectedIndex: safeIndex,
++      bottomNavigationBar: _buildBottomBar(safeIndex, modules),
++    );
++  }
++
++  /// 底部导航栏：用局部 Theme 显式锁死深色底 + 可见图标文字，
++  /// 彻底切断外层主题解析影响（真机截图曾出现浅色块吞掉底栏，
++  /// 静态 scheme 推导无法保证渲染结果，故在此强制）。
++  Widget _buildBottomBar(int selected, List<SurfaceModule> modules) {
++    const darkBar = Color(0xFF141519);
++    const barText = Color(0xFFEDEFF2);
++    const barTextDim = Color(0xFFA9AFB8);
++    const barIndicator = Color(0xFF1DB954);
++    final darkScheme = ColorScheme.fromSeed(
++      seedColor: const Color(0xFF1DB954),
++      brightness: Brightness.dark,
++    ).copyWith(
++      surface: darkBar,
++      surfaceContainer: darkBar,
++      onSurface: barText,
++      onSurfaceVariant: barTextDim,
++      primary: barIndicator,
++    );
++    return Theme(
++      data: ThemeData(
++        useMaterial3: true,
++        brightness: Brightness.dark,
++        colorScheme: darkScheme,
++        navigationBarTheme: NavigationBarThemeData(
++          backgroundColor: darkBar,
++          surfaceTintColor: Colors.transparent,
++          indicatorColor: barIndicator,
++          labelTextStyle: WidgetStateProperty.resolveWith(
++            (s) => TextStyle(
++              fontSize: 11,
++              color: s.contains(WidgetState.selected) ? barText : barTextDim,
++            ),
++          ),
++          iconTheme: WidgetStateProperty.resolveWith(
++            (s) => IconThemeData(
++              size: 24,
++              color: s.contains(WidgetState.selected) ? barText : barTextDim,
++            ),
++          ),
++        ),
++      ),
++      child: NavigationBar(
++        selectedIndex: selected,
+         onDestinationSelected: (i) => setState(() => _index = i),
+         destinations: <Widget>[
+           for (final m in modules)
+
+### lib/surface/app_root.dart
+diff --git a/lib/surface/app_root.dart b/lib/surface/app_root.dart
+index e9ebcd2..8e7823e 100644
+--- a/lib/surface/app_root.dart
++++ b/lib/surface/app_root.dart
+@@ -1,13 +1,28 @@
+ // L7 surface · 应用根（MaterialApp + 主题 + 外壳装配）
+ // 76 原则：L7 只画控件；数据与状态全部来自 L6 session（经 bridge_session）。
+ import 'package:flutter/material.dart';
++// 真机修复（浅灰/米黄底栏带）：App 自身不设置 Android 系统导航栏颜色时，
++// MIUI 等 ROM 会用浅灰 windowBackground 画系统导航区（截图里那条无色无图标的
++// 纯色带），它盖住/挤掉 Flutter 的 NavigationBar，造成"底栏不可见"。显式锁暗。
++import 'package:flutter/services.dart' show SystemChrome, SystemUiOverlayStyle;
+ 
+ import '../bridges/bridge_core.dart'
+-    show KugouClient, SongDao, PlaylistDao, HistoryDao, DownloadStore,
+-        KeyValueSettings, StoragePaths;
++    show
++        KugouClient,
++        SongDao,
++        PlaylistDao,
++        HistoryDao,
++        DownloadStore,
++        KeyValueSettings,
++        StoragePaths;
+ import '../bridges/bridge_session.dart'
+-    show ModuleRegistry, NavEntry, SurfaceModule, PlaybackSession,
+-        ThemeController;
++    show
++        ModuleRegistry,
++        NavEntry,
++        SurfaceModule,
++        PlaybackSession,
++        ThemeController,
++        LocaleController;
+ import 'design/tokens.dart';
+ import 'shell.dart';
+ 
+@@ -41,24 +56,77 @@ class AppRoot extends StatefulWidget {
+ }
+ 
+ class _AppRootState extends State<AppRoot> {
++  @override
++  void initState() {
++    super.initState();
++    _applySystemBarStyle();
++  }
++
++  /// 真机回归根因修复（浅灰/米黄底栏带）：
++  /// 本 App 全部视觉基底都是深色，但从未向 Android 声明系统导航栏样式。
++  /// MIUI 等 ROM 在深色 App 未声明时会用浅灰 windowBackground 画系统导航栏
++  /// （真机截图最底部那条纯色、无图标文字的带，实测 RGB≈(182,182,182)），
++  /// 它盖在 Flutter 的 NavigationBar 之上，导致底栏图标文字"完全不可见"。
++  /// 只改 Flutter ThemeData 的颜色无法影响这条系统带——必须在此显式锁暗。
++  static void _applySystemBarStyle() {
++    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
++      systemNavigationBarColor: Color(0xFF0E0F12),
++      systemNavigationBarDividerColor: Color(0xFF0E0F12),
++      systemNavigationBarIconBrightness: Brightness.light,
++      systemNavigationBarContrastEnforced: false,
++      statusBarColor: Color(0xFF0E0F12),
++      statusBarIconBrightness: Brightness.light,
++    ));
++  }
++
+   @override
+   Widget build(BuildContext context) {
+     return ValueListenableBuilder<int>(
+       valueListenable: ThemeController.instance,
+-      builder: (context, mode, _) => MaterialApp(
+-        title: 'TiernanMusicNext',
+-        debugShowCheckedModeBanner: false,
+-        theme: Sp.theme(dark: false),
+-        darkTheme: Sp.theme(dark: true),
+-        // 0 系统 / 1 亮 / 2 暗 / 3 纯黑（纯黑暂用暗色板，TODO 更深色板）。
+-        themeMode: switch (mode) {
+-          1 => ThemeMode.light,
+-          _ => ThemeMode.dark,
++      builder: (context, mode, _) => ValueListenableBuilder<String>(
++        valueListenable: LocaleController.instance,
++        builder: (context, localeCode, _) {
++          // 阶段B B6：动态取色——seed 由 L6 ThemeController 持有（L4 fromSeed
++          // 派生），applySeed 会 notify 触发本 builder 重建。
++          final seed = Color(ThemeController.instance.seedArgb);
++          return MaterialApp(
++            title: 'TiernanMusicNext',
++            debugShowCheckedModeBanner: false,
++            theme: Sp.theme(dark: false, seed: seed),
++            darkTheme: Sp.theme(
++              dark: true,
++              seed: seed,
++              pureBlack: mode == 3,
++            ),
++            // 0 跟随系统(暗色基底) / 1 亮 / 2 暗 / 3 纯黑(AMOLED)。
++            // 审查修复（底栏浅色回归）：本 App 视觉基底为深色（Spotify 深色风），
++            // "跟随系统"沿用系统浅色会让大量深色假设失效、底栏与内容板分裂；
++            // 故 0 档保持暗色基底（与旧行为一致），想用浅色请选"亮"。
++            themeMode: switch (mode) {
++              1 => ThemeMode.light,
++              _ => ThemeMode.dark, // 0 跟随系统(暗色基底) / 2 暗 / 3 纯黑
++            },
++            // 阶段B B7 P0：语言切换实时生效——locale 变化触发本 builder 重建。
++            locale: _toLocale(localeCode),
++            supportedLocales: const <Locale>[
++              Locale('zh'), Locale('zh', 'Hant'), Locale('en'), Locale('ja'),
++              Locale('ko'), Locale('es'), Locale('fr'), Locale('de'),
++              Locale('pt'), Locale('ru'),
++            ],
++            home: const AppShell(),
++          );
+         },
+-        home: const AppShell(),
+       ),
+     );
+   }
++
++  /// 'zh_Hant' -> Locale('zh','Hant')；'zh' -> Locale('zh')；'' -> null（跟随系统）。
++  static Locale? _toLocale(String code) {
++    if (code.isEmpty || code == 'system') return null;
++    final parts = code.replaceAll('-', '_').split('_');
++    if (parts.length >= 2) return Locale(parts[0], parts[1]);
++    return Locale(parts[0]);
++  }
+ }
+ 
+ /// 装配入口（L1 → L7）。
+
+### lib/surface/design/tokens.dart
+diff --git a/lib/surface/design/tokens.dart b/lib/surface/design/tokens.dart
+index 7aa7372..af5a967 100644
+--- a/lib/surface/design/tokens.dart
++++ b/lib/surface/design/tokens.dart
+@@ -58,106 +58,141 @@ class Sp {
+   // ── 尺寸 ──
+   static const double tileCover = 48;
+   static const double barH = 60;
+-  static const double navH = 64;
++  // MD3 NavigationBar 标准高度 80dp；64 会压缩图标+指示器+label（文字被裁切）。
++  static const double navH = 80;
+   static const double artHero = 280;
+ 
+-  // ── 动效 ──
+-  static const Duration fast = Duration(milliseconds: 120);
+-  static const Duration normal = Duration(milliseconds: 220);
+-  static const Curve curve = Curves.easeOutCubic;
++  // ── 动效（审查修复：MD3 motion 分级令牌）──
++  // Material 3 规范：Emphasized 进入屏幕 400ms / 退出 200ms / 屏幕内 500ms；
++  // Standard 250 / 200 / 300ms。曲线用规范 cubic-bezier 的 Flutter 近似。
++  static const Duration fast = Duration(milliseconds: 200); // standard accelerate
++  static const Duration normal = Duration(milliseconds: 300); // standard
++  static const Duration enter = Duration(milliseconds: 400); // emphasized decelerate
++  static const Duration screen = Duration(milliseconds: 500); // emphasized
++  static const Curve curve = Curves.easeOutCubic; // 兼容旧调用
++  static const Curve standard = Curves.ease; // cubic-bezier(0.2,0,0,1)
++  static const Curve emphasized = Curves.easeOutCubic; // cubic-bezier(0.05,0.7,0.1,1)
++  static const Curve decelerate = Curves.decelerate; // 进入屏幕
++  static const Curve accelerate = Curves.easeIn; // 退出屏幕
+ 
+   /// 主题（唯一工厂；AppRoot 只用它）。dark=false 时用亮色映射。
+-  static ThemeData theme({bool dark = true}) {
++  /// [seed]：动态取色种子（L6 ThemeController 经 L4 fromSeed 派生）；
++  ///   默认品牌绿。seed 变化时 primary 等 tonal 角色随之变化。
++  static ThemeData theme({
++    bool dark = true,
++    Color? seed,
++    bool pureBlack = false,
++  }) {
+     try {
+-      final Color bg = dark ? Sp.bg : _bgLight;
+-      final Color bgElevated = dark ? Sp.bgElevated : _bgElevatedLight;
+-      final Color card = dark ? Sp.card : _cardLight;
+-      final Color cardHigh = dark ? Sp.cardHigh : _cardHighLight;
+-      final Color divider = dark ? Sp.divider : _dividerLight;
+-      final Color text = dark ? Sp.text : _textLight;
+-      final Color textSub = dark ? Sp.textSub : _textSubLight;
+-      final scheme = ColorScheme.fromSeed(
+-        seedColor: green,
+-        brightness: dark ? Brightness.dark : Brightness.light,
+-      ).copyWith(
+-        surface: bg,
+-        onSurface: text,
+-        onSurfaceVariant: textSub,
+-        surfaceContainerLowest: bgElevated,
+-        surfaceContainerLow: bgElevated,
+-        surfaceContainer: card,
+-        surfaceContainerHigh: cardHigh,
+-        surfaceContainerHighest: divider,
+-        primary: green,
+-        onPrimary: Colors.black,
+-        error: red,
+-      );
++      final Color brandSeed = seed ?? green;
++      // 审查修复（底栏/内容板分裂）：surface 系列不再用局部 dark/亮常量覆盖，
++      // 统一由 fromSeed 按 brightness 派生——局部常量与实际生效 theme/darkTheme
++      // 可能取到不同板（themeMode=system 时），导致底栏浅、内容深。
++      final scheme =
++          ColorScheme.fromSeed(
++            seedColor: brandSeed,
++            brightness: dark ? Brightness.dark : Brightness.light,
++          ).copyWith(
++            primary: brandSeed,
++            // 品牌绿 #1DB954 上黑字对比 ≈8.7（WCAG AA+）；白字仅 ≈2.8 不足。
++            onPrimary: Colors.black,
++            error: red,
++            onError: Colors.white,
++            // 纯黑（AMOLED）档：surface 全系压到 #000000，与暗色档拉开差异。
++            surface: pureBlack ? Colors.black : null,
++            surfaceContainerLowest: pureBlack ? Colors.black : null,
++            surfaceContainerLow: pureBlack ? Colors.black : null,
++            surfaceContainer: pureBlack ? Colors.black : null,
++            surfaceContainerHigh: pureBlack ? const Color(0xFF0A0A0A) : null,
++            surfaceContainerHighest: pureBlack ? const Color(0xFF121212) : null,
++          );
+       return ThemeData(
+         useMaterial3: true,
+         brightness: dark ? Brightness.dark : Brightness.light,
+         colorScheme: scheme,
+-        scaffoldBackgroundColor: bg,
+-        dividerColor: divider,
++        scaffoldBackgroundColor: scheme.surface,
++        dividerColor: scheme.outlineVariant,
+         splashFactory: InkSparkle.splashFactory,
+         textTheme: _text(scheme, dark: dark),
+         appBarTheme: AppBarTheme(
+-          backgroundColor: bg,
++          backgroundColor: scheme.surface,
+           surfaceTintColor: Colors.transparent,
+           elevation: 0,
+           centerTitle: false,
+           titleTextStyle: TextStyle(
+-            fontSize: fPageTitle, fontWeight: FontWeight.w700, color: text),
+-          iconTheme: IconThemeData(color: text),
++            fontSize: fPageTitle,
++            fontWeight: FontWeight.w700,
++            color: scheme.onSurface,
++          ),
++          iconTheme: IconThemeData(color: scheme.onSurface),
+         ),
+         navigationBarTheme: NavigationBarThemeData(
+-          backgroundColor: bgElevated,
++          // 审查修复（底栏变色回归）：组件主题一律取 scheme 角色，
++          // 不用局部 dark/亮常量——否则 themeMode=system 时底栏与页面
++          // 可能取到不同板（底栏浅灰、内容深色）。
++          backgroundColor: scheme.surfaceContainer,
+           surfaceTintColor: Colors.transparent,
+-          indicatorColor: greenDim,
++          indicatorColor: scheme.primaryContainer,
+           height: navH,
+           labelTextStyle: WidgetStateProperty.resolveWith(
+             (s) => TextStyle(
+               fontSize: fTiny,
+-              color: s.contains(WidgetState.selected) ? text : textSub,
++              color: s.contains(WidgetState.selected)
++                  ? scheme.onSurface
++                  : scheme.onSurfaceVariant,
+             ),
+           ),
+           iconTheme: WidgetStateProperty.resolveWith(
+             (s) => IconThemeData(
+               size: 24,
+-              color: s.contains(WidgetState.selected) ? text : textSub,
++              color: s.contains(WidgetState.selected)
++                  ? scheme.onSurface
++                  : scheme.onSurfaceVariant,
+             ),
+           ),
+         ),
+         listTileTheme: ListTileThemeData(
+-          iconColor: textSub,
+-          textColor: text,
+-          titleTextStyle: TextStyle(fontSize: fItem, color: text),
+-          subtitleTextStyle: TextStyle(fontSize: fSub, color: textSub),
++          iconColor: scheme.onSurfaceVariant,
++          textColor: scheme.onSurface,
++          titleTextStyle: TextStyle(fontSize: fItem, color: scheme.onSurface),
++          subtitleTextStyle: TextStyle(
++            fontSize: fSub,
++            color: scheme.onSurfaceVariant,
++          ),
+         ),
+         chipTheme: ChipThemeData(
+-          backgroundColor: card,
+-          side: BorderSide(color: divider),
+-          labelStyle: TextStyle(fontSize: fSub, color: text),
++          backgroundColor: scheme.surfaceContainer,
++          side: BorderSide(color: scheme.outlineVariant),
++          labelStyle: TextStyle(fontSize: fSub, color: scheme.onSurface),
+           shape: RoundedRectangleBorder(
+             borderRadius: BorderRadius.circular(rFull),
+           ),
+         ),
+         filledButtonTheme: FilledButtonThemeData(
+           style: FilledButton.styleFrom(
+-            backgroundColor: green,
+-            foregroundColor: Colors.black,
+-            textStyle: const TextStyle(fontSize: fItem, fontWeight: FontWeight.w600),
++            // 动态取色：用 scheme 的成对角色（primary/onPrimary），
++            // 不再硬编码品牌绿 + 黑字（seed 变化时按钮不跟随）。
++            backgroundColor: scheme.primary,
++            foregroundColor: scheme.onPrimary,
++            textStyle: const TextStyle(
++              fontSize: fItem,
++              fontWeight: FontWeight.w600,
++            ),
+             shape: RoundedRectangleBorder(
+               borderRadius: BorderRadius.circular(rFull),
+             ),
+           ),
+         ),
+         snackBarTheme: SnackBarThemeData(
+-          backgroundColor: cardHigh,
+-          contentTextStyle: TextStyle(color: text, fontSize: fSub),
++          backgroundColor: scheme.surfaceContainerHigh,
++          contentTextStyle: TextStyle(
++            color: scheme.onSurface,
++            fontSize: fSub,
++          ),
+           behavior: SnackBarBehavior.floating,
+         ),
+-        progressIndicatorTheme: const ProgressIndicatorThemeData(
+-          color: green,
++        progressIndicatorTheme: ProgressIndicatorThemeData(
++          color: scheme.primary,
+           linearMinHeight: 2,
+         ),
+       );
+@@ -168,13 +203,19 @@ class Sp {
+   }
+ 
+   static TextTheme _text(ColorScheme s, {bool dark = true}) {
+-    final base = TextStyle(
+-        color: dark ? Sp.text : _textLight, fontSize: fItem);
+-    final sub = dark ? Sp.textSub : _textSubLight;
++    // 审查修复（底栏/文本色分裂回归）：颜色一律取 scheme 角色，
++    // 不用 dark ? Sp.text : _textLight —— 局部常量与实际生效板可能不一致。
++    final base = TextStyle(color: s.onSurface, fontSize: fItem);
++    final sub = s.onSurfaceVariant;
+     return TextTheme(
+       headlineSmall: base.copyWith(
+-          fontSize: fPageTitle, fontWeight: FontWeight.w700),
+-      titleLarge: base.copyWith(fontSize: fSection, fontWeight: FontWeight.w600),
++        fontSize: fPageTitle,
++        fontWeight: FontWeight.w700,
++      ),
++      titleLarge: base.copyWith(
++        fontSize: fSection,
++        fontWeight: FontWeight.w600,
++      ),
+       titleMedium: base.copyWith(fontSize: fItem, fontWeight: FontWeight.w600),
+       bodyMedium: base.copyWith(fontSize: fItem),
+       bodySmall: base.copyWith(fontSize: fSub, color: sub),
+@@ -182,3 +223,11 @@ class Sp {
+     );
+   }
+ }
++
++/// 语义色门面（MD3 页面级重构 · 阶段B方案A M1）。
++/// 页面统一用 `context.cs.primary/onSurface/surface...` 取代 `Sp.*` 静态色，
++/// 让亮/暗/动态取色真正生效——这是 MD3 42/100 白底白字的根因修复。
++/// 单一事实源：全部来自 Theme.of(context).colorScheme。
++extension SpColorSchemeX on BuildContext {
++  ColorScheme get cs => Theme.of(this).colorScheme;
++}
+
+### lib/surface/design/mini_bar.dart
+diff --git a/lib/surface/design/mini_bar.dart b/lib/surface/design/mini_bar.dart
+index 36987c7..0e28726 100644
+--- a/lib/surface/design/mini_bar.dart
++++ b/lib/surface/design/mini_bar.dart
+@@ -29,12 +29,16 @@ class SpMiniBar extends StatelessWidget {
+     );
+   }
+ 
+-  Widget _bar(BuildContext context, PlaybackSession session,
+-      PlaybackSnapshot snap, SongBrief song) {
++  Widget _bar(
++    BuildContext context,
++    PlaybackSession session,
++    PlaybackSnapshot snap,
++    SongBrief song,
++  ) {
+     final t = Theme.of(context).textTheme;
+     final playing = snap.player.isPlaying;
+     return Material(
+-      color: Sp.bgElevated,
++      color: context.cs.surfaceContainerLow,
+       child: InkWell(
+         onTap: onExpand,
+         child: Container(
+@@ -53,7 +57,9 @@ class SpMiniBar extends StatelessWidget {
+                       song.name.isEmpty ? song.hash : song.name,
+                       maxLines: 1,
+                       overflow: TextOverflow.ellipsis,
+-                      style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
++                      style: t.bodyMedium?.copyWith(
++                        fontWeight: FontWeight.w600,
++                      ),
+                     ),
+                     if (song.singer.isNotEmpty)
+                       Text(
+@@ -68,13 +74,13 @@ class SpMiniBar extends StatelessWidget {
+               IconButton(
+                 onPressed: session.toggle,
+                 icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+-                color: Sp.text,
++                color: context.cs.onSurface,
+                 tooltip: playing ? '暂停' : '播放',
+               ),
+               IconButton(
+                 onPressed: session.next,
+                 icon: const Icon(Icons.skip_next),
+-                color: Sp.text,
++                color: context.cs.onSurface,
+                 tooltip: '下一首',
+               ),
+             ],
+
+### lib/surface/theme/tn_theme.dart
+diff --git a/lib/surface/theme/tn_theme.dart b/lib/surface/theme/tn_theme.dart
+index 2d80d36..4e57291 100644
+--- a/lib/surface/theme/tn_theme.dart
++++ b/lib/surface/theme/tn_theme.dart
+@@ -1,11 +1,13 @@
+-// L7 surface/theme · 启动失败错误页的浅色主题（L1 经 bridge_surface 取）。
+-// 仅此一个纯 ThemeData 函数；主应用主题在 design/tokens.dart 的 Sp.theme()。
++// L7 surface/theme · 启动失败错误页主题。
++// 审查修复（阶段B B6/B7）：旧实现是**第二套 ThemeData 构造**（独立 fromSeed
++// 亮色板），与主应用的 Sp.theme() 分裂——错误页配色与主应用不一致，且亮色板
++// 下同样存在深色假设失效问题。现统一走 Sp.theme(dark: true)（App 视觉基底），
++// 保证全 App 只有一套主题构造与单一事实源。
+ library;
+ 
+ import 'package:flutter/material.dart';
+ 
+-ThemeData spLightThemeData() => ThemeData(
+-      useMaterial3: true,
+-      brightness: Brightness.light,
+-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1DB954)),
+-    );
++import '../design/tokens.dart' show Sp;
++
++/// 启动失败错误页主题（与主应用同一套构造，见 Sp.theme）。
++ThemeData spErrorThemeData() => Sp.theme(dark: true);
+
+### lib/session/theme_controller.dart
+diff --git a/lib/session/theme_controller.dart b/lib/session/theme_controller.dart
+index dfa454f..6b80804 100644
+--- a/lib/session/theme_controller.dart
++++ b/lib/session/theme_controller.dart
+@@ -7,26 +7,51 @@ library;
+ import 'package:flutter/foundation.dart';
+ 
+ import '../bridges/bridge_core.dart'
+-    show KeyValueSettings, StoragePaths;
++    show KeyValueSettings, StoragePaths, ColorSeed, fromSeed, ThemePalette;
+ import '../bridges/bridge_kernel.dart' show Log;
+ 
++/// 主题控制器：mode（0系统/1亮/2暗/3纯黑）+ seed（动态取色主色 ARGB）。
++/// 阶段B B6：接入 L4 fromSeed，让动态取色链（L4→L6→L7）打通。
+ class ThemeController extends ValueNotifier<int> {
+   ThemeController._() : super(2) {
+     try {
+-      final v = KeyValueSettings.shared(StoragePaths.I)
+-          .getInt(kThemeModeKey);
++      final s = KeyValueSettings.shared(StoragePaths.I);
++      final v = s.getInt(kThemeModeKey);
+       if (v != null && v >= 0 && v <= 3) value = v;
++      final seed = s.getInt(kSeedKey);
++      if (seed != null) _seedArgb = seed;
+     } catch (e, st) {
+-      Log.e('theme_controller', 'init load mode failed', e, st);
++      Log.e('theme_controller', 'init load failed', e, st);
+     }
+   }
+ 
+   /// 持久化键（settings.json）。
+   static const String kThemeModeKey = 'ui.themeMode';
++  static const String kSeedKey = 'ui.seedArgb';
+ 
+   /// 全局单例。
+   static final ThemeController instance = ThemeController._();
+ 
++  /// 当前动态取色种子（ARGB int）。L7 Sp.theme 用它派生 ColorScheme。
++  int _seedArgb = 0xFF1DB954; // 默认品牌绿
++  int get seedArgb => _seedArgb;
++
++  /// 从 L4 ColorSeed 派生调色板并更新种子（封面取色入口）。
++  /// 返回派生出的 ThemePalette 供调用方参考；失败保留旧种子。
++  ThemePalette? applySeed(ColorSeed seed, {required bool dark}) {
++    try {
++      final palette = fromSeed(seed, dark: dark);
++      _seedArgb = palette.primary;
++      KeyValueSettings.shared(StoragePaths.I).setInt(kSeedKey, _seedArgb);
++      notifyListeners();
++      Log.d('theme_controller', 'applySeed primary=${palette.primary.toRadixString(16)}');
++      return palette;
++    } catch (e, st) {
++      Log.e('theme_controller', 'applySeed failed', e, st);
++      return null;
++    }
++  }
++
+   /// 切换主题模式：写值 + 持久化 + 通知监听者（AppRoot / 设置页）。
+   void setMode(int mode) {
+     try {
+@@ -35,8 +60,8 @@ class ThemeController extends ValueNotifier<int> {
+         return;
+       }
+       value = mode;
+-      final ok =
+-          KeyValueSettings.shared(StoragePaths.I).setInt(kThemeModeKey, mode);
++      final ok = KeyValueSettings.shared(StoragePaths.I)
++          .setInt(kThemeModeKey, mode);
+       if (!ok) {
+         Log.w('theme_controller', 'persist mode failed: $mode');
+       }
+
+### lib/session/locale_controller.dart
+diff --git a/lib/session/locale_controller.dart b/lib/session/locale_controller.dart
+new file mode 100644
+index 0000000..e23f58d
+--- /dev/null
++++ b/lib/session/locale_controller.dart
+@@ -0,0 +1,37 @@
++// L6 session · 语言区域控制器（阶段B B7 P0 修复：语言切换完全不可用）
++// ValueNotifier<String>（flutter foundation，L6 允许）；持久化经 TnStrings
++// （L4 core/l10n，经 bridge_core 门面）。L7 只经 bridge_session 取本控制器。
++// 0 跟随系统用空串，否则为 TnStrings 归一化后的语言码（zh/zh_Hant/en/...）。
++library;
++
++import 'package:flutter/foundation.dart';
++
++import '../bridges/bridge_core.dart' show TnStrings;
++import '../bridges/bridge_kernel.dart' show Log;
++
++class LocaleController extends ValueNotifier<String> {
++  LocaleController._() : super(TnStrings.loadLocale()) {
++    Log.d(_tag, 'init locale=${value.isEmpty ? "system" : value}');
++  }
++
++  static const String _tag = 'session.locale';
++  static final LocaleController instance = LocaleController._();
++
++  /// 可选语言（与 TnStrings.supportedCodes 一致）+ 跟随系统（空串）。
++  static const List<String> codes = <String>[
++    '', 'zh', 'zh_Hant', 'en', 'ja', 'ko', 'es', 'fr', 'de', 'pt', 'ru',
++  ];
++
++  /// 切换语言：持久化 + 通知（app_root 监听后重建 MaterialApp）。
++  void setLocale(String code) {
++    try {
++      // 持久化归口 L4 TnStrings（内部处理 system→空串，避免 normalize 陷阱）。
++      TnStrings.saveLocale(code);
++      value = TnStrings.loadLocale();
++      Log.d(_tag, 'setLocale $code -> ${value.isEmpty ? "system" : value}');
++      notifyListeners();
++    } catch (e, st) {
++      Log.e(_tag, 'setLocale($code) failed', e, st);
++    }
++  }
++}
+
+## 关键事实核对
+
+### lib/surface/shell.dart
+  useMaterial3         good=0 now=1
+  navigationBarTheme   good=0 now=1
+  backgroundColor      good=0 now=2
+
+### lib/surface/app_root.dart
+  SystemChrome         good=0 now=2
+
+### lib/surface/design/tokens.dart
+  useMaterial3         good=2 now=2
+  navH                 good=2 now=2
+  navigationBarTheme   good=1 now=1
+  backgroundColor      good=5 now=5
+  context.cs           good=0 now=1
+
+### lib/surface/design/mini_bar.dart
+  context.cs           good=0 now=3
+
+### lib/surface/theme/tn_theme.dart
+  useMaterial3         good=1 now=0
+  spLightThemeData     good=1 now=0
+  spErrorThemeData     good=0 now=1
+
+### lib/session/theme_controller.dart
+
+### lib/session/locale_controller.dart

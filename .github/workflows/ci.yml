@@ -242,6 +242,16 @@ jobs:
           if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
             sed -i 's#<manifest[^>]*>#&\n    <uses-permission android:name="android.permission.INTERNET"/>#' "$MANIFEST"
           fi
+          # 深色原生主题（底栏浅色带真因之一）：flutter create 生成的是
+          # Theme.Material.Light（浅色 windowBackground），MIUI 等 ROM 会用
+          # 它画 64dp 系统导航栏（真机浅灰带）。这里把 styles.xml 改为深色
+          # NoActionBar，与 Dart 层 SystemChrome 双保险。
+          STYLES=android/app/src/main/res/values/styles.xml
+          if [ -f "$STYLES" ]; then
+            sed -i 's/Theme.MaterialComponents.Light.NoActionBar/Theme.MaterialComponents.NoActionBar/g; s/Theme.Material.Light.NoActionBar/Theme.Material.NoActionBar/g' "$STYLES" || true
+            grep -q 'android:windowLightStatusBar' "$STYLES" || \
+              sed -i 's#<style name="NormalTheme"[^>]*>#&\n        <item name="android:windowLightStatusBar">false</item>\n        <item name="android:windowLightNavigationBar">false</item>#' "$STYLES" || true
+          fi
           grep -q 'android.permission.INTERNET' "$MANIFEST"
           # isar_flutter_libs 3.1.0+1 未声明 namespace，AGP 8（Flutter 3.47 模板）拒编。
           # 给 pub-cache 中该插件的 build.gradle 注入 namespace（不改动项目依赖版本）。
