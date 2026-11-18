@@ -109,7 +109,7 @@ jobs:
         run: |
           set -e
           APPDIR=/tmp/TiernanMusicNext.AppDir
-          rm -rf "$APPDIR"; mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/256x256/apps"
+          rm -rf "$APPDIR"; mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/256x256/apps" "$APPDIR/usr/share/icons/hicolor/scalable/apps"
           cp -a build/linux/x64/release/bundle/. "$APPDIR/usr/bin/"
           # desktop entry（官方规范）
           cat > "$APPDIR/tiernanmusicnext.desktop" <<'EOF'
@@ -125,8 +125,14 @@ jobs:
           if [ -f assets/app_icon.svg ]; then
             cp assets/app_icon.svg "$APPDIR/usr/share/icons/hicolor/scalable/apps/tiernanmusicnext.svg" 2>/dev/null || true
           else
-            # 无图标资源时用最小 PNG 占位（AppImage 校验需要）
-            printf '\x89PNG\r\n\x1a\n' > "$APPDIR/usr/share/icons/hicolor/256x256/apps/tiernanmusicnext.png"
+            # 无图标资源时用有效 1x1 PNG 占位（desktop-file-validate 需要真实 PNG）
+            echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==' | base64 -d > "$APPDIR/usr/share/icons/hicolor/256x256/apps/tiernanmusicnext.png"
+          fi
+          # appimagetool 要求图标在 AppDir 根目录（desktop Icon= 按根查找）
+          if [ -f "$APPDIR/usr/share/icons/hicolor/scalable/apps/tiernanmusicnext.svg" ]; then
+            cp "$APPDIR/usr/share/icons/hicolor/scalable/apps/tiernanmusicnext.svg" "$APPDIR/tiernanmusicnext.svg"
+          else
+            cp "$APPDIR/usr/share/icons/hicolor/256x256/apps/tiernanmusicnext.png" "$APPDIR/tiernanmusicnext.png"
           fi
           cat > "$APPDIR/AppRun" <<'EOF'
           #!/bin/sh
