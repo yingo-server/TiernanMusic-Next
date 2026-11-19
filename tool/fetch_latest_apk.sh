@@ -45,13 +45,19 @@ if not assets:
     print('ERROR: 该 release 无 APK 资产'); sys.exit(1)
 # 优先 arm64（主流真机）
 arm = [a for a in assets if 'arm64-v8a' in a['name']] or assets
-print(arm[0]['browser_download_url'])
-" > /tmp/_apk_url.txt
+# 走 asset API（带 Accept: application/octet-stream），比 browser_download_url
+# 在带鉴权时更可靠（后者会返回 BlobNotFound）。
+print(arm[0]['id'])
+print(arm[0]['name'])
+" > /tmp/_apk_info.txt
 
-URL=$(cat /tmp/_apk_url.txt)
-echo "下载地址: $URL"
+ASSET_ID=$(sed -n '1p' /tmp/_apk_info.txt)
+ASSET_NAME=$(sed -n '2p' /tmp/_apk_info.txt)
+echo "asset id: $ASSET_ID  name: $ASSET_NAME"
 mkdir -p "$OUT_DIR"
-OUT="$OUT_DIR/$(basename "$URL")"
-curl -L -H "$AUTH" -o "$OUT" "$URL"
+OUT="$OUT_DIR/$ASSET_NAME"
+curl -L -H "$AUTH" -H "Accept: application/octet-stream" \
+  -o "$OUT" "$API/releases/assets/$ASSET_ID"
 ls -lh "$OUT"
+file "$OUT" 2>/dev/null || true
 echo "完成: $OUT"
