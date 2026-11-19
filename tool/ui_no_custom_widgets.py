@@ -87,4 +87,33 @@ if errs:
     if len(errs) > 80:
         print(f'  ... 其余 {len(errs)-80} 条')
     sys.exit(1)
-print(f'PASS ui-no-custom-widgets ({len(files)} files scanned, zero hand-written widgets, zero raw colors)')
+
+# ── 额外扫描：启动失败页（lib/init/main.dart） ─────────────────────
+# 错误页不在 lib/surface 下，但它同样在真机上渲染、同样可能配色割裂。
+# 这里只查「裸色值 + Colors API + 平台判断」；widget 类允许（页面容器）。
+EXTRA_SCAN = [os.path.join(ROOT, 'lib/init/main.dart')]
+for path in EXTRA_SCAN:
+    if not os.path.exists(path):
+        continue
+    rel = os.path.relpath(path, ROOT)
+    src = open(path, encoding='utf-8').read()
+    for m in color_hex_re.finditer(src):
+        line = src[:m.start()].count('\n') + 1
+        errs.append(f'{rel}:{line}: 裸色值 {m.group(0)}（须用语义 token）')
+    for m in colors_api_re.finditer(src):
+        line = src[:m.start()].count('\n') + 1
+        errs.append(f'{rel}:{line}: Colors API {m.group(0)}（须用语义 token）')
+    for pat, label in ((r'Platform\.is(Windows|Linux|MacOS|Android|IOS|Fuchsia)', '平台判断'),):
+        for m in re.finditer(pat, src):
+            line = src[:m.start()].count('\n') + 1
+            errs.append(f'{rel}:{line}: {label}（init 走平台能力网关）')
+
+if errs:
+    print('FAIL ui-no-custom-widgets:')
+    for e in errs[:80]:
+        print('  -', e)
+    if len(errs) > 80:
+        print(f'  ... 其余 {len(errs)-80} 条')
+    sys.exit(1)
+print(f'PASS ui-no-custom-widgets ({len(files)} surface files + {len(EXTRA_SCAN)} error-page file scanned, '
+      f'zero hand-written widgets, zero raw colors)')
