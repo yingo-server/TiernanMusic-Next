@@ -392,9 +392,13 @@ jobs:
 
   release:
     needs: [analyze-test, build]
+    # 发布是显式动作：只有手动触发（workflow_dispatch）或打 tag 才发 Release。
+    # 旧实现 push 到 main 也发 → 连续推送会产生一堆 prerelease tag，
+    # 用户面对一堆版本号无从下手（2026-11-19 实际产生 .08~.12 五个）。
+    # push 到 main 现在只跑 analyze-test + build（验证与产物在 artifact 里）。
     if: >-
       github.event.inputs.release == 'true' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
