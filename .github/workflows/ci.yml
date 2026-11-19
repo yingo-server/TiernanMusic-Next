@@ -349,6 +349,8 @@ jobs:
           # 用 printf 逐行写，避免在 YAML run: | 内嵌顶格 heredoc 破坏缩进。
           printf '%s\n' \
             '-keep class dev.isar.** { *; }' \
+            '-keep class **_IsarSchema { *; }' \
+            '-keepclassmembers class **_IsarSchema { *; }' \
             '-keep class com.ryanheise.audioservice.** { *; }' \
             '-keep class io.flutter.** { *; }' \
             '-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod' \

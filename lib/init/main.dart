@@ -177,6 +177,32 @@ void _installLogSink(String? rootDir) {
   }
 }
 
+/// 启动失败页展示的运行环境信息（一次性定位环境因素：存储根是否可写、
+/// 操作系统版本、架构）。真机复现时这段就能说明问题出在哪。
+String _envInfo() {
+  final buf = StringBuffer();
+  try {
+    buf.writeln('OS: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
+    buf.writeln('arch: ${Platform.version}');
+    final cwd = Directory.current.path;
+    buf.writeln('cwd: $cwd');
+    try {
+      final appDir = Directory('${Directory.systemTemp.path}/tn_probe');
+      if (!appDir.existsSync()) appDir.createSync(recursive: true);
+      final probe = File('${appDir.path}/probe.txt');
+      probe.writeAsStringSync('ok');
+      buf.writeln('temp writable: yes (${appDir.path})');
+      probe.deleteSync();
+      appDir.deleteSync(recursive: true);
+    } catch (e) {
+      buf.writeln('temp writable: NO ($e)');
+    }
+  } catch (e) {
+    buf.writeln('env probe failed: $e');
+  }
+  return buf.toString().trim();
+}
+
 /// 启动失败可见页（M3 全屏报错，替代静默退出/闪退观感）。
 ///
 /// 关键修复：显示**真实失败原因**与 boot 日志尾部。
@@ -228,6 +254,16 @@ class _BootErrorApp extends StatelessWidget {
               ),
               if (hasLog) ...[
                 const SizedBox(height: 24),
+                Text('运行环境', style: theme.textTheme.titleSmall),
+                const SizedBox(height: 8),
+                SelectableText(
+                  _envInfo(),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontFamily: 'monospace',
+                    color: scheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Text('启动日志（末尾 40 行）', style: theme.textTheme.titleSmall),
                 const SizedBox(height: 8),
                 Container(

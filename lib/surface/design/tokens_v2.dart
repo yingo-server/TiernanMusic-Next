@@ -107,8 +107,8 @@ class TnPalette {
     brightness: Brightness.light,
     bgCanvas: Color(0xFFF7F8FA),
     bgSurface: Color(0xFFFFFFFF),
-    bgContainer: Color(0xFFF2F2F2),
-    bgContainerHigh: Color(0xFFE8EAEE),
+    bgContainer: Color(0xFFE4E7EB),
+    bgContainerHigh: Color(0xFFC2C8D0),
     // 深翡翠：在浅底上 4.56:1（AA 正文达标）；亮翡翠 #1DB954 在白底只有
     // 2.43:1，不可作正文色。
     primary: Color(0xFF12833C),
@@ -143,9 +143,9 @@ class TnPalette {
   static const TnPalette dark = TnPalette(
     brightness: Brightness.dark,
     bgCanvas: Color(0xFF0E0F12),
-    bgSurface: Color(0xFF141519),
-    bgContainer: Color(0xFF1C1D21),
-    bgContainerHigh: Color(0xFF25272C),
+    bgSurface: Color(0xFF181A1F),
+    bgContainer: Color(0xFF2B3038),
+    bgContainerHigh: Color(0xFF3A4049),
     primary: Color(0xFF1DB954),
     onPrimary: Color(0xFF06120A),
     secondary: Color(0xFF2ECC71),

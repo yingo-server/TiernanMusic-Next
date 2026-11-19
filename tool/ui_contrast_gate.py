@@ -67,6 +67,13 @@ CHECKS = [
     ('color.error', 'color.bg.surface', 3.0, '错误状态/卡片'),
     ('color.info', 'color.bg.surface', 3.0, '信息状态/卡片'),
     ('color.text.disabled', 'color.bg.surface', 1.6, '禁用文字/卡片（下限，仅可读）'),
+    # 分层可辨：容器/高强调必须比画布明显更亮（明暗皆然）。
+    # 真机教训（2026-11-19）：底色与卡片色差过小 → 界面"糊成一片"，
+    # 用户观感是"颜色不对"。这里锁定最小可辨层次差。
+    # 注意：浅色模式的 surface（白卡片）浮在浅灰画布上，明度差天然很小
+    # （靠阴影分层），故 surface/canvas 只要求"不倒挂"，阈值另在下方按明暗分别处理。
+    ('color.bg.container', 'color.bg.canvas', 1.15, '容器/画布（分层可辨）'),
+    ('color.bg.containerHigh', 'color.bg.canvas', 1.55, '高强调容器/画布（分层可辨）'),
     ('titlebar.fg', 'titlebar.bg', 4.5, '标题栏文字/标题栏底'),
     ('titlebar.inactive', 'titlebar.bg', 3.0, '失活标题栏/标题栏底'),
     ('titlebar.close.hover', 'titlebar.bg', 3.0, '关闭按钮hover/标题栏底'),
@@ -83,6 +90,34 @@ for idx, board in enumerate(('Light', 'Dark')):
         cr = ratio(f, b)
         if cr < need:
             errs.append(f'{board}: {label} 对比 {cr:.2f} < {need} ({fg}={f} on {bg}={b})')
+
+# 分层方向检查：surface 必须与 canvas 同向分层（暗色更亮 / 浅色更白），
+# 且容器比 surface 更可辨。防止把容器色与卡片色配反（"凹陷"色反而更亮）。
+if all(k in PAIRS for k in ('color.bg.canvas', 'color.bg.surface',
+                            'color.bg.container', 'color.bg.containerHigh')):
+    for idx, board in enumerate(('Light', 'Dark')):
+        canvas = PAIRS['color.bg.canvas'][idx]
+        surface = PAIRS['color.bg.surface'][idx]
+        container = PAIRS['color.bg.container'][idx]
+        high = PAIRS['color.bg.containerHigh'][idx]
+        # 明度序：canvas <= surface <= container <= high（暗色）
+        # 浅色：canvas <= surface（白卡片），container/high 更暗（凹陷/选中）
+        if board == 'Dark':
+            order = [canvas, surface, container, high]
+            for a, b, la, lb in zip(order, order[1:], canvas, surface):
+                if lum(a) >= lum(b):
+                    errs.append('%s: 分层明度序倒挂 %s(%s) <= %s(%s)'
+                                % (board, a, la, b, lb))
+        else:
+            if lum(canvas) > lum(surface):
+                errs.append('Light: 卡片(%s) 必须比画布(%s) 更白'
+                            % (surface, canvas))
+            if lum(container) >= lum(surface):
+                errs.append('Light: 容器(%s) 应比卡片(%s) 更暗（凹陷/分组底）'
+                            % (container, surface))
+            if lum(high) >= lum(container):
+                errs.append('Light: 高强调容器(%s) 应比容器(%s) 更暗'
+                            % (high, container))
 
 # 深色不得纯黑、浅色不得纯白（画布/surface 层）
 if 'color.bg.canvas' in PAIRS:

@@ -54,9 +54,9 @@ Primitive 原始色板 → Semantic 语义 Token → Component 组件映射
 | 语义 Token | Light | Dark | 说明 |
 |---|---|---|---|
 | `color.bg.canvas` | `#F7F8FA` | `#0E0F12` | 页面最底层背景（中性灰，不铺色相） |
-| `color.bg.surface` | `#FFFFFF` | `#141519` | 卡片、面板、弹窗 |
-| `color.bg.container` | `#F2F2F2` | `#1C1D21` | 容器、分组底 |
-| `color.bg.containerHigh` | `#E8EAEE` | `#25272C` | 高强调容器、选中底 |
+| `color.bg.surface` | `#FFFFFF` | `#181A1F` | 卡片、面板、弹窗 |
+| `color.bg.container` | `#E4E7EB` | `#2B3038` | 容器、分组底 |
+| `color.bg.containerHigh` | `#C2C8D0` | `#3A4049` | 高强调容器、选中底 |
 | `color.primary` | `#12833C` | `#1DB954` | 主按钮、主强调（翡翠绿） |
 | `color.onPrimary` | `#FFFFFF` | `#06120A` | 主色上的文字/图标 |
 | `color.secondary` | `#1DB954` | `#2ECC71` | 次强调、图表 |

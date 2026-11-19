@@ -168,7 +168,14 @@ class Bootstrap {
         })
         .catchError((Object e, StackTrace st) {
           Log.e('boot', 'db open failed', e, st);
-          throw StateError('db open failed: $e');
+          // 带目录路径与 OS 信息：区分"目录不可写"（PathAccessException /
+          // FileSystemException）与"native lib 崩"（UnsatisfiedLinkError /
+          // NoSuchMethodError，Isar+R8 场景），两者修法完全不同。
+          throw StateError(
+            'db open failed at $dbPath: $e\n'
+            'hint: PathAccessException/FileSystemException → 目录不可写；'
+            'UnsatisfiedLinkError/NoSuchMethodError → Isar native 绑定被 R8 破坏',
+          );
         });
 
     // 3) core 单例 + AuthLogic 单例（每步 try/catch 由 run 外层兜底留痕）。
