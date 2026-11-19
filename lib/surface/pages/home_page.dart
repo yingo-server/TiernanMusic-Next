@@ -10,6 +10,7 @@ import '../../bridges/bridge_session.dart'
     show NavState, PlaybackSession, SurfaceModule, NavEntry;
 import '../../bridges/bridge_session.dart' show appGraph;
 import '../design/tokens_v2.dart';
+import 'login_sheet.dart' show showLoginSheet;
 import 'playlist_page.dart' show PlaylistDetailSheet;
 
 const String _tag = 'surface.home';
@@ -116,6 +117,15 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// 「每日推荐」空态的登录入口：与设置页同一入口（login_sheet）。
+  void _goLogin() {
+    try {
+      showLoginSheet(context);
+    } catch (e, st) {
+      Log.e(_tag, 'showLoginSheet failed', e, st);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -150,8 +160,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// 区块标题（官方 Text）。
-  Widget _section(BuildContext c, String title, Widget child) {
+  /// 区块标题（计划书 §2.3：标题 + 「更多」同行，8dp 体系）。
+  Widget _section(BuildContext c, String title, Widget child,
+      {VoidCallback? onMore}) {
     final theme = Theme.of(c);
     return Padding(
       padding: const EdgeInsets.only(top: 24, bottom: 12),
@@ -160,7 +171,22 @@ class _HomePageState extends State<HomePage> {
         children: <Widget>[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(title, style: theme.textTheme.titleLarge),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(title, style: theme.textTheme.titleLarge),
+                ),
+                if (onMore != null)
+                  TextButton(
+                    onPressed: onMore,
+                    style: TextButton.styleFrom(
+                      foregroundColor: theme.colorScheme.primary,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: const Text('更多'),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           child,
@@ -191,20 +217,36 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// 空态（官方 Icon + Text）。
-  Widget _empty(BuildContext c, String message) {
+  /// 空态（计划书 §2.3.1：图标 + 文案 + 动作，紧凑高度 96，不再大块占位）。
+  Widget _empty(BuildContext c, String message, {VoidCallback? onAction, String? actionLabel}) {
     final theme = Theme.of(c);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SizedBox(
-        height: 120,
+        height: 96,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Icon(Icons.music_note, color: theme.colorScheme.onSurfaceVariant),
+              Icon(Icons.music_note, size: 32, color: theme.colorScheme.onSurfaceVariant),
               const SizedBox(height: 8),
-              Text(message, style: theme.textTheme.bodySmall),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text(message, style: theme.textTheme.bodySmall),
+                  if (onAction != null && actionLabel != null) ...<Widget>[
+                    const SizedBox(width: 12),
+                    TextButton(
+                      onPressed: onAction,
+                      style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.primary,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: Text(actionLabel),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
@@ -250,7 +292,16 @@ class _HomePageState extends State<HomePage> {
         }
         final items = snap.data ?? const <SongBrief>[];
         if (items.isEmpty) {
-          return _section(c, '每日推荐', _empty(c, '登录后可查看每日推荐'));
+          return _section(
+            c,
+            '每日推荐',
+            _empty(
+              c,
+              '登录后可查看每日推荐',
+              actionLabel: '去登录',
+              onAction: _goLogin,
+            ),
+          );
         }
         return _section(
           c,
@@ -304,6 +355,7 @@ class _HomePageState extends State<HomePage> {
               },
             ),
           ),
+          onMore: _goSearch,
         );
       },
     );

@@ -64,11 +64,24 @@ class _AppRootState extends State<AppRoot> {
   void initState() {
     super.initState();
     _applySystemBarStyle();
+    _enableEdgeToEdge();
   }
 
-  /// 真机修复（浅灰/米黄底栏带）：App 自身不设置 Android 系统导航栏颜色时，
-  /// MIUI 等 ROM 会用浅灰 windowBackground 画系统导航区（截图里那条无色无图标的
-  /// 纯色带），它盖住/挤掉 Flutter 的 NavigationBar，造成"底栏不可见"。显式锁暗。
+  /// Edge-to-edge（计划书 P5）：Flutter 画布延伸到系统栏之下，
+  /// Scaffold 经 MediaQuery.padding 自动为 NavigationBar/mini bar 避让
+  /// 手势区 —— MIUI 的独立系统导航区域不再存在，悬浮通知横幅也不会
+  /// 再把底栏"盖住"（真机 2026-11-20：底栏区域曾被系统面板遮挡）。
+  static void _enableEdgeToEdge() {
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.edgeToEdge,
+      overlays: <SystemUiOverlay>[SystemUiOverlay.top, SystemUiOverlay.bottom],
+    );
+  }
+
+  /// 真机修复（浅灰/米黄底栏带）：edge-to-edge 模式下系统导航栏透明，
+  /// 由 Flutter 画布绘制底色；MIUI 不再有独立的浅灰 windowBackground 区域。
+  /// 注意：legacy 模式的 systemNavigationBarColor 在 edge-to-edge 下无效，
+  /// 但保留设置无害（部分 ROM 仍读它做过渡帧）。
   static void _applySystemBarStyle() {
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       systemNavigationBarColor: TnSystemColors.navDark,
