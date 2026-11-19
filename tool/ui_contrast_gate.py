@@ -94,9 +94,85 @@ if 'color.bg.surface' in PAIRS:
     if PAIRS['color.bg.surface'][1] == '#000000':
         errs.append('Dark: bg.surface 不得为纯黑 #000000')
 
+# ── 代码真源一致性 ──────────────────────────────────────────────
+# 漏洞修复：门禁原本只读文档，代码里的 token 改了而文档没改 → 门禁永远 PASS
+# （文档与代码漂移）。现在从 tokens_v2.dart 解析实际色值，逐个与文档比对。
+TOKENS_DART = os.path.join(ROOT, 'lib/surface/design/tokens_v2.dart')
+CODE_MAP = {}  # 字段名 -> (light_hex, dark_hex)
+
+def _parse_palette(src, name):
+    """解析 TnPalette.<name> = TnPalette(...) 的字段: Color(0xAARRGGBB)"""
+    m = re.search(r'static const TnPalette %s = TnPalette\((.*?)\n  \);' % name, src, re.S)
+    if not m:
+        return None
+    out = {}
+    for fm in re.finditer(r'(\w+):\s*Color\(0x([0-9A-Fa-f]{8})\)', m.group(1)):
+        argb = fm.group(2).upper()
+        out[fm.group(1)] = '#' + argb[2:]
+    return out
+
+if os.path.exists(TOKENS_DART):
+    tsrc = open(TOKENS_DART, encoding='utf-8').read()
+    light_code = _parse_palette(tsrc, 'light')
+    dark_code = _parse_palette(tsrc, 'dark')
+    if not light_code or not dark_code:
+        errs.append('无法从 tokens_v2.dart 解析 light/dark 调色板')
+    else:
+        # 字段名 -> 文档 token 名
+        FIELD2DOC = {
+            'bgCanvas': 'color.bg.canvas', 'bgSurface': 'color.bg.surface',
+            'bgContainer': 'color.bg.container',
+            'bgContainerHigh': 'color.bg.containerHigh',
+            'primary': 'color.primary', 'onPrimary': 'color.onPrimary',
+            'secondary': 'color.secondary', 'onSecondary': 'color.onSecondary',
+            'textPrimary': 'color.text.primary',
+            'textSecondary': 'color.text.secondary',
+            'textDisabled': 'color.text.disabled', 'outline': 'color.outline',
+            'divider': 'color.divider', 'focus': 'color.focus',
+            'success': 'color.success', 'warning': 'color.warning',
+            'error': 'color.error', 'onError': 'color.onError', 'info': 'color.info',
+            'titlebarBg': 'titlebar.bg', 'titlebarFg': 'titlebar.fg',
+            'titlebarButtonHover': 'titlebar.button.hover',
+            'titlebarCloseHover': 'titlebar.close.hover',
+            'titlebarInactive': 'titlebar.inactive',
+        }
+        for field, doc_name in FIELD2DOC.items():
+            if doc_name not in PAIRS:
+                continue
+            for idx, board in enumerate(('Light', 'Dark')):
+                code_hex = (light_code if idx == 0 else dark_code).get(field)
+                if code_hex is None:
+                    continue
+                if code_hex.upper() != PAIRS[doc_name][idx]:
+                    errs.append(
+                        '%s: %s 代码值 %s 与文档 %s 不一致（代码真源漂移）'
+                        % (board, doc_name, code_hex, PAIRS[doc_name][idx]))
+
+# ── 错误页主题上下文检查 ─────────────────────────────────────────
+# 已知事故：错误页在 MaterialApp 的 build() 里用 Theme.of(context) 取色，
+# 拿到的是 MaterialApp 生效前的外层（默认亮色）主题 → 配色割裂。
+# 检查 lib/init/main.dart 的错误页不得在 MaterialApp 之外取 Theme.of(context)。
+MAIN_DART = os.path.join(ROOT, 'lib/init/main.dart')
+if os.path.exists(MAIN_DART):
+    msrc = open(MAIN_DART, encoding='utf-8').read()
+    # _BootErrorApp 的 build 方法体
+    bm = re.search(r'class _BootErrorApp.*?Widget build\(BuildContext context\) \{(.*?)\n  \}\n\}', msrc, re.S)
+    if bm:
+        body = bm.group(1)
+        # 允许：先建 theme 变量再传给 MaterialApp；禁止：直接 Theme.of(context)
+        if 'Theme.of(context)' in body and 'final theme =' not in body:
+            errs.append(
+                'lib/init/main.dart: 错误页在 MaterialApp 之外使用 Theme.of(context)'
+                '（拿到外层默认主题，配色割裂）；应先 final theme = spErrorThemeData() '
+                '再传给 MaterialApp')
+        if 'final theme =' not in body:
+            errs.append(
+                'lib/init/main.dart: 错误页未显式构造主题（应 final theme = spErrorThemeData()）')
+
 if errs:
     print('FAIL ui-contrast-gate:')
     for e in errs:
         print('  -', e)
     sys.exit(1)
-print(f'PASS ui-contrast-gate ({len(PAIRS)} semantic tokens, light/dark pairs, contrast ok)')
+print(f'PASS ui-contrast-gate ({len(PAIRS)} semantic tokens, light/dark pairs, contrast ok, '
+      f'code/doc consistent)')
