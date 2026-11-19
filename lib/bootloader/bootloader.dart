@@ -72,7 +72,10 @@ class Bootstrap {
   /// [rootDir]：存储根目录。TODO(时序说明)：L2 是纯 dart:io 层、禁 flutter，
   /// 无法调 path_provider。约定由 main（L1 特例，允许 import path_provider）
   /// 在 runApp 前先 `getApplicationSupportDirectory()` 拿目录，再传进本参数
-  /// （见 init/main.dart）。未传时用 `.` 相对根兜底（仅 debug 可跑通）。
+  /// （见 init/main.dart）。
+  /// **必填**：未提供时 _assembleCore 抛 StateError（启动失败并显示真实原因）。
+  /// 旧实现在此回落到 '.' 相对根 —— Android 上 CWD 是 '/'，会抛
+  /// PathAccessException 导致真机 boot rejected（真机事故，根因之一）。
   /// 注：无 manifest/moduleBytes 参数——运行期完整性校验已删除，
   /// 防篡改由 CI 构建期 verification.json（加盐 md5/sha512 + RSA-4096 签名）
   /// 承担；init 层的 runBoot 调用点也不再传这些实参。
@@ -115,7 +118,17 @@ class Bootstrap {
   /// 返回字段与 BootResult 装配字段同名的 map（spread 构造 BootResult）。
   static Map<String, Object?> _assembleCore({String? rootDir}) {
     // 1) 存储根注入（真实路径由 main 经 path_provider 拿到后传入，见 run 文档）。
-    final paths = core.StoragePaths.init(rootDir ?? '.');
+    //
+    // 关键修复：不再用 '.' 兜底。Android 上进程 CWD 是 '/'，相对根会导致
+    // StoragePaths 的 createSync 抛 PathAccessException（真机 boot rejected）。
+    // 拿不到根目录 = 启动失败，抛出让 init 层显示真实原因。
+    if (rootDir == null || rootDir.trim().isEmpty) {
+      throw StateError(
+        'storage root unavailable: main must inject rootDir from '
+        'path_provider.getApplicationSupportDirectory()',
+      );
+    }
+    final paths = core.StoragePaths.init(rootDir);
     Log.d('boot', 'storage root=${paths.rootDir.path}');
 
     // 2) DB 打开（幂等）：**不在 bootloader 里 unawaited**——审查发现 main 从不

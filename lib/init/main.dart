@@ -43,12 +43,24 @@ void main(List<String> args) async {
 }
 
 Future<void> _boot({required bool debugBypass}) async {
-  // ① 存储根目录（L1 特例）。失败退 null：bootloader 内相对根兜底（仅 debug）。
-  String? rootDir;
+  // ① 存储根目录（L1 特例）。
+  //
+  // 关键修复：**不再静默回落到相对根 '.'**。
+  // 旧行为：path_provider 失败 → rootDir=null → bootloader 用 '.' →
+  //   Android 进程 CWD 是 '/' → StoragePaths 的 createSync 抛 PathAccessException
+  //   → boot rejected（真机启动失败，且原因被固定文案掩盖）。
+  // 旧代码的 fallback 只写在注释里（"仅 debug 可跑通"），release 真机照样走这条路。
+  // 现在：拿不到存储根 = 明确的启动失败，错误页直接显示真实原因。
+  String rootDir;
   try {
     rootDir = (await getApplicationSupportDirectory()).path;
   } catch (e, st) {
-    debugPrint('main: path_provider failed, fallback relative root: $e/$st');
+    debugPrint('main: path_provider failed: $e\n$st');
+    runApp(_BootErrorApp(
+      message: '无法获取应用存储目录（storage root unavailable）\n'
+          '$e\n\n应用无法在无存储目录的情况下启动。',
+    ));
+    return;
   }
   // ①b 日志落盘 sink：release 真机 stdout 不可见，boot 日志必须写文件，
   //     否则"see boot log"无从查证。L3 只暴露 sink 钩子，写盘由 L1 实施。
