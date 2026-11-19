@@ -8,6 +8,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+// Clipboard：启动失败页"复制诊断信息"（把原因+日志一键带给开发者）。
+import 'package:flutter/services.dart';
 // L1 特例（架构放行）：仅 main 允许 path_provider——L2 bootloader 禁 flutter，
 // 存储根目录必须由依赖图根（main）拿好后注入 runBoot(rootDir:)。
 import 'package:path_provider/path_provider.dart';
@@ -241,6 +243,31 @@ class _BootErrorApp extends StatelessWidget {
                       fontFamily: 'monospace',
                       color: scheme.onSurface,
                     ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 一键复制完整诊断（原因 + 日志），用户直接粘给开发者即可，
+                // 无需截图、不依赖外部工具。
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        await Clipboard.setData(
+                          ClipboardData(text: '$detail\n\n$logTail'),
+                        );
+                        messenger.showSnackBar(
+                          const SnackBar(content: Text('诊断信息已复制')),
+                        );
+                      } catch (e) {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text('复制失败：$e')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.copy_all_outlined),
+                    label: const Text('复制诊断信息'),
                   ),
                 ),
               ],
