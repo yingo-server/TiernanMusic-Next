@@ -87,8 +87,37 @@ Android 进程 CWD 是 `/`，相对根解析为 `/downloads`、`/cache`、`/db` 
 | 观测 | 结论 |
 |---|---|
 | App 内容区主色 100% 为深绿系（`#1C4C25` / `#084A14` / `#14591F`） | 底色被铺成深绿 |
-| 视觉模型报告的"品红图标" | **像素筛查 0 命中 → 误判**（该模型在低饱和区域不可靠） |
+| 中央圆形错误图标呈**紫色系**（`RGB(232,191,255)`≈`#E8BFFF`） | **是 Flutter 默认 M3 深色 primary `#D0BCFF`**，不是任何 `TnPalette` token |
+| 品红像素分布 | 全分辨率扫描命中 2,609 个，其中 **2,367（91%）集中在 y=2200-2500** 的图标区（空心圆环+感叹号），其余为相机噪点 |
 | AppBar 与画布像素差 | 无分层（符合 `AppBarTheme.backgroundColor = bgCanvas, elevation 0`） |
+
+### 2.2b 紫色图标的根因：主题分裂（已修）
+
+错误页旧代码在**自身 `MaterialApp` 生效之前**调用 `Theme.of(context)`：
+
+```dart
+return MaterialApp(
+  theme: spErrorThemeData(),          // 深绿主题在这里才挂上
+  home: Scaffold(
+    Icon(Icons.error_outline,
+         color: Theme.of(context).colorScheme.primary),   // ← 上层 context
+```
+
+`runApp(_BootErrorApp(...))` 时它没有 MaterialApp 祖先，`Theme.of(context)` 返回
+`ThemeData.fallback()` → Flutter SDK 默认 M3 紫板（`#D0BCFF` 深 / `#6750A4` 浅）。
+于是同时产生三个现象：
+
+- 图标 → 外层默认主题的紫 `primary`（实测 `#E8BFFF` ✓）
+- 标题 `titleLarge` / `labelSmall` → 外层默认主题的深色 `onSurface`（深绿底上几乎不可读）
+- 正文 / AppBar → `MaterialApp` 内的深绿 `spErrorThemeData`（实测近白 ✓）
+
+**修复**：先 `final theme = spErrorThemeData()` 再传给 `MaterialApp`，
+图标改用 `scheme.error`；并加门禁禁止在 MaterialApp 之外取 `Theme.of(context)`。
+
+> 排查方法论教训：本项目第一次颜色扫描时把图缩到 120×160，
+> **降采样把图标细笔画平均掉了**，导致"品红 0 命中"的假阴性，
+> 误判为视觉模型幻觉。**颜色结论必须全分辨率扫描**（或至少不降采样到
+> 笔画宽度以下）。
 
 ### 2.3 真实问题：配色执行，不是配色来源
 
@@ -97,7 +126,9 @@ Android 进程 CWD 是 `/`，相对根解析为 `/downloads`、`/cache`、`/db` 
 | | 旧版（你见过、可用） | 上一版 UI 重写 | 本次修订 |
 |---|---|---|---|
 | 画布 | 中性灰 `#0E0F12` | **深绿 `#0B1F14`** | 中性灰 `#0E0F12` |
-| 卡片 | `#1C1D21` | `#17332A` | `#1C1D21` |
+| 卡片 | `#1C1D21` | `#17332A` | `#181A1F` |
+| 容器 | — | `#1F4432` | `#2B3038` |
+| 高强调 | — | — | `#3A4049` |
 | 强调色 | 亮绿 `#1DB954` | 薄荷 `#A7F3D0` | `#1DB954`（暗）/ `#12833C`（亮） |
 
 底色回到中性灰，翡翠绿只保留在强调位。对比度实算：
@@ -106,7 +137,28 @@ Android 进程 CWD 是 `/`，相对根解析为 `/downloads`、`/cache`、`/db` 
 - 亮色 `#12833C` on `#F7F8FA` = **4.56:1** ✓
   （亮翡翠 `#1DB954` 在白底仅 2.43:1，不可作正文色）
 
-### 2.4 outline / divider 分档
+### 2.4 关键：真正的机制是**分层对比度不足**，不是绿调
+
+量化后推翻了"绿调是主因"的初判：
+
+| 版本 | canvas↔surface | canvas↔container |
+|---|---|---|
+| 上一版（深绿） | 1.12 | 1.26 |
+| 改成纯中性灰后 | 1.05 | 1.14 |
+
+改成中性灰反而**更平** —— 界面"糊成一片"是**明度差太小**，与色相无关。
+
+因此本次把三档分层**拉开**（明暗两套，全部实算过 WCAG AA）：
+
+| | canvas | surface | container | containerHigh |
+|---|---|---|---|---|
+| Dark | `#0E0F12` | `#181A1F` | `#2B3038` | `#3A4049` |
+| Light | `#F7F8FA` | `#FFFFFF` | `#E4E7EB` | `#C2C8D0` |
+
+浅色模式遵循 M3 语义：`surface`（白卡片）浮于画布之上，
+`container` / `containerHigh`（凹陷底 / 选中底）比卡片**更暗**（不倒挂）。
+
+### 2.5 outline / divider 分档
 
 中性灰做分割线天然达不到 3:1。处理：
 - `color.outline` = **可见控件边框**（3:1，翡翠灰 `#7F9186` / `#5A6B60`）
@@ -124,10 +176,13 @@ Android 进程 CWD 是 `/`，相对根解析为 `/downloads`、`/cache`、`/db` 
 | 代码改了文档没改 → 门禁永远 PASS | 从 `tokens_v2.dart` 解析实际色值，逐字段与文档比对，漂移即 FAIL |
 | 门禁不覆盖 `lib/init/main.dart` 错误页 | 新增错误页检查：必须 `final theme = spErrorThemeData()`，不得在 MaterialApp 之外用 `Theme.of(context)` |
 | 无主题上下文检查 | 已并入上一条（`Theme.of(context)` 在 MaterialApp 生效前取值 → 取到外层默认主题 → 配色割裂） |
+| **不检查分层是否被压平** | 新增：`container/canvas ≥1.15`、`containerHigh/canvas ≥1.55` + 明度序检查（暗色 canvas≤surface≤container≤high；浅色 surface>canvas 且 container/high 更暗） |
 
-**反向测试**（两次都命中后已恢复）：
+**反向测试**（全部命中后已恢复）：
 1. 改代码不改文档 → FAIL「代码值与文档不一致」
 2. 错误页改回 `Theme.of(context)` → FAIL「配色割裂」
+3. 暗色层次压平（代码+文档同步改） → FAIL 3 条（分层可辨 + 明度序倒挂）
+4. 浅色层次配反（container 比卡片更亮） → FAIL
 
 ---
 
@@ -137,12 +192,18 @@ Android 进程 CWD 是 `/`，相对根解析为 `/downloads`、`/cache`、`/db` 
    插件缺失、R8 破坏）永远照不到。至少要有一条"启动失败时错误页可见真因"的通路。
 2. **失败路径必须携带原因** —— 固定文案 + "see boot log"（不存在的 log）会让
    定位成本从分钟级变成跨天级。
-3. **视觉模型对低饱和/受色偏影响的图像不可靠** —— 品红图标是误判，
-   像素筛查 0 命中。凡是颜色结论，必须像素级验证。
-4. **"以前能用"是最强的定位线索** —— 与 `2bee0eb`（真机可启动）做全量 diff，
+3. **视觉模型对低饱和/受色偏影响的图像不可靠** —— 但**更不可靠的是我自己
+   的降采样扫描**：把图缩到 120×160 后品红"0 命中"，实为假阴性。
+   **颜色结论必须全分辨率扫描**；缩采样不得细于笔画宽度。
+4. **"界面糊成一片"的机制是分层对比度，不是色相** —— 改成中性灰后
+   分层对比反而从 1.12 降到 1.05。量化（canvas↔surface↔container）
+   才能定位，不能凭观感归因。
+5. **"以前能用"是最强的定位线索** —— 与 `2bee0eb`（真机可启动）做全量 diff，
    一眼锁定底色从灰变绿。
-5. **门禁要反向测试** —— 改了门禁逻辑后，故意制造违规验证它真会 FAIL，
+6. **门禁要反向测试** —— 改了门禁逻辑后，故意制造违规验证它真会 FAIL，
    否则只是"看起来更严"的假门禁。
+7. **子代理审计期间读到的是并发修改中的工作区** —— 其"HEAD 已修复"类结论
+   可能读到了中间状态，须自行复核后再采信。
 
 ---
 
