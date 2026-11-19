@@ -10,12 +10,30 @@ class Log {
   static void e(String tag, String msg, [Object? err, StackTrace? st]) =>
       _emit('E', tag, '$msg ERR=$err ST=$st');
 
+  /// 可选的落盘 sink（由 L1 init 注入真实路径）。
+  ///
+  /// 背景：release 真机上 print 的 stdout 不可见，"see boot log" 曾经是
+  /// 空头支票 —— 启动失败时用户与开发者都拿不到任何真实原因。
+  /// L3 不 import dart:io（保持纯 Dart），由上层注入写文件的能力。
+  static void Function(String line)? sink;
+
+  /// 最近日志（内存缓冲，供错误页直接展示）。
+  static List<String> get recent => List.unmodifiable(_buf);
+
   static void _emit(String lvl, String tag, String msg) {
     final line = '${DateTime.now().toIso8601String()} $lvl/$tag: $msg';
     _buf.add(line);
     if (_buf.length > 2000) _buf.removeRange(0, 500);
     // ignore: avoid_print
     print(line);
+    final s = sink;
+    if (s != null) {
+      try {
+        s(line);
+      } catch (_) {
+        // 落盘失败不得影响主流程。
+      }
+    }
   }
 }
 

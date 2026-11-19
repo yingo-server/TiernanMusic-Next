@@ -21,6 +21,8 @@ class BootResult {
   const BootResult({
     required this.rejected,
     required this.kernel,
+    this.error = '',
+    this.detail = '',
     this.client,
     this.songDao,
     this.playlistDao,
@@ -33,6 +35,15 @@ class BootResult {
   });
   final bool rejected;
   final KernelContext? kernel;
+
+  /// 启动失败的真实原因与细节（release 真机可见）。
+  ///
+  /// 之前失败路径只回 `BootResult(rejected: true)`，不带任何原因，
+  /// 导致 bridge_boot 只能造固定文案 "core assembly failed (see boot log)"，
+  /// 而 boot log 只 print 不落盘 —— release 真机上根本无从查证。
+  /// 现在失败路径必须带上真实异常与堆栈，由 init 层渲染到错误页。
+  final String error;
+  final String detail;
 
   /// 批2-F3（P0 启动竞态）：DB 打开的 Future 必须随 BootResult 上交，
   /// 经 bridge_boot.BootOutcome.deps 透传到 main，由其 await 后再装配 surface。
@@ -89,7 +100,13 @@ class Bootstrap {
       );
     } catch (e, st) {
       Log.e('boot', 'core assemble failed', e, st);
-      return BootResult(rejected: true, kernel: kernel);
+      // 带上真实异常与堆栈：release 真机无 stdout，必须让错误页可见。
+      return BootResult(
+        rejected: true,
+        kernel: kernel,
+        error: 'core assembly failed',
+        detail: '$e\n$st',
+      );
     }
   }
 

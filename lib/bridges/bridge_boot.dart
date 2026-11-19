@@ -69,10 +69,29 @@ class BootOutcome {
       final d = any as dynamic;
       final bool dynRejected = d.rejected == true;
       if (dynRejected) {
+        // 读取 L2 携带的真实原因（BootResult.error / .detail）。
+        // 旧代码在此造固定文案，把真异常吞掉 —— release 真机无从查证。
+        String pickError(String fallback) {
+          try {
+            final s = (any as dynamic).error.toString().trim();
+            return s.isEmpty ? fallback : s;
+          } catch (_) {
+            return fallback;
+          }
+        }
+
+        String pickDetail() {
+          try {
+            return (any as dynamic).detail.toString();
+          } catch (_) {
+            return '';
+          }
+        }
+
         return BootOutcome.fromAny(<String, Object?>{
           'rejected': true,
-          'error': 'boot rejected',
-          'detail': 'core assembly failed (see boot log)',
+          'error': pickError('boot rejected'),
+          'detail': pickDetail(),
         });
       }
       return BootOutcome._(false, '', '', <String, Object?>{
