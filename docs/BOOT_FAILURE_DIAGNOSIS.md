@@ -216,3 +216,38 @@ return MaterialApp(
 - 动态取色链（封面取色 → 主题种子）仍是**空转**：`_seedArgb` 被持久化但无人消费，
   `AppRoot` 用静态 `TnPalette`。属功能未接，非配色 bug。
 - i18n 全量接线（177 串）、20028 端点实测、macOS/iOS/Web CI 产物仍未做。
+
+---
+
+## 6. 补充：Isar + R8 风险已排除（实测 APK）
+
+审查代理把「Isar 3.1.0 + R8 full-mode 破坏 JNI 绑定」列为现役最高风险。
+**实测排除**（对 v26.11.19.11 的 arm64 APK）：
+
+```
+$ unzip -l app.apk | grep '\.so$'
+lib/arm64-v8a/libapp.so
+lib/arm64-v8a/libdartjni.so
+lib/arm64-v8a/libflutter.so
+lib/arm64-v8a/libisar.so        ← native 库在包内（1.07MB）
+
+$ nm -D --defined-only libisar.so | head
+isar_clear / isar_connect_dart_api / isar_count / isar_delete ...
+（92 个符号，**零个 Java_ 开头的 JNI 符号**）
+```
+
+Isar 通过 **Dart FFI 直连 native**（`isar_connect_dart_api` 即 FFI 入口），
+不经 Java JNI 反射 → **R8（Java 侧 minify/obfuscate）碰不到它**。
+
+结论：
+- 「native lib 缺失」→ 排除（`libisar.so` 在包内）
+- 「R8 破坏 JNI 绑定」→ 排除（纯 Dart FFI，无 JNI 符号）
+- proguard 的 `-keep class dev.isar.**` 保留无害，但真正起作用的是
+  `isar_flutter_libs` 把 `libisar.so` 打进 APK
+
+因此 boot 失败的现役候选收敛为：
+1. `path_provider.getApplicationSupportDirectory()` 在 MIUI 上失败（→ 旧代码回落相对根）
+2. 其他未识别的同步异常
+
+两者都已被修复到「错误页直接显示真因 + 步骤名 + 运行环境」，
+下次真机启动即可定位。
