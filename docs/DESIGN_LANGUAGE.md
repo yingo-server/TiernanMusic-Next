@@ -53,39 +53,40 @@ Primitive 原始色板 → Semantic 语义 Token → Component 组件映射
 
 | 语义 Token | Light | Dark | 说明 |
 |---|---|---|---|
-| `color.bg.canvas` | `#F1F8F4` | `#0B1F14` | 页面最底层背景 |
-| `color.bg.surface` | `#FFFFFF` | `#102A18` | 卡片、面板、弹窗 |
-| `color.bg.container` | `#D8F3DC` | `#17332A` | 容器、分组底 |
-| `color.bg.containerHigh` | `#B7E4C7` | `#1F4432` | 高强调容器、选中底 |
-| `color.primary` | `#1B5E20` | `#A7F3D0` | 主按钮、主强调 |
-| `color.onPrimary` | `#FFFFFF` | `#0B1F14` | 主色上的文字/图标 |
-| `color.secondary` | `#52B788` | `#52B788` | 次强调、图表 |
-| `color.onSecondary` | `#0B1F14` | `#0B1F14` | 次强调上的文字 |
-| `color.text.primary` | `#102A18` | `#E8F5EC` | 正文主文字 |
-| `color.text.secondary` | `#4A6B55` | `#A8C5B2` | 辅助文字 |
-| `color.text.disabled` | `#9BB5A3` | `#5C7A66` | 禁用文字 |
-| `color.outline` | `#6B8F76` | `#5C7A66` | 边框、分割线 |
-| `color.focus` | `#2F5D50` | `#A7F3D0` | 焦点环 |
+| `color.bg.canvas` | `#F7F8FA` | `#0E0F12` | 页面最底层背景（中性灰，不铺色相） |
+| `color.bg.surface` | `#FFFFFF` | `#141519` | 卡片、面板、弹窗 |
+| `color.bg.container` | `#F2F2F2` | `#1C1D21` | 容器、分组底 |
+| `color.bg.containerHigh` | `#E8EAEE` | `#25272C` | 高强调容器、选中底 |
+| `color.primary` | `#12833C` | `#1DB954` | 主按钮、主强调（翡翠绿） |
+| `color.onPrimary` | `#FFFFFF` | `#06120A` | 主色上的文字/图标 |
+| `color.secondary` | `#1DB954` | `#2ECC71` | 次强调、图表 |
+| `color.onSecondary` | `#0E0F12` | `#06120A` | 次强调上的文字 |
+| `color.text.primary` | `#111111` | `#EDEFF2` | 正文主文字 |
+| `color.text.secondary` | `#5F646D` | `#A9AFB8` | 辅助文字 |
+| `color.text.disabled` | `#9AA0AA` | `#6C737D` | 禁用文字 |
+| `color.outline` | `#7F9186` | `#5A6B60` | 可见边框（控件边界，对画布 3:1） |
+| `color.divider` | `#DCDFE4` | `#2E3137` | 纯装饰分割线（低对比，无信息量） |
+| `color.focus` | `#12833C` | `#1DB954` | 焦点环 |
 
 ### 3.2 状态色
 
 | 语义 Token | Light | Dark | 说明 |
 |---|---|---|---|
-| `color.success` | `#2F7D4A` | `#7DD3A0` | 成功；与主色接近，**必须配图标** |
-| `color.warning` | `#9A6700` | `#F5C542` | 警告 |
-| `color.error` | `#B3261E` | `#F2B8B5` | 错误、危险操作 |
+| `color.success` | `#157347` | `#2ECC71` | 成功；与主色接近，**必须配图标** |
+| `color.warning` | `#8A5A00` | `#F2A25C` | 警告 |
+| `color.error` | `#B3261E` | `#E05B5B` | 错误、危险操作 |
 | `color.info` | `#0B6BCB` | `#8EC5FF` | 信息提示 |
-| `color.onError` | `#FFFFFF` | `#601410` | 错误色上的文字 |
+| `color.onError` | `#FFFFFF` | `#1A0505` | 错误色上的文字 |
 
 ### 3.3 桌面标题栏专用 Token
 
 | 语义 Token | Light | Dark | 说明 |
 |---|---|---|---|
-| `titlebar.bg` | `#1B5E20` | `#0B1F14` | 标题栏背景 |
-| `titlebar.fg` | `#E8F5EC` | `#A7F3D0` | 标题文字/图标 |
-| `titlebar.button.hover` | `#52B788` | `#17332A` | 窗口按钮悬停 |
-| `titlebar.close.hover` | `#F2B8B5` | `#F2B8B5` | 关闭按钮悬停 |
-| `titlebar.inactive` | `#A8C5B2` | `#6B8F76` | 非活动窗口降对比 |
+| `titlebar.bg` | `#141519` | `#141519` | 标题栏背景 |
+| `titlebar.fg` | `#EDEFF2` | `#EDEFF2` | 标题文字/图标 |
+| `titlebar.button.hover` | `#25272C` | `#25272C` | 窗口按钮悬停 |
+| `titlebar.close.hover` | `#E05B5B` | `#E05B5B` | 关闭按钮悬停 |
+| `titlebar.inactive` | `#6C737D` | `#6C737D` | 非活动窗口降对比 |
 
 > 标题栏不参与 Material ColorScheme，独立 Token 管理，避免内容区主题切换影响窗口框架。
 > 悬停/失活态取色以**对比度门禁实测**为准（浅色标题栏底为深绿，悬停色须提亮方可见）。

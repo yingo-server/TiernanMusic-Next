@@ -17,8 +17,10 @@ import 'package:flutter/material.dart';
 
 /// 系统 UI 覆盖层颜色（SystemChrome 用；属 platform token，可脱离 context）。
 abstract final class TnSystemColors {
-  static const Color navDark = Color(0xFF0B1F14); // green-900
-  static const Color statusDark = Color(0xFF0B1F14);
+  // 与暗色画布一致（中性灰）。旧值 0xFF0B1F14（深绿）会让 MIUI 用浅色
+  // windowBackground 画系统导航带时与 Flutter 画布割裂。
+  static const Color navDark = Color(0xFF0E0F12);
+  static const Color statusDark = Color(0xFF0E0F12);
 }
 
 /// 语义色彩表：Light / Dark 成对。
@@ -37,6 +39,7 @@ class TnPalette {
     required this.textSecondary,
     required this.textDisabled,
     required this.outline,
+    required this.divider,
     required this.focus,
     required this.success,
     required this.warning,
@@ -70,7 +73,12 @@ class TnPalette {
   final Color textDisabled;
 
   // 边界与焦点
+  /// 可见边框（控件边界）：对卡片/画布需 3:1（门禁硬要求）。
   final Color outline;
+
+  /// 纯装饰分割线：低对比（无信息量，按 WCAG 无对比度要求）。
+  /// 与 outline 分档，避免把"分割线"也做成 3:1 的重线而弄脏界面。
+  final Color divider;
   final Color focus;
 
   // 状态（不只靠颜色表达，须配图标/文案）
@@ -89,60 +97,107 @@ class TnPalette {
 
   bool get isDark => brightness == Brightness.dark;
 
-  /// 浅色主题（森林翡翠）。
+  /// 浅色主题（中性灰底 + 翡翠强调）。
+  ///
+  /// 配色修订（真机反馈"颜色不对"）：上一版把**整屏底色铺成浅绿**
+  /// （bgCanvas #F1F8F4 / container #D8F3DC），页面失去中性基调、
+  /// 卡片与背景同色系导致没有层次。现在底色回到中性灰阶，
+  /// 翡翠绿只保留在强调位（primary / focus / 状态色）。
   static const TnPalette light = TnPalette(
     brightness: Brightness.light,
-    bgCanvas: Color(0xFFF1F8F4),
+    bgCanvas: Color(0xFFF7F8FA),
     bgSurface: Color(0xFFFFFFFF),
-    bgContainer: Color(0xFFD8F3DC),
-    bgContainerHigh: Color(0xFFB7E4C7),
-    primary: Color(0xFF1B5E20),
+    bgContainer: Color(0xFFF2F2F2),
+    bgContainerHigh: Color(0xFFE8EAEE),
+    // 深翡翠：在浅底上 4.56:1（AA 正文达标）；亮翡翠 #1DB954 在白底只有
+    // 2.43:1，不可作正文色。
+    primary: Color(0xFF12833C),
     onPrimary: Color(0xFFFFFFFF),
-    secondary: Color(0xFF52B788),
-    onSecondary: Color(0xFF0B1F14),
-    textPrimary: Color(0xFF102A18),
-    textSecondary: Color(0xFF4A6B55),
-    textDisabled: Color(0xFF9BB5A3),
-    outline: Color(0xFF6B8F76),
-    focus: Color(0xFF2F5D50),
-    success: Color(0xFF2F7D4A),
-    warning: Color(0xFF9A6700),
+    secondary: Color(0xFF1DB954),
+    onSecondary: Color(0xFF0E0F12),
+    textPrimary: Color(0xFF111111),
+    textSecondary: Color(0xFF5F646D),
+    textDisabled: Color(0xFF9AA0AA),
+    outline: Color(0xFF7F9186),
+    divider: Color(0xFFDCDFE4),
+    focus: Color(0xFF12833C),
+    success: Color(0xFF157347),
+    warning: Color(0xFF8A5A00),
     error: Color(0xFFB3261E),
     onError: Color(0xFFFFFFFF),
     info: Color(0xFF0B6BCB),
-    titlebarBg: Color(0xFF1B5E20),
-    titlebarFg: Color(0xFFE8F5EC),
-    titlebarButtonHover: Color(0xFF52B788),
-    titlebarCloseHover: Color(0xFFF2B8B5),
-    titlebarInactive: Color(0xFFA8C5B2),
+    titlebarBg: Color(0xFF141519),
+    titlebarFg: Color(0xFFEDEFF2),
+    titlebarButtonHover: Color(0xFF25272C),
+    titlebarCloseHover: Color(0xFFE05B5B),
+    titlebarInactive: Color(0xFF6C737D),
   );
 
-  /// 深色主题（森林翡翠）。深色画布 #0B1F14（非纯黑）。
+  /// 深色主题（中性灰底 + 翡翠强调）。深色画布 #0E0F12（非纯黑）。
+  ///
+  /// 配色修订（真机反馈"颜色不对"）：上一版把**整屏底色铺成深绿**
+  /// （bgCanvas #0B1F14 / container #17332A / containerHigh #1F4432），
+  /// 深绿铺满 + 卡片与背景色差过小 → 视觉上"一整块绿糊住、没有层次"。
+  /// 现在底色回到中性灰阶（与旧版一致），翡翠绿只做强调色：
+  /// primary #1DB954 在深底上 7.41:1（AA 达标）。
   static const TnPalette dark = TnPalette(
     brightness: Brightness.dark,
-    bgCanvas: Color(0xFF0B1F14),
-    bgSurface: Color(0xFF102A18),
-    bgContainer: Color(0xFF17332A),
-    bgContainerHigh: Color(0xFF1F4432),
-    primary: Color(0xFFA7F3D0),
-    onPrimary: Color(0xFF0B1F14),
-    secondary: Color(0xFF52B788),
-    onSecondary: Color(0xFF0B1F14),
-    textPrimary: Color(0xFFE8F5EC),
-    textSecondary: Color(0xFFA8C5B2),
-    textDisabled: Color(0xFF5C7A66),
-    outline: Color(0xFF5C7A66),
-    focus: Color(0xFFA7F3D0),
-    success: Color(0xFF7DD3A0),
-    warning: Color(0xFFF5C542),
-    error: Color(0xFFF2B8B5),
-    onError: Color(0xFF601410),
+    bgCanvas: Color(0xFF0E0F12),
+    bgSurface: Color(0xFF141519),
+    bgContainer: Color(0xFF1C1D21),
+    bgContainerHigh: Color(0xFF25272C),
+    primary: Color(0xFF1DB954),
+    onPrimary: Color(0xFF06120A),
+    secondary: Color(0xFF2ECC71),
+    onSecondary: Color(0xFF06120A),
+    textPrimary: Color(0xFFEDEFF2),
+    textSecondary: Color(0xFFA9AFB8),
+    textDisabled: Color(0xFF6C737D),
+    outline: Color(0xFF5A6B60),
+    divider: Color(0xFF2E3137),
+    focus: Color(0xFF1DB954),
+    success: Color(0xFF2ECC71),
+    warning: Color(0xFFF2A25C),
+    error: Color(0xFFE05B5B),
+    onError: Color(0xFF1A0505),
     info: Color(0xFF8EC5FF),
-    titlebarBg: Color(0xFF0B1F14),
-    titlebarFg: Color(0xFFA7F3D0),
-    titlebarButtonHover: Color(0xFF17332A),
-    titlebarCloseHover: Color(0xFFF2B8B5),
-    titlebarInactive: Color(0xFF6B8F76),
+    titlebarBg: Color(0xFF141519),
+    titlebarFg: Color(0xFFEDEFF2),
+    titlebarButtonHover: Color(0xFF25272C),
+    titlebarCloseHover: Color(0xFFE05B5B),
+    titlebarInactive: Color(0xFF6C737D),
+  );
+
+  /// 纯黑（AMOLED）调色板：画布真黑，其余沿用暗色板。
+  ///
+  /// 旧版有该档位（mode==3），UI 重写时丢失了 —— 现补回，
+  /// 让"档位 3 纯黑"在设置页不再名存实亡。
+  static TnPalette get pureBlack => TnPalette(
+    brightness: Brightness.dark,
+    bgCanvas: const Color(0xFF000000),
+    bgSurface: const Color(0xFF000000),
+    bgContainer: const Color(0xFF0E0F12),
+    bgContainerHigh: const Color(0xFF141519),
+    primary: dark.primary,
+    onPrimary: dark.onPrimary,
+    secondary: dark.secondary,
+    onSecondary: dark.onSecondary,
+    textPrimary: dark.textPrimary,
+    textSecondary: dark.textSecondary,
+    textDisabled: dark.textDisabled,
+    outline: dark.outline,
+    divider: dark.divider,
+    focus: dark.focus,
+    success: dark.success,
+    warning: dark.warning,
+    error: dark.error,
+    onError: dark.onError,
+    info: dark.info,
+    titlebarBg: dark.titlebarBg,
+    titlebarFg: dark.titlebarFg,
+    titlebarButtonHover: dark.titlebarButtonHover,
+    titlebarCloseHover: dark.titlebarCloseHover,
+    titlebarInactive: dark.titlebarInactive,
   );
 
   /// 依亮度取色板。
@@ -168,7 +223,8 @@ class TnPalette {
       surfaceContainerHighest: bgContainerHigh,
       onSurfaceVariant: textSecondary,
       outline: outline,
-      outlineVariant: outline,
+      // outlineVariant = 纯装饰分割线（低对比）；outline = 可见控件边框（3:1）。
+      outlineVariant: divider,
       error: error,
       onError: onError,
       surfaceTint: Colors.transparent,
@@ -184,7 +240,7 @@ class TnPalette {
       colorScheme: scheme,
       scaffoldBackgroundColor: bgCanvas,
       canvasColor: bgCanvas,
-      dividerColor: outline,
+      dividerColor: divider,
       splashFactory: InkSparkle.splashFactory,
       visualDensity: VisualDensity.standard,
       textTheme: _textTheme(scheme),

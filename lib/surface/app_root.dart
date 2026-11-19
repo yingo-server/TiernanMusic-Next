@@ -90,7 +90,10 @@ class _AppRootState extends State<AppRoot> {
         builder: (context, localeCode, _) {
           // 语义色板：Light/Dark 成对定义（design/tokens_v2.dart）。
           final light = TnPalette.light.toThemeData();
-          final dark = TnPalette.dark.toThemeData();
+          // 档位 3 = 纯黑（AMOLED）：画布真黑，其余沿用暗色板。
+          // 旧版有该档位，UI 重写时丢失，这里补回。
+          final dark = (mode == 3 ? TnPalette.pureBlack : TnPalette.dark)
+              .toThemeData();
           return MaterialApp(
             title: 'TiernanMusicNext',
             debugShowCheckedModeBanner: false,
