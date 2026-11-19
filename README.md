@@ -18,7 +18,7 @@ UI 由两套现成模块构成，我们**只写色彩，不写控件**：
 - **官方 Material 3** 承载全部结构（Scaffold / NavigationBar / Card / Dialog…），只做主题与参数配置；
 - **GetWidget** 补足反馈层（Obx / GetSnackbar / GetDialog / GetBottomSheet）。
 
-色彩是"森林翡翠"设计语言（[docs/DESIGN_LANGUAGE.md](docs/DESIGN_LANGUAGE.md)）：语义 token + 明暗成对定义，对比度脚本化校验（正文 ≥4.5:1），支持动态取色。门禁 `ui_no_custom_widgets.py` 零例外禁止自绘控件与硬编码色值 —— 所以每一屏都来自官方组件的默认质量。
+色彩是"森林翡翠"设计语言（[docs/DESIGN_LANGUAGE.md](docs/DESIGN_LANGUAGE.md)）：**中性灰底 + 翡翠绿强调** —— 底色回到中性灰阶（不铺色相，保证卡片分层可辨），翡翠绿只出现在强调位与状态位。语义 token 明暗成对定义，对比度脚本化校验（正文 ≥4.5:1、边框 ≥3:1），门禁 `ui_contrast_gate.py` 同时校验**代码真源与文档一致**、并禁止错误页在 MaterialApp 之外取主题。门禁 `ui_no_custom_widgets.py` 零例外禁止自绘控件与硬编码色值 —— 所以每一屏都来自官方组件的默认质量。
 
 ## 76 原则架构（七层六桥）
 
@@ -35,7 +35,7 @@ L1 init       main 入口
 ```
 
 - 依赖方向 `surface → session → logic → core`，禁止反向；跨层只能经 `lib/bridges/`，`tool/layer_audit.py` CI 强制。
-- 平台差异收敛到 `lib/platform/`（桌面标题栏 bitsdojo / window_manager），权限与系统能力走统一网关 `lib/core/capability/`（未授权/已授权/永久拒绝三态）。
+- 平台差异收敛到 `lib/core/platform/`（桌面标题栏 bitsdojo / window_manager），权限与系统能力走统一网关 `lib/core/capability/`（未授权/已授权/永久拒绝三态）。
 - 50 个酷狗端点在 `core/net/endpoint_registry.dart` 声明式配置，改 API 不动调用方。
 - 每次构建生成 `verification.json`（加盐摘要 + RSA-4096 签名），运行期校验产物完整性。
 
@@ -85,6 +85,7 @@ CI：推送到 main 或打 tag `v*` 触发 [ci.yml](.github/workflows/ci.yml)（
 | [docs/FOUR_RELEASE_ROADMAP.md](docs/FOUR_RELEASE_ROADMAP.md) | 四步版本路线图 |
 | [docs/YKG_LINK_CRYPTO_DESIGN.md](docs/YKG_LINK_CRYPTO_DESIGN.md) | YKG 链接登录密码学设计 |
 | [docs/ACCEPTANCE_CHECKLIST.md](docs/ACCEPTANCE_CHECKLIST.md) | 真机验收清单（42 条编号待执行项） |
+| [docs/BOOT_FAILURE_DIAGNOSIS.md](docs/BOOT_FAILURE_DIAGNOSIS.md) | 真机启动失败与配色问题诊断（错误信息链断裂 / 像素证据 / 门禁加固） |
 
 ## 项目状态（截至 2026-11-19）
 
@@ -93,13 +94,24 @@ CI：推送到 main 或打 tag `v*` 触发 [ci.yml](.github/workflows/ci.yml)（
 1. ✅ **重写稳定**：破坏性 UI 重写（官方 M3 + GetWidget）+ 桌面标题栏挂载完成。
 2. ✅ **全平台构建**：`desktop-build.yml`（Windows / Linux AppImage）已落地，Android APK 常规发布。
 3. 🔄 **SOTA 文案与文档**：进行中（本 README 重写属此阶段）。
-4. ⏳ **v1.0.0 正式版**：待前三步门禁全绿后发布（prerelease=false）。
+4. ⏳ **v1.0.0 正式版**：待真机验证通过后发布（prerelease=false）。
+
+> ⚠️ **真机验证未通过（2026-11-19）**：v26.11.19.07 正式版在真机上启动失败
+> （`boot rejected`）。根因是**失败信息链断裂**（失败路径不带原因 + boot log
+> 只 print 不落盘），叠加存储根静默回落到相对根 `'.'`（Android CWD=`/`）。
+> 已修：失败路径携带真因 + boot 日志落盘 + 步骤化诊断（错误页直接显示
+> `step[xxx] failed: <原因>`）+ 相对根改显式失败 + 目录降级。
+> 同时把配色从"整屏深绿"改回"中性灰底 + 翡翠强调"。
+> 详见 [docs/BOOT_FAILURE_DIAGNOSIS.md](docs/BOOT_FAILURE_DIAGNOSIS.md)。
 
 已知后续项（诚实清单）：
 
+- **真机启动仍待复现验证**：修复已使失败原因在真机可见，但确切异常需装包验证。
 - i18n 尚未全量接线：zh / zh_Hant / en 之外语言为 en 占位。
 - 酷狗端点 20028（权限不足）语义已入回归锚点，相关端点的体验优化仍在进行。
 - 桌面产物尚未出现在常规 Release 资产中，需手动触发 workflow。
+- 动态取色链（封面取色 → 主题种子）当前**空转**：`_seedArgb` 被持久化但
+  `AppRoot` 用静态 `TnPalette`，无消费者。属独立功能缺口。
 - 真机验收清单（42 条）尚未全部执行完毕。
 
 ## 贡献与许可
