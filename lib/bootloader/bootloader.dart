@@ -116,6 +116,10 @@ class Bootstrap {
   /// 批5-B 成功路径装配：StoragePaths.init → DAO/Store/Settings → AuthLogic
   /// → restoreSession 恢复会话。每步 try/catch + Log('boot')。
   /// 返回字段与 BootResult 装配字段同名的 map（spread 构造 BootResult）。
+  ///
+  /// 诊断增强（真机启动失败定位）：每个装配步骤独立包一层 `_step`，
+  /// 失败时抛出带**步骤名**的异常（如 "step[storage-paths] failed: ..."），
+  /// 错误页直接显示"第几步 + 原因"，不再是一句无从查证的固定文案。
   static Map<String, Object?> _assembleCore({String? rootDir}) {
     // 1) 存储根注入（真实路径由 main 经 path_provider 拿到后传入，见 run 文档）。
     //
@@ -128,15 +132,36 @@ class Bootstrap {
         'path_provider.getApplicationSupportDirectory()',
       );
     }
-    final paths = core.StoragePaths.init(rootDir);
+
+    // 逐步骤包装：失败时带上步骤名，便于真机一眼定位。
+    T _step<T>(String name, T Function() body) {
+      try {
+        return body();
+      } catch (e, st) {
+        Log.e('boot', 'step[$name] failed', e, st);
+        throw StateError('step[$name] failed: $e');
+      }
+    }
+
+    final core.StoragePaths paths = _step(
+      'storage-paths',
+      () => core.StoragePaths.init(rootDir),
+    );
     Log.d('boot', 'storage root=${paths.rootDir.path}');
 
     // 2) DB 打开（幂等）：**不在 bootloader 里 unawaited**——审查发现 main 从不
     //    await，surface 拿到 DAO 时 DB 可能未开（首屏 StateError 竞态）。
     //    把 Future 放进 deps，由 main await 后再装配 surface。
+    //
+    // 注：目录创建（paths.db()）属于真机高危步骤（MIUI 分区/权限导致
+    // createSync 抛 PathAccessException），单独包一层以标明失败点。
+    final String dbPath = _step(
+      'db-dir',
+      () => paths.db().path,
+    );
     Log.d('boot', 'db open future staged for main await');
     final Future<bool> dbOpenFuture = core
-        .openDatabase(paths.db().path)
+        .openDatabase(dbPath)
         .then((opened) {
           Log.d('boot', 'db opened=$opened');
           return opened;
@@ -149,18 +174,24 @@ class Bootstrap {
     // 3) core 单例 + AuthLogic 单例（每步 try/catch 由 run 外层兜底留痕）。
     // 客户端带 L2 磁盘缓存 + 单飞合并（批R2）：
     // 缓存目录 = StoragePaths.I.cache()；播放地址类端点已在端点表标 cacheable=false。
-    final client = core.KugouClient(
-      core.KugouSession(),
-      cache: core.ResourceCache(
-        rootDir: core.StoragePaths.I.cache(),
-        namespace: 'net',
+    final client = _step(
+      'client',
+      () => core.KugouClient(
+        core.KugouSession(),
+        cache: core.ResourceCache(
+          rootDir: core.StoragePaths.I.cache(),
+          namespace: 'net',
+        ),
+        inflight: core.InFlight<Map<String, dynamic>>(),
       ),
-      inflight: core.InFlight<Map<String, dynamic>>(),
     );
     // settings 单实例（审查修复）：旧代码给 AuthLogic 与 deps 各 new 一个
     // KeyValueSettings —— 各自内存缓存互盲，auth 写的会话 surface 永远读不到。
-    final settings = core.KeyValueSettings(paths);
-    final auth = lg.AuthLogic(client: client, settings: settings);
+    final settings = _step('settings', () => core.KeyValueSettings(paths));
+    final auth = _step(
+      'auth',
+      () => lg.AuthLogic(client: client, settings: settings),
+    );
     try {
       final ok2 = auth.restoreSession();
       Log.d('boot', 'restoreSession ok=$ok2');

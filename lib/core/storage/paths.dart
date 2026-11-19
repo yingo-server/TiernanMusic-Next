@@ -38,6 +38,9 @@ class StoragePaths {
 
   static const _subs = ['downloads', 'cache', 'lyrics', 'db'];
 
+  /// 降级目录序号（同一进程内多次降级不撞目录）。
+  static int _fallbackSeq = 0;
+
   /// 存储根目录（懒创建）。
   Directory root() => _ensureDir(rootDir, 'root');
 
@@ -79,8 +82,22 @@ class StoragePaths {
       }
       return d;
     } catch (e, st) {
-      Log.e('paths', 'ensureDir($tag) failed', e, st);
-      rethrow;
+      // 真机事故：MIUI 等 ROM 上 getApplicationSupportDirectory() 返回的目录
+      // 可能不可写（分区加密/权限策略），createSync 抛 PathAccessException →
+      // boot rejected（整个应用起不来）。目录不可创建时**降级**而不是崩溃：
+      // 退回进程临时目录（dart:io 的 systemTemp），至少让应用可启动、可报错。
+      Log.e('paths', 'ensureDir($tag) failed, degrading to temp dir', e, st);
+      try {
+        final fallback = Directory(
+          '${Directory.systemTemp.path}/tn_${tag}_${_fallbackSeq++}',
+        );
+        if (!fallback.existsSync()) fallback.createSync(recursive: true);
+        Log.d('paths', 'degraded [$tag] -> ${fallback.path}');
+        return fallback;
+      } catch (e2, st2) {
+        Log.e('paths', 'degraded dir($tag) also failed', e2, st2);
+        rethrow;
+      }
     }
   }
 }
