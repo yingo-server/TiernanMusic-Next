@@ -7,7 +7,8 @@
 // - 系统栏（Android 导航栏/状态栏）显式锁暗（真机事故：MIUI 用浅灰
 //   windowBackground 画系统导航带，盖住 Flutter 底栏；见 docs/ui_diagnosis.md）。
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show SystemChrome, SystemUiOverlayStyle;
+import 'package:flutter/services.dart'
+    show SystemChrome, SystemUiMode, SystemUiOverlay, SystemUiOverlayStyle;
 
 import '../bridges/bridge_core.dart'
     show
