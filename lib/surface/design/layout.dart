@@ -99,6 +99,10 @@ abstract final class TnSize {
 
   /// 登录二维码（240 = 8dp 体系，M3 Dialog 内容区常用）。
   static const double qrCode = 240;
+
+  /// 桌面标题栏按钮高度（36：M3 桌面标题栏惯例，48 触控目标在标题栏
+  /// 会过高——此处按桌面窗口装饰惯例取 36，仍是 4dp 体系倍数）。
+  static const double titlebarButton = 36;
 }
 
 /// 页面骨架（统一页面结构，页面不得自带 Scaffold/AppBar 主题配置）。

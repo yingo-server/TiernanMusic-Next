@@ -10,6 +10,7 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
 
 import '../../bridges/bridge_core.dart' show platformCapabilities, windowService;
+import 'layout.dart' show TnSize, TnSpace;
 import 'tokens_v2.dart';
 
 /// 桌面标题栏（仅 Windows/Linux 自定义框架时使用；macOS/Web 不渲染）。
@@ -27,7 +28,7 @@ Widget? buildDesktopTitleBar(BuildContext context) {
             ? windowService.unmaximize()
             : windowService.maximize(),
         child: Container(
-          height: TnSize.touchTarget - TnSpace.md,
+          height: TnSize.titlebarButton,
           color: palette.titlebarBg,
           padding: const EdgeInsets.only(left: TnSpace.md),
           child: Row(
