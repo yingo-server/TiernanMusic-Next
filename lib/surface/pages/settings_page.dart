@@ -19,6 +19,7 @@ import '../../bridges/bridge_session.dart'
         LocaleController,
         AuthSession;
 import '../design/tokens_v2.dart';
+import '../design/layout.dart' show TnBreakpoint, TnRadius, TnSize, TnSpace;
 import '../l10n/s.dart' show S;
 import 'login_sheet.dart' show showLoginSheet;
 
@@ -99,7 +100,7 @@ class _SettingsPageState extends State<SettingsPage> {
           shrinkWrap: true,
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(TnSpace.lg, TnSpace.lg, TnSpace.lg, TnSpace.sm),
               child: Text('音质', style: Theme.of(ctx).textTheme.titleLarge),
             ),
             for (final AudioQuality q in vipQualities())
@@ -124,7 +125,7 @@ class _SettingsPageState extends State<SettingsPage> {
           shrinkWrap: true,
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(TnSpace.lg, TnSpace.lg, TnSpace.lg, TnSpace.sm),
               child: Text('倍速', style: Theme.of(ctx).textTheme.titleLarge),
             ),
             for (final s in _speeds)
@@ -184,7 +185,7 @@ class _SettingsPageState extends State<SettingsPage> {
           builder: (BuildContext context, Widget? _) {
             final speed = session.snapshot.speed;
             return ListView(
-              padding: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.only(bottom: TnSpace.xl),
               children: <Widget>[
                 _sectionHeader(context, '账号'),
                 _group(<Widget>[
@@ -214,12 +215,12 @@ class _SettingsPageState extends State<SettingsPage> {
                 _sectionHeader(context, s.t('theme')),
                 _group(<Widget>[
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(TnSpace.lg),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text('主题模式', style: theme.textTheme.titleSmall),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: TnSpace.md),
                         ValueListenableBuilder<int>(
                           valueListenable: ThemeController.instance,
                           builder: (BuildContext c, int mode, Widget? _) =>
@@ -259,12 +260,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   // 阶段B B7 P0：语言选择入口（切语言实时生效）。
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(TnSpace.lg, 0, TnSpace.lg, TnSpace.lg),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text('界面语言', style: theme.textTheme.titleSmall),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: TnSpace.sm),
                         ValueListenableBuilder<String>(
                           valueListenable: LocaleController.instance,
                           builder: (BuildContext c, String code, Widget? _) =>
@@ -403,7 +404,7 @@ class _SettingsPageState extends State<SettingsPage> {
   /// 区块标题（官方 Text）。
   Widget _sectionHeader(BuildContext context, String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      padding: const EdgeInsets.fromLTRB(TnSpace.lg, TnSpace.xl, TnSpace.lg, TnSpace.sm),
       child: Text(title, style: Theme.of(context).textTheme.titleMedium),
     );
   }
@@ -411,7 +412,7 @@ class _SettingsPageState extends State<SettingsPage> {
   /// 分组容器（官方 Card）。
   Widget _group(List<Widget> children) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: Column(children: children),

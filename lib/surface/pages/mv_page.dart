@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import '../../bridges/bridge_session.dart'
     show appGraph, ModuleRegistry, NavEntry, SurfaceModule;
 import '../design/tokens_v2.dart';
+import '../design/layout.dart' show TnBreakpoint, TnRadius, TnSize, TnSpace;
 
 /// 安装 MV 模块到 L6 注册表（审查修复 A1/A6 P0）：install 本身是
 /// 「重复 id 覆盖」，旧守卫 `if (byId('mv') != null) return` 会让启动期
@@ -231,18 +232,18 @@ class _MvPageState extends State<MvPage> {
         }
         final ar = c.value.aspectRatio > 0 ? c.value.aspectRatio : 1.0;
         return Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(TnSpace.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(TnRadius.md),
                 child: ColoredBox(
                   color: context.cs.surfaceContainerLow,
                   child: AspectRatio(aspectRatio: ar, child: VideoPlayer(c)),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: TnSpace.md),
               VideoProgressIndicator(
                 c,
                 allowScrubbing: true,
@@ -252,7 +253,7 @@ class _MvPageState extends State<MvPage> {
                   backgroundColor: context.cs.outlineVariant,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: TnSpace.sm),
               Row(
                 children: <Widget>[
                   IconButton(
@@ -263,7 +264,7 @@ class _MvPageState extends State<MvPage> {
                     color: context.cs.primary,
                     tooltip: c.value.isPlaying ? '暂停' : '播放',
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: TnSpace.sm),
                   Expanded(
                     child: Text(
                       _note.isNotEmpty
@@ -288,7 +289,7 @@ class _MvPageState extends State<MvPage> {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         CircularProgressIndicator(color: context.cs.primary),
-        const SizedBox(height: 12),
+        const SizedBox(height: TnSpace.md),
         Text('正在加载 MV…', style: Theme.of(context).textTheme.bodySmall),
       ],
     ),
@@ -297,20 +298,20 @@ class _MvPageState extends State<MvPage> {
   /// 三态（官方 Icon + Text + FilledButton 重试）。
   Widget _stateView(IconData icon, String title, String subtitle) => Center(
     child: Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(TnSpace.xl),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Icon(icon, size: 40, color: context.cs.onSurfaceVariant),
-          const SizedBox(height: 12),
+          const SizedBox(height: TnSpace.md),
           Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: TnSpace.sm),
           Text(
             subtitle,
             style: Theme.of(context).textTheme.bodySmall,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: TnSpace.lg),
           FilledButton(onPressed: _load, child: const Text('重试')),
         ],
       ),

@@ -17,6 +17,7 @@ import '../../bridges/bridge_session.dart'
         SurfaceModule,
         NavEntry;
 import '../design/tokens_v2.dart';
+import '../design/layout.dart' show TnBreakpoint, TnRadius, TnSize, TnSpace;
 import '../l10n/s.dart' show S;
 import 'mv_page.dart' show MvPage, registerMvModule;
 
@@ -48,7 +49,7 @@ class _PlayerPageState extends State<PlayerPage> {
           shrinkWrap: true,
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(TnSpace.lg),
               child: Text('倍速', style: Theme.of(ctx).textTheme.titleLarge),
             ),
             for (final s in _speeds)
@@ -80,7 +81,7 @@ class _PlayerPageState extends State<PlayerPage> {
           shrinkWrap: true,
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(TnSpace.lg),
               child: Text('音质', style: Theme.of(ctx).textTheme.titleLarge),
             ),
             for (final AudioQuality q in list)
@@ -297,12 +298,12 @@ class _PlayerPageState extends State<PlayerPage> {
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+                      horizontal: TnSpace.lg,
+                      vertical: TnSpace.md,
                     ),
                     children: <Widget>[
                       Center(child: _cover(song.cover)),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: TnSpace.xl),
                       Text(
                         song.name.isEmpty ? song.hash : song.name,
                         maxLines: 1,
@@ -310,7 +311,7 @@ class _PlayerPageState extends State<PlayerPage> {
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: TnSpace.sm),
                       Text(
                         song.singer.isEmpty ? '未知歌手' : song.singer,
                         maxLines: 1,
@@ -319,7 +320,7 @@ class _PlayerPageState extends State<PlayerPage> {
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       if (snap.player.sourceKind == 'mv-audio') ...<Widget>[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: TnSpace.sm),
                         Text(
                           '试听音源',
                           maxLines: 1,
@@ -327,15 +328,15 @@ class _PlayerPageState extends State<PlayerPage> {
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                       ],
-                      const SizedBox(height: 24),
+                      const SizedBox(height: TnSpace.xl),
                       _seekSlider(
                         snap.player.positionMs,
                         snap.player.durationMs,
                       ),
                       _timeRow(snap.player.positionMs, snap.player.durationMs),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: TnSpace.md),
                       _controls(snap.mode),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: TnSpace.lg),
                       _badges(snap.speed),
                     ],
                   ),
@@ -361,12 +362,12 @@ class _PlayerPageState extends State<PlayerPage> {
     final u = url.trim();
     if (u.isEmpty) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(TnRadius.lg),
         child: placeholder,
       );
     }
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(TnRadius.lg),
       child: Image.network(
         u,
         width: size,
@@ -382,14 +383,14 @@ class _PlayerPageState extends State<PlayerPage> {
   /// 空态（官方 Icon + Text）。
   Widget _stateView(IconData icon, String title, String subtitle) => Center(
     child: Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(TnSpace.xl),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Icon(icon, size: 40, color: context.cs.onSurfaceVariant),
-          const SizedBox(height: 12),
+          const SizedBox(height: TnSpace.md),
           Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: TnSpace.sm),
           Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
@@ -399,7 +400,7 @@ class _PlayerPageState extends State<PlayerPage> {
   /// 错误条（官方 Card + ListTile；验证/网络错误给"重试"出口）。
   Widget _errorBar(String message, VoidCallback? onRetry) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg, vertical: TnSpace.sm),
       child: Card(
         color: context.cs.surfaceContainerHigh,
         child: ListTile(
@@ -420,7 +421,7 @@ class _PlayerPageState extends State<PlayerPage> {
   }
 
   Widget _topBar(SongBrief? cur) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    padding: const EdgeInsets.symmetric(horizontal: TnSpace.md, vertical: TnSpace.sm),
     child: Row(
       children: <Widget>[
         IconButton(
@@ -526,7 +527,7 @@ class _PlayerPageState extends State<PlayerPage> {
         label: Text('${speed.toStringAsFixed(2)}x'),
         onPressed: () => _openSpeedSheet(speed),
       ),
-      const SizedBox(width: 12),
+      const SizedBox(width: TnSpace.md),
       ActionChip(
         avatar: const Icon(Icons.graphic_eq, size: 16),
         label: const Text('音质'),

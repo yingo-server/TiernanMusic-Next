@@ -10,6 +10,7 @@ import '../../bridges/bridge_session.dart'
     show NavState, PlaybackSession, SurfaceModule, NavEntry;
 import '../../bridges/bridge_session.dart' show appGraph;
 import '../design/tokens_v2.dart';
+import '../design/layout.dart' show TnBreakpoint, TnRadius, TnSize, TnSpace;
 import 'login_sheet.dart' show showLoginSheet;
 import 'playlist_page.dart' show PlaylistDetailSheet;
 
@@ -141,12 +142,12 @@ class _HomePageState extends State<HomePage> {
                   onPressed: _goSearch,
                   icon: const Icon(Icons.search),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: TnSpace.sm),
               ],
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.only(bottom: TnSpace.xl),
                 children: <Widget>[
                   _dailySection(context),
                   _playlistSection(context),
@@ -165,12 +166,12 @@ class _HomePageState extends State<HomePage> {
       {VoidCallback? onMore}) {
     final theme = Theme.of(c);
     return Padding(
-      padding: const EdgeInsets.only(top: 24, bottom: 12),
+      padding: const EdgeInsets.only(top: TnSpace.xl, bottom: TnSpace.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
             child: Row(
               children: <Widget>[
                 Expanded(
@@ -188,7 +189,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: TnSpace.md),
           child,
         ],
       ),
@@ -200,11 +201,10 @@ class _HomePageState extends State<HomePage> {
     return SizedBox(
       height: height,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
         child: Card(
           child: Center(
-            child: SizedBox(
-              width: 120,
+            child: SizedBox(width: TnSize.songCard,
               child: LinearProgressIndicator(
                 minHeight: 3,
                 color: Theme.of(c).colorScheme.primary,
@@ -221,21 +221,20 @@ class _HomePageState extends State<HomePage> {
   Widget _empty(BuildContext c, String message, {VoidCallback? onAction, String? actionLabel}) {
     final theme = Theme.of(c);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: SizedBox(
-        height: 96,
+      padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
+      child: SizedBox(height: TnSize.emptyState,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Icon(Icons.music_note, size: 32, color: theme.colorScheme.onSurfaceVariant),
-              const SizedBox(height: 8),
+              const SizedBox(height: TnSpace.sm),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   Text(message, style: theme.textTheme.bodySmall),
                   if (onAction != null && actionLabel != null) ...<Widget>[
-                    const SizedBox(width: 12),
+                    const SizedBox(width: TnSpace.md),
                     TextButton(
                       onPressed: onAction,
                       style: TextButton.styleFrom(
@@ -258,17 +257,16 @@ class _HomePageState extends State<HomePage> {
   Widget _error(BuildContext c, String message, VoidCallback onRetry) {
     final theme = Theme.of(c);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: SizedBox(
-        height: 120,
+      padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
+      child: SizedBox(height: TnSize.songCard,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Icon(Icons.error_outline, color: theme.colorScheme.error),
-              const SizedBox(height: 8),
+              const SizedBox(height: TnSpace.sm),
               Text(message, style: theme.textTheme.bodySmall),
-              const SizedBox(height: 8),
+              const SizedBox(height: TnSpace.sm),
               FilledButton.tonal(
                 onPressed: onRetry,
                 child: const Text('重试'),
@@ -306,17 +304,15 @@ class _HomePageState extends State<HomePage> {
         return _section(
           c,
           '每日推荐',
-          SizedBox(
-            height: 176,
+          SizedBox(height: TnSize.songRow,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
               itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, __) => const SizedBox(width: TnSpace.md),
               itemBuilder: (BuildContext c, int i) {
                 final s = items[i];
-                return SizedBox(
-                  width: 124,
+                return SizedBox(width: TnSize.songCard,
                   child: Card(
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
@@ -339,7 +335,7 @@ class _HomePageState extends State<HomePage> {
                                   ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(TnSpace.sm),
                             child: Text(
                               s.name.isEmpty ? '未知歌曲' : s.name,
                               maxLines: 2,
@@ -375,9 +371,9 @@ class _HomePageState extends State<HomePage> {
         if (items.isEmpty) {
           return _section(c, '推荐歌单', _empty(c, '暂无推荐歌单'));
         }
-        final columns = MediaQuery.sizeOf(c).width >= 1000
+        final columns = TnBreakpoint.isExpanded(MediaQuery.sizeOf(c).width)
             ? 5
-            : MediaQuery.sizeOf(c).width >= 600
+            : !TnBreakpoint.isCompact(MediaQuery.sizeOf(c).width)
             ? 3
             : 2;
         return _section(
@@ -386,7 +382,7 @@ class _HomePageState extends State<HomePage> {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns,
               crossAxisSpacing: 12,
@@ -420,7 +416,7 @@ class _HomePageState extends State<HomePage> {
                               ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(TnSpace.sm),
                         child: Text(
                           p.name.isEmpty ? '未命名歌单' : p.name,
                           maxLines: 2,
@@ -429,7 +425,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: TnSpace.sm),
                         child: Text(
                           '曲目数未知',
                           style: Theme.of(c).textTheme.bodySmall,
@@ -463,23 +459,22 @@ class _HomePageState extends State<HomePage> {
         return _section(
           c,
           '排行榜',
-          SizedBox(
-            height: 140,
+          SizedBox(height: TnSize.rankCard,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
               itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, __) => const SizedBox(width: TnSpace.md),
               itemBuilder: (BuildContext c, int i) {
                 final r = items[i];
                 return SizedBox(
-                  width: 160,
+                  width: TnSize.playlistCardMin,
                   child: Card(
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
                       onTap: () => _openRank(r),
                       child: Padding(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(TnSpace.md),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[

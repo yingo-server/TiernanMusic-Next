@@ -12,16 +12,11 @@ import '../../bridges/bridge_session.dart'
     show NavState, PlaybackSession, SurfaceModule, NavEntry;
 import '../../bridges/bridge_session.dart' show appGraph;
 import '../design/tokens_v2.dart';
+import '../design/layout.dart' show TnBreakpoint, TnRadius, TnSize, TnSpace;
 
 const String _tag = 'surface.search';
 
 // 语义间距/圆角（纯数值，非色值；语义色一律走 context.cs.*）。
-const double _pad = 16;
-const double _gapS = 8;
-const double _gapM = 12;
-const double _gapL = 16;
-const double _gapXL = 24;
-const double _radiusS = 8;
 
 /// 页面模块注册（L7 注入 builder，宿主按 id 覆盖 session 占位模块）。
 class SearchPageModule extends SurfaceModule {
@@ -165,7 +160,7 @@ class _SearchPageState extends State<SearchPage> {
   /// 搜索栏：官方 SearchBar + FilledIconButton（原手写胶囊 Material/InkWell）。
   Widget _searchBar(BuildContext c) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(_pad, _gapS, _pad, _gapS),
+      padding: const EdgeInsets.fromLTRB(TnSpace.lg, TnSpace.sm, TnSpace.lg, TnSpace.sm),
       child: Row(
         children: <Widget>[
           Expanded(
@@ -180,15 +175,15 @@ class _SearchPageState extends State<SearchPage> {
               side: WidgetStateProperty.all(BorderSide(color: c.cs.outlineVariant)),
               shape: WidgetStateProperty.all(
                 RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(TnRadius.xl),
                 ),
               ),
               padding: WidgetStateProperty.all(
-                const EdgeInsets.symmetric(horizontal: _gapL),
+                const EdgeInsets.symmetric(horizontal: TnSpace.lg),
               ),
             ),
           ),
-          const SizedBox(width: _gapS),
+          const SizedBox(width: TnSpace.sm),
           IconButton.filled(
             tooltip: '搜索',
             onPressed: () => _doSearch(_ctrl.text),
@@ -212,10 +207,9 @@ class _SearchPageState extends State<SearchPage> {
         final List<SearchSuggestItem> items =
             snap.data ?? const <SearchSuggestItem>[];
         if (items.isEmpty) return const SizedBox.shrink();
-        return SizedBox(
-          height: 208,
+        return SizedBox(height: TnSize.qrCode,
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: _pad),
+            padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
             itemCount: items.length,
             itemBuilder: (BuildContext c, int i) {
               final SearchSuggestItem it = items[i];
@@ -249,16 +243,15 @@ class _SearchPageState extends State<SearchPage> {
 
   /// 分段：官方 ChoiceChip （颜色用语义 token，选中文字用 onPrimary）。
   Widget _segmentBar(BuildContext c) {
-    return SizedBox(
-      height: 48,
+    return SizedBox(height: TnSpace.xxxl,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: _pad),
+        padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
         itemCount: kSearchSegments.length,
         itemBuilder: (BuildContext c, int i) {
           final bool sel = i == _segment;
           return Padding(
-            padding: const EdgeInsets.only(right: _gapS, top: _gapS),
+            padding: const EdgeInsets.only(right: TnSpace.sm, top: TnSpace.sm),
             child: ChoiceChip(
               label: Text(
                 kSearchSegments[i],
@@ -283,7 +276,7 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _idleBody(BuildContext c) {
     return ListView.builder(
-      padding: const EdgeInsets.only(bottom: _gapXL),
+      padding: const EdgeInsets.only(bottom: TnSpace.xl),
       itemCount: 2,
       itemBuilder: (BuildContext c, int i) {
         if (i == 0) return _hotCategories(c);
@@ -297,14 +290,14 @@ class _SearchPageState extends State<SearchPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(_pad, _gapL, _pad, _gapM),
+          padding: const EdgeInsets.fromLTRB(TnSpace.lg, TnSpace.lg, TnSpace.lg, TnSpace.md),
           child: Text('热门分类', style: Theme.of(c).textTheme.titleLarge),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: _pad),
+          padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
           child: Wrap(
-            spacing: _gapS,
-            runSpacing: _gapS,
+            spacing: TnSpace.sm,
+            runSpacing: TnSpace.sm,
             children: <Widget>[
               for (final String name in kHotCategories)
                 ActionChip(
@@ -324,7 +317,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget _historySection(BuildContext c) {
     if (_history.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(_pad, _gapXL, _pad, 0),
+        padding: const EdgeInsets.fromLTRB(TnSpace.lg, TnSpace.xl, TnSpace.lg, 0),
         child: Text(
           '暂无搜索历史',
           style: Theme.of(c).textTheme.bodySmall,
@@ -335,7 +328,7 @@ class _SearchPageState extends State<SearchPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(_pad, _gapXL, _pad, _gapM),
+          padding: const EdgeInsets.fromLTRB(TnSpace.lg, TnSpace.xl, TnSpace.lg, TnSpace.md),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
@@ -348,10 +341,10 @@ class _SearchPageState extends State<SearchPage> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: _pad),
+          padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
           child: Wrap(
-            spacing: _gapS,
-            runSpacing: _gapS,
+            spacing: TnSpace.sm,
+            runSpacing: TnSpace.sm,
             children: <Widget>[
               for (final String h in _history)
                 ActionChip(
@@ -388,7 +381,7 @@ class _SearchPageState extends State<SearchPage> {
           return _empty(c, '没有找到与「$_query」相关的内容');
         }
         return ListView.builder(
-          padding: const EdgeInsets.only(bottom: _gapXL),
+          padding: const EdgeInsets.only(bottom: TnSpace.xl),
           itemCount: items.length,
           itemBuilder: (BuildContext c, int i) =>
               _songTile(c, items[i], () => _play(items, i),
@@ -403,12 +396,11 @@ class _SearchPageState extends State<SearchPage> {
       VoidCallback onAlbum) {
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: _pad),
+      contentPadding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
       leading: ClipRRect(
-        borderRadius: BorderRadius.circular(_radiusS),
-        child: SizedBox(
-          width: 48,
-          height: 48,
+        borderRadius: BorderRadius.circular(TnRadius.sm),
+        child: SizedBox(width: TnSpace.xxxl,
+          height: TnSize.avatarLg,
           child: song.cover.isEmpty
               ? Container(color: c.cs.surfaceContainerHigh)
               : Image.network(
@@ -455,12 +447,12 @@ class _SearchPageState extends State<SearchPage> {
   /// 空态：官方 Icon + Text（原 SearchEmptyBox）。
   Widget _empty(BuildContext c, String message) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: _pad, vertical: _gapXL),
+      padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg, vertical: TnSpace.xl),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Icon(Icons.search_off, color: c.cs.onSurfaceVariant),
-          const SizedBox(height: _gapS),
+          const SizedBox(height: TnSpace.sm),
           Text(message, style: Theme.of(c).textTheme.bodySmall),
         ],
       ),
@@ -470,11 +462,11 @@ class _SearchPageState extends State<SearchPage> {
   /// 错误 + 重试：官方 Icon + Text + TextButton（原 SearchErrorRetry）。
   Widget _error(BuildContext c, String message, VoidCallback onRetry) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: _pad, vertical: _gapXL),
+      padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg, vertical: TnSpace.xl),
       child: Row(
         children: <Widget>[
           Icon(Icons.error_outline, color: c.cs.error),
-          const SizedBox(width: _gapS),
+          const SizedBox(width: TnSpace.sm),
           Expanded(
             child: Text(message, style: Theme.of(c).textTheme.bodySmall),
           ),

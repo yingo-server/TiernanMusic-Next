@@ -12,6 +12,7 @@ import '../../bridges/bridge_logic.dart' show Log, DownloadTask, DownloadEvent;
 import '../../bridges/bridge_session.dart'
     show appGraph, SurfaceModule, NavEntry;
 import '../design/tokens_v2.dart';
+import '../design/layout.dart' show TnBreakpoint, TnRadius, TnSize, TnSpace;
 import '../l10n/s.dart' show S;
 
 /// 音乐库页：账号卡 + 三页签（本地曲库 / 最近播放 / 下载管理）。
@@ -191,18 +192,17 @@ class _LibraryPageState extends State<LibraryPage>
       builder: (BuildContext c, AsyncSnapshot<UserProfile> snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg, vertical: TnSpace.md),
             child: Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(TnSpace.lg),
                 child: Row(
                   children: <Widget>[
-                    const SizedBox(
-                      width: 48,
-                      height: 48,
+                    const SizedBox(width: TnSpace.xxxl,
+                      height: TnSize.avatarLg,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: TnSpace.lg),
                     Expanded(
                       child: LinearProgressIndicator(
                         color: theme.colorScheme.primary,
@@ -218,14 +218,14 @@ class _LibraryPageState extends State<LibraryPage>
         final p = snap.data ?? const UserProfile();
         if (p.isEmpty) return const SizedBox.shrink();
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          padding: const EdgeInsets.fromLTRB(TnSpace.lg, TnSpace.sm, TnSpace.lg, TnSpace.md),
           child: Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(TnSpace.lg),
               child: Row(
                 children: <Widget>[
                   _avatar(context, p.avatar),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: TnSpace.lg),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,12 +237,12 @@ class _LibraryPageState extends State<LibraryPage>
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: TnSpace.xs),
                         Text(
                           'ID ${p.userid}',
                           style: theme.textTheme.bodySmall,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: TnSpace.xs),
                         FutureBuilder<int>(
                           future: _favCount,
                           builder: (BuildContext c, AsyncSnapshot<int> f) =>
@@ -267,9 +267,8 @@ class _LibraryPageState extends State<LibraryPage>
   Widget _avatar(BuildContext context, String url) {
     final theme = Theme.of(context);
     final u = url.trim();
-    final fallback = SizedBox(
-      width: 48,
-      height: 48,
+    final fallback = SizedBox(width: TnSpace.xxxl,
+      height: TnSize.avatarLg,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: theme.colorScheme.surfaceContainerHigh,
@@ -282,8 +281,8 @@ class _LibraryPageState extends State<LibraryPage>
     return ClipOval(
       child: Image.network(
         u,
-        width: 48,
-        height: 48,
+        width: TnSize.avatarLg,
+        height: TnSize.avatarLg,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => fallback,
         loadingBuilder: (_, child, progress) =>
@@ -412,21 +411,21 @@ class _LibraryPageState extends State<LibraryPage>
     final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.symmetric(horizontal: TnSpace.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Icon(icon, color: context.cs.onSurfaceVariant),
-            const SizedBox(height: 8),
+            const SizedBox(height: TnSpace.sm),
             Text(title, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 4),
+            const SizedBox(height: TnSpace.xs),
             Text(
               subtitle,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,
             ),
             if (actionLabel != null && onAction != null) ...<Widget>[
-              const SizedBox(height: 12),
+              const SizedBox(height: TnSpace.md),
               FilledButton.tonal(onPressed: onAction, child: Text(actionLabel)),
             ],
           ],
@@ -462,11 +461,11 @@ class _LibraryPageState extends State<LibraryPage>
           leading: t.song.cover.isEmpty
               ? Icon(Icons.album, color: theme.colorScheme.onSurfaceVariant)
               : ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(TnRadius.sm),
                   child: Image.network(
                     t.song.cover,
-                    width: 40,
-                    height: 40,
+                    width: TnSize.avatarSm,
+                    height: TnSize.avatarSm,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Icon(
                       Icons.album,
@@ -485,8 +484,7 @@ class _LibraryPageState extends State<LibraryPage>
             style: theme.textTheme.bodySmall,
           ),
           trailing: t.progress >= 0
-              ? SizedBox(
-                  width: 48,
+              ? SizedBox(width: TnSpace.xxxl,
                   child: LinearProgressIndicator(value: t.progress),
                 )
               : null,

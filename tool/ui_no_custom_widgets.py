@@ -24,6 +24,9 @@ UI_MODULES = ('ui/', 'l10n/')  # 这些目录允许少量非控件文件（取�
 ALLOWED_WIDGET_FILES = {
     # 纯逻辑/常量/门面文件，不是控件
     'lib/surface/l10n/s.dart',
+    # TnPageScaffold：页面骨架（官方 Scaffold+AppBar 的统一组装，无自绘，
+    # 属于"布局唯一事实源"的一部分 —— 用户要求页面结构全平台一致）
+    'lib/surface/design/layout.dart',
 }
 
 # 页面容器允许是 StatefulWidget/StatelessWidget（页面本身需要状态），

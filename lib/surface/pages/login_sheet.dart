@@ -15,6 +15,7 @@ import '../../bridges/bridge_core.dart' show AccountRecord;
 import '../../bridges/bridge_logic.dart' show Log, QrLoginState, QrLoginStatus;
 import '../../bridges/bridge_session.dart' show appGraph, navState, AuthSession;
 import '../design/tokens_v2.dart';
+import '../design/layout.dart' show TnBreakpoint, TnRadius, TnSize, TnSpace;
 import '../l10n/s.dart' show S;
 import 'login_account_section.dart'
     show AccountEntry, buildAccountEntries, accountSubtitle;
@@ -224,27 +225,26 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
   Widget _qrBody(BuildContext context) {
     final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(TnSpace.lg),
       children: <Widget>[
-        const SizedBox(height: 8),
+        const SizedBox(height: TnSpace.sm),
         Center(
           child: _qrImg != null
               ? Image.memory(
                   _qrImg!,
-                  width: 200,
-                  height: 200,
+                  width: TnSize.qrCode,
+                  height: TnSize.qrCode,
                   fit: BoxFit.contain,
                 )
               : Card(
-                  child: SizedBox(
-                    width: 200,
-                    height: 200,
+                  child: SizedBox(width: TnSize.qrCode,
+                    height: TnSize.qrCode,
                     child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
                           const CircularProgressIndicator(strokeWidth: 2),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: TnSpace.md),
                           Text('二维码加载中', style: theme.textTheme.bodySmall),
                         ],
                       ),
@@ -252,7 +252,7 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
                   ),
                 ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: TnSpace.lg),
         Center(
           child: Text(
             _qrHint,
@@ -260,7 +260,7 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
             style: theme.textTheme.bodyMedium,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: TnSpace.sm),
         Center(
           child: TextButton(
             onPressed: () {
@@ -336,7 +336,7 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
 
   Widget _smsBody(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(TnSpace.lg),
       children: <Widget>[
         TextField(
           controller: _phone,
@@ -346,7 +346,7 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
             hintText: '用于登录酷狗账号',
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: TnSpace.lg),
         Row(
           children: <Widget>[
             Expanded(
@@ -356,14 +356,14 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
                 decoration: const InputDecoration(labelText: '验证码'),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: TnSpace.md),
             TextButton(
               onPressed: _countdown > 0 ? null : _sendCode,
               child: Text(_countdown > 0 ? '${_countdown}s' : '发送验证码'),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: TnSpace.lg),
         FilledButton(onPressed: _smsLogin, child: const Text('登录')),
       ],
     );
@@ -394,13 +394,13 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
 
   Widget _pwdBody(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(TnSpace.lg),
       children: <Widget>[
         TextField(
           controller: _pwdAccount,
           decoration: const InputDecoration(labelText: '手机号 / 用户名'),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: TnSpace.lg),
         TextField(
           controller: _pwd,
           obscureText: _pwdObscure,
@@ -413,7 +413,7 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: TnSpace.lg),
         FilledButton(onPressed: _pwdLogin, child: const Text('登录')),
       ],
     );
@@ -425,25 +425,25 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
     final s = S.of(context);
     final theme = Theme.of(context);
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(TnSpace.xl),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           Icon(Icons.link, size: 48, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(height: 16),
+          const SizedBox(height: TnSpace.lg),
           Text(
             s.t('ykgRisk'),
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: TnSpace.xl),
           FilledButton.icon(
             onPressed: () => showYkgImport(context),
             icon: const Icon(Icons.download_outlined),
             label: Text(s.t('ykgImport')),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: TnSpace.sm),
           OutlinedButton.icon(
             onPressed: () => showYkgExport(context),
             icon: const Icon(Icons.upload_outlined),
@@ -470,12 +470,12 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            padding: const EdgeInsets.fromLTRB(TnSpace.lg, TnSpace.md, TnSpace.lg, TnSpace.xs),
             child: Text('已登录账号', style: theme.textTheme.titleSmall),
           ),
           if (entries.isEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              padding: const EdgeInsets.fromLTRB(TnSpace.lg, 0, TnSpace.lg, TnSpace.md),
               child: Text('暂无账号，登录后将自动保存到这里', style: theme.textTheme.bodySmall),
             )
           else
@@ -526,7 +526,7 @@ class _LoginSheetPanelState extends State<LoginSheetPanel>
     return Column(
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+          padding: const EdgeInsets.fromLTRB(TnSpace.lg, TnSpace.md, TnSpace.sm, TnSpace.xs),
           child: Row(
             children: <Widget>[
               Expanded(

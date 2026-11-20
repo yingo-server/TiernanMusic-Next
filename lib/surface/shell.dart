@@ -14,6 +14,7 @@ import 'package:get/get.dart';
 import '../bridges/bridge_session.dart'
     show ModuleRegistry, NavEntry, NavState, SurfaceModule;
 import 'design/tokens_v2.dart';
+import 'design/layout.dart' show TnBreakpoint, TnRadius, TnSize, TnSpace;
 import 'pages/home_page.dart' show HomePageModule;
 import 'pages/library_page.dart' show LibraryPageModule;
 import 'pages/lyrics_page.dart' show LyricsPageModule;
@@ -100,40 +101,57 @@ class _AppShellState extends State<AppShell> {
     return Obx(() {
       final safeIndex = _index.value.clamp(0, modules.length - 1);
       final current = modules[safeIndex];
-      final content = Column(
-        children: <Widget>[
-          Expanded(
-            child: KeyedSubtree(
-              key: ValueKey<String>(current.id),
-              child:
-                  (current.builder as WidgetBuilder?)?.call(context) ??
-                  Center(
-                    child: Text(
-                      'Module has no page',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
+      // 页面内容（不含迷你条——迷你条放 Scaffold 官方 bottomNavigationBar 槽位，
+      // 与 NavigationBar 同列，inset 由 Scaffold 统一处理：兼容性最强，全平台一致）。
+      final content = KeyedSubtree(
+        key: ValueKey<String>(current.id),
+        child:
+            (current.builder as WidgetBuilder?)?.call(context) ??
+            Center(
+              child: Text(
+                'Module has no page',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
             ),
-          ),
+      );
+      // 桌面（expanded）：迷你条放内容列底部（Rail 下方/内容上方，官方 Column 槽位）。
+      // 移动（compact/medium）：迷你条 + NavigationBar 同列进 Scaffold
+      // bottomNavigationBar 槽位，系统 inset 由 Scaffold 官方处理
+      // （兼容性最强：Flutter 全平台一致的机制，不依赖任何平台新 API）。
+      final bool expanded = TnBreakpoint.isExpanded(MediaQuery.sizeOf(context).width);
+      final Widget desktopContent = Column(
+        children: <Widget>[
+          Expanded(child: content),
           _nowPlayingBar(context),
         ],
       );
+      final Widget? bottomBar = expanded
+          ? null
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                _nowPlayingBar(context),
+                _bar(modules, safeIndex),
+              ],
+            );
       return LayoutBuilder(
         builder: (context, constraints) {
-          if (constraints.maxWidth >= 1000) {
+          if (TnBreakpoint.isExpanded(constraints.maxWidth)) {
             return Scaffold(
               body: Row(
                 children: <Widget>[
                   _rail(modules, safeIndex),
                   const VerticalDivider(width: 1),
-                  Expanded(child: content),
+                  Expanded(child: desktopContent),
                 ],
               ),
             );
           }
           return Scaffold(
-            body: content,
-            bottomNavigationBar: _bar(modules, safeIndex),
+            body: SafeArea(
+              child: content,
+            ),
+            bottomNavigationBar: bottomBar,
           );
         },
       );
@@ -142,7 +160,7 @@ class _AppShellState extends State<AppShell> {
 
   /// 桌面侧栏（官方 NavigationRail）。
   Widget _rail(List<SurfaceModule> modules, int selected) {
-    final bool extended = MediaQuery.sizeOf(context).width >= 1240;
+    final bool extended = TnBreakpoint.isExpanded(MediaQuery.sizeOf(context).width);
     return NavigationRail(
       selectedIndex: selected,
       onDestinationSelected: (i) => _index.value = i,
@@ -185,21 +203,20 @@ class _AppShellState extends State<AppShell> {
           final nav = NavState.instance;
           nav.requestTab('player');
         },
-        child: SizedBox(
-          height: 64,
+        child: SizedBox(height: TnSize.miniBar,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
             child: Row(
               children: <Widget>[
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: TnSize.avatarSm,
+                  height: TnSize.avatarSm,
                   decoration: BoxDecoration(
                     color: scheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(TnRadius.sm),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: TnSpace.md),
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,

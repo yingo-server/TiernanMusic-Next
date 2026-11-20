@@ -87,6 +87,10 @@ jobs:
         if: always()
         run: python3 tool/ui_no_custom_widgets.py 2>&1 | tee /tmp/ui_widgets.log
         continue-on-error: true
+      - name: UI layout gate (no raw spacing/size literals)
+        if: always()
+        run: python3 tool/ui_layout_gate.py 2>&1 | tee /tmp/ui_layout.log
+        continue-on-error: true
       - name: boot contract (pure Dart)
         if: always()
         run: dart run tool/boot_contract_test.dart 2>&1 | tee /tmp/boot_contract.log
@@ -181,6 +185,8 @@ jobs:
           # UI 重写门禁：色彩对比度 + 零手写控件（破坏性重写的强制约束）
           grep -q "PASS ui-contrast-gate" /tmp/ui_contrast.log || mark ui-contrast
           grep -q "PASS ui-no-custom-widgets" /tmp/ui_widgets.log || mark ui-custom-widgets
+          # 布局数值门禁：页面零手写间距/尺寸（"布局完全不由页面决定"）
+          grep -q "PASS ui-layout-gate" /tmp/ui_layout.log || mark ui-layout-raw
           # 纯 Dart 契约自检：正向 self-check + 0 failed 两重判据（日志均已 tee）
           grep -q "boot contract self-check" /tmp/boot_contract.log || mark boot-selfcheck
           grep -q "0 failed" /tmp/boot_contract.log || mark boot-zero

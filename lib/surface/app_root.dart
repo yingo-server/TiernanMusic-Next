@@ -7,8 +7,7 @@
 // - 系统栏（Android 导航栏/状态栏）显式锁暗（真机事故：MIUI 用浅灰
 //   windowBackground 画系统导航带，盖住 Flutter 底栏；见 docs/ui_diagnosis.md）。
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'
-    show SystemChrome, SystemUiMode, SystemUiOverlay, SystemUiOverlayStyle;
+import 'package:flutter/services.dart' show SystemChrome, SystemUiOverlayStyle;
 
 import '../bridges/bridge_core.dart'
     show
@@ -65,18 +64,6 @@ class _AppRootState extends State<AppRoot> {
   void initState() {
     super.initState();
     _applySystemBarStyle();
-    _enableEdgeToEdge();
-  }
-
-  /// Edge-to-edge（计划书 P5）：Flutter 画布延伸到系统栏之下，
-  /// Scaffold 经 MediaQuery.padding 自动为 NavigationBar/mini bar 避让
-  /// 手势区 —— MIUI 的独立系统导航区域不再存在，悬浮通知横幅也不会
-  /// 再把底栏"盖住"（真机 2026-11-20：底栏区域曾被系统面板遮挡）。
-  static void _enableEdgeToEdge() {
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.edgeToEdge,
-      overlays: <SystemUiOverlay>[SystemUiOverlay.top, SystemUiOverlay.bottom],
-    );
   }
 
   /// 真机修复（浅灰/米黄底栏带）：edge-to-edge 模式下系统导航栏透明，

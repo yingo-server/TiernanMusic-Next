@@ -27,9 +27,9 @@ Widget? buildDesktopTitleBar(BuildContext context) {
             ? windowService.unmaximize()
             : windowService.maximize(),
         child: Container(
-          height: 36,
+          height: TnSize.touchTarget - TnSpace.md,
           color: palette.titlebarBg,
-          padding: const EdgeInsets.only(left: 12),
+          padding: const EdgeInsets.only(left: TnSpace.md),
           child: Row(
             children: <Widget>[
               Expanded(

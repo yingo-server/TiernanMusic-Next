@@ -12,6 +12,7 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import '../../bridges/bridge_logic.dart' show Log;
 import '../../bridges/bridge_session.dart' show appGraph;
 import '../design/tokens_v2.dart';
+import '../design/layout.dart' show TnBreakpoint, TnRadius, TnSize, TnSpace;
 import '../l10n/s.dart' show S;
 
 /// 显示 YKG 弹层。export=true 导出，false 导入。
@@ -130,10 +131,10 @@ class _YkgSheetState extends State<YkgSheet> {
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 16,
-          bottom: MediaQuery.viewInsetsOf(context).bottom + 24,
+          left: TnSpace.xl,
+          right: TnSpace.xl,
+          top: TnSpace.lg,
+          bottom: MediaQuery.viewInsetsOf(context).bottom + TnSpace.xl,
         ),
         child: SingleChildScrollView(
           child: Column(
@@ -144,11 +145,11 @@ class _YkgSheetState extends State<YkgSheet> {
                 isExport ? s.t('ykgExport') : s.t('ykgImport'),
                 style: theme.textTheme.titleLarge,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: TnSpace.lg),
               // 风险提示（强制）：凭据链接 + 密码 = 可登录，勿公开分享。
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(TnSpace.lg),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
@@ -156,7 +157,7 @@ class _YkgSheetState extends State<YkgSheet> {
                         Icons.warning_amber_rounded,
                         color: context.cs.secondary,
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: TnSpace.md),
                       Expanded(
                         child: Text(
                           s.t('ykgRisk'),
@@ -167,7 +168,7 @@ class _YkgSheetState extends State<YkgSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: TnSpace.lg),
               if (!isExport) ...<Widget>[
                 TextField(
                   controller: _link,
@@ -175,7 +176,7 @@ class _YkgSheetState extends State<YkgSheet> {
                   minLines: 2,
                   maxLines: 4,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: TnSpace.sm),
               ],
               TextField(
                 controller: _pwd,
@@ -192,19 +193,19 @@ class _YkgSheetState extends State<YkgSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: TnSpace.lg),
               FilledButton(
                 onPressed: _busy ? null : (isExport ? _doExport : _doImport),
                 child: _busy
                     ? const SizedBox(
-                        width: 18,
-                        height: 18,
+                        width: TnSpace.lg,
+                        height: TnSpace.lg,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : Text(isExport ? s.t('ykgCopy') : s.t('ykgImport')),
               ),
               if (_result.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 8),
+                const SizedBox(height: TnSpace.sm),
                 Text(_result, style: theme.textTheme.bodySmall),
               ],
             ],

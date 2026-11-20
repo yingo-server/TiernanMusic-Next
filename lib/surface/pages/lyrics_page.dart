@@ -14,6 +14,7 @@ import '../../bridges/bridge_session.dart'
 // GAP(跨桥)：逻辑单例随 AppGraph 暴露，bridge_session 暂未导出实例出口。
 import '../../bridges/bridge_session.dart' show appGraph;
 import '../design/tokens_v2.dart';
+import '../design/layout.dart' show TnBreakpoint, TnRadius, TnSize, TnSpace;
 
 /// 一行歌词（原文 + 可选译文）。
 class _LyricRow {
@@ -180,7 +181,7 @@ class _LyricsPageState extends State<LyricsPage> {
   }
 
   Widget _topBar() => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    padding: const EdgeInsets.symmetric(horizontal: TnSpace.md, vertical: TnSpace.sm),
     child: Row(
       children: <Widget>[
         IconButton(
@@ -217,7 +218,7 @@ class _LyricsPageState extends State<LyricsPage> {
     }
     return ListView.builder(
       controller: _scroll,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg, vertical: TnSpace.xl),
       itemCount: _rows.length,
       itemBuilder: (BuildContext context, int i) {
         final r = _rows[i];
@@ -230,7 +231,7 @@ class _LyricsPageState extends State<LyricsPage> {
                 ? context.cs.primary
                 : context.cs.onSurfaceVariant;
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: TnSpace.sm),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -243,7 +244,7 @@ class _LyricsPageState extends State<LyricsPage> {
                     ),
                   ),
                   if (showSub) ...<Widget>[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: TnSpace.xs),
                     Text(
                       r.sub,
                       style: TextStyle(
@@ -264,17 +265,17 @@ class _LyricsPageState extends State<LyricsPage> {
 
   /// 加载骨架（官方 Card + LinearProgressIndicator）。
   Widget _skeleton() => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16),
+    padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
     child: Column(
       children: <Widget>[
         for (int i = 0; i < 8; i++)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: TnSpace.sm),
             child: SizedBox(
-              height: 44,
+              height: TnSize.touchTarget,
               child: Card(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: TnSpace.md),
                   child: Center(
                     child: LinearProgressIndicator(
                       minHeight: 3,
@@ -293,14 +294,14 @@ class _LyricsPageState extends State<LyricsPage> {
   /// 三态（官方 Icon + Text + FilledButton）。
   Widget _stateView(IconData icon, String title, String subtitle) => Center(
     child: Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(TnSpace.xl),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Icon(icon, size: 40, color: context.cs.onSurfaceVariant),
-          const SizedBox(height: 12),
+          const SizedBox(height: TnSpace.md),
           Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: TnSpace.sm),
           Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),

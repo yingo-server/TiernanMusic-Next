@@ -12,15 +12,10 @@ import '../../bridges/bridge_session.dart'
     show NavState, PlaybackSession, SurfaceModule, NavEntry;
 import '../../bridges/bridge_session.dart' show appGraph;
 import '../design/tokens_v2.dart';
+import '../design/layout.dart' show TnBreakpoint, TnRadius, TnSize, TnSpace;
 
 const String _tag = 'surface.playlist';
 
-const double _pad = 16;
-const double _gapXS = 4;
-const double _gapS = 8;
-const double _gapM = 12;
-const double _gapXL = 24;
-const double _radiusS = 8;
 
 /// 页面模块注册（L7 注入 builder，宿主按 id 覆盖 session 占位模块）。
 class PlaylistPageModule extends SurfaceModule {
@@ -163,18 +158,18 @@ class _PlaylistPageState extends State<PlaylistPage> {
         }
         final List<PlaylistBrief> items = snap.data ?? const <PlaylistBrief>[];
         if (items.isEmpty) return _empty(c, '暂无推荐歌单');
-        final columns = MediaQuery.sizeOf(c).width >= 1000
+        final columns = TnBreakpoint.isExpanded(MediaQuery.sizeOf(c).width)
             ? 5
-            : MediaQuery.sizeOf(c).width >= 600
+            : !TnBreakpoint.isCompact(MediaQuery.sizeOf(c).width)
             ? 4
             : 3;
         return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(_pad, _gapM, _pad, _gapXL),
+          padding: const EdgeInsets.fromLTRB(TnSpace.lg, TnSpace.md, TnSpace.lg, TnSpace.xl),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
             childAspectRatio: 0.72,
-            crossAxisSpacing: _gapM,
-            mainAxisSpacing: _gapM,
+            crossAxisSpacing: TnSpace.md,
+            mainAxisSpacing: TnSpace.md,
           ),
           itemCount: items.length,
           itemBuilder: (BuildContext c, int i) =>
@@ -198,7 +193,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
         final List<PlaylistMeta> items = snap.data ?? const <PlaylistMeta>[];
         if (items.isEmpty) return _empty(c, '还没有收藏的歌单');
         return ListView.builder(
-          padding: const EdgeInsets.only(bottom: _gapXL),
+          padding: const EdgeInsets.only(bottom: TnSpace.xl),
           itemCount: items.length,
           itemBuilder: (BuildContext c, int i) =>
               _mineRow(c, items[i], () => _openMeta(items[i])),
@@ -228,7 +223,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     ),
             ),
             Padding(
-              padding: const EdgeInsets.all(_gapS),
+              padding: const EdgeInsets.all(TnSpace.sm),
               child: Text(
                 brief.name.isEmpty ? '未命名歌单' : brief.name,
                 maxLines: 2,
@@ -237,7 +232,7 @@ class _PlaylistPageState extends State<PlaylistPage> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: _gapS),
+              padding: const EdgeInsets.symmetric(horizontal: TnSpace.sm),
               child: Text(
                 brief.trackCount > 0 ? '${brief.trackCount} 首' : '曲目数未知',
                 style: Theme.of(c).textTheme.bodySmall,
@@ -253,12 +248,11 @@ class _PlaylistPageState extends State<PlaylistPage> {
   Widget _mineRow(BuildContext c, PlaylistMeta meta, VoidCallback onTap) {
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: _pad),
+      contentPadding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
       leading: ClipRRect(
-        borderRadius: BorderRadius.circular(_radiusS),
-        child: SizedBox(
-          width: 48,
-          height: 48,
+        borderRadius: BorderRadius.circular(TnRadius.sm),
+        child: SizedBox(width: TnSpace.xxxl,
+          height: TnSize.avatarLg,
           child: meta.coverUrl.isEmpty
               ? Container(color: c.cs.surfaceContainerHigh)
               : Image.network(
@@ -287,10 +281,10 @@ class _PlaylistPageState extends State<PlaylistPage> {
   Widget _loading(BuildContext c) {
     return Center(
       child: SizedBox(
-        width: 160,
+        width: TnSize.playlistCardMin,
         child: Card(
           child: Padding(
-            padding: const EdgeInsets.all(_gapM),
+            padding: const EdgeInsets.all(TnSpace.md),
             child: LinearProgressIndicator(
               minHeight: 3,
               color: c.cs.primary,
@@ -306,12 +300,12 @@ class _PlaylistPageState extends State<PlaylistPage> {
   Widget _empty(BuildContext c, String message) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: _pad),
+        padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Icon(Icons.queue_music, color: c.cs.onSurfaceVariant),
-            const SizedBox(height: _gapS),
+            const SizedBox(height: TnSpace.sm),
             Text(message, style: Theme.of(c).textTheme.bodySmall),
           ],
         ),
@@ -323,14 +317,14 @@ class _PlaylistPageState extends State<PlaylistPage> {
   Widget _error(BuildContext c, String message, VoidCallback onRetry) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: _pad),
+        padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Icon(Icons.error_outline, color: c.cs.error),
-            const SizedBox(height: _gapS),
+            const SizedBox(height: TnSpace.sm),
             Text(message, style: Theme.of(c).textTheme.bodySmall),
-            const SizedBox(height: _gapS),
+            const SizedBox(height: TnSpace.sm),
             FilledButton.tonal(onPressed: onRetry, child: const Text('重试')),
           ],
         ),
@@ -452,14 +446,13 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
   /// 弹层头部：官方 Row + ClipRRect/Image.network（原内联封面块）。
   Widget _header(BuildContext c, String title, List<SongBrief> items) {
     return Padding(
-      padding: const EdgeInsets.all(_pad),
+      padding: const EdgeInsets.all(TnSpace.lg),
       child: Row(
         children: <Widget>[
           ClipRRect(
-            borderRadius: BorderRadius.circular(_radiusS),
-            child: SizedBox(
-              width: 64,
-              height: 64,
+            borderRadius: BorderRadius.circular(TnRadius.sm),
+            child: SizedBox(width: TnSize.miniBar,
+              height: TnSize.miniBar,
               child: widget.cover.isEmpty
                   ? Container(color: c.cs.surfaceContainerHigh)
                   : Image.network(
@@ -470,7 +463,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                     ),
             ),
           ),
-          const SizedBox(width: _gapM),
+          const SizedBox(width: TnSpace.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -481,7 +474,7 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(c).textTheme.titleLarge,
                 ),
-                const SizedBox(height: _gapXS),
+                const SizedBox(height: TnSpace.xs),
                 Text(
                   items.isNotEmpty
                       ? '${items.length} 首'
@@ -501,9 +494,9 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
       VoidCallback onTap, VoidCallback onAlbum) {
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: _pad),
+      contentPadding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
       leading: SizedBox(
-        width: 28,
+        width: TnSpace.xl,
         child: Text('${index + 1}', style: Theme.of(c).textTheme.bodySmall),
       ),
       title: Text(
@@ -533,12 +526,12 @@ class _PlaylistDetailSheetState extends State<PlaylistDetailSheet> {
   Widget _emptyTracks(BuildContext c) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: _pad),
+        padding: const EdgeInsets.symmetric(horizontal: TnSpace.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Icon(Icons.music_off, color: c.cs.onSurfaceVariant),
-            const SizedBox(height: _gapS),
+            const SizedBox(height: TnSpace.sm),
             Text('该歌单暂无曲目', style: Theme.of(c).textTheme.bodySmall),
           ],
         ),
